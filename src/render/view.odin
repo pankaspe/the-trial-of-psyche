@@ -39,7 +39,7 @@ make_view :: proc(fit: Rect, width, height, angle: f32, size, height_cells: i32,
 	return {
 		width = width,
 		height = height,
-		zoom = clamp(z, 0.35, 1.6),
+		zoom = clamp(z, 0.35, 4.0),
 		center = {fit.x + fit.w * 0.5, fit.y + fit.h * 0.5 + 40},
 		shake = shake,
 		angle = angle,

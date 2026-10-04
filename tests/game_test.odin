@@ -54,7 +54,13 @@ level_1_rules :: proc(t: ^testing.T) {
 	testing.expect(t, g.heard[i18n.Key.V_Welcome], "Cupid welcomes Psyche")
 
 	game.set_view(&g, 3)
-	testing.expect(t, walk(t, &g, BALCONY), "Psyche crosses the gap to the balcony in view 3")
+	testing.expect(t, walk(t, &g, TERRACE), "Psyche crosses the gap to the west terrace in view 3")
+	testing.expect(t, !game.walk_to(&g, BALCONY), "view 3: the hidden stairs do not lead up in the dark")
+	game.request_turn(&g, 1)
+	run(&g, 1)
+	testing.expect(t, game.rot(&g) == 0, "turned to view 0, where the stairs show")
+	testing.expect(t, walk(t, &g, BALCONY), "Psyche climbs the stairs to the balcony")
+	game.set_view(&g, 3)
 
 	game.request_turn(&g, -1)
 	run(&g, 1)

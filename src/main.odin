@@ -14,6 +14,7 @@ import "core:fmt"
 @(require) import "core:mem" // tracking allocator, debug builds only
 import "core:os"
 import rl "vendor:raylib"
+import "vendor:raylib/rlgl"
 
 import "audio"
 import "game"
@@ -49,6 +50,10 @@ App :: struct {
 	resolution_count: int,
 	shots:           Shots,
 	shooting:        bool, // scripted screenshot mode (--shots DIR)
+	resize_wait:     int, // frames before (re)applying the window size; 0 = nothing pending
+	resize_tries:    int,
+	target:          rl.RenderTexture2D, // offscreen canvas (--shots DIR --size WxH)
+	has_target:      bool,
 }
 
 main :: proc() {
@@ -103,9 +108,13 @@ startup :: proc(app: ^App) -> bool {
 	rl.SetTargetFPS(app.cfg.fps_limit)
 	find_resolutions(app)
 	if app.cfg.fullscreen {
-		rl.ToggleBorderlessWindowed()
+		set_fullscreen(true)
 	}
 
+	if app.shooting && app.shots.size.x > 0 {
+		app.target = rl.LoadRenderTexture(app.shots.size.x, app.shots.size.y)
+		app.has_target = true
+	}
 	audio.init()
 	audio.set_volumes(app.cfg.master, app.cfg.music, app.cfg.sfx)
 	render.init(&app.renderer)
@@ -122,6 +131,9 @@ startup :: proc(app: ^App) -> bool {
 shutdown :: proc(app: ^App) {
 	save_settings(app)
 	game.destroy(&app.game)
+	if app.has_target {
+		rl.UnloadRenderTexture(app.target)
+	}
 	ui.shutdown(&app.ui)
 	render.shutdown(&app.renderer)
 	audio.shutdown()
@@ -169,7 +181,9 @@ frame :: proc(app: ^App) {
 	app.time += dt
 	g := &app.game
 	u := &app.ui
-	ui.begin_frame(u)
+	update_window_size(app)
+	w, h := canvas_size(app)
+	ui.begin_frame(u, w, h)
 	global_keys(app)
 
 	// input that drives the game
@@ -203,19 +217,102 @@ frame :: proc(app: ^App) {
 	}
 
 	// drawing (widgets also report their clicks here)
-	w, h := f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight())
 	view := render.scene_view(&app.scene, g, w, h)
 	rl.BeginDrawing()
+	if app.has_target {
+		rl.BeginTextureMode(app.target)
+	}
+	reset_canvas(w, h)
 	rl.ClearBackground({5, 5, 15, 255})
 	render.draw_world(&app.renderer, &app.scene, g, view, app.time)
 	draw_screens(app)
 	if app.cfg.debug {
 		debug(app)
 	}
-	if shot != "" {
+	if app.has_target {
+		rl.EndTextureMode()
+		if shot != "" {
+			shots_capture_texture(&app.shots, shot, app.target.texture)
+		}
+		show_target(app)
+	} else if shot != "" {
 		shots_capture(&app.shots, shot)
 	}
 	rl.EndDrawing()
+}
+
+// The size we really draw to. raylib's screen size can lag behind the
+// window (a resize refused by the compositor, a maximised window): the
+// framebuffer is the truth. In screenshot mode it can be an offscreen canvas.
+canvas_size :: proc(app: ^App) -> (w, h: f32) {
+	if app.has_target {
+		return f32(app.target.texture.width), f32(app.target.texture.height)
+	}
+	return f32(max(rl.GetRenderWidth(), 1)), f32(max(rl.GetRenderHeight(), 1))
+}
+
+// Point the viewport and the 2D projection at the whole canvas, whatever
+// raylib last set up.
+reset_canvas :: proc(w, h: f32) {
+	rlgl.DrawRenderBatchActive()
+	rlgl.Viewport(0, 0, i32(w), i32(h))
+	rlgl.MatrixMode(rlgl.PROJECTION)
+	rlgl.LoadIdentity()
+	rlgl.Ortho(0, f64(w), f64(h), 0, 0, 1)
+	rlgl.MatrixMode(rlgl.MODELVIEW)
+	rlgl.LoadIdentity()
+}
+
+// The offscreen canvas, letterboxed in the window.
+show_target :: proc(app: ^App) {
+	ww, wh := f32(max(rl.GetRenderWidth(), 1)), f32(max(rl.GetRenderHeight(), 1))
+	reset_canvas(ww, wh)
+	rl.ClearBackground(rl.BLACK)
+	tw, th := f32(app.target.texture.width), f32(app.target.texture.height)
+	k := min(ww / tw, wh / th)
+	dest := rl.Rectangle{(ww - tw * k) * 0.5, (wh - th * k) * 0.5, tw * k, th * k}
+	rl.DrawTexturePro(app.target.texture, {0, 0, tw, -th}, dest, {}, 0, rl.WHITE)
+}
+
+// Fullscreen at the monitor's own resolution (no video mode change). Tested on
+// GNOME (Wayland/XWayland): raylib's borderless mode cannot be left there, the
+// window stays monitor-sized and ignores every resize; true fullscreen can.
+set_fullscreen :: proc(on: bool) {
+	if on == rl.IsWindowFullscreen() {
+		return
+	}
+	if on {
+		m := rl.GetCurrentMonitor()
+		rl.SetWindowSize(rl.GetMonitorWidth(m), rl.GetMonitorHeight(m))
+	}
+	rl.ToggleFullscreen()
+}
+
+// Pending window resize (see apply).
+update_window_size :: proc(app: ^App) {
+	if app.resize_wait == 0 || app.cfg.fullscreen {
+		app.resize_wait = 0
+		return
+	}
+	app.resize_wait -= 1
+	if app.resize_wait > 0 {
+		return
+	}
+	want := app.cfg.resolution
+	if rl.GetRenderWidth() == want.x && rl.GetRenderHeight() == want.y {
+		return
+	}
+	if app.resize_tries == 0 {
+		return // the window manager insists: we draw at whatever size we get
+	}
+	app.resize_tries -= 1
+	if rl.IsWindowMaximized() {
+		rl.RestoreWindow()
+	}
+	m := rl.GetCurrentMonitor()
+	rl.SetWindowSize(want.x, want.y)
+	rl.SetWindowPosition((rl.GetMonitorWidth(m) - want.x) / 2, (rl.GetMonitorHeight(m) - want.y) / 2)
+	app.resize_wait = 10 // check again shortly
 }
 
 global_keys :: proc(app: ^App) {
@@ -256,7 +353,7 @@ play_input :: proc(app: ^App) {
 		game.request_turn(g, 1)
 	}
 	if app.ui.pressed && !ui.over_ui(&app.ui) {
-		w, h := f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight())
+		w, h := canvas_size(app)
 		view := render.scene_view(&app.scene, g, w, h)
 		game.click(g, render.screen_to_proto(view, app.ui.mouse))
 	}
@@ -309,7 +406,9 @@ draw_screens :: proc(app: ^App) {
 		case .None, .Play, .Quit, .Retry, .Back:
 		}
 	case .Settings:
-		changes, back := ui.settings_menu(u, &app.cfg, app.resolutions[:app.resolution_count])
+		m := rl.GetCurrentMonitor()
+		native := [2]i32{rl.GetMonitorWidth(m), rl.GetMonitorHeight(m)}
+		changes, back := ui.settings_menu(u, &app.cfg, app.resolutions[:app.resolution_count], native)
 		if changes != {} {
 			apply(app, changes)
 		}
@@ -351,14 +450,14 @@ apply :: proc(app: ^App, changes: ui.Setting_Changes) {
 		i18n.set_language(c.language)
 	}
 	if .Fullscreen in changes {
-		if c.fullscreen != rl.IsWindowState({.BORDERLESS_WINDOWED_MODE}) {
-			rl.ToggleBorderlessWindowed()
-		}
+		set_fullscreen(c.fullscreen)
 	}
-	if .Resolution in changes && !c.fullscreen {
-		m := rl.GetCurrentMonitor()
-		rl.SetWindowSize(c.resolution.x, c.resolution.y)
-		rl.SetWindowPosition((rl.GetMonitorWidth(m) - c.resolution.x) / 2, (rl.GetMonitorHeight(m) - c.resolution.y) / 2)
+	// back in a window (or a new size): the window manager drops a resize
+	// asked right after leaving fullscreen, so it is applied a few frames
+	// later and retried until the framebuffer really has that size
+	if (.Resolution in changes || .Fullscreen in changes) && !c.fullscreen {
+		app.resize_wait = 4
+		app.resize_tries = 4
 	}
 	if .Vsync in changes {
 		if c.vsync {

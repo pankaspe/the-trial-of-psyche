@@ -118,7 +118,7 @@ Setting_Field :: enum u8 {
 Setting_Changes :: bit_set[Setting_Field]
 
 // The settings panel: edits `cfg` in place and reports what changed.
-settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32) -> (changes: Setting_Changes, back: bool) {
+settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, native: [2]i32) -> (changes: Setting_Changes, back: bool) {
 	s := u.scale
 	shade(u, 0.7)
 	cx := u.width * 0.5
@@ -150,7 +150,8 @@ settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32) ->
 		changes += {.Fullscreen}
 	}
 	y += row
-	res_label := fmt.tprintf("%d × %d", cfg.resolution.x, cfg.resolution.y)
+	// fullscreen always uses the monitor's own resolution
+	res_label := cfg.fullscreen ? fmt.tprintf("%d × %d  (%s)", native.x, native.y, i18n.tr(.Set_Native)) : fmt.tprintf("%d × %d", cfg.resolution.x, cfg.resolution.y)
 	if step := option_row(u, i18n.tr(.Set_Resolution), res_label, y, left, right, !cfg.fullscreen && len(resolutions) > 0); step != 0 {
 		current := 0
 		for r, i in resolutions {

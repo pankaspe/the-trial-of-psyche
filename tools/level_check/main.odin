@@ -70,6 +70,12 @@ main :: proc() {
 
 	for r in 0 ..< 4 {
 		pl.set_view(&p, r)
+		fmt.printf("\nview %d stairs usable in the dark:", r)
+		for node, i in p.nodes {
+			if node.stair {
+				fmt.printf(" %v:%v", node.cell, p.stair_seen[i])
+			}
+		}
 		fmt.printf("\nview %d illusions (%d):", r, len(p.illusion.pairs))
 		for e in p.illusion.pairs {
 			fmt.printf(" %v-%v", p.nodes[e[0]].cell, p.nodes[e[1]].cell)
@@ -90,7 +96,7 @@ expand :: proc(p: ^pl.Palace, reached: []bool) -> (changed: bool) {
 		cur := queue[head]
 		for g in ([]^pl.Graph{&p.real, &p.illusion}) {
 			for nb in pl.neighbours(g, cur) {
-				if !reached[nb] {
+				if !reached[nb] && pl.step_allowed(p, cur, nb, true) {
 					reached[nb] = true
 					changed = true
 					append(&queue, nb)

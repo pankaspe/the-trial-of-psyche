@@ -392,7 +392,7 @@ set_frame_uniforms :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	set_f(r, .Depth_Max, dmax)
 	set_f(r, .Mist_Top, proto_to_screen(v, {0, s.fit.y + s.fit.h - 330}).y)
 	set_f(r, .Mist_Bottom, proto_to_screen(v, {0, s.fit.y + s.fit.h + 60}).y)
-	set_f(r, .Screen_Height, f32(rl.GetRenderHeight()))
+	set_f(r, .Screen_Height, v.height)
 }
 
 @(private)

@@ -18,6 +18,9 @@ CLAUDE.md for the design history).
 - **Dark** (default): two surfaces that *look* joined in the current view are joined:
   view coordinates `(x',y',h)` touch `(x'+dx+k, y'+dy+k, h+k)`, both tops visible,
   no rail closing the side (`palace.rebuild_illusions`, `palace.visible`).
+- **Hidden stairs** (added 2026-10-04 with the user): in the dark, stairs work only when
+  every tread is visible in the current view (`palace.stairs_visible`, `step_allowed`);
+  in the light they always work. What you see is what you walk, both ways.
 - **Turning** (Q/E): 4 views about the grid centre, view r = (x,y)→(size-1-y, x) r times.
   Not while walking (the turn waits for the step).
 - **Lamp** (Space): real edges only, cracks with dust where the illusions were, true
@@ -41,6 +44,16 @@ CLAUDE.md for the design history).
   light, depth cue, mist. Output is not gamma-corrected (matches the prototype's look).
 - Figures (Psyche, Cupid) are abstract lathes + additive wings: placeholders until the
   user picks a character style.
+
+## Window and resolution
+- Always draw on the real framebuffer (`canvas_size` = GetRenderWidth/Height) and reset
+  viewport + 2D projection every frame (`reset_canvas`): raylib's screen size can be stale.
+- Fullscreen = true fullscreen at the monitor's native size (`set_fullscreen`). raylib's
+  borderless mode cannot be left on GNOME/XWayland (window stays monitor-sized and ignores
+  resizes). Window sizes are applied a few frames later and retried (`update_window_size`).
+- UI layout is 1080p-based (`ui.scale`); font atlases are rebuilt per scale step, so text is
+  crisp up to 4K. `--shots DIR --size 3840x2160` renders offscreen to check any size;
+  the script ends with fullscreen/windowed switches (window mode only).
 
 ## Memory
 - `context.allocator`: program-lifetime data only (audio WAV buffers); tracking
@@ -71,5 +84,7 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   palace, sky/islands/clouds, procedural figures, procedural audio with baked reverb,
   IT/EN, title/pause/settings/ending screens, debug overlay (F3), level_check tool,
   15 headless tests, screenshot mode. Waiting for the user's visual/feel test.
-- Open: level progression after level 1; character style; a dedicated font
+- Session 2: resolution/fullscreen bugs fixed (see above), 4K support, hidden-stairs rule
+  (level 1 now needs a turn at the stairs).
+- Open: structure in ACTS (each act adds a mechanic, see the discussion with the user); level progression after level 1; character style; a dedicated font
   (Noto Serif is a placeholder); next levels follow the myth (sisters, Venus' trials).

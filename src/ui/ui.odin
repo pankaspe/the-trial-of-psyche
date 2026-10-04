@@ -23,8 +23,11 @@ GOLD :: rl.Color{255, 209, 128, 255}
 FAINT :: rl.Color{128, 133, 179, 204}
 SHADOW :: rl.Color{0, 0, 13, 204}
 
-FONT_SIZE :: 96 // atlas size; text is drawn scaled from it
-ITALIC_SIZE :: 64
+// Font atlases are rebuilt for the UI scale (1080p sizes below): text stays
+// crisp from 720p to 4K. The largest text (the title) is drawn from the atlas
+// with little or no upscaling, everything else is mipmapped down.
+FONT_SIZE :: 112
+ITALIC_SIZE :: 56
 MAX_HOT :: 48
 
 Ui :: struct {
@@ -41,6 +44,9 @@ Ui :: struct {
 	prev_hot:  [MAX_HOT]rl.Rectangle,
 	prev_count: int,
 	active_slider: rawptr, // the value being dragged
+	runes:     []rune, // every glyph the fonts must hold
+	font_px:   i32, // atlas sizes currently loaded
+	italic_px: i32,
 }
 
 init :: proc(u: ^Ui) {
@@ -66,9 +72,34 @@ init :: proc(u: ^Ui) {
 			}
 		}
 	}
-	u.font = load_font(content.FONT_SERIF, FONT_SIZE, runes[:])
-	u.italic = load_font(content.FONT_SERIF_ITALIC, ITALIC_SIZE, runes[:])
+	u.runes = make([]rune, len(runes))
+	copy(u.runes, runes[:])
 	u.scale = 1
+	ensure_fonts(u)
+}
+
+// (Re)build the font atlases when the UI scale moves to another size step.
+@(private)
+ensure_fonts :: proc(u: ^Ui) {
+	step :: proc(base: f32, scale: f32) -> i32 {
+		px := i32(base * scale + 15) / 16 * 16 // multiples of 16 px: few rebuilds
+		return clamp(px, 32, 256)
+	}
+	want, want_italic := step(FONT_SIZE, u.scale), step(ITALIC_SIZE, u.scale)
+	if want != u.font_px {
+		if u.font_px != 0 {
+			rl.UnloadFont(u.font)
+		}
+		u.font = load_font(content.FONT_SERIF, want, u.runes)
+		u.font_px = want
+	}
+	if want_italic != u.italic_px {
+		if u.italic_px != 0 {
+			rl.UnloadFont(u.italic)
+		}
+		u.italic = load_font(content.FONT_SERIF_ITALIC, want_italic, u.runes)
+		u.italic_px = want_italic
+	}
 }
 
 @(private)
@@ -82,14 +113,18 @@ load_font :: proc(data: []u8, size: i32, runes: []rune) -> rl.Font {
 shutdown :: proc(u: ^Ui) {
 	rl.UnloadFont(u.font)
 	rl.UnloadFont(u.italic)
+	delete(u.runes)
 	u^ = {}
 }
 
-// Start of a frame: read the mouse, rotate the hot rectangles.
-begin_frame :: proc(u: ^Ui) {
-	u.width = f32(rl.GetScreenWidth())
-	u.height = f32(rl.GetScreenHeight())
-	u.scale = u.height / 1080
+// Start of a frame on a canvas of width x height pixels: read the mouse,
+// rotate the hot rectangles, follow the UI scale.
+begin_frame :: proc(u: ^Ui, width, height: f32) {
+	u.width = width
+	u.height = height
+	// 1080p layout; on very wide or narrow windows the width limits it too
+	u.scale = min(height / 1080, width / 1600)
+	ensure_fonts(u)
 	u.mouse = rl.GetMousePosition()
 	u.pressed = rl.IsMouseButtonPressed(.LEFT)
 	u.down = rl.IsMouseButtonDown(.LEFT)

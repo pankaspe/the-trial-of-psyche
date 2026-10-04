@@ -9,6 +9,9 @@
 // surfaces that look adjacent in the current view, (x', y', h) and
 // (x'+dx+k, y'+dy+k, h+k), when both tops are actually visible (not hidden by
 // nearer cubes) and no rail closes either side.
+// The same rule, read the other way: in the dark a flight of stairs hidden
+// behind the palace leads nowhere. Stairs work in the dark only when every
+// tread is visible in the current view; in the lamp light they always work.
 //
 // Memory: every array is allocated once from the allocator given to `init`
 // (the level arena) and reused; rebuilding the graph or the illusions does not
@@ -57,6 +60,7 @@ Palace :: struct {
 	// view grid (same shape), for the current view
 	view_node:  []i32,
 	view_solid: []bool,
+	stair_seen: []bool, // per node: stairs fully visible in the current view
 	nodes:      [dynamic]Node,
 	real:       Graph,
 	illusion:   Graph,
@@ -75,6 +79,7 @@ init :: proc(p: ^Palace, data: ^level.Level_Data, allocator := context.allocator
 	p.node_at = make([]i32, n)
 	p.view_node = make([]i32, n)
 	p.view_solid = make([]bool, n)
+	p.stair_seen = make([]bool, n) // one per grid cell: enough for any node count
 	p.nodes = make([dynamic]Node, 0, 256)
 	for g in ([]^Graph{&p.real, &p.illusion}) {
 		g.pairs = make([dynamic][2]i32, 0, 256)
@@ -246,6 +251,10 @@ rebuild_illusions :: proc(p: ^Palace) {
 		}
 	}
 	graph_build(&p.illusion, len(p.nodes))
+
+	for node, i in p.nodes {
+		p.stair_seen[i] = node.stair && stairs_visible(p, node)
+	}
 }
 
 cell_from_index :: proc(p: ^Palace, i: int) -> Cell {
@@ -265,6 +274,40 @@ visible :: proc(p: ^Palace, v: Cell) -> bool {
 			return false
 		}
 		if view_solid_at(p, v + {k, k, k}) || view_solid_at(p, v + {1 + k, k, k}) || view_solid_at(p, v + {k, 1 + k, k}) {
+			return false
+		}
+	}
+	return true
+}
+
+// Every tread of the stairs can be seen: a ray from its centre toward the
+// camera (direction (1, 1, 1) in view space) meets no other solid cell.
+stairs_visible :: proc(p: ^Palace, node: Node) -> bool {
+	own := iso.to_view(node.cell, p.rot, p.size)
+	d := iso.DIR_VEC[node.up]
+	for i in 0 ..< 4 {
+		f := (f32(i) + 0.5) / 4 - 0.5
+		w := iso.Vec3{f32(node.cell.x) + 0.5 + f32(d.x) * f, f32(node.cell.y) + 0.5 + f32(d.y) * f, f32(node.cell.z) + f32(i + 1) / 4 + 0.001}
+		v := iso.view_point(w, f32(p.rot), p.size)
+		for t: f32 = 0.02; t < f32(p.size + p.height) * 2; t += 0.02 {
+			q := v + t
+			c := Cell{i32(q.x), i32(q.y), i32(q.z)} // q is never negative here
+			if c != own && view_solid_at(p, c) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// Can Psyche step along the edge a-b? Real edges always work in the light;
+// in the dark, stairs must be visible.
+step_allowed :: proc(p: ^Palace, a, b: i32, dark: bool) -> bool {
+	if !dark {
+		return true
+	}
+	for n in ([2]i32{a, b}) {
+		if p.nodes[n].stair && !p.stair_seen[n] {
 			return false
 		}
 	}
@@ -356,7 +399,7 @@ find_path :: proc(p: ^Palace, from, to: Cell, dark: bool, out: ^Path) -> bool {
 				break
 			}
 			for nb in neighbours(g, cur) {
-				if parent[nb] < 0 {
+				if parent[nb] < 0 && step_allowed(p, cur, nb, dark) {
 					parent[nb] = cur
 					if nb == goal {
 						break search
@@ -406,7 +449,7 @@ reachable :: proc(p: ^Palace, from: Cell, dark: bool, out: []bool) -> int {
 				break
 			}
 			for nb in neighbours(g, cur) {
-				if !out[nb] {
+				if !out[nb] && step_allowed(p, cur, nb, dark) {
 					out[nb] = true
 					queue[tail] = nb
 					tail += 1

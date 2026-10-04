@@ -445,9 +445,11 @@ click :: proc(g: ^Game, point: Vec2) {
 	if !found && target != from {
 		add_marker(g, target, false)
 		audio.play(.Blocked, -10)
-		lit_path: pl.Path
-		if g.lamp_on && pl.find_path(&g.palace, from, target, true, &lit_path) {
+		other: pl.Path
+		if g.lamp_on && pl.find_path(&g.palace, from, target, true, &other) {
 			hint(g, .Hint_Seam, 3, true)
+		} else if !g.lamp_on && pl.find_path(&g.palace, from, target, false, &other) && crosses_hidden_stairs(g, from, other) {
+			hint(g, .Hint_Hidden_Stairs, 4, true)
 		}
 		return
 	}
@@ -488,6 +490,14 @@ next_step :: proc(g: ^Game) {
 		stop_walking(g)
 		return
 	}
+	if !g.lamp_on && !pl.step_allowed(&g.palace, pl.node_index(&g.palace, psy.cell), pl.node_index(&g.palace, next), true) {
+		// the lamp went out on the way: stairs hidden in this view are gone
+		sa.clear(&g.path)
+		audio.play(.Blocked, -8)
+		hint(g, .Hint_Hidden_Stairs, 4, true)
+		stop_walking(g)
+		return
+	}
 	sa.pop_front(&g.path)
 	psy.step_from = psy.cell
 	psy.step_to = next
@@ -500,6 +510,20 @@ next_step :: proc(g: ^Game) {
 	a, _ := step_points(g, 0)
 	b, _ := step_points(g, 0.49)
 	face_toward(g, b - a)
+}
+
+// Does the (lamp-lit) path from `from` use stairs that are hidden in this view?
+@(private)
+crosses_hidden_stairs :: proc(g: ^Game, from: Cell, path: pl.Path) -> bool {
+	prev := pl.node_index(&g.palace, from)
+	for i in 0 ..< sa.len(path) {
+		cur := pl.node_index(&g.palace, sa.get(path, i))
+		if !pl.step_allowed(&g.palace, prev, cur, true) {
+			return true
+		}
+		prev = cur
+	}
+	return false
 }
 
 @(private)

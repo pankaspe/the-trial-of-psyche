@@ -49,6 +49,7 @@ Key :: enum u16 {
 	Hint_Turn,
 	Hint_Seam,
 	Hint_No_Oil,
+	Hint_Hidden_Stairs,
 
 	// endings
 	End_Good_Title,
@@ -78,6 +79,7 @@ Key :: enum u16 {
 	Set_Fps,
 	Set_Msaa,
 	Set_Restart_Note,
+	Set_Native,
 	Set_Debug,
 	Set_Master,
 	Set_Music,
@@ -161,6 +163,7 @@ IT := [Key]string {
 	.Hint_Turn      = "Q / E o le frecce: ruota il palazzo",
 	.Hint_Seam      = "Alla luce, il passaggio non c'è",
 	.Hint_No_Oil    = "L'olio è finito. Premi R per ricominciare.",
+	.Hint_Hidden_Stairs = "Al buio, una scala che non vedi non porta da nessuna parte",
 
 	.End_Good_Title = "Fiducia",
 	.End_Good       = "Resti al buio, accanto a lui.\nNon conosci il suo volto, ma conosci il suo respiro.",
@@ -187,6 +190,7 @@ IT := [Key]string {
 	.Set_Fps        = "Limite FPS",
 	.Set_Msaa       = "Antialiasing",
 	.Set_Restart_Note = "(al prossimo avvio)",
+	.Set_Native     = "nativa",
 	.Set_Debug      = "Debug (FPS) · F3",
 	.Set_Master     = "Volume generale",
 	.Set_Music      = "Musica",
@@ -226,6 +230,7 @@ EN := [Key]string {
 	.Hint_Turn      = "Q / E or the arrows: turn the palace",
 	.Hint_Seam      = "In the light, there is no passage",
 	.Hint_No_Oil    = "The oil is gone. Press R to start again.",
+	.Hint_Hidden_Stairs = "In the dark, stairs you cannot see lead nowhere",
 
 	.End_Good_Title = "Trust",
 	.End_Good       = "You stay in the dark, beside him.\nYou do not know his face, but you know his breath.",
@@ -252,6 +257,7 @@ EN := [Key]string {
 	.Set_Fps        = "Frame limit",
 	.Set_Msaa       = "Anti-aliasing",
 	.Set_Restart_Note = "(after restart)",
+	.Set_Native     = "native",
 	.Set_Debug      = "Debug (FPS) · F3",
 	.Set_Master     = "Master volume",
 	.Set_Music      = "Music",

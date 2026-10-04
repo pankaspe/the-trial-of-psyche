@@ -4,6 +4,7 @@
 package main
 
 import "core:fmt"
+import "core:strconv"
 import "core:strings"
 import rl "vendor:raylib"
 import "vendor:raylib/rlgl"
@@ -54,19 +55,49 @@ SHOT_SCRIPT := [?]Shot_Step {
 	{1.6, "12_drop", nil},
 	{2.0, "13_collapse", nil},
 	{4.0, "14_end_card", nil},
+	// window modes (skipped on an offscreen canvas)
+	{0.1, "", proc(app: ^App) {window_mode(app, true, {1600, 900})}},
+	{1.5, "15_fullscreen", nil},
+	{0.1, "", proc(app: ^App) {window_mode(app, false, {1280, 720})}},
+	{1.5, "16_window_1280", nil},
+	{0.1, "", proc(app: ^App) {window_mode(app, true, {1280, 720})}},
+	{1.0, "", proc(app: ^App) {window_mode(app, false, {1600, 900})}},
+	{1.5, "17_window_1600", nil},
+}
+
+@(private = "file")
+window_mode :: proc(app: ^App, fullscreen: bool, size: [2]i32) {
+	if app.has_target {
+		return
+	}
+	app.cfg.fullscreen = fullscreen
+	app.cfg.resolution = size
+	apply(app, {.Fullscreen, .Resolution})
 }
 
 Shots :: struct {
 	dir:  string,
+	size: [2]i32, // offscreen canvas size (--size WxH), 0 = the window
 	step: int,
 	t:    f32,
 }
 
-// Parse `--shots DIR` from the command line.
+// Parse `--shots DIR [--size WxH]` from the command line.
 shots_from_args :: proc(args: []string) -> (s: Shots, ok: bool) {
 	for a, i in args {
-		if a == "--shots" && i + 1 < len(args) {
-			return {dir = args[i + 1]}, true
+		if i + 1 >= len(args) {
+			break
+		}
+		switch a {
+		case "--shots":
+			s.dir, ok = args[i + 1], true
+		case "--size":
+			v := args[i + 1]
+			if x := strings.index_byte(v, 'x'); x > 0 {
+				w, _ := strconv.parse_int(v[:x], 10)
+				h, _ := strconv.parse_int(v[x + 1:], 10)
+				s.size = {i32(w), i32(h)}
+			}
 		}
 	}
 	return
@@ -95,6 +126,16 @@ shots_capture :: proc(s: ^Shots, name: string) {
 	rlgl.DrawRenderBatchActive()
 	img := rl.LoadImageFromScreen()
 	defer rl.UnloadImage(img)
+	path := strings.clone_to_cstring(fmt.tprintf("%s/%s.png", s.dir, name), context.temp_allocator)
+	rl.ExportImage(img, path)
+}
+
+// Save the offscreen canvas (render textures are stored upside down).
+shots_capture_texture :: proc(s: ^Shots, name: string, tex: rl.Texture2D) {
+	img := rl.LoadImageFromTexture(tex)
+	defer rl.UnloadImage(img)
+	rl.ImageFlipVertical(&img)
+	rl.ImageFormat(&img, .UNCOMPRESSED_R8G8B8) // blending leaves partial alpha in the texture
 	path := strings.clone_to_cstring(fmt.tprintf("%s/%s.png", s.dir, name), context.temp_allocator)
 	rl.ExportImage(img, path)
 }
