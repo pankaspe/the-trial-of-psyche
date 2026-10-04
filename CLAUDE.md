@@ -5,6 +5,14 @@ Narrative isometric puzzle (Monument Valley style) on *Cupid and Psyche*
 game built from the approved Godot prototype `../../godot/lucerna` (read its
 CLAUDE.md for the design history).
 
+## Start of a session
+- Repository: https://github.com/pankaspe/the-trial-of-psyche (branch `main`, remote `origin`).
+- Read this file, then the design document (link in "Game design") for the current phase.
+- `./build.sh test` must be green before and after any work; commit in English, push when the user asks.
+- Everything visual is generated in code: meshes from box lists, figures, audio, sky. `assets/` holds only
+  what is embedded at compile time (levels, GLSL shaders, the placeholder font); no image assets.
+  The Kenney pack is not in the repo: the pieces are modelled after it in `render/shapes.odin`.
+
 ## Rules
 - Code, file names, comments and commit messages in **English**. Talk to the user in **Italian**.
 - Every visible string is an `i18n.Key`; each language is a complete `[Key]string`
@@ -106,6 +114,6 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   15 headless tests, screenshot mode. Waiting for the user's visual/feel test.
 - Session 2: resolution/fullscreen bugs fixed (see above), 4K support, hidden-stairs rule
   (level 1 now needs a turn at the stairs).
-- Design agreed (section above); waiting for the user's go and GitHub repo to start M1.
+- Design agreed (section above); repo on GitHub. **Next: M1 (game structure), at the user's go.**
 - Open: level progression after level 1; character style; a dedicated font
   (Noto Serif is a placeholder); next levels follow the myth (sisters, Venus' trials).
