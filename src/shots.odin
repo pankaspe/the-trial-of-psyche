@@ -70,7 +70,7 @@ SHOT_SCRIPT := [?]Shot_Step {
 	{0.1, "", proc(app: ^App) {game.toggle_lamp(&app.game); walk_to_fragment(app)}},
 	{3.5, "06b_fragment", proc(app: ^App) {announce(app, {.No_Wasted_Light})}},
 	{1.0, "06c_toast", nil},
-	{0.1, "", proc(app: ^App) {game.set_view(&app.game, 1)}},
+	{0.1, "", proc(app: ^App) {close_fragment(app); game.set_view(&app.game, 1)}},
 	{0.8, "07_view1_dark", proc(app: ^App) {place(app, app.game.data.sigil)}},
 	{0.1, "", proc(app: ^App) {game.toggle_lamp(&app.game)}},
 	{1.5, "08_rising", nil},

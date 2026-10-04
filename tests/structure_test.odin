@@ -132,7 +132,7 @@ fragment_of_the_tale :: proc(t: ^testing.T) {
 	}
 	testing.expect(t, found, "one view joins the pillar to the balcony")
 	testing.expect(t, g.fragment_taken && g.fragment_new, "Psyche picks up the fragment")
-	testing.expect(t, g.hud.fragment.active && g.hud.fragment.key == i18n.Key.Fragment_04, "its text is shown")
+	testing.expect(t, game.fragment_key(&g) == i18n.Key.Fragment_04, "the fragment of I.4")
 
 	// collected in an earlier play: it stays collected
 	h: game.Game
@@ -177,6 +177,23 @@ trust_waits_for_the_end_of_the_game :: proc(t: ^testing.T) {
 	testing.expect(t, g.phase == .Finished && g.ending == .Oil, "the lamp: the canonical ending")
 }
 
+// Two lines said one right after the other: the second waits for the first.
+@(test)
+voices_wait_their_turn :: proc(t: ^testing.T) {
+	g: game.Game
+	defer game.destroy(&g)
+	if !start(t, &g) {
+		return
+	}
+	run(&g, 2) // the welcome
+	testing.expect(t, walk(t, &g, {8, 9, 1}) && walk(t, &g, {7, 9, 1}), "Psyche walks over both voices")
+	testing.expect(t, g.hud.voice.key != i18n.Key.V_Turn, "the second line does not cut off the first")
+	for i := 0; i < 60 * 30 && g.hud.voice.key != i18n.Key.V_Turn; i += 1 {
+		run(&g, 1.0 / 60)
+	}
+	testing.expect(t, g.hud.voice.active && g.hud.voice.key == i18n.Key.V_Turn, "then it is spoken")
+}
+
 @(private)
 DARK_LEVEL :: `
 size 5
@@ -200,8 +217,8 @@ dark_level_with_an_exit :: proc(t: ^testing.T) {
 	game.begin(&g)
 	game.toggle_lamp(&g)
 	testing.expect(t, !g.lamp_on && g.lightings == 0, "no lamp in this level")
-	testing.expect(t, walk(t, &g, {2, 1, 1}), "Psyche walks to the exit")
-	testing.expect(t, g.fragment_taken, "the fragment lay on the way")
+	testing.expect(t, walk(t, &g, {2, 0, 1}) && g.fragment_taken, "Psyche picks up the fragment on the way")
+	testing.expect(t, walk(t, &g, {2, 1, 1}), "then walks on to the exit")
 	run(&g, game.EXIT_END + 0.5)
 	testing.expect(t, g.phase == .Finished && g.ending == .Exit, "the exit ends the level")
 }

@@ -101,6 +101,7 @@ Key :: enum u16 {
 	Fragment_19,
 	Fragment_20,
 	Fragment_Found,
+	Fragment_Continue,
 
 	// the Book
 	Book_Fragments,
@@ -315,6 +316,7 @@ IT := [Key]string {
 	.Fragment_19    = "Amore, guarito, non sopporta più la lontananza. Fugge dall'alta finestra della sua prigione e vola da lei.",
 	.Fragment_20    = "Così si compiono le nozze, e nasce una figlia che chiamano Voluttà.\nQuesta favola raccontava una vecchia a una ragazza prigioniera, nella caverna dei briganti.",
 	.Fragment_Found = "Frammento del racconto",
+	.Fragment_Continue = "Premi Invio per continuare",
 
 	.Book_Fragments = "Frammenti del racconto",
 	.Book_Missing   = "frammento non ancora trovato",
@@ -478,6 +480,7 @@ EN := [Key]string {
 	.Fragment_19    = "Cupid, healed, can bear the separation no longer. He escapes through the high window of his prison and flies to her.",
 	.Fragment_20    = "So the wedding is made, and a daughter is born whom they call Pleasure.\nThis was the tale an old woman told a captive girl, in the robbers' cave.",
 	.Fragment_Found = "Fragment of the Tale",
+	.Fragment_Continue = "Press Enter to continue",
 
 	.Book_Fragments = "Fragments of the Tale",
 	.Book_Missing   = "fragment not found yet",

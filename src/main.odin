@@ -36,6 +36,7 @@ Screen :: enum u8 {
 	Book,
 	Card, // the card before an act
 	Play,
+	Fragment, // a fragment of the tale just found: the game waits while it is read
 	Pause,
 	Settings,
 	Ending,
@@ -65,6 +66,7 @@ App :: struct {
 	ending:          Ending_Info,
 	act_card:        Act_Card,
 	book_page:       int,
+	fragment_t:      f32, // time on the fragment card
 	toasts:          [MAX_TOASTS]progress.Achievement, // achievements waiting to be announced
 	toast_count:     int,
 	toast_t:         f32,
@@ -306,7 +308,7 @@ frame :: proc(app: ^App) {
 	if app.screen == .Play && app.menu_fade < 0 {
 		play_input(app)
 	}
-	paused := app.screen == .Pause || (app.screen == .Settings && app.settings_from == .Pause)
+	paused := app.screen == .Pause || app.screen == .Fragment || (app.screen == .Settings && app.settings_from == .Pause)
 	if !paused {
 		game.update(g, dt)
 		render.scene_update(&app.scene, g, dt)
@@ -321,6 +323,13 @@ frame :: proc(app: ^App) {
 		g.fragment_new = false
 		announce(app, progress.collect_fragment(&app.prog, g.level_index))
 		save_progress(app)
+		if app.screen == .Play {
+			app.screen = .Fragment
+			app.fragment_t = 0
+		}
+	}
+	if app.screen == .Fragment {
+		app.fragment_t += dt
 	}
 	if app.screen == .Play && g.phase == .Finished {
 		finish_level(app)
@@ -460,6 +469,8 @@ global_keys :: proc(app: ^App) {
 			app.screen = .Title
 		case .Card:
 			dismiss_act_card(app)
+		case .Fragment:
+			close_fragment(app)
 		case .Title, .Ending:
 		}
 	}
@@ -473,6 +484,16 @@ global_keys :: proc(app: ^App) {
 	}
 	if app.screen == .Card && (rl.IsKeyPressed(.ENTER) || rl.IsKeyPressed(.SPACE)) {
 		dismiss_act_card(app)
+	}
+	if app.screen == .Fragment && (rl.IsKeyPressed(.ENTER) || rl.IsKeyPressed(.KP_ENTER)) {
+		close_fragment(app)
+	}
+}
+
+@(private)
+close_fragment :: proc(app: ^App) {
+	if app.fragment_t > 0.8 {
+		app.screen = .Play
 	}
 }
 
@@ -568,6 +589,11 @@ draw_screens :: proc(app: ^App) {
 			// the title menu rises and fades away as the game begins
 			k := app.menu_fade / MENU_FADE
 			ui.title_menu(u, 1 - k, 40 * k)
+		}
+	case .Fragment:
+		ui.draw_hud(u, g)
+		if ui.fragment_card(u, game.fragment_key(g), app.fragment_t) {
+			close_fragment(app)
 		}
 	case .Pause:
 		ui.draw_hud(u, g)

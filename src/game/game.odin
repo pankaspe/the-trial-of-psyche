@@ -8,7 +8,10 @@
 // the canonical ending); reaching him in the dark ends it with trust, a secret
 // ending open only once the game has been finished (`trust_allowed`).
 // Other levels end at their exit. A fragment of the tale may wait on an
-// optional spot: picking it up is reported to the app (`fragment_new`).
+// optional spot: picking it up is reported to the app (`fragment_new`), which
+// shows its text and waits for the player.
+// Cupid's lines never cut each other off: a line said while another is on
+// screen waits its turn.
 //
 // Cutscenes are timelines: a phase plus the time spent in it; every animation
 // is a function of that time, so there are no callbacks to keep alive.
@@ -50,6 +53,7 @@ MAX_STAINS :: 96
 MAX_DROPS :: 8
 MAX_MARKERS :: 4
 MARKER_TIME :: 0.6
+MAX_QUEUED_VOICES :: 4
 
 Phase :: enum u8 {
 	Play,
@@ -83,7 +87,7 @@ Hud :: struct {
 	title:    Fade_Text,
 	voice:    Fade_Text,
 	hint:     Fade_Text,
-	fragment: Fade_Text, // the text of the fragment just found
+	queued:   sa.Small_Array(MAX_QUEUED_VOICES, Key), // lines waiting for the current one
 }
 
 Psyche :: struct {
@@ -665,9 +669,8 @@ take_fragment :: proc(g: ^Game) {
 	g.fragment_taken = true
 	g.fragment_new = true
 	g.fragment_t = 0
+	sa.clear(&g.path) // she stops to read
 	audio.play(.Good, -8, 1.5)
-	length := f32(utf8.rune_count_in_string(i18n.tr(fragment_key(g))))
-	show(&g.hud.fragment, fragment_key(g), 1.2, 3.5 + length * 0.05, 1.8)
 }
 
 // Where the fragment lies (a scroll floating over its cell).
@@ -736,6 +739,7 @@ start_ending :: proc(g: ^Game, p: Phase) {
 	sa.clear(&g.path)
 	g.hud.visible = false
 	hide(&g.hud.voice)
+	sa.clear(&g.hud.queued)
 	switch p {
 	case .Ending_Oil:
 		face_point(g, amore_world(g))
@@ -874,7 +878,7 @@ fade_alpha :: proc(f: Fade_Text) -> f32 {
 
 @(private)
 update_hud :: proc(g: ^Game, dt: f32) {
-	for f in ([]^Fade_Text{&g.hud.title, &g.hud.voice, &g.hud.hint, &g.hud.fragment}) {
+	for f in ([]^Fade_Text{&g.hud.title, &g.hud.voice, &g.hud.hint}) {
 		if !f.active {
 			continue
 		}
@@ -887,6 +891,9 @@ update_hud :: proc(g: ^Game, dt: f32) {
 			f.active = false
 		}
 	}
+	if !g.hud.voice.active && sa.len(g.hud.queued) > 0 {
+		speak(g, sa.pop_front(&g.hud.queued))
+	}
 }
 
 // Cupid's voice: each line is spoken once per level.
@@ -895,6 +902,15 @@ say :: proc(g: ^Game, key: Key) {
 		return
 	}
 	g.heard[key] = true
+	if g.hud.voice.active {
+		sa.push_back(&g.hud.queued, key)
+		return
+	}
+	speak(g, key)
+}
+
+@(private)
+speak :: proc(g: ^Game, key: Key) {
 	length := f32(utf8.rune_count_in_string(i18n.tr(key)))
 	show(&g.hud.voice, key, 0.9, 2.8 + length * 0.045, 1.6)
 	audio.play(.Voice, -6)

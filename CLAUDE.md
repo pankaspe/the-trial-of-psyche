@@ -138,6 +138,7 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   texts written IT/EN, to be reviewed), the Book (fragments + achievements), achievements with
   corner notices, canonical ending with Continue, secret Trust ending after the game, levels
   without lamp, `exit` goal. The prototype level is now I.4 (`level_04.txt`), its fragment on
-  the west pillar. 22 tests. **Next: M2 (Act I), at the user's go.**
+  the west pillar. Picking a fragment pauses the game until Enter; Cupid's lines queue
+  instead of cutting each other off. 23 tests. **Next: M2 (Act I), at the user's go.**
 - Open: level progression after level 1; character style; a dedicated font
   (Noto Serif is a placeholder); next levels follow the myth (sisters, Venus' trials).
