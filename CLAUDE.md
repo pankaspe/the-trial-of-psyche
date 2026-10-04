@@ -133,14 +133,27 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
 - Session 2: resolution/fullscreen bugs fixed (see above), 4K support, hidden-stairs rule
   (level 1 now needs a turn at the stairs).
 - Design agreed (section above); repo on GitHub.
-- Session 3: **M1 done** (waiting for the user's playtest): 20 level slots in 4 acts + epilogue,
-  level select, save file, act cards (Act I = the oracle prologue), fragments of the tale (all 20
-  texts written IT/EN, to be reviewed), the Book (fragments + achievements), achievements with
-  corner notices, canonical ending with Continue, secret Trust ending after the game, levels
-  without lamp, `exit` goal. The prototype level is now I.4 (`level_04.txt`), its fragment on
-  the west pillar. Picking a fragment pauses the game until Enter; Cupid's lines queue
-  instead of cutting each other off. 23 tests. **Next: M2 (Act I), at the user's go.**
-  In M2 rewrite all of I.4's voice lines and hints: they are still the prototype's tutorial
-  texts ("only the dark leads to me", while the canonical ending needs the lamp).
-- Open: level progression after level 1; character style; a dedicated font
-  (Noto Serif is a placeholder); next levels follow the myth (sisters, Venus' trials).
+- Session 3: **M1 done and playtested by the user (approved)**: 20 level slots in 4 acts +
+  epilogue, level select, save file, act cards (Act I = the oracle prologue), fragments of the
+  tale (all 20 texts drafted IT/EN, to be reviewed), the Book (fragments + achievements),
+  achievements with corner notices, canonical ending with Continue, secret Trust ending after the
+  game, levels without lamp, `exit` goal. The prototype level is now I.4 (`level_04.txt`), its
+  fragment on the west pillar. Picking a fragment pauses the game until Enter; Cupid's lines
+  queue instead of cutting each other off. 23 tests. Commits are local, not pushed yet.
+- Testing tip: a collected fragment shows faint and cannot be taken again; to replay from
+  scratch delete `~/.config/the-trial-of-psyche/progress.cfg`.
+
+## Next session: M2 — prologue and Act I (agreed with the user)
+- Build I.1 (Zephyr's Crag, with the prologue card), I.2 (The Invisible Palace), I.3 (The
+  Sisters on the Crag), following the design document's level map: I.1 walking + first turn,
+  I.2 first illusions, I.3 hidden stairs; I.2 and I.3 are played in the dark only (no `lamp`).
+  Each level has its fragment on an optional, harder spot (level_check must pass) and a
+  walkthrough test; I.1-I.3 end at an `exit`.
+- Restructure Act I as a whole and rewrite **all** its texts (voices, hints, I.4 included): the
+  I.4 lines are still the prototype's tutorial texts ("only the dark leads to me", while the
+  canonical ending needs the lamp). The lamp is introduced only in I.4. Claude proposes, the
+  user reviews; one voice per act (Act I: Cupid and the palace voices).
+- Show the user the level ideas (sketches / screenshots) before polishing; the user's playtest
+  of Act I closes M2.
+- Open: character style; a dedicated font (Noto Serif is a placeholder); review of the M1 text
+  drafts (fragments, act cards, titles, achievements).
