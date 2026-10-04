@@ -1,0 +1,11 @@
+# build output
+/build/
+*.o
+*.bin
+
+# the original Kenney pack: reference only, the game draws its own pieces
+/kenney_isometricPrototypeTiles.zip
+
+# editors
+.vscode/
+.idea/
