@@ -140,5 +140,7 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   without lamp, `exit` goal. The prototype level is now I.4 (`level_04.txt`), its fragment on
   the west pillar. Picking a fragment pauses the game until Enter; Cupid's lines queue
   instead of cutting each other off. 23 tests. **Next: M2 (Act I), at the user's go.**
+  In M2 rewrite all of I.4's voice lines and hints: they are still the prototype's tutorial
+  texts ("only the dark leads to me", while the canonical ending needs the lamp).
 - Open: level progression after level 1; character style; a dedicated font
   (Noto Serif is a placeholder); next levels follow the myth (sisters, Venus' trials).
