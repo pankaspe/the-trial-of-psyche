@@ -30,6 +30,26 @@ CLAUDE.md for the design history).
 - Design rule: an illusion is clean when walking *toward the camera* onto a nearer
   piece (k ≥ 0). Check every level with `./build.sh check <file>`.
 
+## Game design (agreed with the user, 2026-10-04)
+Full design document (Italian, kept up to date there): https://claude.ai/code/artifact/97c37954-ecc7-4b98-a211-40e5c123d11e
+- 20 levels, ~5-6 hours: Act I (4, prologue inside I.1) · Act II (5) · Act III (5) · Act IV (5) · Epilogue (1).
+  Each act adds one new mechanic (Monument Valley style); the last level of an act uses all of them.
+- Follows Apuleius in order (Met. IV.28 - VI.24). **Canonical ending**: Psyche lights the lamp at the
+  end of Act I (the drop of oil starts Act II). "Trust" (reaching Cupid in the dark) = secret, non-canonical
+  ending, an achievement after finishing the game. The lamp appears only at the end of Act I.
+- Acts: I the palace of voices (rotation, illusions, hidden stairs; lamp + seal in I.4 — today's level 1
+  becomes I.4) · II abandonment (false/crumbling structures, the lamp unmasks them, handles rotating part of
+  the palace) · III Venus' trials (helpers that move pieces: ants, eagle; day/night cycle) · IV Proserpina's
+  box (talking tower, renunciations, counted coins, upside-down palace, absolute darkness) · Epilogue: all.
+- **Frammenti del racconto** (EN: Fragments of the Tale): 20 collectibles, one per level, on isolated spots
+  reached by an optional harder puzzle; never required (level_check must verify it). They tell what the
+  levels do not show; the last reveals the frame: an old woman telling the tale to Charite (Met. IV.27, VI.25).
+- The Book (menu): fragments in the text's order + achievements. Progress saved next to the settings.
+- All texts written by us from the Latin (no modern translations: copyright), IT/EN, the user reviews them.
+- Roadmap: M0 foundations (done) → M1 game structure (acts, level select, save, fragments, Book,
+  achievements, canonical ending) → M2 Act I → M3 Act II → M4 Act III → M5 Act IV → M6 epilogue + polish.
+  The user's playtest closes every phase. Work starts only at the user's go.
+
 ## Rendering (render/)
 - True 3D with a hand-made projection equal to the prototype's 2D formula
   `X=(x'-y')*64, Y=(x'+y')*32-z'*64` (`view.clip_matrix`): kernel (1,1,1), so the 3D
@@ -86,5 +106,6 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   15 headless tests, screenshot mode. Waiting for the user's visual/feel test.
 - Session 2: resolution/fullscreen bugs fixed (see above), 4K support, hidden-stairs rule
   (level 1 now needs a turn at the stairs).
-- Open: structure in ACTS (each act adds a mechanic, see the discussion with the user); level progression after level 1; character style; a dedicated font
+- Design agreed (section above); waiting for the user's go and GitHub repo to start M1.
+- Open: level progression after level 1; character style; a dedicated font
   (Noto Serif is a placeholder); next levels follow the myth (sisters, Venus' trials).
