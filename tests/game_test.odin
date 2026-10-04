@@ -140,3 +140,31 @@ every_text_is_translated :: proc(t: ^testing.T) {
 	k, ok := i18n.key_from_name("v_rule")
 	testing.expect(t, ok && k == .V_Rule, "voice keys are found by name")
 }
+
+// Crossing an illusion, Psyche jumps between two surfaces far apart in the
+// world: on screen the walk must stay continuous.
+@(test)
+illusion_steps_look_continuous :: proc(t: ^testing.T) {
+	g: game.Game
+	defer game.destroy(&g)
+	if !start(t, &g) {
+		return
+	}
+	game.set_view(&g, 3)
+	a, b := iso.Cell{7, 9, 1}, iso.Cell{5, 10, 2}
+	testing.expect(t, palace.is_illusion(&g.palace, a, b), "view 3 joins the walkway to the west terrace")
+	g.psyche.step_from, g.psyche.step_to, g.psyche.step_illusion = a, b, true
+	screen :: proc(g: ^game.Game, u: f32) -> iso.Vec2 {
+		p, _ := game.step_points(g, u)
+		return iso.project(iso.view_point(p, g.angle, g.data.size))
+	}
+	prev := screen(&g, 0)
+	for i in 1 ..= 100 {
+		cur := screen(&g, f32(i) / 100)
+		d := cur - prev
+		testing.expectf(t, d.x * d.x + d.y * d.y < 4 * 4, "step %d: the walk jumps by %v px", i, d)
+		prev = cur
+	}
+	end, _ := game.step_points(&g, 1)
+	testing.expect(t, end == palace.node_world(&g.palace, b), "the step ends on the second surface")
+}

@@ -15,6 +15,7 @@
 package game
 
 import "core:math"
+import "core:mem"
 import "core:mem/virtual"
 import "core:unicode/utf8"
 import sa "core:container/small_array"
@@ -206,6 +207,11 @@ load :: proc(g: ^Game, index: int) -> (err: Maybe(Load_Error)) {
 	g.rng = fx.rng_init(u32(index) * 7919 + 17)
 	g.loaded = true
 	return nil
+}
+
+// Allocator of the level arena: for anything that must live exactly as long as the level.
+level_allocator :: proc(g: ^Game) -> mem.Allocator {
+	return virtual.arena_allocator(&g.arena)
 }
 
 destroy :: proc(g: ^Game) {
