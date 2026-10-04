@@ -478,6 +478,8 @@ draw_figures :: proc(r: ^Renderer, g: ^game.Game) {
 	set_piece_uniforms(r, .Bronze, 0, 0, 1, 0.9, 0)
 	rl.DrawMesh(r.meshes[.Lamp], r.material, rl.MatrixTranslate(lamp.x, lamp.y, lamp.z - 0.05))
 
+	draw_fragment(r, g)
+
 	// Cupid: only a presence in the dark; the lamp shows him
 	if g.data.has_amore && g.amore.reveal > 0.003 {
 		alpha := g.amore.reveal * cupid_fade(g)
@@ -488,6 +490,36 @@ draw_figures :: proc(r: ^Renderer, g: ^game.Game) {
 			rl.DrawMesh(r.meshes[.Head], r.material, rl.MatrixTranslate(c.x, c.y, c.z + 0.455) * rl.MatrixScale(0.05, 0.05, 0.055))
 		}
 	}
+}
+
+// How visible the fragment's scroll is: faint when collected in an earlier
+// play, rising and fading when picked up now.
+@(private)
+fragment_alpha :: proc(g: ^game.Game) -> (alpha, lift: f32) {
+	if !g.data.has_fragment {
+		return 0, 0
+	}
+	if g.fragment_known {
+		return 0.28, 0
+	}
+	if g.fragment_taken {
+		u := fx.clamp01(g.fragment_t / 1.4)
+		return 1 - u, fx.cubic_out(u) * 0.6
+	}
+	return 1, 0
+}
+
+@(private)
+draw_fragment :: proc(r: ^Renderer, g: ^game.Game) {
+	alpha, lift := fragment_alpha(g)
+	if alpha <= 0.003 {
+		return
+	}
+	p := game.fragment_world(g) + {0, 0, lift}
+	set_piece_uniforms(r, .Psyche, 0, 0, alpha, 0.9, g.fragment_known ? 0 : 0.1)
+	// laid on its side, turning slowly
+	m := rl.MatrixTranslate(p.x, p.y, p.z) * rl.MatrixRotateZ(g.time * 0.5) * rl.MatrixRotateX(math.PI / 2) * rl.MatrixTranslate(0, 0, -0.14)
+	rl.DrawMesh(r.meshes[.Scroll], r.material, m)
 }
 
 @(private)
@@ -613,6 +645,12 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	glow(v, lamp, 150, {1.0, 0.68, 0.32, g.light * 0.32 * f})
 	glow(v, lamp + {0, 0, 0.02}, 9 * (0.85 + 0.15 * f), {1.0, 0.75, 0.4, g.light * f}, 1.7)
 	glow(v, lamp + {0, 0, 0.02}, 4 * (0.85 + 0.15 * f), {1.0, 0.95, 0.8, g.light * f}, 1.6)
+	// the fragment's faint glow
+	if a, lift := fragment_alpha(g); a > 0.003 && !g.fragment_known {
+		c := game.fragment_world(g) + {0, 0, lift}
+		glow(v, c, 58, {1.0, 0.86, 0.55, a * (0.3 + 0.08 * math.sin(t * 2.1))})
+		glow(v, c, 16, {1.0, 0.95, 0.8, a * 0.45})
+	}
 	// the lit seal breathes
 	if g.activated && g.collapse_t < 0 {
 		c := pl.node_world(&g.palace, g.data.sigil) + {0, 0, 0.05}
@@ -633,7 +671,7 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 			glow(v, game.drop_position(d), 3, {1.0, 0.8, 0.4, 0.9})
 		}
 	}
-	if p, ok := game.bad_drop(g); ok {
+	if p, ok := game.oil_drop(g); ok {
 		glow(v, p, 5, {1.0, 0.85, 0.45, 1})
 		glow(v, p, 14, {1.0, 0.6, 0.25, 0.5})
 	}

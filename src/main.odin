@@ -17,25 +17,43 @@ import rl "vendor:raylib"
 import "vendor:raylib/rlgl"
 
 import "audio"
+import "content"
 import "game"
 import "i18n"
+import "progress"
 import "render"
 import "settings"
 import "ui"
 
 WINDOW_TITLE :: "The Trial of Psyche"
 MENU_FADE :: 0.8
+CARD_FADE :: 0.6
+MAX_TOASTS :: 8
 
 Screen :: enum u8 {
 	Title,
+	Levels,
+	Book,
+	Card, // the card before an act
 	Play,
 	Pause,
 	Settings,
 	Ending,
 }
 
+Ending_Info :: ui.Ending_Info
+
+// The card before an act, over the sleeping palace.
+Act_Card :: struct {
+	act:     content.Act,
+	unbuilt: bool, // the act is not built yet: back to the title afterwards
+	t:       f32,
+	out_t:   f32, // < 0 unless fading out
+}
+
 App :: struct {
 	cfg:             settings.Settings,
+	prog:            progress.Progress,
 	renderer:        render.Renderer,
 	ui:              ui.Ui,
 	game:            game.Game,
@@ -43,7 +61,13 @@ App :: struct {
 	screen:          Screen,
 	settings_from:   Screen,
 	menu_fade:       f32, // < 0 unless the title menu is fading out
-	card_t:          f32,
+	card_t:          f32, // time on the ending card
+	ending:          Ending_Info,
+	act_card:        Act_Card,
+	book_page:       int,
+	toasts:          [MAX_TOASTS]progress.Achievement, // achievements waiting to be announced
+	toast_count:     int,
+	toast_t:         f32,
 	time:            f32,
 	quit:            bool,
 	resolutions:     [len(settings.RESOLUTIONS)][2]i32,
@@ -87,6 +111,9 @@ main :: proc() {
 
 startup :: proc(app: ^App) -> bool {
 	app.cfg = app.shooting ? settings.defaults() : settings.load()
+	if !app.shooting {
+		app.prog = progress.load()
+	}
 	i18n.set_language(app.cfg.language)
 
 	rl.SetTraceLogLevel(.WARNING)
@@ -119,7 +146,7 @@ startup :: proc(app: ^App) -> bool {
 	audio.set_volumes(app.cfg.master, app.cfg.music, app.cfg.sfx)
 	render.init(&app.renderer)
 	ui.init(&app.ui)
-	if !new_level(app, 0) {
+	if !new_level(app, progress.current_level(app.prog)) {
 		return false
 	}
 	app.screen = .Title
@@ -159,18 +186,107 @@ find_resolutions :: proc(app: ^App) {
 
 // (Re)load a level; the palace sleeps (attract mode) until game.begin.
 new_level :: proc(app: ^App, index: int) -> bool {
-	if err, failed := game.load(&app.game, index).?; failed {
-		fmt.eprintfln("level %d, line %d: %s", index + 1, err.line, err.message)
+	g := &app.game
+	if err, failed := game.load(g, index).?; failed {
+		fmt.eprintfln("level %s, line %d: %s", content.LEVELS[index].id, err.line, err.message)
 		return false
 	}
-	render.scene_build(&app.scene, &app.game, game.level_allocator(&app.game))
+	g.trust_allowed = progress.game_finished(app.prog)
+	g.fragment_known = index in app.prog.fragments
+	render.scene_build(&app.scene, g, game.level_allocator(g))
 	return true
 }
 
+// Restart the current level at once (no act card).
 play_level :: proc(app: ^App) {
 	if new_level(app, app.game.level_index) {
 		game.begin(&app.game)
 		app.screen = .Play
+	}
+}
+
+// Start level `index`: the act card first when the level opens an act. A
+// level not built yet shows only its act card, then the title.
+// `from_title`: the sleeping palace behind the title is this level, wake it.
+start_level :: proc(app: ^App, index: int, from_title := false) {
+	if !content.is_built(index) {
+		open_act_card(app, content.LEVELS[index].act, true)
+		return
+	}
+	if !(from_title && app.game.level_index == index && !app.game.active) {
+		if !new_level(app, index) {
+			return
+		}
+	}
+	if content.opens_act(index) {
+		open_act_card(app, content.LEVELS[index].act, false)
+		return
+	}
+	game.begin(&app.game)
+	app.screen = .Play
+	if from_title {
+		app.menu_fade = 0 // the title menu rises and fades as the palace wakes
+	}
+}
+
+open_act_card :: proc(app: ^App, act: content.Act, unbuilt: bool) {
+	app.act_card = {act = act, unbuilt = unbuilt, out_t = -1}
+	app.screen = .Card
+}
+
+// The act card has been read: play, or back to the title if there is nothing to play yet.
+@(private)
+close_act_card :: proc(app: ^App) {
+	if app.act_card.unbuilt {
+		to_title(app)
+		return
+	}
+	game.begin(&app.game)
+	app.screen = .Play
+}
+
+// The level is over: record it, and show the ending card.
+finish_level :: proc(app: ^App) {
+	g := &app.game
+	r := progress.Result {
+		level     = g.level_index,
+		trust     = g.ending == .Trust,
+		lightings = g.lightings,
+		lamp_par  = int(g.data.lamp_par),
+	}
+	unlocked := progress.complete_level(&app.prog, r)
+	save_progress(app)
+	app.ending = {
+		ending       = g.ending,
+		level        = g.level_index,
+		unlocked     = unlocked,
+		// the secret ending is outside the story: it leads nowhere
+		can_continue = g.ending != .Trust && g.level_index + 1 < content.LEVEL_COUNT,
+	}
+	app.screen = .Ending
+	app.card_t = 0
+}
+
+// Achievements to announce in the corner, one at a time.
+announce :: proc(app: ^App, unlocked: progress.Achievements) {
+	for a in unlocked {
+		if app.toast_count < MAX_TOASTS {
+			app.toasts[app.toast_count] = a
+			app.toast_count += 1
+		}
+	}
+}
+
+@(private)
+update_toasts :: proc(app: ^App, dt: f32) {
+	if app.toast_count == 0 {
+		return
+	}
+	app.toast_t += dt
+	if app.toast_t >= ui.TOAST_TIME {
+		app.toast_t = 0
+		app.toast_count -= 1
+		copy(app.toasts[:app.toast_count], app.toasts[1:app.toast_count + 1])
 	}
 }
 
@@ -201,13 +317,21 @@ frame :: proc(app: ^App) {
 			app.menu_fade = -1
 		}
 	}
+	if g.fragment_new {
+		g.fragment_new = false
+		announce(app, progress.collect_fragment(&app.prog, g.level_index))
+		save_progress(app)
+	}
 	if app.screen == .Play && g.phase == .Finished {
-		app.screen = .Ending
-		app.card_t = 0
+		finish_level(app)
 	}
 	if app.screen == .Ending {
 		app.card_t += dt
 	}
+	if app.screen == .Card {
+		update_act_card(app, dt)
+	}
+	update_toasts(app, dt)
 	audio.update()
 	shot := ""
 	if app.shooting {
@@ -332,7 +456,41 @@ global_keys :: proc(app: ^App) {
 			app.screen = .Play
 		case .Settings:
 			close_settings(app)
+		case .Levels, .Book:
+			app.screen = .Title
+		case .Card:
+			dismiss_act_card(app)
 		case .Title, .Ending:
+		}
+	}
+	if app.screen == .Book {
+		if rl.IsKeyPressed(.LEFT) {
+			app.book_page = max(app.book_page - 1, 0)
+		}
+		if rl.IsKeyPressed(.RIGHT) {
+			app.book_page = min(app.book_page + 1, ui.BOOK_PAGES - 1)
+		}
+	}
+	if app.screen == .Card && (rl.IsKeyPressed(.ENTER) || rl.IsKeyPressed(.SPACE)) {
+		dismiss_act_card(app)
+	}
+}
+
+@(private)
+dismiss_act_card :: proc(app: ^App) {
+	if app.act_card.out_t < 0 && app.act_card.t > 0.5 {
+		app.act_card.out_t = 0
+	}
+}
+
+@(private)
+update_act_card :: proc(app: ^App, dt: f32) {
+	c := &app.act_card
+	c.t += dt
+	if c.out_t >= 0 {
+		c.out_t += dt
+		if c.out_t >= CARD_FADE {
+			close_act_card(app)
 		}
 	}
 }
@@ -370,14 +528,33 @@ draw_screens :: proc(app: ^App) {
 		}
 		switch act {
 		case .Play:
-			app.screen = .Play
-			app.menu_fade = 0
-			game.begin(g)
+			start_level(app, progress.current_level(app.prog), true)
+		case .Levels:
+			app.screen = .Levels
+		case .Book:
+			app.screen = .Book
 		case .Settings:
 			open_settings(app)
 		case .Quit:
 			app.quit = true
-		case .None, .Resume, .Restart, .Main_Menu, .Retry, .Back:
+		case .None, .Resume, .Restart, .Main_Menu, .Retry, .Next, .Back:
+		}
+	case .Levels:
+		chosen, back := ui.level_select(u, app.prog)
+		if chosen >= 0 {
+			start_level(app, chosen)
+		} else if back {
+			app.screen = .Title
+		}
+	case .Book:
+		if ui.book(u, app.prog, &app.book_page) {
+			app.screen = .Title
+		}
+	case .Card:
+		c := app.act_card
+		alpha: f32 = c.out_t >= 0 ? 1 - c.out_t / CARD_FADE : 1
+		if ui.act_card(u, c.act, c.t, alpha, c.unbuilt) {
+			dismiss_act_card(app)
 		}
 	case .Play:
 		act := ui.draw_hud(u, g)
@@ -403,7 +580,7 @@ draw_screens :: proc(app: ^App) {
 			open_settings(app)
 		case .Main_Menu:
 			to_title(app)
-		case .None, .Play, .Quit, .Retry, .Back:
+		case .None, .Play, .Levels, .Book, .Quit, .Retry, .Next, .Back:
 		}
 	case .Settings:
 		m := rl.GetCurrentMonitor()
@@ -416,18 +593,24 @@ draw_screens :: proc(app: ^App) {
 			close_settings(app)
 		}
 	case .Ending:
-		switch ui.ending_card(u, g.ending, app.card_t) {
+		switch ui.ending_card(u, app.ending, app.card_t) {
+		case .Next:
+			start_level(app, app.ending.level + 1)
 		case .Retry:
 			play_level(app)
 		case .Main_Menu:
 			to_title(app)
-		case .None, .Play, .Settings, .Quit, .Resume, .Restart, .Back:
+		case .None, .Play, .Levels, .Book, .Settings, .Quit, .Resume, .Restart, .Back:
 		}
+	}
+	if app.toast_count > 0 {
+		ui.achievement_toast(u, app.toasts[0], app.toast_t)
 	}
 }
 
+// Back to the title, over the level the player would continue from.
 to_title :: proc(app: ^App) {
-	if new_level(app, app.game.level_index) {
+	if new_level(app, progress.current_level(app.prog)) {
 		app.screen = .Title
 	}
 }
@@ -480,6 +663,12 @@ apply :: proc(app: ^App, changes: ui.Setting_Changes) {
 save_settings :: proc(app: ^App) {
 	if !app.shooting {
 		settings.save(app.cfg)
+	}
+}
+
+save_progress :: proc(app: ^App) {
+	if !app.shooting {
+		progress.save(app.prog)
 	}
 }
 

@@ -1,4 +1,4 @@
-// Rules of level 1 on the walk graph (no window needed): `./build.sh test`.
+// Rules of level I.4 on the walk graph (no window needed): `./build.sh test`.
 package tests
 
 import "core:mem/virtual"
@@ -13,12 +13,13 @@ BALCONY :: iso.Cell{3, 4, 3}
 TERRACE :: iso.Cell{3, 7, 2} // foot of the stairs
 ROOF_ENTRY :: iso.Cell{5, 5, 5}
 BRIDGE :: iso.Cell{6, 3, 4}
+LAMP_LEVEL :: 3 // I.4, "The Lamp and the Razor": the prototype's level
 
-// Parse level 1 and build its palace inside `arena`.
+// Parse level I.4 and build its palace inside `arena`.
 @(private)
 load_level_1 :: proc(t: ^testing.T, arena: ^virtual.Arena, data: ^level.Level_Data, p: ^palace.Palace) -> bool {
 	alloc := virtual.arena_allocator(arena)
-	d, err := level.parse(content.LEVELS[0].source, alloc)
+	d, err := level.parse(content.LEVELS[LAMP_LEVEL].source, alloc)
 	if e, failed := err.?; failed {
 		testing.expectf(t, false, "level 1 does not parse: line %d: %s", e.line, e.message)
 		return false
@@ -38,11 +39,21 @@ reach :: proc(p: ^palace.Palace, from, to: iso.Cell, dark: bool) -> bool {
 every_level_parses :: proc(t: ^testing.T) {
 	arena: virtual.Arena
 	defer virtual.arena_destroy(&arena)
-	for info, i in content.LEVELS {
-		_, err := level.parse(info.source, virtual.arena_allocator(&arena))
-		if e, failed := err.?; failed {
-			testing.expectf(t, false, "level %d: line %d: %s", i + 1, e.line, e.message)
+	for info in content.LEVELS {
+		if info.source == "" {
+			continue // not built yet
 		}
+		data, err := level.parse(info.source, virtual.arena_allocator(&arena))
+		if e, failed := err.?; failed {
+			testing.expectf(t, false, "level %s: line %d: %s", info.id, e.line, e.message)
+			continue
+		}
+		// the fragment of the tale: reachable, never required
+		p: palace.Palace
+		palace.init(&p, &data, virtual.arena_allocator(&arena))
+		reachable, optional := palace.check_fragment(&p)
+		testing.expectf(t, data.has_fragment, "level %s hides a fragment of the tale", info.id)
+		testing.expectf(t, reachable && optional, "level %s: the fragment is reachable (%v) and optional (%v)", info.id, reachable, optional)
 	}
 }
 

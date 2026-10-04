@@ -34,7 +34,11 @@ CLAUDE.md for the design history).
 - **Lamp** (Space): real edges only, cracks with dust where the illusions were, true
   depth, hidden things show (the seal). Oil burns (14 s, 0.4 per lighting), drips.
 - **Seal**: lamp lit while standing on it raises the `rise` blocks.
-- **Endings**: next to Cupid in the dark = "Trust"; lamp lit in his chamber = "The drop of oil".
+- **Endings**: lamp lit in Cupid's chamber = "The drop of oil" (canonical, closes Act I); next to
+  him in the dark = "Trust", only once the game is finished (`game.trust_allowed`), otherwise
+  Psyche doubts (`V_Doubt`). Other levels end at an `exit` cell.
+- **Lamp only where carried**: the `lamp [par]` command gives Psyche the lamp (from I.4 on);
+  without it the oil gauge and lamp button are hidden.
 - Design rule: an illusion is clean when walking *toward the camera* onto a nearer
   piece (k ≥ 0). Check every level with `./build.sh check <file>`.
 
@@ -92,10 +96,24 @@ Full design document (Italian, kept up to date there): https://claude.ai/code/ar
   (and per update in tests).
 - Effects use fixed arrays / `fx.Pool(N)`; no allocation in the frame loop.
 
+## Game structure (M1, `content`, `progress`)
+- `content.LEVELS`: the 20 slots (id "I.1".."E", act, title, fragment key, citation, source);
+  a slot with `source = ""` is not built (level select shows it, nobody plays it).
+  `BOOK_ORDER` = fragments in Apuleius' order. Act label/title/card keys per `content.Act`.
+- `progress`: completed levels, fragments, achievements in `progress.cfg` next to the settings,
+  stored by level id. Pure rules (`collect_fragment`, `complete_level` return the unlocked
+  achievements); a level is open when built and every earlier built level is finished.
+  `--shots` neither reads nor writes it.
+- Flow (`main.odin`): Title → (act card if the level opens an act) → Play → ending card
+  (Continue / Retry / Menu). Continue onto an unbuilt level shows its act card, then the title.
+- Fragment: `fragment x y h` in the level; picked up by walking onto it (`game.fragment_new`
+  event → app saves); collected ones show faint. `palace.check_fragment` (level_check, tests):
+  reachable and never required.
+
 ## Adding a level
-1. `assets/levels/level_NN.txt` (format at the top of `level_01.txt`).
-2. Add it to `content.LEVELS` with a title key; add strings to both tables in `i18n`.
-3. `./build.sh check assets/levels/level_NN.txt`: look for unintended illusions.
+1. `assets/levels/level_NN.txt`, NN = slot number 01..20 (format at the top of `level_04.txt`).
+2. Point the slot's `source` in `content.LEVELS` at it (titles and fragments are already in `i18n`).
+3. `./build.sh check assets/levels/level_NN.txt`: unintended illusions, fragment reachable and optional.
 4. A walkthrough test in `tests/`.
 
 ## Commands
@@ -114,6 +132,12 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   15 headless tests, screenshot mode. Waiting for the user's visual/feel test.
 - Session 2: resolution/fullscreen bugs fixed (see above), 4K support, hidden-stairs rule
   (level 1 now needs a turn at the stairs).
-- Design agreed (section above); repo on GitHub. **Next: M1 (game structure), at the user's go.**
+- Design agreed (section above); repo on GitHub.
+- Session 3: **M1 done** (waiting for the user's playtest): 20 level slots in 4 acts + epilogue,
+  level select, save file, act cards (Act I = the oracle prologue), fragments of the tale (all 20
+  texts written IT/EN, to be reviewed), the Book (fragments + achievements), achievements with
+  corner notices, canonical ending with Continue, secret Trust ending after the game, levels
+  without lamp, `exit` goal. The prototype level is now I.4 (`level_04.txt`), its fragment on
+  the west pillar. 22 tests. **Next: M2 (Act I), at the user's go.**
 - Open: level progression after level 1; character style; a dedicated font
   (Noto Serif is a placeholder); next levels follow the myth (sisters, Venus' trials).

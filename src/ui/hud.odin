@@ -1,5 +1,6 @@
-// In-game overlay: chapter title, Cupid's voice, hints, controls, oil gauge,
-// lamp button and the two turn buttons.
+// In-game overlay: level title, Cupid's voice, the fragment just found, hints,
+// controls, oil gauge and lamp button (when Psyche has the lamp), the two
+// turn buttons.
 package ui
 
 import rl "vendor:raylib"
@@ -19,7 +20,21 @@ draw_hud :: proc(u: ^Ui, g: ^game.Game) -> (act: Hud_Action) {
 
 	// title and voice stay visible even when the rest of the HUD is hidden
 	if a := game.fade_alpha(hud.title); a > 0 {
-		text(u, i18n.tr(hud.title.key), {w * 0.5, 48 * s}, {size = 46, color = TEXT, shadow = true}, .Center, a)
+		text(u, level_name(g.level_index), {w * 0.5, 48 * s}, {size = 46, color = TEXT, shadow = true}, .Center, a)
+	}
+	if a := game.fade_alpha(hud.fragment); a > 0 {
+		// on a dark band, so it reads over the palace
+		y := 150 * s
+		st := Style{size = 30, color = {240, 232, 214, 255}, italic = true, shadow = true}
+		msg := i18n.tr(hud.fragment.key)
+		bw := 1100 * s
+		bh := block_height(u, msg, st, bw, 1.3)
+		band := rl.Rectangle{w * 0.5 - bw * 0.5 - 50 * s, y - 40 * s, bw + 100 * s, bh + 110 * s}
+		rl.DrawRectangleRec(band, fade({6, 6, 20, 255}, 0.62 * a))
+		rl.DrawRectangleRec({band.x, band.y + band.height - max(s, 1), band.width, max(2 * s, 1)}, fade(GOLD, 0.45 * a))
+		diamond(u, {w * 0.5, y - 14 * s}, 7 * s, fade(GOLD, a), true)
+		text(u, i18n.tr(.Fragment_Found), {w * 0.5, y}, {size = 22, color = GOLD, shadow = true}, .Center, a)
+		paragraph(u, msg, {w * 0.5, y + 44 * s}, st, bw, a, 1.3)
 	}
 	if a := game.fade_alpha(hud.voice); a > 0 {
 		st := Style{size = 34, color = {255, 230, 184, 255}, italic = true, shadow = true}
@@ -35,11 +50,14 @@ draw_hud :: proc(u: ^Ui, g: ^game.Game) -> (act: Hud_Action) {
 	if a := game.fade_alpha(hud.hint); a > 0 {
 		text(u, i18n.tr(hud.hint.key), {w * 0.5, h - 92 * s}, {size = 24, color = DIM, shadow = true}, .Center, a)
 	}
-	text(u, i18n.tr(.Controls), {w * 0.5, h - 40 * s}, {size = 18, color = FAINT, shadow = true})
+	lamp := g.data.has_lamp
+	text(u, i18n.tr(lamp ? .Controls : .Controls_Dark), {w * 0.5, h - 40 * s}, {size = 18, color = FAINT, shadow = true})
 
-	draw_oil(u, g)
-	if button(u, i18n.tr(.Lamp_Button), {w - 150 * s, h - 83 * s}, 28) {
-		act.lamp = true
+	if lamp {
+		draw_oil(u, g)
+		if button(u, i18n.tr(.Lamp_Button), {w - 150 * s, h - 83 * s}, 28) {
+			act.lamp = true
+		}
 	}
 	if turn_button(u, {78 * s, h - 83 * s}, -1) {
 		act.turn = -1

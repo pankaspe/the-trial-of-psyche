@@ -1,4 +1,4 @@
-# The Trial of Psyche - level 1: "The House of Voices"
+# The Trial of Psyche - level I.4: "The Lamp and the Razor"
 # Commands (one per line, '#' starts a comment):
 #   size n                  the diorama is an n x n grid; it rotates about its centre
 #   column x y z0 z1        stack of blocks (covered blocks are drawn as masonry)
@@ -10,6 +10,11 @@
 #                           rail/wall/window/wallBattlement/fence close side `dir`
 #   start|sigil x y h       (h = surface height = block z + 1)
 #   amore x y h             the cell of the bed where Cupid sleeps
+#   exit x y h              reaching it completes the level
+#   fragment x y h          the fragment of the tale: optional, on a spot reached
+#                           by a harder, optional puzzle (level_check verifies it)
+#   lamp [n]                Psyche carries the lamp; n = lightings that are enough
+#                           to finish (the "no wasted light" achievement)
 #   voice x y h key         line spoken when Psyche first stands there
 #                           (key = an i18n.Key name, case-insensitive)
 # Illusions: in the dark two surfaces are joined when they look joined in the
@@ -63,9 +68,11 @@ rise 6 3 3
 start 10 10 1
 sigil 6 2 4
 amore 6 6 5
+lamp 2
+# the fragment waits on the pillar that only one view joins to the balcony
+fragment 2 7 4
 voice 8 9 1 v_rule
 voice 7 9 1 v_turn
 voice 3 4 3 v_lamp
 voice 1 3 4 v_decoy
-voice 2 7 4 v_decoy
 voice 5 5 5 v_chamber

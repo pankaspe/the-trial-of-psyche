@@ -1,10 +1,12 @@
-// Level analysis for designers: `./build.sh check assets/levels/level_01.txt`.
+// Level analysis for designers: `./build.sh check assets/levels/level_04.txt`.
 //
 // For the base palace and after the seal has raised its blocks, it reports
 // how much of the palace Psyche can reach from the start: in the light, in
 // the dark for each view, and in the dark turning freely (turning is free
 // while standing still, so the illusions of all four views add up). Then it
 // lists the illusions of every view: watch out for unintended shortcuts.
+// The fragment of the tale must be reachable and optional (the exit status
+// is 1 otherwise).
 package level_check
 
 import "core:fmt"
@@ -56,17 +58,11 @@ main :: proc() {
 			pl.reachable(&p, data.start, true, reached)
 			report(&p, &data, fmt.tprintf("%s dark  view %d", tag, r), reached)
 		}
-		// turning freely: grow the reached set view after view until it settles
-		pl.reachable(&p, data.start, true, reached)
-		for changed := true; changed; {
-			changed = false
-			for r in 0 ..< 4 {
-				pl.set_view(&p, r)
-				changed ||= expand(&p, reached)
-			}
-		}
+		pl.reachable_turning(&p, data.start, reached)
 		report(&p, &data, fmt.tprintf("%s dark  turning", tag), reached)
 	}
+	p.risen = false
+	pl.rebuild_graph(&p)
 
 	for r in 0 ..< 4 {
 		pl.set_view(&p, r)
@@ -82,29 +78,17 @@ main :: proc() {
 		}
 		fmt.println()
 	}
-}
 
-// Add every node reachable in the dark (current view) from the reached set.
-expand :: proc(p: ^pl.Palace, reached: []bool) -> (changed: bool) {
-	queue := make([dynamic]i32, 0, len(p.nodes), context.temp_allocator)
-	for ok, i in reached {
-		if ok {
-			append(&queue, i32(i))
+	if data.has_fragment {
+		reachable, optional := pl.check_fragment(&p)
+		fmt.printfln("\nfragment %v: reachable %v, optional %v", data.fragment, reachable, optional)
+		if !reachable || !optional {
+			fmt.eprintln("error: the fragment must be reachable and never required")
+			os.exit(1)
 		}
+	} else {
+		fmt.println("\nwarning: no fragment of the tale in this level")
 	}
-	for head := 0; head < len(queue); head += 1 {
-		cur := queue[head]
-		for g in ([]^pl.Graph{&p.real, &p.illusion}) {
-			for nb in pl.neighbours(g, cur) {
-				if !reached[nb] && pl.step_allowed(p, cur, nb, true) {
-					reached[nb] = true
-					changed = true
-					append(&queue, nb)
-				}
-			}
-		}
-	}
-	return
 }
 
 report :: proc(p: ^pl.Palace, data: ^level.Level_Data, label: string, reached: []bool) {
@@ -125,6 +109,14 @@ report :: proc(p: ^pl.Palace, data: ^level.Level_Data, label: string, reached: [
 			near ||= i >= 0 && reached[i]
 		}
 		fmt.printf("  amore:%v", near)
+	}
+	if data.has_exit {
+		i := pl.node_index(p, data.exit)
+		fmt.printf("  exit:%v", i >= 0 && reached[i])
+	}
+	if data.has_fragment {
+		i := pl.node_index(p, data.fragment)
+		fmt.printf("  fragment:%v", i >= 0 && reached[i])
 	}
 	fmt.println()
 }

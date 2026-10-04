@@ -30,6 +30,7 @@ Mesh_Id :: enum u8 {
 	Robe_Cupid,
 	Head,
 	Lamp,
+	Scroll,
 }
 
 oriented_mesh :: proc(base: Mesh_Id, d: iso.Dir) -> Mesh_Id {
@@ -198,6 +199,11 @@ ROBE_CUPID_PROFILE := [?][2]f32 {
 	{0.0, 0.0}, {0.1, 0.0}, {0.09, 0.08}, {0.07, 0.24}, {0.062, 0.36}, {0.074, 0.44},
 	{0.084, 0.5}, {0.07, 0.53}, {0.03, 0.55}, {0.022, 0.56}, {0.0, 0.56},
 }
+// The fragment of the tale: a papyrus roll with wider ends, along z (laid down when drawn).
+@(private)
+SCROLL_PROFILE := [?][2]f32 {
+	{0.0, 0.0}, {0.06, 0.0}, {0.06, 0.03}, {0.045, 0.035}, {0.045, 0.245}, {0.06, 0.25}, {0.06, 0.28}, {0.0, 0.28},
+}
 @(private)
 LAMP_PROFILE := [?][2]f32{{0.0, 0.0}, {0.02, 0.0}, {0.045, 0.02}, {0.05, 0.035}, {0.03, 0.04}, {0.0, 0.04}}
 
@@ -239,6 +245,7 @@ build_meshes :: proc(meshes: ^[Mesh_Id]rl.Mesh) {
 	meshes[.Robe] = lathe_mesh(ROBE_PROFILE[:], 14)
 	meshes[.Robe_Cupid] = lathe_mesh(ROBE_CUPID_PROFILE[:], 14)
 	meshes[.Lamp] = lathe_mesh(LAMP_PROFILE[:], 10)
+	meshes[.Scroll] = lathe_mesh(SCROLL_PROFILE[:], 12)
 	b := builder_make()
 	sphere(&b, {}, 1, 7, 12)
 	meshes[.Head] = upload(&b)

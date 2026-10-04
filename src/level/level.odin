@@ -1,5 +1,5 @@
 // Level files (assets/levels/*.txt): a plain list of commands, one per line.
-// The format is documented at the top of assets/levels/level_01.txt.
+// The format is documented at the top of assets/levels/level_04.txt.
 package level
 
 import "core:fmt"
@@ -87,11 +87,17 @@ Level_Data :: struct {
 	rise:      [dynamic]Solid_Entry, // raised when the sigil is lit
 	props:     [dynamic]Prop,
 	voices:    [dynamic]Voice,
-	start:     Cell,
-	sigil:     Cell,
-	amore:     Cell,
-	has_sigil: bool,
-	has_amore: bool,
+	start:        Cell,
+	sigil:        Cell,
+	amore:        Cell,
+	fragment:     Cell, // the fragment of the tale (optional, never required)
+	exit:         Cell, // reaching it completes the level
+	has_sigil:    bool,
+	has_amore:    bool,
+	has_fragment: bool,
+	has_exit:     bool,
+	has_lamp:     bool, // Psyche carries the lamp (from the end of Act I)
+	lamp_par:     i32, // lightings that are enough to finish ("no wasted light"); 0 = none
 }
 
 Parse_Error :: struct {
@@ -240,7 +246,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			append(&data.props, p)
 			max_z = max(max_z, v.z + 1)
 
-		case "start", "sigil", "amore":
+		case "start", "sigil", "amore", "fragment", "exit":
 			v: [3]i32
 			if !ints(args, v[:]) {
 				return data, fail(line_no, "%s: expected x y h", fields[0])
@@ -249,8 +255,20 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			case "start": data.start, has_start = v, true
 			case "sigil": data.sigil, data.has_sigil = v, true
 			case "amore": data.amore, data.has_amore = v, true
+			case "fragment": data.fragment, data.has_fragment = v, true
+			case "exit": data.exit, data.has_exit = v, true
 			}
 			max_z = max(max_z, v.z)
+
+		case "lamp":
+			data.has_lamp = true
+			if len(args) > 0 {
+				v: [1]i32
+				if !ints(args, v[:]) || v[0] < 1 {
+					return data, fail(line_no, "lamp: expected an optional number of lightings >= 1")
+				}
+				data.lamp_par = v[0]
+			}
 
 		case "voice":
 			v: [3]i32

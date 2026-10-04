@@ -1,4 +1,4 @@
-// Level 1 played through the game rules, frame by frame, without a window.
+// Level I.4 played through the game rules, frame by frame, without a window.
 package tests
 
 import "core:testing"
@@ -35,8 +35,8 @@ walk :: proc(t: ^testing.T, g: ^game.Game, target: iso.Cell) -> bool {
 
 @(private)
 start :: proc(t: ^testing.T, g: ^game.Game) -> bool {
-	if err := game.load(g, 0); err != nil {
-		testing.expect(t, false, "level 1 does not load")
+	if err := game.load(g, LAMP_LEVEL); err != nil {
+		testing.expect(t, false, "level I.4 does not load")
 		return false
 	}
 	game.begin(g)
@@ -44,7 +44,7 @@ start :: proc(t: ^testing.T, g: ^game.Game) -> bool {
 }
 
 @(test)
-level_1_rules :: proc(t: ^testing.T) {
+lamp_level_rules :: proc(t: ^testing.T) {
 	g: game.Game
 	defer game.destroy(&g)
 	if !start(t, &g) {
@@ -107,6 +107,7 @@ ending :: proc(t: ^testing.T, bad: bool) {
 	if !start(t, &g) {
 		return
 	}
+	g.trust_allowed = true // the secret ending, after the game has been finished
 	g.palace.risen = true
 	palace.rebuild_graph(&g.palace)
 	game.set_view(&g, 3)
@@ -119,7 +120,7 @@ ending :: proc(t: ^testing.T, bad: bool) {
 		game.walk_to(&g, BEDSIDE)
 	}
 	run(&g, 12)
-	want := bad ? game.Ending.Bad : game.Ending.Good
+	want := bad ? game.Ending.Oil : game.Ending.Trust
 	testing.expectf(t, g.phase == .Finished && g.ending == want, "ending %v (got %v, phase %v)", want, g.ending, g.phase)
 	if bad {
 		testing.expect(t, g.collapse_t > 0, "the palace collapses")

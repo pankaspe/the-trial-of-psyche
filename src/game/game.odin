@@ -1,10 +1,14 @@
 // One playable level and its rules.
 //   Dark (default): the illusion edges of the current view are walkable.
-//   Lamp lit: only real edges, true depth shows, hidden seals appear, oil burns.
+//   Lamp lit (levels where Psyche carries it): only real edges, true depth
+//   shows, hidden seals appear, oil burns.
 //   Q / E turn the diorama: every view has its own illusions.
 // A seal lit by the lamp while Psyche stands on it raises hidden blocks.
-// Lighting the lamp in Cupid's chamber ends the level (the myth's drop of oil);
-// reaching him in the dark ends it with trust.
+// Lighting the lamp in Cupid's chamber ends the level (the myth's drop of oil,
+// the canonical ending); reaching him in the dark ends it with trust, a secret
+// ending open only once the game has been finished (`trust_allowed`).
+// Other levels end at their exit. A fragment of the tale may wait on an
+// optional spot: picking it up is reported to the app (`fragment_new`).
 //
 // Cutscenes are timelines: a phase plus the time spent in it; every animation
 // is a function of that time, so there are no callbacks to keep alive.
@@ -50,15 +54,17 @@ MARKER_TIME :: 0.6
 Phase :: enum u8 {
 	Play,
 	Sigil, // the seal is lit: blocks rise, input waits
-	Ending_Bad,
-	Ending_Good,
+	Ending_Oil,
+	Ending_Trust,
+	Ending_Exit,
 	Finished,
 }
 
 Ending :: enum u8 {
 	None,
-	Good,
-	Bad,
+	Oil, // the lamp lit in Cupid's chamber: the canonical ending
+	Trust, // Cupid reached in the dark: the secret ending
+	Exit, // the level's exit reached
 }
 
 // A line of text that fades in, holds and fades out (hold < 0: until hidden).
@@ -74,9 +80,10 @@ Fade_Text :: struct {
 
 Hud :: struct {
 	visible: bool,
-	title:   Fade_Text,
-	voice:   Fade_Text,
-	hint:    Fade_Text,
+	title:    Fade_Text,
+	voice:    Fade_Text,
+	hint:     Fade_Text,
+	fragment: Fade_Text, // the text of the fragment just found
 }
 
 Psyche :: struct {
@@ -136,6 +143,13 @@ Game :: struct {
 	flicker:        f32,
 	drip:           f32,
 	activated:      bool, // the seal has been lit
+	lightings:      int, // times the lamp was lit
+
+	trust_allowed:  bool, // set by the app: the game has been finished once
+	fragment_known: bool, // set by the app: collected in an earlier play
+	fragment_taken: bool, // picked up in this play
+	fragment_new:   bool, // event for the app: just picked up (it clears it)
+	fragment_t:     f32, // time since it was picked up
 
 	angle:          f32, // continuous view angle in quarter turns (unbounded)
 	turning:        bool,
@@ -172,6 +186,11 @@ Load_Error :: level.Parse_Error
 
 // (Re)load a level: frees everything from the previous one.
 load :: proc(g: ^Game, index: int) -> (err: Maybe(Load_Error)) {
+	return load_text(g, index, content.LEVELS[index].source)
+}
+
+// Load level slot `index` from the given level text (tests use their own).
+load_text :: proc(g: ^Game, index: int, text: string) -> (err: Maybe(Load_Error)) {
 	arena := g.arena
 	if arena.curr_block == nil {
 		if virtual.arena_init_growing(&arena) != nil {
@@ -185,7 +204,7 @@ load :: proc(g: ^Game, index: int) -> (err: Maybe(Load_Error)) {
 	g.level_index = index
 	alloc := virtual.arena_allocator(&g.arena)
 
-	data, perr := level.parse(content.LEVELS[index].source, alloc)
+	data, perr := level.parse(text, alloc)
 	if perr != nil {
 		return perr
 	}
@@ -199,6 +218,7 @@ load :: proc(g: ^Game, index: int) -> (err: Maybe(Load_Error)) {
 	g.begin_t = -1
 	g.rise_t = -1
 	g.collapse_t = -1
+	g.fragment_t = -1
 	g.amore = {fly_t = -1, breath = 1}
 	g.psyche.cell = g.data.start
 	g.psyche.pos = pl.node_world(&g.palace, g.data.start)
@@ -237,7 +257,12 @@ rot :: proc(g: ^Game) -> int {
 }
 
 is_over :: proc(g: ^Game) -> bool {
-	return g.phase == .Ending_Bad || g.phase == .Ending_Good || g.phase == .Finished
+	return g.phase >= .Ending_Oil
+}
+
+// The fragment of the tale hidden in this level.
+fragment_key :: proc(g: ^Game) -> Key {
+	return content.LEVELS[g.level_index].fragment
 }
 
 // --- per frame -------------------------------------------------------------------
@@ -290,17 +315,22 @@ update :: proc(g: ^Game, dt: f32) {
 		if g.lamp_on && g.light > 0.6 && !g.activated && !g.psyche.walking && g.data.has_sigil && psy == g.data.sigil {
 			activate_sigil(g)
 		} else if g.lamp_on && g.light > 0.3 && in_chamber(g, psy) {
-			start_ending(g, .Ending_Bad)
+			start_ending(g, .Ending_Oil)
 		}
 	case .Sigil:
 		if g.phase_t >= rise_duration(g) {
 			set_phase(g, .Play)
 			say(g, .V_Sigil)
 		}
-	case .Ending_Bad:
-		update_ending_bad(g, dt)
-	case .Ending_Good:
-		update_ending_good(g)
+	case .Ending_Oil:
+		update_ending_oil(g, dt)
+	case .Ending_Trust:
+		update_ending_trust(g)
+	case .Ending_Exit:
+		if g.phase_t >= EXIT_END {
+			g.ending = .Exit
+			set_phase(g, .Finished)
+		}
 	case .Finished:
 	}
 }
@@ -377,13 +407,14 @@ set_view :: proc(g: ^Game, r: int) {
 // --- lamp --------------------------------------------------------------------------
 
 toggle_lamp :: proc(g: ^Game) {
-	if !g.active || is_over(g) {
+	if !g.active || is_over(g) || !g.data.has_lamp {
 		return
 	}
 	if g.lamp_on {
 		set_lamp(g, false)
 	} else if g.oil > 0.05 {
 		g.oil = max(g.oil - LIGHT_COST, 0)
+		g.lightings += 1
 		set_lamp(g, true)
 		say(g, .V_First_Light)
 	} else {
@@ -611,9 +642,37 @@ arrive :: proc(g: ^Game, n: Cell) {
 	if g.heard[.V_Lamp] {
 		hint(g, .Hint_Lamp, 7)
 	}
-	if !g.lamp_on && g.data.has_amore && adjacent_to_amore(g, n) && g.phase == .Play {
-		start_ending(g, .Ending_Good)
+	if g.data.has_fragment && n == g.data.fragment && !g.fragment_taken && !g.fragment_known {
+		take_fragment(g)
 	}
+	if g.phase != .Play {
+		return
+	}
+	if g.data.has_exit && n == g.data.exit {
+		start_ending(g, .Ending_Exit)
+	} else if !g.lamp_on && g.data.has_amore && adjacent_to_amore(g, n) {
+		if g.trust_allowed {
+			start_ending(g, .Ending_Trust)
+		} else {
+			// the story goes on only with the lamp: Psyche doubts
+			say(g, .V_Doubt)
+		}
+	}
+}
+
+@(private)
+take_fragment :: proc(g: ^Game) {
+	g.fragment_taken = true
+	g.fragment_new = true
+	g.fragment_t = 0
+	audio.play(.Good, -8, 1.5)
+	length := f32(utf8.rune_count_in_string(i18n.tr(fragment_key(g))))
+	show(&g.hud.fragment, fragment_key(g), 1.2, 3.5 + length * 0.05, 1.8)
+}
+
+// Where the fragment lies (a scroll floating over its cell).
+fragment_world :: proc(g: ^Game) -> Vec3 {
+	return pl.node_world(&g.palace, g.data.fragment) + {0, 0, 0.22 + 0.04 * math.sin(g.time * 1.6)}
 }
 
 @(private)
@@ -677,62 +736,69 @@ start_ending :: proc(g: ^Game, p: Phase) {
 	sa.clear(&g.path)
 	g.hud.visible = false
 	hide(&g.hud.voice)
-	face_point(g, amore_world(g))
-	if p == .Ending_Bad {
+	switch p {
+	case .Ending_Oil:
+		face_point(g, amore_world(g))
 		audio.play(.Reveal, -2)
-	} else {
+	case .Ending_Trust:
+		face_point(g, amore_world(g))
 		audio.play(.Good, -2)
+	case .Ending_Exit:
+		audio.play(.Good, -4)
+	case .Play, .Sigil, .Finished:
 	}
 }
 
+EXIT_END :: 1.6
+
 // Timeline of "the drop of oil".
-BAD_DROP_START :: 1.4
-BAD_DROP_LAND :: 2.0
-BAD_COLLAPSE :: 2.8
-BAD_LAMP_OFF :: 4.3
-BAD_END :: 6.3
+OIL_DROP_START :: 1.4
+OIL_DROP_LAND :: 2.0
+OIL_COLLAPSE :: 2.8
+OIL_LAMP_OFF :: 4.3
+OIL_END :: 6.3
 
 @(private)
-update_ending_bad :: proc(g: ^Game, dt: f32) {
+update_ending_oil :: proc(g: ^Game, dt: f32) {
 	t := g.phase_t
 	g.amore.reveal = fx.clamp01(t / 1.4)
 	g.amore.breath = fx.lerp(f32(1), 2.2, g.amore.reveal)
-	if crossed(t, dt, BAD_DROP_LAND) {
+	if crossed(t, dt, OIL_DROP_LAND) {
 		audio.play(.Drop, 0, 0.7)
 		shake(g, 0.5)
 		g.amore.fly_t = 0
 	}
-	if crossed(t, dt, BAD_COLLAPSE) {
+	if crossed(t, dt, OIL_COLLAPSE) {
 		g.collapse_t = 0
 		g.collapse_keep = g.psyche.cell
 	}
-	if crossed(t, dt, BAD_LAMP_OFF) {
+	if crossed(t, dt, OIL_LAMP_OFF) {
 		set_lamp(g, false)
 	}
-	if t >= BAD_END {
-		g.ending = .Bad
+	if t >= OIL_END {
+		g.ending = .Oil
 		set_phase(g, .Finished)
 	}
 }
 
 // The burning drop, between the lamp and Cupid's shoulder (nil when not falling).
-bad_drop :: proc(g: ^Game) -> (pos: Vec3, ok: bool) {
-	if g.phase != .Ending_Bad || g.phase_t < BAD_DROP_START || g.phase_t >= BAD_DROP_LAND {
+oil_drop :: proc(g: ^Game) -> (pos: Vec3, ok: bool) {
+	if g.phase != .Ending_Oil || g.phase_t < OIL_DROP_START || g.phase_t >= OIL_DROP_LAND {
 		return
 	}
-	u := fx.quad_in((g.phase_t - BAD_DROP_START) / (BAD_DROP_LAND - BAD_DROP_START))
+	u := fx.quad_in((g.phase_t - OIL_DROP_START) / (OIL_DROP_LAND - OIL_DROP_START))
 	return fx.lerp(lamp_world(g), amore_world(g) + {0, 0, 0.55}, u), true
 }
 
-GOOD_END :: 4.0
+TRUST_END :: 4.0
 
 @(private)
-update_ending_good :: proc(g: ^Game) {
+update_ending_trust :: proc(g: ^Game) {
 	t := g.phase_t
 	g.amore.embrace = fx.sine_in_out(fx.clamp01(t / 3.0))
 	g.amore.breath = fx.lerp(f32(1), 2.6, fx.sine_in_out(fx.clamp01(t / 2.5)))
-	if t >= GOOD_END {
-		g.ending = .Good
+	if t >= TRUST_END {
+		g.ending = .Trust
 		set_phase(g, .Finished)
 	}
 }
@@ -749,6 +815,9 @@ update_effects :: proc(g: ^Game, dt: f32) {
 	}
 	if g.amore.fly_t >= 0 {
 		g.amore.fly_t += dt
+	}
+	if g.fragment_t >= 0 {
+		g.fragment_t += dt
 	}
 	if g.shake_t < g.shake_duration {
 		g.shake_t += dt
@@ -805,7 +874,7 @@ fade_alpha :: proc(f: Fade_Text) -> f32 {
 
 @(private)
 update_hud :: proc(g: ^Game, dt: f32) {
-	for f in ([]^Fade_Text{&g.hud.title, &g.hud.voice, &g.hud.hint}) {
+	for f in ([]^Fade_Text{&g.hud.title, &g.hud.voice, &g.hud.hint, &g.hud.fragment}) {
 		if !f.active {
 			continue
 		}

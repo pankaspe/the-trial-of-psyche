@@ -437,27 +437,127 @@ reachable :: proc(p: ^Palace, from: Cell, dark: bool, out: []bool) -> int {
 	if start < 0 {
 		return 0
 	}
-	queue := make([]i32, len(p.nodes), context.temp_allocator)
-	head, tail := 0, 1
-	queue[0] = start
 	out[start] = true
-	for head < tail {
+	flood(p, out, dark, -1)
+	return slice.count(out, true)
+}
+
+// Grow the marked set with every node reachable from it in the current view;
+// node `avoid` is never entered. Returns true if anything was added.
+@(private)
+flood :: proc(p: ^Palace, out: []bool, dark: bool, avoid: i32) -> (grew: bool) {
+	queue := make([dynamic]i32, 0, len(p.nodes), context.temp_allocator)
+	for ok, i in out {
+		if ok {
+			append(&queue, i32(i))
+		}
+	}
+	for head := 0; head < len(queue); head += 1 {
 		cur := queue[head]
-		head += 1
 		for g in ([]^Graph{&p.real, &p.illusion}) {
 			if g == &p.illusion && !dark {
 				break
 			}
 			for nb in neighbours(g, cur) {
-				if !out[nb] && step_allowed(p, cur, nb, dark) {
+				if !out[nb] && nb != avoid && step_allowed(p, cur, nb, dark) {
 					out[nb] = true
-					queue[tail] = nb
-					tail += 1
+					grew = true
+					append(&queue, nb)
 				}
 			}
 		}
 	}
-	return tail
+	return
+}
+
+// --- level analysis (level_check, tests) ------------------------------------------
+
+// Mark every node reachable from `from` in the dark when Psyche may turn the
+// palace freely: turning is free while standing still, so the illusions of
+// the four views add up. Cell `avoid`, if any, is never entered. The palace
+// is left in the view it was in.
+reachable_turning :: proc(p: ^Palace, from: Cell, out: []bool, avoid: Maybe(Cell) = nil) -> int {
+	slice.zero(out)
+	start := node_index(p, from)
+	if start < 0 {
+		return 0
+	}
+	skip: i32 = -1
+	if c, ok := avoid.?; ok {
+		skip = node_index(p, c)
+	}
+	view := p.rot
+	out[start] = true
+	for grew := true; grew; {
+		grew = false
+		for r in 0 ..< 4 {
+			set_view(p, r)
+			grew ||= flood(p, out, true, skip)
+		}
+	}
+	set_view(p, view)
+	return slice.count(out, true)
+}
+
+// What can be reached from the start, in the light or in the dark turning freely.
+Goals :: struct {
+	sigil, amore, exit, fragment: bool,
+}
+
+reach_goals :: proc(p: ^Palace, avoid: Maybe(Cell) = nil) -> (goals: Goals) {
+	d := p.data
+	dark := make([]bool, len(p.nodes), context.temp_allocator)
+	light := make([]bool, len(p.nodes), context.temp_allocator)
+	reachable_turning(p, d.start, dark, avoid)
+	if d.has_lamp {
+		slice.zero(light)
+		if s := node_index(p, d.start); s >= 0 {
+			light[s] = true
+			skip: i32 = -1
+			if c, ok := avoid.?; ok {
+				skip = node_index(p, c)
+			}
+			flood(p, light, false, skip)
+		}
+	}
+	at :: proc(p: ^Palace, dark, light: []bool, c: Cell) -> bool {
+		i := node_index(p, c)
+		return i >= 0 && (dark[i] || light[i])
+	}
+	goals.sigil = d.has_sigil && at(p, dark, light, d.sigil)
+	goals.exit = d.has_exit && at(p, dark, light, d.exit)
+	goals.fragment = d.has_fragment && at(p, dark, light, d.fragment)
+	if d.has_amore {
+		for v in iso.DIR_VEC {
+			goals.amore ||= at(p, dark, light, d.amore + {v.x, v.y, 0})
+		}
+	}
+	return
+}
+
+// The fragment of the tale must be reachable and never required: blocking its
+// cell must not cut the way to any goal, before or after the seal.
+// The palace is left with its blocks lowered.
+check_fragment :: proc(p: ^Palace) -> (reachable, optional: bool) {
+	if !p.data.has_fragment {
+		return false, true
+	}
+	optional = true
+	for risen in ([2]bool{false, true}) {
+		if risen && len(p.data.rise) == 0 {
+			break
+		}
+		p.risen = risen
+		rebuild_graph(p)
+		all := reach_goals(p)
+		without := reach_goals(p, p.data.fragment)
+		reachable ||= all.fragment
+		lost := (all.sigil && !without.sigil) || (all.amore && !without.amore) || (all.exit && !without.exit)
+		optional &&= !lost
+	}
+	p.risen = false
+	rebuild_graph(p)
+	return
 }
 
 // --- geometry ------------------------------------------------------------------

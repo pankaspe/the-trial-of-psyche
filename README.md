@@ -12,7 +12,7 @@ Odin + raylib 6. Italian and English.
 ./build.sh            # debug build and run
 ./build.sh release    # optimised build in build/trial-of-psyche
 ./build.sh test       # headless tests
-./build.sh check assets/levels/level_01.txt   # level analysis
+./build.sh check assets/levels/level_04.txt   # level analysis
 ```
 
 Needs the Odin compiler (`odin` in PATH); raylib comes with Odin's vendor collection.
@@ -31,14 +31,15 @@ src/
   iso/             isometric grid math
   level/           level file parser
   palace/          walk graph, illusions, visibility, path finding
-  game/            rules: lamp, oil, walking, turning, seal, endings
+  game/            rules: lamp, oil, walking, turning, seal, fragments, endings
   render/          3D palace, figures, sky, clouds, glows, particles
   ui/              fonts, widgets, HUD, menus
   audio/           procedural sound and music
   i18n/            every visible string, per language
   settings/        player options file
+  progress/        save file: levels, fragments, achievements
   fx/              easing, RNG, particle pools
-  content/         embedded assets (levels, shaders, fonts)
+  content/         acts and levels, embedded assets (levels, shaders, fonts)
 assets/            levels, GLSL shaders, fonts
 tests/             headless tests
 tools/level_check/ level analysis

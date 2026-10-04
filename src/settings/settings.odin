@@ -44,13 +44,31 @@ defaults :: proc() -> Settings {
 	}
 }
 
-// Full path of the settings file (temp allocator), or "" when unknown.
-file_path :: proc() -> string {
+// Full path of a file in the game's config directory (temp allocator), or "" when unknown.
+config_file :: proc(name: string) -> string {
 	dir, err := os.user_config_dir(context.temp_allocator)
 	if err != nil || dir == "" {
 		return ""
 	}
-	return fmt.tprintf("%s/%s/%s", dir, APP_DIR, FILE_NAME)
+	return fmt.tprintf("%s/%s/%s", dir, APP_DIR, name)
+}
+
+// Write a whole file in the config directory, creating the directory if needed.
+write_config_file :: proc(name, text: string) -> bool {
+	path := config_file(name)
+	if path == "" {
+		return false
+	}
+	dir := path[:strings.last_index_byte(path, '/')]
+	if !os.exists(dir) && os.make_directory_all(dir) != nil {
+		return false
+	}
+	return os.write_entire_file_from_string(path, text) == nil
+}
+
+// Full path of the settings file (temp allocator), or "" when unknown.
+file_path :: proc() -> string {
+	return config_file(FILE_NAME)
 }
 
 load :: proc() -> Settings {
@@ -68,15 +86,7 @@ load :: proc() -> Settings {
 }
 
 save :: proc(s: Settings) -> bool {
-	path := file_path()
-	if path == "" {
-		return false
-	}
-	dir := path[:strings.last_index_byte(path, '/')]
-	if !os.exists(dir) && os.make_directory_all(dir) != nil {
-		return false
-	}
-	return os.write_entire_file_from_string(path, serialize(s, context.temp_allocator)) == nil
+	return write_config_file(FILE_NAME, serialize(s, context.temp_allocator))
 }
 
 serialize :: proc(s: Settings, allocator := context.allocator) -> string {
