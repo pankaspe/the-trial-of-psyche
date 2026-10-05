@@ -23,7 +23,7 @@ uniform float mist_bottom;
 uniform float screen_height;
 
 // per piece
-uniform float material;      // 0 marble, 1 masonry, 2 foliage, 3 bronze, 4 psyche, 5 cupid
+uniform float material;      // 0 marble, 1 masonry, 2 foliage, 3 bronze, 4 psyche, 5 cupid, 6 mourner
 uniform float detail;        // 0 none, 1 marble block, 2 masonry block
 uniform float hidden;        // 1: visible only in the lamp light, glowing gold
 uniform float alpha;
@@ -57,9 +57,12 @@ void palette(float m, float t, out vec3 night, out vec3 warm) {
     } else if (m < 4.5) {   // Psyche: pale ivory with a lilac shadow
         night = mix(vec3(0.30, 0.27, 0.52), vec3(0.98, 0.93, 0.90), t);
         warm = mix(vec3(0.42, 0.26, 0.30), vec3(1.0, 0.92, 0.82), t);
-    } else {                // Cupid: a figure of light
+    } else if (m < 5.5) {   // Cupid: a figure of light
         night = mix(vec3(0.55, 0.30, 0.10), vec3(1.0, 0.86, 0.55), t);
         warm = night;
+    } else {                // the mourners of the prologue: dark veils
+        night = mix(vec3(0.07, 0.06, 0.13), vec3(0.36, 0.33, 0.48), t);
+        warm = mix(vec3(0.16, 0.09, 0.07), vec3(0.62, 0.45, 0.34), t);
     }
 }
 

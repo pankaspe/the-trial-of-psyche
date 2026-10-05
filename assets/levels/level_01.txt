@@ -31,7 +31,8 @@ exit 2 7 4
 fragment 7 0 5
 outro outro_i_1
 
-voice 3 1 5 v_crag_alone
+# the wedding procession comes up the crag at the east end of the edge
+prologue 6 5 3
 hint 3 1 5 hint_move
 voice 4 5 3 v_crag_edge
 hint 4 5 3 hint_turn

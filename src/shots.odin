@@ -103,8 +103,19 @@ SHOT_SCRIPT := [?]Shot_Step {
 // The tour of one level (--level ID): `Shots.level` is the slot.
 LEVEL_TOUR := [?]Shot_Step {
 	{0.5, "", proc(app: ^App) {start_level(app, app.shots.level)}},
-	{4.0, "00_card", nil},
-	{0.1, "", proc(app: ^App) {if app.screen == .Card {dismiss_act_card(app)}}},
+	{1.5, "00a_start", nil},
+	{2.5, "00b", nil},
+	{3.0, "00c", nil},
+	{3.5, "00d", nil},
+	{3.0, "00e", nil},
+	{3.0, "00f", nil},
+	{3.0, "00g", nil},
+	{4.0, "00h", nil},
+	{2.0, "00i_prompt", nil},
+	{0.1, "", proc(app: ^App) {
+			if app.screen == .Card {dismiss_act_card(app)}
+			for app.game.phase == .Prologue {game.prologue_advance(&app.game); if !game.prologue_ready(&app.game) {app.game.phase_t = 1e3}}
+		}},
 	{4.5, "01_view0", nil},
 	{0.1, "", proc(app: ^App) {game.request_turn(&app.game, 1)}},
 	{1.5, "02_view1", nil},

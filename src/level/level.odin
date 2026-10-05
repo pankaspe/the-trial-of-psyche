@@ -99,6 +99,8 @@ Level_Data :: struct {
 	has_amore:    bool,
 	has_fragment: bool,
 	has_exit:     bool,
+	prologue:     Cell, // where the prologue's procession comes up onto the level
+	has_prologue: bool, // the level opens with the prologue cutscene (I.1)
 	outro:        i18n.Key, // the text of the ending card at the exit
 	has_outro:    bool,
 	has_lamp:     bool, // Psyche carries the lamp (from the end of Act I)
@@ -252,7 +254,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			append(&data.props, p)
 			max_z = max(max_z, v.z + 1)
 
-		case "start", "sigil", "amore", "fragment", "exit":
+		case "start", "sigil", "amore", "fragment", "exit", "prologue":
 			v: [3]i32
 			if !ints(args, v[:]) {
 				return data, fail(line_no, "%s: expected x y h", fields[0])
@@ -263,6 +265,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			case "amore": data.amore, data.has_amore = v, true
 			case "fragment": data.fragment, data.has_fragment = v, true
 			case "exit": data.exit, data.has_exit = v, true
+			case "prologue": data.prologue, data.has_prologue = v, true
 			}
 			max_z = max(max_z, v.z)
 

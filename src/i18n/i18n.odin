@@ -51,6 +51,13 @@ Key :: enum u16 {
 	Card_Continue,
 	Card_Unbuilt,
 
+	// the prologue cutscene (I.1)
+	Pro_Oracle,
+	Pro_Procession,
+	Pro_Leave,
+	Pro_Alone,
+	Pro_Start,
+
 	// level titles
 	Level_I_1,
 	Level_I_2,
@@ -137,7 +144,6 @@ Key :: enum u16 {
 
 	// voices in the levels (level files refer to these by name, case-insensitive)
 	// I.1: the narrator on the crag
-	V_Crag_Alone,
 	V_Crag_Edge,
 	// I.2: the palace voices
 	V_Palace_Wake,
@@ -288,6 +294,12 @@ IT := [Key]string {
 	.Card_Continue  = "Clic per continuare",
 	.Card_Unbuilt   = "Questo atto è ancora in costruzione.",
 
+	.Pro_Oracle     = "«Sulla rupe di un alto monte, o re, lascia la fanciulla, vestita per nozze di morte. Non sperare un genero di stirpe mortale.»",
+	.Pro_Procession = "Così risponde Apollo. Il re obbedisce: la città intera accompagna la figlia sulla rupe.",
+	.Pro_Leave      = "Lassù la lasciano. Tornano indietro, e spengono le fiaccole una a una.",
+	.Pro_Alone      = "Psiche resta sola sulla cima, a piangere. Intorno al monte, l'aria comincia a muoversi.",
+	.Pro_Start      = "Premi un tasto per iniziare",
+
 	.Level_I_1      = "La rupe di Zefiro",
 	.Level_I_2      = "Il palazzo invisibile",
 	.Level_I_3      = "Le sorelle sulla rupe",
@@ -366,7 +378,6 @@ IT := [Key]string {
 	.Controls       = "Clic: cammina  ·  Q / E: ruota il palazzo  ·  Spazio / tasto destro: lampada  ·  R: ricomincia  ·  Esc: pausa",
 	.Controls_Dark  = "Clic: cammina  ·  Q / E: ruota il palazzo  ·  R: ricomincia  ·  Esc: pausa",
 
-	.V_Crag_Alone   = "Il corteo è tornato in città con le fiaccole spente. Psiche resta sola sulla cima, a piangere.",
 	.V_Crag_Edge    = "Sotto, solo il vuoto. Ma l'aria si muove: un vento leggero gira intorno al monte.",
 	.V_Palace_Wake  = "Psiche si sveglia sul prato. Davanti a lei, una reggia che non è opera di mani umane.",
 	.V_Palace_Rule  = "Una voce senza corpo: «Qui non serve vedere, signora. Al buio, ciò che sembra unito è unito.»",
@@ -466,6 +477,12 @@ EN := [Key]string {
 	.Card_Continue  = "Click to continue",
 	.Card_Unbuilt   = "This act is still being built.",
 
+	.Pro_Oracle     = "“On the crag of a high mountain, king, leave the girl, dressed for a wedding of death. Hope for no son-in-law of mortal birth.”",
+	.Pro_Procession = "So Apollo answers. The king obeys: the whole city leads his daughter up the crag.",
+	.Pro_Leave      = "Up there they leave her. They turn back, putting out the torches one by one.",
+	.Pro_Alone      = "Psyche is left alone on the summit, weeping. Around the mountain, the air begins to stir.",
+	.Pro_Start      = "Press any key to begin",
+
 	.Level_I_1      = "Zephyr's Crag",
 	.Level_I_2      = "The Invisible Palace",
 	.Level_I_3      = "The Sisters on the Crag",
@@ -544,7 +561,6 @@ EN := [Key]string {
 	.Controls       = "Click: walk  ·  Q / E: turn the palace  ·  Space / right click: lamp  ·  R: restart  ·  Esc: pause",
 	.Controls_Dark  = "Click: walk  ·  Q / E: turn the palace  ·  R: restart  ·  Esc: pause",
 
-	.V_Crag_Alone   = "The procession has gone back to the city, its torches put out. Psyche is left alone on the summit, weeping.",
 	.V_Crag_Edge    = "Below, only emptiness. But the air stirs: a light wind circles the mountain.",
 	.V_Palace_Wake  = "Psyche wakes on the lawn. Before her stands a palace not made by human hands.",
 	.V_Palace_Rule  = "A voice without a body: “Here you need not see, lady. In the dark, what seems joined is joined.”",

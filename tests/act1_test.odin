@@ -4,6 +4,7 @@
 package tests
 
 import "core:testing"
+import sa "core:container/small_array"
 
 import "../src/game"
 import "../src/i18n"
@@ -16,7 +17,7 @@ start_level :: proc(t: ^testing.T, g: ^game.Game, index: int) -> bool {
 		testing.expectf(t, false, "level %d does not load", index)
 		return false
 	}
-	game.begin(g)
+	game.begin(g, prologue = false)
 	run(g, game.WELCOME_DELAY + 0.1)
 	return true
 }
@@ -46,7 +47,7 @@ level_I_1_zephyrs_crag :: proc(t: ^testing.T) {
 		return
 	}
 	testing.expect(t, !g.data.has_lamp, "no lamp on the crag")
-	testing.expect(t, g.heard[i18n.Key.V_Crag_Alone] && g.hinted[i18n.Key.Hint_Move], "the narrator and the first hint at the start")
+	testing.expect(t, g.hinted[i18n.Key.Hint_Move], "the first hint at the start")
 	EDGE :: iso.Cell{4, 5, 3}
 	testing.expect(t, walk(t, &g, EDGE), "the path down the crag needs no turn")
 	testing.expect(t, g.hinted[i18n.Key.Hint_Turn], "at the edge: the turning hint")
@@ -129,4 +130,52 @@ level_I_3_sisters :: proc(t: ^testing.T) {
 	game.set_view(&g, 2)
 	testing.expect(t, walk(t, &g, g.data.exit), "the top of the crag")
 	exits(t, &g)
+}
+
+// The prologue of I.1: the procession climbs to the summit and goes back;
+// a key skips to Psyche alone, the next one starts the level.
+@(test)
+prologue :: proc(t: ^testing.T) {
+	g: game.Game
+	defer game.destroy(&g)
+	if err := game.load(&g, 0); err != nil {
+		testing.expect(t, false, "I.1 does not load")
+		return
+	}
+	testing.expect(t, g.data.has_prologue, "I.1 opens with the prologue")
+	game.begin(&g)
+	testing.expect(t, g.phase == .Prologue && !g.hud.visible, "the cutscene runs first, without the HUD")
+	testing.expect(t, sa.len(g.prologue.route) >= 2 && sa.get(g.prologue.route, sa.len(g.prologue.route) - 1) == g.data.start, "the procession's route ends at the start")
+	run(&g, game.prologue_arrive(&g) + 0.1)
+	testing.expect(t, g.psyche.pos == palace.node_world(&g.palace, g.data.start), "Psyche reaches the summit")
+	torches := 0
+	for i in 0 ..< game.MOURNERS {
+		m := game.prologue_mourner(&g, i)
+		torches += int(m.torch > 0.99 && m.alpha > 0.99)
+	}
+	testing.expect(t, torches == game.MOURNERS, "the mourners stand behind her with their torches lit")
+	game.toggle_lamp(&g)
+	game.request_turn(&g, 1)
+	testing.expect(t, !g.turning && !g.lamp_on, "no play during the cutscene")
+
+	game.prologue_advance(&g)
+	run(&g, 0.1)
+	testing.expect(t, g.phase == .Prologue && !game.prologue_ready(&g), "a key skips to Psyche alone")
+	for i in 0 ..< game.MOURNERS {
+		m := game.prologue_mourner(&g, i)
+		testing.expectf(t, m.alpha < 0.01 && m.torch < 0.01, "mourner %d is gone, torch out", i)
+	}
+	run(&g, game.PRO_PROMPT + 0.1)
+	testing.expect(t, game.prologue_ready(&g), "then the invitation to begin")
+	game.prologue_advance(&g)
+	testing.expect(t, g.phase == .Play && g.hud.visible && game.rot(&g) == 0 && g.angle == 0, "the level starts in view 0")
+	run(&g, game.WELCOME_DELAY + 0.1)
+	testing.expect(t, g.hinted[i18n.Key.Hint_Move], "with its first hint")
+
+	// a restart does not show it again
+	h: game.Game
+	defer game.destroy(&h)
+	game.load(&h, 0)
+	game.begin(&h, prologue = false)
+	testing.expect(t, h.phase == .Play, "restart: straight to play")
 }

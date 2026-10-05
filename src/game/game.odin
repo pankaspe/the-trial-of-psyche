@@ -58,6 +58,7 @@ MAX_QUEUED_VOICES :: 4
 Phase :: enum u8 {
 	Play,
 	Sigil, // the seal is lit: blocks rise, input waits
+	Prologue, // the opening cutscene (prologue.odin): input only skips or starts
 	Ending_Oil,
 	Ending_Trust,
 	Ending_Exit,
@@ -164,6 +165,7 @@ Game :: struct {
 	reach_before:   []bool, // reachable nodes when a turn started
 
 	path:           pl.Path,
+	prologue:       Prologue,
 	psyche:         Psyche,
 	amore:          Amore,
 
@@ -247,9 +249,15 @@ title_key :: proc(g: ^Game) -> Key {
 	return content.LEVELS[g.level_index].title
 }
 
-// Leave attract mode and start playing.
-begin :: proc(g: ^Game) {
+// Leave attract mode and start playing: after the prologue, if the level
+// has one and `prologue` is set (a restart does not show it again).
+begin :: proc(g: ^Game, prologue := true) {
 	g.active = true
+	if g.data.has_prologue && prologue {
+		audio.start_music()
+		prologue_start(g)
+		return
+	}
 	g.hud.visible = true
 	show(&g.hud.title, title_key(g), 1.5, 3.5, 2.0)
 	audio.start_music()
@@ -320,6 +328,8 @@ update :: proc(g: ^Game, dt: f32) {
 		} else if g.lamp_on && g.light > 0.3 && in_chamber(g, psy) {
 			start_ending(g, .Ending_Oil)
 		}
+	case .Prologue:
+		update_prologue(g, dt)
 	case .Sigil:
 		if g.phase_t >= rise_duration(g) {
 			set_phase(g, .Play)
@@ -753,7 +763,7 @@ start_ending :: proc(g: ^Game, p: Phase) {
 		audio.play(.Good, -2)
 	case .Ending_Exit:
 		audio.play(.Wind, -4)
-	case .Play, .Sigil, .Finished:
+	case .Play, .Sigil, .Prologue, .Finished:
 	}
 }
 

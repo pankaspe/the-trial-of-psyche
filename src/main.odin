@@ -199,10 +199,10 @@ new_level :: proc(app: ^App, index: int) -> bool {
 	return true
 }
 
-// Restart the current level at once (no act card).
+// Restart the current level at once (no act card, no prologue).
 play_level :: proc(app: ^App) {
 	if new_level(app, app.game.level_index) {
-		game.begin(&app.game)
+		game.begin(&app.game, prologue = false)
 		app.screen = .Play
 	}
 }
@@ -220,7 +220,8 @@ start_level :: proc(app: ^App, index: int, from_title := false) {
 			return
 		}
 	}
-	if content.opens_act(index) {
+	// a level with a prologue opens its act with the cutscene, not the card
+	if content.opens_act(index) && !app.game.data.has_prologue {
 		open_act_card(app, content.LEVELS[index].act, false)
 		return
 	}
@@ -520,6 +521,13 @@ update_act_card :: proc(app: ^App, dt: f32) {
 
 play_input :: proc(app: ^App) {
 	g := &app.game
+	if g.phase == .Prologue {
+		// any key or click: skip the scene, then start
+		if rl.GetKeyPressed() != .KEY_NULL || rl.IsMouseButtonPressed(.LEFT) || rl.IsMouseButtonPressed(.RIGHT) {
+			game.prologue_advance(g)
+		}
+		return
+	}
 	if rl.IsKeyPressed(.R) {
 		play_level(app)
 		return

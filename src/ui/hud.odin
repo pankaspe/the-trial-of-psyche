@@ -6,6 +6,7 @@ package ui
 import "core:math"
 import rl "vendor:raylib"
 
+import "../content"
 import "../game"
 import "../i18n"
 
@@ -18,6 +19,10 @@ draw_hud :: proc(u: ^Ui, g: ^game.Game) -> (act: Hud_Action) {
 	s := u.scale
 	w, h := u.width, u.height
 	hud := &g.hud
+	if g.phase == .Prologue {
+		draw_prologue(u, g)
+		return
+	}
 
 	// title and voice stay visible even when the rest of the HUD is hidden
 	if a := game.fade_alpha(hud.title); a > 0 {
@@ -53,6 +58,34 @@ draw_hud :: proc(u: ^Ui, g: ^game.Game) -> (act: Hud_Action) {
 		act.turn = 1
 	}
 	return
+}
+
+// The prologue over the palace: the fade from black, the act's name, the
+// captions, and at the end the invitation to begin.
+@(private)
+draw_prologue :: proc(u: ^Ui, g: ^game.Game) {
+	s := u.scale
+	w, h := u.width, u.height
+	t := g.phase_t
+	if t < game.PRO_WALK_START {
+		rl.DrawRectangleRec({0, 0, w, h}, fade({3, 3, 10, 255}, 1 - t / game.PRO_WALK_START))
+	}
+	act := content.LEVELS[g.level_index].act
+	if a := clamp((t - 0.6) / 1.2, 0, 1) * clamp((7.5 - t) / 1.5, 0, 1); a > 0 {
+		text(u, i18n.tr(content.ACT_LABEL[act]), {w * 0.5, 54 * s}, {size = 24, color = GOLD, shadow = true}, .Center, a)
+		text(u, i18n.tr(content.ACT_TITLE[act]), {w * 0.5, 90 * s}, {size = 46, color = TEXT, shadow = true}, .Center, a)
+	}
+	if key, a := game.prologue_caption(g); a > 0 {
+		st := Style{size = 34, color = {255, 230, 184, 255}, italic = true, shadow = true}
+		msg := i18n.tr(key)
+		bh := block_height(u, msg, st, 1300 * s)
+		paragraph(u, msg, {w * 0.5, h - 165 * s - bh * 0.5}, st, 1300 * s, a)
+	}
+	if game.prologue_ready(g) {
+		since := t - game.prologue_alone(g) - game.PRO_PROMPT
+		blink := 0.6 + 0.3 * math.sin(t * 2.4)
+		text(u, i18n.tr(.Pro_Start), {w * 0.5, h - 72 * s}, {size = 28, color = TEXT, shadow = true}, .Center, blink * clamp(since / 1, 0, 1))
+	}
 }
 
 // The oil gauge: it empties from the left; a small flame lives at its end while lit.

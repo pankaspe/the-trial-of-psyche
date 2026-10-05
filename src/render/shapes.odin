@@ -44,6 +44,7 @@ Material :: enum u8 {
 	Bronze,
 	Psyche,
 	Cupid,
+	Mourner,
 }
 
 PROP_MESH := [level.Prop_Kind]Mesh_Id {

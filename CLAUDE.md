@@ -154,7 +154,11 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   welcome); the exit glows with Zephyr's wind and lifts Psyche; no lamp mesh without `lamp`. All
   Act I lines rewritten (narrator I.1, palace voices I.2, the bridegroom I.3, night of the lamp I.4).
   Maps, screenshots and the full IT/EN text table are in the design document for the user's review.
-  Committed locally, not pushed. Waiting for the user's playtest of Act I and text review.
+  The user liked the gameplay and asked for a prologue cutscene: `prologue x y h` in I.1 plays it
+  (`game/prologue.odin`, a timeline): Apollo's oracle, the procession of veiled mourners with
+  torches climbs the crag with Psyche, leaves her and puts the torches out, Zephyr's first breath,
+  then "press any key" (a key during the scene skips it; a restart skips it). It replaces the
+  Act I card in play. 27 tests. Committed locally, not pushed. Waiting for the user's playtest.
 
 ## M2 — prologue and Act I (agreed with the user; in progress, see Session 4)
 - Build I.1 (Zephyr's Crag, with the prologue card), I.2 (The Invisible Palace), I.3 (The

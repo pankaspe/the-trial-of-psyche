@@ -20,6 +20,8 @@
 #                           (key = an i18n.Key name, case-insensitive)
 #   hint x y h key          the same for a hint (controls, rules)
 #   outro key               the text of the ending card at the exit
+#   prologue x y h          the level opens with the prologue cutscene; the
+#                           procession comes up at this cell and walks to start
 # Illusions: in the dark two surfaces are joined when they look joined in the
 # current view: (x',y',h) touches (x'+dx+k, y'+dy+k, h+k) in view coordinates,
 # provided both tops are visible (no nearer cube covers them) and no rail closes
