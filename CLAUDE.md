@@ -112,9 +112,13 @@ Full design document (Italian, kept up to date there): https://claude.ai/code/ar
 
 ## Adding a level
 1. `assets/levels/level_NN.txt`, NN = slot number 01..20 (format at the top of `level_04.txt`).
+   Texts per cell: `voice x y h key`, `hint x y h key` (on the start cell: when the level begins);
+   `outro key` = the ending card at the exit. Keep the layout centred in the grid (it turns about the centre).
 2. Point the slot's `source` in `content.LEVELS` at it (titles and fragments are already in `i18n`).
 3. `./build.sh check assets/levels/level_NN.txt`: unintended illusions, fragment reachable and optional.
-4. A walkthrough test in `tests/`.
+   Translating a whole layout keeps every illusion (handy to recentre it).
+4. A walkthrough test in `tests/` (`act1_test.odin` is the model).
+5. `--shots DIR --level ID` tours it: act card, the four views, lamp, fragment, exit, end card.
 
 ## Commands
 ```bash
@@ -122,6 +126,7 @@ Full design document (Italian, kept up to date there): https://claude.ai/code/ar
 ./build.sh test       # all headless tests
 ./build.sh check FILE # level analysis
 ./build/trial-of-psyche-debug --shots DIR   # scripted screenshots (no settings read/written)
+./build/trial-of-psyche-debug --shots DIR --size 1600x900 --level I.2   # tour of one level
 ```
 Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
 
@@ -142,8 +147,16 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   queue instead of cutting each other off. 23 tests. Commits are local, not pushed yet.
 - Testing tip: a collected fragment shows faint and cannot be taken again; to replay from
   scratch delete `~/.config/the-trial-of-psyche/progress.cfg`.
+- Session 4 (2026-10-05): **M2 started**. I.1 Zephyr's Crag (walk, first turn), I.2 The Invisible
+  Palace (one seam per view: 0, 1, 3; fragment from view 2), I.3 The Sisters on the Crag (two hidden
+  stairs, a decoy tower; fragment on the second tower) built, each with exit, fragment, outro and a
+  walkthrough test (26 tests). Per-cell `voice`/`hint` and `outro` in level files (no hard-coded
+  welcome); the exit glows with Zephyr's wind and lifts Psyche; no lamp mesh without `lamp`. All
+  Act I lines rewritten (narrator I.1, palace voices I.2, the bridegroom I.3, night of the lamp I.4).
+  Maps, screenshots and the full IT/EN text table are in the design document for the user's review.
+  Committed locally, not pushed. Waiting for the user's playtest of Act I and text review.
 
-## Next session: M2 — prologue and Act I (agreed with the user)
+## M2 — prologue and Act I (agreed with the user; in progress, see Session 4)
 - Build I.1 (Zephyr's Crag, with the prologue card), I.2 (The Invisible Palace), I.3 (The
   Sisters on the Crag), following the design document's level map: I.1 walking + first turn,
   I.2 first illusions, I.3 hidden stairs; I.2 and I.3 are played in the dark only (no `lamp`).
