@@ -155,6 +155,9 @@ tour_walk :: proc(app: ^App, c: iso.Cell) {
 	}
 	// not reachable in one view: start from a neighbour, for the last step
 	target := pl.node_index(&g.palace, c)
+	if target < 0 {
+		return // no such place (a level without an exit)
+	}
 	for r in 0 ..< 4 {
 		game.set_view(g, r)
 		for graph in ([]^pl.Graph{&g.palace.real, &g.palace.illusion}) {

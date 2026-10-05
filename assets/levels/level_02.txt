@@ -27,15 +27,11 @@ column 8 3 0 2
 column 7 4 0 2
 column 8 4 0 2
 prop brazier 7 3 3
-prop window 8 3 3 my
-prop wall 7 3 3 my
 # the bedchamber (h4): joined to the baths from view 3
 column 7 5 0 3
 column 7 6 0 3
 column 8 6 0 3
-# the bedchamber: walls and windows at the back, a balustrade in front
-prop window 7 5 4 mx
-prop window 7 6 4 mx
+# the bedchamber: a balustrade in front
 prop rail 8 6 4 px
 prop rail 8 6 4 py
 prop rail 7 6 4 py
@@ -54,3 +50,9 @@ lawn 2 4 0
 lawn 3 4 0
 lawn 2 5 0
 lawn 3 5 0
+# small things: vases in the corners, unlit candles on the walls
+prop vase 5 5 2 my
+prop vase 7 4 3 py
+prop sconce 1 3 2 px
+prop sconce 8 4 1 px
+prop sconce 8 6 2 py

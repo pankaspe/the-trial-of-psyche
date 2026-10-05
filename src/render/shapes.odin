@@ -14,11 +14,13 @@ Mesh_Id :: enum u8 {
 	Rail_PX, Rail_MX, Rail_PY, Rail_MY,
 	Wall_PX, Wall_MX, Wall_PY, Wall_MY,
 	Wall_Half_PX, Wall_Half_MX, Wall_Half_PY, Wall_Half_MY,
-	Window_PX, Window_MX, Window_PY, Window_MY,
 	Battlement_PX, Battlement_MX, Battlement_PY, Battlement_MY,
 	Fence_PX, Fence_MX, Fence_PY, Fence_MY,
 	Bed_PX, Bed_MX, Bed_PY, Bed_MY,
 	Arch_PX, Arch_MX, Arch_PY, Arch_MY,
+	Vase_PX, Vase_MX, Vase_PY, Vase_MY,
+	Sconce_PX, Sconce_MX, Sconce_PY, Sconce_MY,
+	Candle_PX, Candle_MX, Candle_PY, Candle_MY,
 	Pillar,
 	Plinth,
 	Cypress,
@@ -52,7 +54,6 @@ PROP_MESH := [level.Prop_Kind]Mesh_Id {
 	.Rail            = .Rail_PX,
 	.Wall            = .Wall_PX,
 	.Wall_Half       = .Wall_Half_PX,
-	.Window          = .Window_PX,
 	.Wall_Battlement = .Battlement_PX,
 	.Fence           = .Fence_PX,
 	.Pillar          = .Pillar,
@@ -62,13 +63,14 @@ PROP_MESH := [level.Prop_Kind]Mesh_Id {
 	.Brazier         = .Brazier,
 	.Bed             = .Bed_PX,
 	.Arch            = .Arch_PX,
+	.Vase            = .Vase_PX,
+	.Sconce          = .Sconce_PX,
 }
 
 PROP_MATERIAL := [level.Prop_Kind]Material {
 	.Rail            = .Marble,
 	.Wall            = .Masonry,
 	.Wall_Half       = .Masonry,
-	.Window          = .Masonry,
 	.Wall_Battlement = .Masonry,
 	.Fence           = .Bronze,
 	.Pillar          = .Marble,
@@ -78,6 +80,8 @@ PROP_MATERIAL := [level.Prop_Kind]Material {
 	.Brazier         = .Bronze,
 	.Bed             = .Bronze,
 	.Arch            = .Masonry,
+	.Vase            = .Bronze,
+	.Sconce          = .Bronze,
 }
 
 // --- box lists ---------------------------------------------------------------------
@@ -123,13 +127,6 @@ WALL_PX := [?]Box{{{0.78, 0, 0}, {1, 1, 1}}}
 @(private)
 WALL_HALF_PX := [?]Box{{{0.78, 0, 0}, {1, 1, 0.5}}}
 @(private)
-WINDOW_PX := [?]Box {
-	{{0.78, 0, 0}, {1, 1, 0.3}},
-	{{0.78, 0, 0.75}, {1, 1, 1}},
-	{{0.78, 0, 0.3}, {1, 0.28, 0.75}},
-	{{0.78, 0.72, 0.3}, {1, 1, 0.75}},
-}
-@(private)
 BATTLEMENT_PX := [?]Box {
 	{{0.78, 0, 0}, {1, 1, 0.4}},
 	{{0.78, 0, 0.4}, {1, 0.3, 0.62}},
@@ -142,12 +139,27 @@ FENCE_PX := [?]Box {
 	{{0.9, 0, 0.18}, {0.94, 1, 0.24}},
 	{{0.9, 0, 0.34}, {0.94, 1, 0.4}},
 }
-// an arch spanning the cell along x (posts at the y edges)
+// a slender arch spanning the cell along x (posts at the y edges)
 @(private)
 ARCH_PX := [?]Box {
-	{{0.3, 0, 0}, {0.7, 0.16, 1.35}},
-	{{0.3, 0.84, 0}, {0.7, 1, 1.35}},
-	{{0.25, 0, 1.35}, {0.75, 1, 1.6}},
+	{{0.43, 0, 0}, {0.57, 0.09, 1.32}},
+	{{0.43, 0.91, 0}, {0.57, 1, 1.32}},
+	{{0.41, 0, 1.32}, {0.59, 1, 1.42}},
+}
+// a candle holder on the +x face of a block, below its top: back plate,
+// arm and cup in bronze; the candle (unlit) is its own piece
+@(private)
+SCONCE_PX := [?]Box {
+	{{1.0, 0.42, 0.38}, {1.03, 0.58, 0.68}},
+	{{1.03, 0.47, 0.48}, {1.12, 0.53, 0.53}},
+	{{1.06, 0.41, 0.53}, {1.18, 0.59, 0.58}},
+}
+@(private)
+CANDLE_PX := [?]Box{{{1.095, 0.465, 0.58}, {1.145, 0.535, 0.8}}}
+// a small vase, turned: it stands in the (+x, +y) corner of the cell
+@(private)
+VASE_PROFILE := [?][2]f32 {
+	{0.0, 0.0}, {0.04, 0.0}, {0.058, 0.04}, {0.068, 0.1}, {0.058, 0.165}, {0.033, 0.2}, {0.03, 0.225}, {0.045, 0.25}, {0.0, 0.25},
 }
 @(private)
 PILLAR := [?]Box {
@@ -226,11 +238,12 @@ build_meshes :: proc(meshes: ^[Mesh_Id]rl.Mesh) {
 	four(meshes, .Rail_PX, rail_px())
 	four(meshes, .Wall_PX, WALL_PX[:])
 	four(meshes, .Wall_Half_PX, WALL_HALF_PX[:])
-	four(meshes, .Window_PX, WINDOW_PX[:])
 	four(meshes, .Battlement_PX, BATTLEMENT_PX[:])
 	four(meshes, .Fence_PX, FENCE_PX[:])
 	four(meshes, .Bed_PX, bed_px())
 	four(meshes, .Arch_PX, ARCH_PX[:])
+	four(meshes, .Sconce_PX, SCONCE_PX[:])
+	four(meshes, .Candle_PX, CANDLE_PX[:])
 	meshes[.Pillar] = one(PILLAR[:])
 	meshes[.Plinth] = one(PLINTH[:])
 	meshes[.Cypress] = one(cypress())
@@ -248,6 +261,19 @@ build_meshes :: proc(meshes: ^[Mesh_Id]rl.Mesh) {
 	meshes[.Robe_Cupid] = lathe_mesh(ROBE_CUPID_PROFILE[:], 14)
 	meshes[.Lamp] = lathe_mesh(LAMP_PROFILE[:], 10)
 	meshes[.Scroll] = lathe_mesh(SCROLL_PROFILE[:], 12)
+	for d in iso.Dir {
+		// the (+x, +y) corner, turned with the piece like the oriented boxes
+		c := [2]f32{0.8, 0.8}
+		switch d {
+		case .PX:
+		case .PY: c = {1 - c.y, c.x}
+		case .MX: c = {1 - c.x, 1 - c.y}
+		case .MY: c = {c.y, 1 - c.x}
+		}
+		vb := builder_make()
+		lathe(&vb, VASE_PROFILE[:], 12, {c.x, c.y, 0})
+		meshes[oriented_mesh(.Vase_PX, d)] = upload(&vb)
+	}
 	b := builder_make()
 	sphere(&b, {}, 1, 7, 12)
 	meshes[.Head] = upload(&b)

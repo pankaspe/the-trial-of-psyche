@@ -34,7 +34,6 @@ Prop_Kind :: enum u8 {
 	Rail,
 	Wall,
 	Wall_Half,
-	Window,
 	Wall_Battlement,
 	Fence,
 	// blocking props: nobody can stand in their cell
@@ -46,17 +45,19 @@ Prop_Kind :: enum u8 {
 	Bed,
 	// decoration only
 	Arch,
+	Vase, // small, in one corner of the cell: px (+x,+y), py (-x,+y), mx (-x,-y), my (+x,-y)
+	Sconce, // an unlit candle on the side `dir` of the block at (x,y,z)
 }
 
-EDGE_PROPS :: bit_set[Prop_Kind]{.Rail, .Wall, .Wall_Half, .Window, .Wall_Battlement, .Fence}
+EDGE_PROPS :: bit_set[Prop_Kind]{.Rail, .Wall, .Wall_Half, .Wall_Battlement, .Fence}
 BLOCKING_PROPS :: bit_set[Prop_Kind]{.Pillar, .Plinth, .Cypress, .Urn, .Brazier, .Bed}
-ORIENTED_PROPS :: EDGE_PROPS + bit_set[Prop_Kind]{.Bed, .Arch}
+ORIENTED_PROPS :: EDGE_PROPS + bit_set[Prop_Kind]{.Bed, .Arch, .Vase, .Sconce}
+NEEDS_DIR :: EDGE_PROPS + bit_set[Prop_Kind]{.Vase, .Sconce}
 
 PROP_NAME := [Prop_Kind]string {
 	.Rail            = "rail",
 	.Wall            = "wall",
 	.Wall_Half       = "wallHalf",
-	.Window          = "window",
 	.Wall_Battlement = "wallBattlement",
 	.Fence           = "fence",
 	.Pillar          = "pillar",
@@ -66,6 +67,8 @@ PROP_NAME := [Prop_Kind]string {
 	.Brazier         = "brazier",
 	.Bed             = "bed",
 	.Arch            = "arch",
+	.Vase            = "vase",
+	.Sconce          = "sconce",
 }
 
 Prop :: struct {
@@ -252,7 +255,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 				p.dir, p.oriented = d, true
 			}
-			if kind in EDGE_PROPS && !p.oriented {
+			if kind in NEEDS_DIR && !p.oriented {
 				return data, fail(line_no, "prop: '%s' needs a direction", args[0])
 			}
 			append(&data.props, p)

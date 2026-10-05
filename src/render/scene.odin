@@ -177,10 +177,14 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 	for prop in g.data.props {
 		base := PROP_MESH[prop.kind]
 		mesh := base
-		if base >= .Stairs_PX && base <= .Arch_MY {
+		if base >= .Stairs_PX && base <= .Candle_MY {
 			mesh = oriented_mesh(base, prop.dir)
 		}
 		append(&s.pieces, Piece{cell = prop.cell, mesh = mesh, material = PROP_MATERIAL[prop.kind], rise_index = -1})
+		if prop.kind == .Sconce {
+			// the unlit candle, in wax
+			append(&s.pieces, Piece{cell = prop.cell, mesh = oriented_mesh(.Candle_PX, prop.dir), material = .Psyche, rise_index = -1})
+		}
 	}
 	for e, i in g.data.rise {
 		append(&s.pieces, solid_piece(e.cell, e.solid, i32(i)))

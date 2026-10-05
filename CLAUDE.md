@@ -171,6 +171,8 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   Then: palace decoration in I.2-I.4 (colonnade, arches, walls and windows, balustrades,
   battlements; checked with level_check: same illusions), and the oil lesson (`Hint_Oil`, right
   after the first lighting in the level that teaches the lamp; the gauge pulses). 27 tests.
+- Decoration set (user: readable, not cluttered): slim `arch`, small `vase` in a cell corner,
+  unlit `sconce` candles on block faces; no windows (the user disliked them).
 - Decorating a level: blocking props must not sit on a needed cell, edge props must not close a
   side an illusion uses; compare `./build.sh check` before and after (same illusions, same goals). Committed locally, not pushed. Waiting for the user's playtest.
 

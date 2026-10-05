@@ -7,7 +7,11 @@
 #   rise x y z [stairs_dir] block (or stairs) raised when the sigil is lit
 #   prop name x y z [dir]   decoration in cell (x,y,z); oriented props take a dir.
 #                           pillar/bed/plinth/cypress/urn/brazier block the cell;
-#                           rail/wall/window/wallBattlement/fence close side `dir`
+#                           rail/wall/wallHalf/wallBattlement/fence close side `dir`;
+#                           decoration only: arch [dir], vase dir (a small vase in a
+#                           corner: px (+x,+y), py (-x,+y), mx (-x,-y), my (+x,-y)),
+#                           sconce dir (an unlit candle on side `dir` of the block
+#                           at x y z)
 #   start|sigil x y h       (h = surface height = block z + 1)
 #   amore x y h             the cell of the bed where Cupid sleeps
 #   exit x y h              reaching it completes the level
@@ -53,10 +57,7 @@ column 3 9 0 1
 column 3 8 0 1
 column 3 7 0 1
 column 3 6 0 1
-# the west wing: a wall with windows along the terrace
-prop window 3 9 2 mx
-prop wall 3 8 2 mx
-prop window 3 7 2 mx
+# an arch on the way to the west wing
 prop arch 4 10 2 px
 stairs 3 6 2 my
 # west balcony (h3), the lamp's vantage point
@@ -92,3 +93,9 @@ intro intro_i_4
 # the lamp is taught where it is first needed: the balcony
 hint 3 4 3 hint_lamp
 hint 6 2 4 hint_sigil
+# small things: vases in the corners, unlit candles on the tower
+prop vase 9 9 1 mx
+prop vase 4 3 3 px
+prop sconce 6 5 3 px
+prop sconce 5 6 3 py
+prop sconce 6 6 1 py
