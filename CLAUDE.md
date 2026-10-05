@@ -78,7 +78,19 @@ CLAUDE.md for the design history).
   Epilogue Olympus (proposal, to confirm level by level).
 - **Art style**: to be chosen by the user among five mockups (canvas
   https://claude.ai/artifact/L4ScxhCgDi5rJNCThSX7jZ): moonlit marble (today's, refined),
-  red-figure vase, Pompeian fresco, mosaic, book engraving. Then a total graphics overhaul.
+  red-figure vase, Pompeian fresco, mosaic, book engraving. The mockups are flat 2D sketches
+  (palette, materials, readability), not renders. A style is a "skin" on the same engine: the
+  3D pipeline, lamp light, depth cue, glows, particles, mist, rotation all stay; what changes is
+  the shader (palette per act/setting, procedural face treatment: masonry, hatching, tesserae,
+  plaster grain, ink outline), how the glows read in that style (mosaic gold lit by the lamp,
+  the lamp as the only colour on engraved paper...), props per setting, sky and UI font.
+- **Backdrop** (agreed 2026-10-05): a layered parallax background per setting, **generated in
+  code** (no images: the rule stays). Far to near: sky (stars, moon) · far silhouettes (hills,
+  mountains, sea horizon) · middle silhouettes (trees, ruins) · a mist band at the foot of the
+  level · rare foreground pieces only at the screen edges (reeds, a branch). Driven by the view
+  rotation (each layer is a 360° panorama that closes on itself over the four views) plus a slow
+  drift of clouds and mist. Always darker and lower-contrast than the platforms, never in front
+  of the palace. Replaces today's generic sky/clouds/islands per level.
 
 ## Game design (agreed with the user, 2026-10-04)
 Full design document (Italian, kept up to date there): https://claude.ai/code/artifact/97c37954-ecc7-4b98-a211-40e5c123d11e
@@ -239,9 +251,13 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   overhaul), then **level by level, not act by act**.
 
 ## Roadmap from now (user, 2026-10-05): level by level
-- **A0 art direction**: the user picks a style among the five mockups (or a blend).
-- **A1 the new look**: platform language, materials per setting, renderer overhaul; I.1 is the
-  pilot level, then the rest of Act I is restyled.
+- **A0 art direction (next session)**: the user names 2-3 styles that intrigue him; build them
+  as playable in-engine prototypes on one level (II.2, the river), switchable with a key, with
+  the layered parallax backdrop of that setting and the platform rim, so the choice is made on
+  real screenshots with the lamp and rotation, not on the flat mockups. (Claude's hint: the
+  engraving and the mosaic have the most identity; moonlit marble is the safe choice.)
+- **A1 the new look**: the chosen style, platform language, materials and backdrops per setting,
+  renderer overhaul; I.1 is the pilot level, then the rest of Act I is restyled.
 - **Then one level at a time**, in order I.1 … E: its setting and props, puzzle depth (aim
   15-18 minutes), texts, level_check + tests, the user's playtest closes each level before the
   next. Act II levels already built (mechanics, solver) are reworked in turn, not thrown away.
