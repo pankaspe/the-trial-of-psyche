@@ -20,6 +20,7 @@ import "audio"
 import "content"
 import "game"
 import "i18n"
+import "level"
 import "progress"
 import "render"
 import "settings"
@@ -37,6 +38,7 @@ Screen :: enum u8 {
 	Card, // the card before an act
 	Play,
 	Fragment, // a fragment of the tale just found: the game waits while it is read
+	Mechanic, // the level's new mechanic presented: the game waits while it is read
 	Pause,
 	Settings,
 	Ending,
@@ -67,6 +69,7 @@ App :: struct {
 	act_card:        Act_Card,
 	book_page:       int,
 	fragment_t:      f32, // time on the fragment card
+	mechanic_t:      f32, // time on the mechanic card
 	toasts:          [MAX_TOASTS]progress.Achievement, // achievements waiting to be announced
 	toast_count:     int,
 	toast_t:         f32,
@@ -311,7 +314,7 @@ frame :: proc(app: ^App) {
 	if app.screen == .Play && app.menu_fade < 0 {
 		play_input(app)
 	}
-	paused := app.screen == .Pause || app.screen == .Fragment || (app.screen == .Settings && app.settings_from == .Pause)
+	paused := app.screen == .Pause || app.screen == .Fragment || app.screen == .Mechanic || (app.screen == .Settings && app.settings_from == .Pause)
 	if !paused {
 		game.update(g, dt)
 		render.scene_update(&app.scene, g, dt)
@@ -333,6 +336,17 @@ frame :: proc(app: ^App) {
 	}
 	if app.screen == .Fragment {
 		app.fragment_t += dt
+	}
+	if g.mechanic_new {
+		g.mechanic_new = false
+		if app.screen == .Play {
+			app.screen = .Mechanic
+			app.mechanic_t = 0
+			g.teach_card = true
+		}
+	}
+	if app.screen == .Mechanic {
+		app.mechanic_t += dt
 	}
 	if app.screen == .Play && g.phase == .Finished {
 		finish_level(app)
@@ -474,6 +488,8 @@ global_keys :: proc(app: ^App) {
 			dismiss_act_card(app)
 		case .Fragment:
 			close_fragment(app)
+		case .Mechanic:
+			close_mechanic(app)
 		case .Title, .Ending:
 		}
 	}
@@ -491,6 +507,25 @@ global_keys :: proc(app: ^App) {
 	if app.screen == .Fragment && (rl.IsKeyPressed(.ENTER) || rl.IsKeyPressed(.KP_ENTER)) {
 		close_fragment(app)
 	}
+	if app.screen == .Mechanic && (rl.IsKeyPressed(.ENTER) || rl.IsKeyPressed(.KP_ENTER) || rl.IsKeyPressed(.SPACE)) {
+		close_mechanic(app)
+	}
+}
+
+close_mechanic :: proc(app: ^App) {
+	if app.mechanic_t > 0.8 {
+		app.screen = .Play
+		app.game.teach_card = false
+		app.game.teach_after = 0
+	}
+}
+
+MECHANIC_CARD := [level.Mechanic][2]i18n.Key {
+	.None    = {.Mech_New, .Mech_New},
+	.Crumble = {.Mech_Crumble_Title, .Mech_Crumble},
+	.Phantom = {.Mech_Phantom_Title, .Mech_Phantom},
+	.Veiled  = {.Mech_Veiled_Title, .Mech_Veiled},
+	.Handle  = {.Mech_Handle_Title, .Mech_Handle},
 }
 
 @(private)
@@ -610,6 +645,12 @@ draw_screens :: proc(app: ^App) {
 		ui.draw_hud(u, g)
 		if ui.fragment_card(u, game.fragment_key(g), app.fragment_t) {
 			close_fragment(app)
+		}
+	case .Mechanic:
+		ui.draw_hud(u, g)
+		keys := MECHANIC_CARD[g.data.mechanic]
+		if ui.mechanic_card(u, keys[0], keys[1], app.mechanic_t) {
+			close_mechanic(app)
 		}
 	case .Pause:
 		ui.draw_hud(u, g)

@@ -142,6 +142,36 @@ rest 0 3 1
 	testing.expect(t, !palace.find_path(&g.palace, g.psyche.cell, g.data.exit, true, &path), "and the bridge points the wrong way again")
 }
 
+// The level that introduces a mechanic presents it once, before the intro;
+// a restart does not.
+@(test)
+new_mechanic_is_presented :: proc(t: ^testing.T) {
+	g: game.Game
+	defer game.destroy(&g)
+	if err := game.load(&g, 4); err != nil {
+		testing.expect(t, false, "II.1 does not load")
+		return
+	}
+	testing.expect(t, g.data.mechanic == .Crumble, "II.1 introduces the cracked stones")
+	game.begin(&g)
+	run(&g, game.TEACH_AT + 0.1)
+	testing.expect(t, g.mechanic_new, "its card comes at the start")
+	testing.expect(t, game.fade_alpha(g.hud.voice) == 0, "before the intro line")
+	g.mechanic_new = false
+	g.teach_card = true
+	testing.expect(t, game.teach_glow(&g) == 1, "the cracked stones glow while the card is read")
+	g.teach_card = false
+	g.teach_after = 0
+	run(&g, 6)
+	testing.expect(t, game.teach_glow(&g) == 0, "and a few seconds after")
+	if err := game.load(&g, 4); err != nil {
+		return
+	}
+	game.begin(&g, prologue = false)
+	run(&g, 2)
+	testing.expect(t, !g.mechanic_new, "a restart does not present it again")
+}
+
 // Every built level of Act II can be solved, and the solver's plan, played
 // through the game, reaches the exit; the fragment is reachable and optional.
 @(test)

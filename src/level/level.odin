@@ -24,6 +24,23 @@ Solid :: struct {
 	dir:  Dir,
 }
 
+// The mechanic a level introduces: a card presents it when the level begins.
+Mechanic :: enum u8 {
+	None,
+	Crumble,
+	Phantom,
+	Veiled,
+	Handle,
+}
+
+MECHANIC_NAME := [Mechanic]string {
+	.None    = "none",
+	.Crumble = "crumble",
+	.Phantom = "phantom",
+	.Veiled  = "veiled",
+	.Handle  = "handle",
+}
+
 // How a block behaves (Act II): fixed stone, or one that changes for good.
 Trait :: enum u8 {
 	Stone,
@@ -145,6 +162,7 @@ Level_Data :: struct {
 	parts:        [dynamic]Part,
 	handles:      [dynamic]Handle,
 	rests:        [dynamic]Cell, // braziers: lit by passing, R brings Psyche back to the last one
+	mechanic:     Mechanic, // the new mechanic this level introduces (a card at the start)
 }
 
 MAX_PARTS :: 8
@@ -289,6 +307,17 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			}
 			append(&data.handles, Handle{v.xyz, index})
 			max_z = max(max_z, v.z)
+
+		case "mechanic":
+			found := false
+			for name, m in MECHANIC_NAME {
+				if len(args) > 0 && name == args[0] {
+					data.mechanic, found = m, true
+				}
+			}
+			if !found {
+				return data, fail(line_no, "mechanic: expected crumble, phantom, veiled or handle")
+			}
 
 		case "rest":
 			v: [3]i32

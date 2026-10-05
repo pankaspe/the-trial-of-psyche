@@ -42,6 +42,8 @@
 #   rest x y h              a brazier: lit by passing, R brings Psyche back to the
 #                           last one lit, the palace as it was then
 #   oil seconds             the lamp's oil (default 14)
+#   mechanic name           the level introduces crumble|phantom|veiled|handle: a
+#                           card presents it at the start and its pieces glow
 # Illusions: in the dark two surfaces are joined when they look joined in the
 # current view: (x',y',h) touches (x'+dx+k, y'+dy+k, h+k) in view coordinates,
 # provided both tops are visible (no nearer cube covers them) and no rail closes

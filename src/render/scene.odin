@@ -433,6 +433,7 @@ draw_world :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 	draw_clouds(r, s, g, v, time, true)
 	draw_motes(r, s, v)
 	draw_markers(g, v)
+	draw_teach(g, v, time)
 }
 
 @(private)
@@ -1272,6 +1273,55 @@ draw_markers :: proc(g: ^game.Game, v: View) {
 			a := world_to_screen(v, corners[i])
 			b := world_to_screen(v, corners[(i + 1) % 4])
 			rl.DrawLineEx(a, b, max(width, 0.5), to_color(col))
+		}
+	}
+}
+
+// The pieces of the level's new mechanic, pointed out while its card is read
+// (and a few seconds after): a pulsing golden diamond on each top. Veiled
+// stones are shown where they would stand.
+@(private)
+draw_teach :: proc(g: ^game.Game, v: View, time: f32) {
+	glow := game.teach_glow(g)
+	if glow <= 0.003 {
+		return
+	}
+	pulse := 0.6 + 0.4 * math.sin(time * 4)
+	col := Color4{1.0, 0.82, 0.42, 0.9 * glow * pulse}
+	outline :: proc(v: View, a, b, c, d: Vec3, col: Color4, width: f32) {
+		pts := [4]Vec3{a, b, c, d}
+		for i in 0 ..< 4 {
+			p := world_to_screen(v, pts[i])
+			q := world_to_screen(v, pts[(i + 1) % 4])
+			rl.DrawLineEx(p, q, width, to_color(col))
+		}
+	}
+	width := max(3 * v.zoom, 1)
+	top :: proc(g: ^game.Game, i: int, x, y: f32) -> Vec3 {
+		return block_world(g, i, {x, y, 1.01})
+	}
+	mech := g.data.mechanic
+	for e, i in g.data.blocks {
+		want := false
+		switch mech {
+		case .None:
+		case .Crumble: want = e.trait == .Crumble && pl.block_present(&g.palace, i)
+		case .Phantom: want = e.trait == .Phantom && pl.block_present(&g.palace, i)
+		case .Veiled: want = e.trait == .Veiled && !g.palace.flipped[i]
+		case .Handle: want = e.part > 0
+		}
+		if !want || pl.solid_at(&g.palace, pl.block_cell(&g.palace, i) + {0, 0, 1}).kind != .None {
+			continue
+		}
+		I :: 0.06
+		outline(v, top(g, i, I, I), top(g, i, 1 - I, I), top(g, i, 1 - I, 1 - I), top(g, i, I, 1 - I), col, width)
+		J :: 0.3
+		outline(v, top(g, i, J, J), top(g, i, 1 - J, J), top(g, i, 1 - J, 1 - J), top(g, i, J, 1 - J), {col.r, col.g, col.b, col.a * 0.5}, width * 0.7)
+	}
+	if mech == .Handle {
+		for h in g.data.handles {
+			c := Vec3{f32(h.cell.x), f32(h.cell.y), f32(h.cell.z) + 0.01}
+			outline(v, c + {0.06, 0.06, 0}, c + {0.94, 0.06, 0}, c + {0.94, 0.94, 0}, c + {0.06, 0.94, 0}, col, width)
 		}
 	}
 }

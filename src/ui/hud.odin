@@ -141,6 +141,37 @@ focus_shade :: proc(u: ^Ui, a: f32) {
 	rl.DrawRectangleGradientV(0, i32(u.height - band), i32(u.width), i32(band) + 1, clear_, edge)
 }
 
+// A level's new mechanic, presented when the level begins: the game waits
+// while it is read and its pieces glow in the palace. Reports a click once
+// it has been on screen for a moment (Enter is read by the app).
+mechanic_card :: proc(u: ^Ui, title, body: i18n.Key, t: f32) -> (clicked: bool) {
+	s := u.scale
+	w := u.width
+	a := clamp(t / 0.6, 0, 1)
+	// a lighter shade than the fragment's: the palace stays visible, its new pieces glowing
+	rl.DrawRectangleRec({0, 0, u.width, u.height}, fade({3, 3, 10, 255}, 0.3 * a))
+	st := Style{size = 30, color = {240, 232, 214, 255}, shadow = true}
+	msg := i18n.tr(body)
+	bw := 1150 * s
+	bh := block_height(u, msg, st, bw, 1.3)
+	// low on the screen, so that the palace and its glowing pieces stay in view
+	y := u.height - bh - 130 * s
+	band := rl.Rectangle{w * 0.5 - bw * 0.5 - 60 * s, y - 104 * s, bw + 120 * s, bh + 214 * s}
+	rl.DrawRectangleRec(band, fade({6, 6, 20, 255}, 0.72 * a))
+	rl.DrawRectangleRec({band.x, band.y, band.width, max(2 * s, 1)}, fade(GOLD, 0.6 * a))
+	rl.DrawRectangleRec({band.x, band.y + band.height - max(s, 1), band.width, max(2 * s, 1)}, fade(GOLD, 0.6 * a))
+	diamond(u, {w * 0.5, y - 84 * s}, 7 * s, fade(GOLD, a), true)
+	text(u, i18n.tr(.Mech_New), {w * 0.5, y - 70 * s}, {size = 22, color = GOLD, shadow = true}, .Center, a)
+	text(u, i18n.tr(title), {w * 0.5, y - 40 * s}, {size = 44, color = {250, 242, 222, 255}, shadow = true}, .Center, a)
+	paragraph(u, msg, {w * 0.5, y + 30 * s}, st, bw, a, 1.3)
+	ready := t > 0.8
+	if ready {
+		blink := 0.8 + 0.2 * math.sin(t * 2.4)
+		text(u, i18n.tr(.Fragment_Continue), {w * 0.5, y + 30 * s + bh + 30 * s}, {size = 22, color = {230, 214, 180, 255}, shadow = true}, .Center, blink * clamp((t - 0.8) / 0.6, 0, 1))
+	}
+	return ready && u.pressed
+}
+
 // The fragment just found: the game waits while it is read. Reports a click
 // once it has been on screen for a moment (Enter is read by the app).
 fragment_card :: proc(u: ^Ui, key: i18n.Key, t: f32) -> (clicked: bool) {

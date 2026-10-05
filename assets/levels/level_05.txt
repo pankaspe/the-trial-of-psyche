@@ -76,6 +76,7 @@ exit 8 8 1
 rest 4 2 3
 rest 4 5 1
 lamp
+mechanic crumble
 intro intro_ii_1
 outro outro_ii_1
 hint 2 1 6 hint_crumble

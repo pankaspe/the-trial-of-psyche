@@ -291,6 +291,19 @@ plan_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool)
 			s.t = 0
 			return "", false
 		}
+		if app.screen == .Mechanic {
+			// the card of the new mechanic: one shot, then on
+			if app.mechanic_t > 1.6 && s.shot == 0 {
+				s.shot = -1
+				return "p000a_mechanic", false
+			}
+			if s.shot == -1 {
+				close_mechanic(app)
+				s.shot = 0
+				s.t = 0
+			}
+			return "", false
+		}
 		if s.t < 6 {
 			return "", false // the title and the intro line
 		}

@@ -55,6 +55,7 @@ RISE_TIME :: 1.4
 RISE_DEPTH :: 520.0 / iso.WALL // risen blocks come up from this far below
 WELCOME_DELAY :: 1.6 // the start cell's cues, in a level without an intro
 INTRO_AT :: 0.8 // the intro line, under the level's title
+TEACH_AT :: 0.6 // the card of a new mechanic, before the intro line
 MAX_STAINS :: 96
 MAX_DROPS :: 8
 MAX_MARKERS :: 4
@@ -165,6 +166,10 @@ Game :: struct {
 	part_turning:   int, // the part a handle is turning (phase Mechanism)
 	rest:           Rest, // the last brazier Psyche lit
 	rests_lit:      []bool, // per data.rests entry
+	teach_pending:  bool, // the level's new mechanic is still to be presented
+	mechanic_new:   bool, // event for the app: present the new mechanic now (it clears it)
+	teach_card:     bool, // set by the app while the mechanic's card is on screen
+	teach_after:    f32, // time since that card was closed, < 0 before
 	trust_allowed:  bool, // set by the app: the game has been finished once
 	fragment_known: bool, // set by the app: collected in an earlier play
 	fragment_taken: bool, // picked up in this play
@@ -260,6 +265,7 @@ load_text :: proc(g: ^Game, index: int, text: string) -> (err: Maybe(Load_Error)
 	g.rise_t = -1
 	g.collapse_t = -1
 	g.fragment_t = -1
+	g.teach_after = -1
 	g.amore = {fly_t = -1, breath = 1}
 	g.psyche.cell = g.data.start
 	g.psyche.pos = pl.node_world(&g.palace, g.data.start)
@@ -302,6 +308,20 @@ begin :: proc(g: ^Game, prologue := true) {
 	show(&g.hud.title, title_key(g), 1.5, 3.5, 2.0)
 	audio.start_music()
 	g.begin_t = 0
+	// a restart (prologue = false) does not present the mechanic again
+	g.teach_pending = prologue && g.data.mechanic != .None
+}
+
+// How strongly the pieces of the new mechanic are pointed out: fully while
+// its card is on screen, fading a few seconds after.
+teach_glow :: proc(g: ^Game) -> f32 {
+	if g.teach_card {
+		return 1
+	}
+	if g.teach_after < 0 {
+		return 0
+	}
+	return 1 - fx.clamp01((g.teach_after - 3) / 2)
 }
 
 rot :: proc(g: ^Game) -> int {
@@ -346,6 +366,11 @@ update :: proc(g: ^Game, dt: f32) {
 	if g.begin_t >= 0 {
 		before := g.begin_t
 		g.begin_t += dt
+		if g.teach_pending && before < TEACH_AT && g.begin_t >= TEACH_AT && g.phase == .Play {
+			g.teach_pending = false
+			g.mechanic_new = true
+			audio.play(.Good, -8, 1.2)
+		}
 		if g.data.has_intro && before < INTRO_AT && g.begin_t >= INTRO_AT && g.phase == .Play {
 			speak(g, g.data.intro)
 		}
@@ -1049,6 +1074,9 @@ update_effects :: proc(g: ^Game, dt: f32) {
 	}
 	if g.fragment_t >= 0 {
 		g.fragment_t += dt
+	}
+	if g.teach_after >= 0 {
+		g.teach_after += dt
 	}
 	if g.shake_t < g.shake_duration {
 		g.shake_t += dt

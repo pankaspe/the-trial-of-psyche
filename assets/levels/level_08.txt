@@ -64,6 +64,7 @@ fragment 7 2 7
 start 0 9 2
 exit 11 5 2
 lamp
+mechanic handle
 intro intro_ii_4
 outro outro_ii_4
 hint 1 9 2 hint_handle

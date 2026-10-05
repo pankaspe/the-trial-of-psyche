@@ -59,6 +59,7 @@ exit 7 0 5
 rest 6 4 2
 rest 11 3 5
 lamp
+mechanic veiled
 intro intro_ii_3
 outro outro_ii_3
 hint 1 4 2 hint_veiled

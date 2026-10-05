@@ -56,6 +56,11 @@ CLAUDE.md for the design history).
   parts carry a bronze inlay. Handles are never on a part (Psyche never rides one).
 - **Braziers** (`rest x y h`): lit by passing (one on the start cell is lit already); R brings
   back Psyche and the palace as they were at the last one; R again restarts the level.
+- **New mechanic card** (`mechanic name` in the level, user's request 2026-10-05: "mi serve
+  qualcosa che spieghi la nuova meccanica, dobbiamo dargli importanza"): the level that
+  introduces a mechanic opens with a card "Nuovo: …" (name + two lines), the game paused, and
+  its pieces pulse with golden diamonds while it is read and a few seconds after; the tutorial
+  hint stays as a reminder. Not shown again on a restart.
 - Changes are permanent, so levels have dead ends: `palace.solve` (tools and tests) searches
   every state (cell, view, lamp, changed blocks, part turns) and counts the dead ones.
 
