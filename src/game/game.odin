@@ -12,6 +12,10 @@
 // shows its text and waits for the player.
 // Cupid's lines never cut each other off: a line said while another is on
 // screen waits its turn.
+// Act II: a crumbling block falls when Psyche steps off it; the lamp's light,
+// close to her, dissolves phantom blocks and makes veiled ones real, for good
+// (the lamp cannot be lit over a phantom); standing on a handle, a click on
+// her own cell (or F) turns a part of the palace a quarter.
 //
 // Cutscenes are timelines: a phase plus the time spent in it; every animation
 // is a function of that time, so there are no callbacks to keep alive.
@@ -23,6 +27,7 @@ package game
 
 import "core:math"
 import "core:mem"
+import "core:slice"
 import "core:mem/virtual"
 import "core:unicode/utf8"
 import sa "core:container/small_array"
@@ -55,10 +60,14 @@ MAX_DROPS :: 8
 MAX_MARKERS :: 4
 MARKER_TIME :: 0.6
 MAX_QUEUED_VOICES :: 4
+PART_TIME :: 0.9 // a part of the palace turning a quarter
+FALL_TIME :: 1.3 // a crumbling block falling
+DISSOLVE_TIME :: 1.2 // a phantom dissolving, a veiled block appearing
 
 Phase :: enum u8 {
 	Play,
 	Sigil, // the seal is lit: blocks rise, input waits
+	Mechanism, // a handle turns a part of the palace: input waits
 	Prologue, // the opening cutscene (prologue.odin): input only skips or starts
 	Ending_Oil,
 	Ending_Trust,
@@ -151,6 +160,11 @@ Game :: struct {
 	activated:      bool, // the seal has been lit
 	lightings:      int, // times the lamp was lit
 
+	oil_max:        f32, // the lamp's oil when full (seconds)
+	flip_t:         []f32, // per data.blocks entry: time since it changed for good, < 0 before
+	part_turning:   int, // the part a handle is turning (phase Mechanism)
+	rest:           Rest, // the last brazier Psyche lit
+	rests_lit:      []bool, // per data.rests entry
 	trust_allowed:  bool, // set by the app: the game has been finished once
 	fragment_known: bool, // set by the app: collected in an earlier play
 	fragment_taken: bool, // picked up in this play
@@ -190,6 +204,18 @@ Game :: struct {
 	rng:            fx.Rng,
 }
 
+// What a brazier remembers: the palace and Psyche as they were when she lit it.
+Rest :: struct {
+	valid:     bool,
+	cell:      Cell,
+	view:      int,
+	flipped:   []bool,
+	part_rot:  [level.MAX_PARTS]int,
+	oil:       f32,
+	activated: bool,
+	lightings: int,
+}
+
 Load_Error :: level.Parse_Error
 
 // (Re)load a level: frees everything from the previous one.
@@ -220,8 +246,15 @@ load_text :: proc(g: ^Game, index: int, text: string) -> (err: Maybe(Load_Error)
 	pl.init(&g.palace, &g.data, alloc)
 	g.reach_before = make([]bool, len(g.palace.solid), alloc) // one per grid cell: enough for any node count
 	g.rise_count = len(g.data.rise)
+	g.flip_t = make([]f32, len(g.data.blocks), alloc)
+	g.rest.flipped = make([]bool, len(g.data.blocks), alloc)
+	g.rests_lit = make([]bool, len(g.data.rests), alloc)
+	for &t in g.flip_t {
+		t = -1
+	}
 
-	g.oil = OIL_MAX
+	g.oil_max = g.data.oil > 0 ? g.data.oil : OIL_MAX
+	g.oil = g.oil_max
 	g.flicker = 1
 	g.begin_t = -1
 	g.rise_t = -1
@@ -233,6 +266,11 @@ load_text :: proc(g: ^Game, index: int, text: string) -> (err: Maybe(Load_Error)
 	g.psyche.yaw = math.PI * 0.75 // facing the camera
 	g.psyche.target_yaw = g.psyche.yaw
 	g.rng = fx.rng_init(u32(index) * 7919 + 17)
+	for c, i in g.data.rests {
+		if c == g.data.start {
+			light_rest(g, i, quiet = true) // a brazier where she starts is lit already
+		}
+	}
 	g.loaded = true
 	return nil
 }
@@ -330,6 +368,9 @@ update :: proc(g: ^Game, dt: f32) {
 			break
 		}
 		psy := g.psyche.cell
+		if g.lamp_on && g.light > 0.6 {
+			lamp_truth(g)
+		}
 		if g.lamp_on && g.light > 0.6 && !g.activated && !g.psyche.walking && g.data.has_sigil && psy == g.data.sigil {
 			activate_sigil(g)
 		} else if g.lamp_on && g.light > 0.3 && in_chamber(g, psy) {
@@ -339,6 +380,13 @@ update :: proc(g: ^Game, dt: f32) {
 		update_prologue(g, dt)
 	case .Sigil:
 		if g.phase_t >= rise_duration(g) {
+			set_phase(g, .Play)
+		}
+	case .Mechanism:
+		if g.phase_t >= PART_TIME {
+			pl.turn_part(&g.palace, g.part_turning)
+			audio.play(.Drop, -8, 0.5)
+			shake(g, 0.25)
 			set_phase(g, .Play)
 		}
 	case .Ending_Oil:
@@ -433,6 +481,10 @@ toggle_lamp :: proc(g: ^Game) {
 	if g.lamp_on {
 		set_lamp(g, false)
 		learn(g, .Hint_Oil)
+	} else if !pl.can_light(&g.palace, g.psyche.cell) || (g.psyche.walking && !pl.can_light(&g.palace, g.psyche.step_to)) {
+		// a phantom under her feet would vanish in the light
+		audio.play(.Blocked, -6)
+		hint(g, .Hint_Phantom_Under, 4, true)
 	} else if g.oil > 0.05 {
 		g.oil = max(g.oil - LIGHT_COST, 0)
 		g.lightings += 1
@@ -494,6 +546,10 @@ click :: proc(g: ^Game, point: Vec2) {
 	if !ok {
 		return
 	}
+	if target == g.psyche.cell && !g.psyche.walking && pl.handle_at(&g.palace, target) >= 0 {
+		use_handle(g)
+		return
+	}
 	// while a step is under way, plan from where that step will end
 	from := g.psyche.walking ? g.psyche.step_to : g.psyche.cell
 	path: pl.Path
@@ -539,6 +595,13 @@ next_step :: proc(g: ^Game) {
 	}
 	next := sa.get(g.path, 0)
 	illusion := pl.is_illusion(&g.palace, psy.cell, next)
+	if !pl.is_real_edge(&g.palace, psy.cell, next) && !(illusion && !g.lamp_on) {
+		// the way has changed under her (a stone fell, the light dissolved one)
+		sa.clear(&g.path)
+		audio.play(.Blocked, -8)
+		stop_walking(g)
+		return
+	}
 	if illusion && g.lamp_on {
 		sa.clear(&g.path)
 		audio.play(.Blocked, -8)
@@ -654,6 +717,13 @@ update_walk :: proc(g: ^Game, dt: f32) {
 	psy.cell = psy.step_to
 	psy.pos = pl.node_world(&g.palace, psy.cell)
 	audio.play(.Step, -18, fx.rand_range(&g.rng, 0.85, 1.15))
+	if fell := pl.leave(&g.palace, psy.step_from); fell >= 0 {
+		// the cracked stone she has just left falls
+		g.flip_t[fell] = 0
+		audio.play(.Rumble, -10, 1.6)
+		shake(g, 0.35)
+		learn(g, .Hint_Crumble)
+	}
 	arrive(g, psy.cell)
 	next_step(g)
 }
@@ -676,6 +746,11 @@ cues :: proc(g: ^Game, n: Cell) {
 @(private)
 arrive :: proc(g: ^Game, n: Cell) {
 	cues(g, n)
+	for c, i in g.data.rests {
+		if c == n {
+			light_rest(g, i)
+		}
+	}
 	if g.data.has_fragment && n == g.data.fragment && !g.fragment_taken && !g.fragment_known {
 		take_fragment(g)
 	}
@@ -720,6 +795,116 @@ add_marker :: proc(g: ^Game, c: Cell, ok: bool) {
 		}
 	}
 	g.markers[slot] = {true, c, ok, 0}
+}
+
+// --- Act II: the lamp's truth, handles ---------------------------------------------------
+
+// The light close to Psyche dissolves phantoms and makes veiled blocks real.
+@(private)
+lamp_truth :: proc(g: ^Game) {
+	psy := &g.psyche
+	keep := [2]Cell{psy.cell, psy.walking ? psy.step_to : psy.cell}
+	if !pl.lamp_touch(&g.palace, psy.cell, keep[:]) {
+		return
+	}
+	for &t, i in g.flip_t {
+		if t >= 0 || !g.palace.flipped[i] {
+			continue
+		}
+		t = 0
+		#partial switch g.data.blocks[i].trait {
+		case .Phantom:
+			audio.play(.Seam, -10, 0.7)
+			learn(g, .Hint_Phantom)
+		case .Veiled:
+			audio.play(.Good, -14, 0.8)
+			learn(g, .Hint_Veiled)
+		}
+	}
+}
+
+// Standing on a handle: turn its part of the palace a quarter.
+use_handle :: proc(g: ^Game) {
+	if !g.active || g.phase != .Play || g.turning || g.psyche.walking {
+		return
+	}
+	h := pl.handle_at(&g.palace, g.psyche.cell)
+	if h < 0 {
+		return
+	}
+	g.part_turning = g.data.handles[h].part
+	sa.clear(&g.path)
+	set_phase(g, .Mechanism)
+	audio.play(.Turn, -4, 0.6)
+	learn(g, .Hint_Handle)
+}
+
+// How far part n is turned now, in quarter turns (animated while a handle turns it).
+part_angle :: proc(g: ^Game, n: int) -> f32 {
+	a := f32(g.palace.part_rot[n])
+	if g.phase == .Mechanism && g.part_turning == n {
+		a += fx.sine_in_out(fx.clamp01(g.phase_t / PART_TIME))
+	}
+	return a
+}
+
+// --- braziers -----------------------------------------------------------------------
+
+@(private)
+light_rest :: proc(g: ^Game, i: int, quiet := false) {
+	if !g.rests_lit[i] {
+		g.rests_lit[i] = true
+		if !quiet {
+			audio.play(.Lamp_On, -10, 0.8)
+			hint(g, .Hint_Rest, 6)
+		}
+	}
+	r := &g.rest
+	r.valid = true
+	r.cell = g.data.rests[i]
+	r.view = g.palace.rot
+	copy(r.flipped, g.palace.flipped)
+	r.part_rot = g.palace.part_rot
+	r.oil = g.oil
+	r.activated = g.activated
+	r.lightings = g.lightings
+}
+
+has_rest :: proc(g: ^Game) -> bool {
+	return g.rest.valid && g.phase == .Play
+}
+
+// Back to the last brazier: the palace and Psyche as they were there.
+// False when she is there already with nothing changed (the app then
+// restarts the whole level: a brazier may remember a lost cause).
+return_to_rest :: proc(g: ^Game) -> bool {
+	if !has_rest(g) {
+		return false
+	}
+	r := &g.rest
+	if g.psyche.cell == r.cell && !g.psyche.walking && slice.equal(g.palace.flipped, r.flipped) && g.palace.part_rot == r.part_rot {
+		return false
+	}
+	set_lamp(g, false)
+	g.light = 0
+	g.oil = r.oil
+	g.lightings = r.lightings
+	copy(g.palace.flipped, r.flipped)
+	g.palace.part_rot = r.part_rot
+	pl.rebuild_graph(&g.palace)
+	for &t, i in g.flip_t {
+		t = g.palace.flipped[i] ? 1e3 : -1
+	}
+	set_view(g, r.view)
+	g.pending_turn = 0
+	sa.clear(&g.path)
+	psy := &g.psyche
+	psy.walking = false
+	psy.cell = r.cell
+	psy.pos = pl.node_world(&g.palace, r.cell)
+	g.markers = {}
+	audio.play(.Wind, -14)
+	return true
 }
 
 // --- story events ----------------------------------------------------------------
@@ -780,7 +965,7 @@ start_ending :: proc(g: ^Game, p: Phase) {
 		audio.play(.Good, -2)
 	case .Ending_Exit:
 		audio.play(.Wind, -4)
-	case .Play, .Sigil, .Prologue, .Finished:
+	case .Play, .Sigil, .Mechanism, .Prologue, .Finished:
 	}
 }
 
@@ -988,7 +1173,8 @@ start_cues_time :: proc(g: ^Game) -> f32 {
 // Tutorial hints stay on screen until Psyche does what they teach.
 is_tutorial :: proc(key: Key) -> bool {
 	#partial switch key {
-	case .Hint_Move, .Hint_Turn, .Hint_Lamp, .Hint_Illusion, .Hint_Stairs, .Hint_Sigil, .Hint_Oil:
+	case .Hint_Move, .Hint_Turn, .Hint_Lamp, .Hint_Illusion, .Hint_Stairs, .Hint_Sigil, .Hint_Oil,
+	     .Hint_Crumble, .Hint_Phantom, .Hint_Veiled, .Hint_Handle:
 		return true
 	}
 	return false

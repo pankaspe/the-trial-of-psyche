@@ -1,0 +1,68 @@
+# The Trial of Psyche - level II.3: "The Sisters' Crag"
+# Veiled stones. The sister runs to the crag; Psyche follows. A veiled stone
+# is not there in the dark; the lamp shows it in gold, and close by (about two
+# cells) makes it real for good. The sisters' road is made of phantom stones:
+# it holds in the dark and leads to the precipice.
+#   1. a veiled bridge from the start to the foot of the crag (tutorial: walk
+#      it in the light);
+#   2. the ledge: the seam of view 0 climbs from the foot of the crag to the
+#      ledge, but the veiled stone beyond the ledge, once real, hides the foot
+#      of the seam: climb in the dark first, then light the lamp up there;
+#   3. the sisters' road: from the veiled stone, view 1 joins the upper crag;
+#      cross the phantom stone in the dark, then light at the junction: the
+#      true road appears, the false one (and the way to the precipice) is gone;
+#   4. the same light shows a stone over the precipice: from the summit,
+#      view 3 joins it, view 0 joins it to the rock where Zephyr does not come.
+# Fragment: on the precipice, at the end of the sisters' road: go there in
+# the dark before lighting at the junction.
+# Format: see level_04.txt.
+size 12
+
+# A: where Psyche comes to the crag (h2)
+column 1 4 0 1
+column 1 5 0 1
+# the veiled bridge
+veiled 2 5 1
+veiled 3 5 1
+veiled 4 5 1
+# B: the foot of the crag (h2)
+column 5 5 0 1
+column 6 5 0 1
+column 6 4 0 1
+column 7 5 0 1
+# D: the ledge (h4), joined to B (6,4) in view 0
+column 9 6 0 3
+# V: the veiled stone beyond the ledge; once real it hides B (6,4) in view 0
+veiled 8 6 3
+# E: the upper crag (h5), joined to V in view 1
+column 10 5 0 4
+column 10 4 0 4
+# the sisters' road (phantom)
+phantom 11 4 4
+# J: the junction (h5)
+column 11 3 0 4
+# the true road (veiled) to the summit (h5)
+veiled 11 2 4
+veiled 11 1 4
+column 11 0 0 4
+column 10 0 0 4
+# the sisters' road on to the precipice (h5)
+phantom 10 3 4
+column 9 3 0 4
+fragment 9 3 5
+# Y: a veiled stone over the precipice; R: the rock where the wind does not come
+veiled 9 3 6
+column 7 0 0 4
+
+start 1 4 2
+exit 7 0 5
+rest 6 4 2
+rest 11 3 5
+lamp
+intro intro_ii_3
+outro outro_ii_3
+hint 1 4 2 hint_veiled
+# small things
+prop vase 1 4 2 my
+prop sconce 9 6 2 px
+prop sconce 10 4 3 px

@@ -1,0 +1,85 @@
+# The Trial of Psyche - level II.1: "Cupid's Flight"
+# Crumbling stones. Cupid has flown; the palace falls apart around Psyche.
+# A cracked stone bears one crossing: it falls once she steps off it, and
+# what falls stops hiding what was behind it.
+#   1. the first cracked bridge, off the tower where Cupid slept (tutorial);
+#   2. the terrace: a cracked stone stands right where the way down would
+#      be (view 0); step on it and back, it falls, the seam appears;
+#   3. the lower terrace (brazier): a cracked stone joined to the garden only
+#      in view 1: turn before leaving it, or it falls behind her for nothing;
+#   4. the garden: the exit pillar is too high while its cracked cap stands:
+#      climb the cap by the seam of view 0, step back down, it falls.
+# Fragment: a broken column with two cracked stones; lower it twice (view 0,
+# then view 3) and the fragment waits on the second.
+# Format: see level_04.txt.
+size 12
+
+# T: the top of the tower where Cupid slept (h6)
+column 2 1 0 5
+block 3 1 5
+block 2 2 5
+block 3 2 5
+prop bed 3 1 6 mx
+# the first cracked bridge (h6)
+crumble 3 3 5
+crumble 3 4 5
+# L: landing (h6), stairs down east
+block 3 5 5
+block 4 5 5
+stairs 5 5 5 mx
+# B: broken terrace (h5); K, the cracked stone where the way down should be
+block 6 5 4
+block 7 5 4
+block 7 4 4
+crumble 6 4 4
+prop rail 6 5 5 my
+# C: lower terrace (h3), joined to B in view 0 once K has fallen
+column 4 2 0 2
+block 5 2 2
+# Q: a cracked stone, joined to the garden in view 1 only
+crumble 6 2 2
+# the garden at the foot of the palace (h1)
+column 4 5 0 0
+column 4 6 0 0
+column 4 7 0 0
+column 5 7 0 0
+column 6 7 0 0
+column 7 7 0 0
+column 8 7 0 0
+column 9 7 0 0
+column 9 8 0 0
+column 9 9 0 0
+lawn 4 5 0
+lawn 4 6 0
+lawn 4 7 0
+lawn 5 7 0
+lawn 6 7 0
+lawn 7 7 0
+lawn 8 7 0
+lawn 9 7 0
+lawn 9 8 0
+lawn 9 9 0
+column 10 9 0 0
+lawn 10 9 0
+prop cypress 10 9 1
+# E: the exit column, too high while its cracked cap stands
+column 8 8 0 0
+crumble 8 8 1
+# P: a broken column with two cracked stones; the fragment under the top one
+column 7 10 0 0
+crumble 7 10 1
+crumble 7 10 2
+fragment 7 10 2
+
+start 2 1 6
+exit 8 8 1
+rest 4 2 3
+rest 4 5 1
+lamp
+intro intro_ii_1
+outro outro_ii_1
+hint 2 1 6 hint_crumble
+# small things
+prop vase 2 2 6 mx
+prop sconce 2 1 4 mx
+prop vase 4 7 1 my

@@ -1,0 +1,73 @@
+# The Trial of Psyche - level II.4: "The Temple of Ceres"
+# Handles. Psyche puts the temple of Ceres in order. Standing on a handle, a
+# click on her (or F) turns a part of the palace a quarter, counter-clockwise
+# seen from above; parts carry a bronze inlay.
+#   1. a bridge turns about its middle to join the start to the porch
+#      (tutorial);
+#   2. the floor of offerings, an L about (8,6), joins two of the four doors
+#      at a time: west-north, north-east... (the north door is a step too
+#      high for it). Its handle on the porch can only send Psyche south
+#      (three turns);
+#   3. from the south door the high stone over the porch is joined in view 2,
+#      and the stone to the north door in view 3; the second handle, by the
+#      north door, turns the floor to join south and east (three more turns);
+#      back over the high stone to the south door, through the floor, east to
+#      the exit.
+# Fragment: on the column of the goddess beside the north door, joined to the
+# high stone in view 1.
+# Format: see level_04.txt.
+size 12
+
+# the start (h2) and the first handle
+column 0 9 0 1
+column 1 9 0 1
+# the turning bridge (h2), about (3,9)
+part 3 9
+column 3 8 0 1
+column 3 9 0 1
+column 3 10 0 1
+prop wallBattlement 3 10 2 mx
+prop wallBattlement 3 8 2 px
+end
+handle 1 9 2 0
+# the porch (h2) to the west door
+column 5 9 0 1
+column 5 8 0 1
+column 5 7 0 1
+column 5 6 0 1
+# the floor of offerings (h2): an L about (8,6), joining west and north at first
+part 8 6
+column 8 6 0 1
+column 7 6 0 1
+column 6 6 0 1
+column 8 5 0 1
+column 8 4 0 1
+end
+handle 5 6 2 1
+# the south door (h2)
+column 8 9 0 1
+column 8 10 0 1
+column 9 10 0 1
+# the north door (h3) and its handle
+column 8 3 0 2
+column 8 2 0 2
+handle 8 2 3 1
+# the east door (h2) and the exit
+column 11 6 0 1
+column 11 5 0 1
+# the high stone over the porch (h5)
+block 5 5 4
+# the column of the goddess, with the fragment
+column 7 2 0 6
+fragment 7 2 7
+
+start 0 9 2
+exit 11 5 2
+lamp
+intro intro_ii_4
+outro outro_ii_4
+hint 1 9 2 hint_handle
+# offerings
+prop urn 9 10 2
+prop vase 5 9 2 py
+prop vase 11 6 2 py

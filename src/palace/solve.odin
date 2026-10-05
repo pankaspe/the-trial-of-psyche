@@ -1,0 +1,445 @@
+// A solver for levels whose palace changes (Act II on): it plays every move
+// Psyche can make, one at a time, exactly as the game does: a step along a
+// real edge (or, in the dark, an illusion of the current view, with the
+// hidden-stairs rule), a turn of the view, lighting or putting out the lamp,
+// a handle. Crumbling blocks fall when she steps off them; the lamp's light
+// dissolves phantoms and makes veiled blocks real within its reach.
+// A state is her cell, the view, the lamp and the palace's configuration
+// (which blocks changed, how each part is turned). The search is a cheapest
+// path (steps cost 1; turns, lightings and handles more, so the plan it
+// prints is the one with the fewest decisions). Oil is not counted: the plan
+// reports how many steps it walks in the light.
+//
+// Memory: everything comes from the allocator given to `solve` (an arena).
+package palace
+
+import "core:slice"
+
+import "../level"
+
+Config :: struct {
+	flips: u64, // bit k: the k-th changing block has changed
+	rots:  u32, // 2 bits per part
+}
+
+@(private = "file")
+Search_State :: struct {
+	cfg:  Config,
+	cell: Cell,
+	view: u8,
+	lamp: bool,
+}
+
+Move :: enum u8 {
+	Start,
+	Step,
+	Turn_Left,
+	Turn_Right,
+	Light,
+	Douse,
+	Handle,
+}
+
+COST := [Move]int {
+	.Start      = 0,
+	.Step       = 1,
+	.Turn_Left  = 2,
+	.Turn_Right = 2,
+	.Light      = 4,
+	.Douse      = 1,
+	.Handle     = 3,
+}
+
+Plan_Step :: struct {
+	move:     Move,
+	cell:     Cell, // where Psyche is after the move
+	view:     int,
+	illusion: bool, // a step across an illusion
+	changed:  int, // blocks that changed with this move
+}
+
+Solution :: struct {
+	solved:      bool,
+	plan:        [dynamic]Plan_Step,
+	steps:       int,
+	light_steps: int,
+	turns:       int,
+	lightings:   int,
+	handles:     int,
+	states:      int, // states reached from the start
+	dead:        int, // ...of which cannot reach the goal any more (R restarts)
+}
+
+// The palace in one configuration, in every view.
+@(private = "file")
+Config_Graph :: struct {
+	nodes:      []Node,
+	index:      map[Cell]i32,
+	real_start: []i32,
+	real_list:  []i32,
+	ill_start:  [4][]i32,
+	ill_list:   [4][]i32,
+	stair_seen: [4][]bool,
+	phantom:    []bool, // per node: stands on a phantom (no lighting there)
+	crumble:    []int, // per node: index of the crumbling block under it, -1
+}
+
+@(private = "file")
+Solver :: struct {
+	p:       ^Palace,
+	changing: [dynamic]int, // block index of each changing block (bit order)
+	cache:   map[Config]^Config_Graph,
+}
+
+@(private = "file")
+configure :: proc(s: ^Solver, cfg: Config) {
+	p := s.p
+	for b, k in s.changing {
+		p.flipped[b] = cfg.flips & (1 << u64(k)) != 0
+	}
+	for n in 0 ..< len(p.data.parts) {
+		p.part_rot[n] = int((cfg.rots >> (2 * u32(n))) & 3)
+	}
+	rebuild_graph(p)
+}
+
+@(private = "file")
+config_of :: proc(s: ^Solver) -> (cfg: Config) {
+	p := s.p
+	for b, k in s.changing {
+		if p.flipped[b] {
+			cfg.flips |= 1 << u64(k)
+		}
+	}
+	for n in 0 ..< len(p.data.parts) {
+		cfg.rots |= u32(p.part_rot[n]) << (2 * u32(n))
+	}
+	return
+}
+
+@(private = "file")
+graph_of :: proc(s: ^Solver, cfg: Config) -> ^Config_Graph {
+	if g, ok := s.cache[cfg]; ok {
+		return g
+	}
+	p := s.p
+	configure(s, cfg)
+	g := new(Config_Graph)
+	g.nodes = slice.clone(p.nodes[:])
+	g.index = make(map[Cell]i32, len(p.nodes))
+	g.phantom = make([]bool, len(p.nodes))
+	g.crumble = make([]int, len(p.nodes))
+	for n, i in p.nodes {
+		g.index[n.cell] = i32(i)
+		g.crumble[i] = -1
+		if n.stair {
+			continue
+		}
+		if b := support(p, n.cell); b >= 0 {
+			switch p.data.blocks[b].trait {
+			case .Phantom: g.phantom[i] = true
+			case .Crumble: g.crumble[i] = b
+			case .Stone, .Veiled:
+			}
+		}
+	}
+	g.real_start = slice.clone(p.real.start[:])
+	g.real_list = slice.clone(p.real.list[:])
+	view := p.rot
+	for r in 0 ..< 4 {
+		set_view(p, r)
+		g.ill_start[r] = slice.clone(p.illusion.start[:])
+		g.ill_list[r] = slice.clone(p.illusion.list[:])
+		g.stair_seen[r] = slice.clone(p.stair_seen[:len(p.nodes)])
+	}
+	set_view(p, view)
+	s.cache[cfg] = g
+	return g
+}
+
+@(private = "file")
+Entry :: struct {
+	state:    Search_State,
+	parent:   i32,
+	move:     Move,
+	illusion: bool,
+	changed:  int,
+	cost:     int,
+	done:     bool,
+}
+
+@(private = "file")
+Edge :: struct {
+	from, to: i32,
+}
+
+// Search from the start to `goal`; `avoid` is never entered (to prove the
+// fragment optional). The palace is left as loaded (nothing changed, view 0).
+solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := context.allocator) -> (sol: Solution) {
+	context.allocator = allocator
+	s := Solver{p = p}
+	s.cache = make(map[Config]^Config_Graph)
+	for e, i in p.data.blocks {
+		if e.trait != .Stone {
+			append(&s.changing, i)
+		}
+	}
+	avoid_cell, has_avoid := avoid.?
+	saved_view := p.rot
+
+	entries := make([dynamic]Entry, 0, 4096)
+	seen := make(map[Search_State]i32)
+	edges := make([dynamic]Edge, 0, 16384)
+	buckets := make([dynamic][dynamic]i32, 0, 256)
+
+	push :: proc(entries: ^[dynamic]Entry, seen: ^map[Search_State]i32, buckets: ^[dynamic][dynamic]i32, edges: ^[dynamic]Edge, e: Entry) {
+		if e.parent >= 0 {
+			if id, ok := seen[e.state]; ok {
+				append(edges, Edge{e.parent, id})
+				if entries[id].done || entries[id].cost <= e.cost {
+					return
+				}
+				entries[id].parent, entries[id].move, entries[id].cost = e.parent, e.move, e.cost
+				entries[id].illusion, entries[id].changed = e.illusion, e.changed
+				for len(buckets) <= e.cost {
+					append(buckets, make([dynamic]i32, 0, 64))
+				}
+				append(&buckets[e.cost], id)
+				return
+			}
+		}
+		id := i32(len(entries))
+		append(entries, e)
+		seen[e.state] = id
+		if e.parent >= 0 {
+			append(edges, Edge{e.parent, id})
+		}
+		for len(buckets) <= e.cost {
+			append(buckets, make([dynamic]i32, 0, 64))
+		}
+		append(&buckets[e.cost], id)
+	}
+
+	start_cfg := Config{}
+	push(&entries, &seen, &buckets, &edges, Entry{state = {start_cfg, p.data.start, 0, false}, parent = -1, move = .Start})
+	goal_id: i32 = -1
+	for cost := 0; cost < len(buckets); cost += 1 {
+		for k := 0; k < len(buckets[cost]); k += 1 {
+			id := buckets[cost][k]
+			if entries[id].done || entries[id].cost != cost {
+				continue
+			}
+			entries[id].done = true
+			st := entries[id].state
+			if st.cell == goal && goal_id < 0 {
+				goal_id = id
+			}
+			g := graph_of(&s, st.cfg)
+			a, ok := g.index[st.cell]
+			if !ok {
+				continue
+			}
+			next :: proc(entries: ^[dynamic]Entry, seen: ^map[Search_State]i32, buckets: ^[dynamic][dynamic]i32, edges: ^[dynamic]Edge, from: i32, st: Search_State, move: Move, illusion := false, changed := 0) {
+				e := Entry{state = st, parent = from, move = move, illusion = illusion, changed = changed}
+				e.cost = entries[from].cost + COST[move]
+				push(entries, seen, buckets, edges, e)
+			}
+
+			// turning the view
+			left, right := st, st
+			left.view = (st.view + 3) % 4
+			right.view = (st.view + 1) % 4
+			next(&entries, &seen, &buckets, &edges, id, left, .Turn_Left)
+			next(&entries, &seen, &buckets, &edges, id, right, .Turn_Right)
+
+			// the lamp
+			if p.data.has_lamp {
+				if st.lamp {
+					off := st
+					off.lamp = false
+					next(&entries, &seen, &buckets, &edges, id, off, .Douse)
+				} else if !g.phantom[a] {
+					on := st
+					on.lamp = true
+					cfg, changed := touch(&s, st.cfg, st.cell)
+					on.cfg = cfg
+					if _, still := graph_of(&s, cfg).index[st.cell]; still {
+						next(&entries, &seen, &buckets, &edges, id, on, .Light, false, changed)
+					}
+				}
+			}
+
+			// a handle
+			if h := handle_at_cell(p, st.cell); h >= 0 {
+				turned := st
+				part := p.data.handles[h].part
+				r := (st.cfg.rots >> (2 * u32(part))) & 3
+				turned.cfg.rots = (st.cfg.rots & ~(3 << (2 * u32(part)))) | (((r + 1) & 3) << (2 * u32(part)))
+				if _, still := graph_of(&s, turned.cfg).index[st.cell]; still {
+					next(&entries, &seen, &buckets, &edges, id, turned, .Handle)
+				}
+			}
+
+			// steps
+			dark := !st.lamp
+			for pass in 0 ..< 2 {
+				if pass == 1 && !dark {
+					break
+				}
+				start, list := g.real_start, g.real_list
+				if pass == 1 {
+					start, list = g.ill_start[st.view], g.ill_list[st.view]
+				}
+				if int(a) + 1 >= len(start) {
+					continue
+				}
+				for b in list[start[a]:start[a + 1]] {
+					if dark && ((g.nodes[a].stair && !g.stair_seen[st.view][a]) || (g.nodes[b].stair && !g.stair_seen[st.view][b])) {
+						continue
+					}
+					to := g.nodes[b].cell
+					if has_avoid && to == avoid_cell {
+						continue
+					}
+					moved := st
+					moved.cell = to
+					changed := 0
+					if c := g.crumble[a]; c >= 0 {
+						bit, _ := slice.linear_search(s.changing[:], c)
+						moved.cfg.flips |= 1 << u64(bit)
+						changed += 1
+					}
+					if st.lamp {
+						n := 0
+						moved.cfg, n = touch(&s, moved.cfg, to)
+						changed += n
+					}
+					if _, still := graph_of(&s, moved.cfg).index[to]; still {
+						next(&entries, &seen, &buckets, &edges, id, moved, .Step, pass == 1, changed)
+					}
+				}
+			}
+		}
+	}
+
+	sol.states = len(entries)
+	// states that can still reach the goal: backwards from every goal state
+	alive := make([]bool, len(entries))
+	back_start := make([]i32, len(entries) + 1)
+	for e in edges {
+		back_start[e.to + 1] += 1
+	}
+	for i in 1 ..< len(back_start) {
+		back_start[i] += back_start[i - 1]
+	}
+	back := make([]i32, len(edges))
+	cursor := slice.clone(back_start[:len(entries)])
+	for e in edges {
+		back[cursor[e.to]] = e.from
+		cursor[e.to] += 1
+	}
+	queue := make([dynamic]i32, 0, len(entries))
+	for e, i in entries {
+		if e.state.cell == goal {
+			alive[i] = true
+			append(&queue, i32(i))
+		}
+	}
+	for head := 0; head < len(queue); head += 1 {
+		cur := queue[head]
+		for from in back[back_start[cur]:back_start[cur + 1]] {
+			if !alive[from] {
+				alive[from] = true
+				append(&queue, from)
+			}
+		}
+	}
+	sol.dead = slice.count(alive, false)
+
+	if goal_id >= 0 {
+		sol.solved = true
+		chain := make([dynamic]i32, 0, 128)
+		for id := goal_id; id >= 0; id = entries[id].parent {
+			append(&chain, id)
+		}
+		slice.reverse(chain[:])
+		for id in chain[1:] {
+			e := entries[id]
+			append(&sol.plan, Plan_Step{e.move, e.state.cell, int(e.state.view), e.illusion, e.changed})
+			#partial switch e.move {
+			case .Step:
+				sol.steps += 1
+				sol.light_steps += int(e.state.lamp)
+			case .Turn_Left, .Turn_Right:
+				sol.turns += 1
+			case .Light:
+				sol.lightings += 1
+			case .Handle:
+				sol.handles += 1
+			}
+		}
+	}
+
+	// leave the palace as loaded
+	configure(&s, {})
+	set_view(p, saved_view)
+	return
+}
+
+@(private = "file")
+handle_at_cell :: proc(p: ^Palace, c: Cell) -> int {
+	return handle_at(p, c)
+}
+
+// The lamp's light at `feet` in configuration cfg: the new configuration and
+// how many blocks changed.
+@(private = "file")
+touch :: proc(s: ^Solver, cfg: Config, feet: Cell) -> (out: Config, changed: int) {
+	out = cfg
+	d := s.p.data
+	for b, k in s.changing {
+		e := d.blocks[b]
+		if (e.trait != .Phantom && e.trait != .Veiled) || cfg.flips & (1 << u64(k)) != 0 {
+			continue
+		}
+		c := e.cell
+		if e.part != 0 {
+			c = level.part_cell(c, d.parts[e.part - 1].pivot, int((cfg.rots >> (2 * u32(e.part - 1))) & 3))
+		}
+		if !in_truth(feet, c) || c == feet || c == feet - {0, 0, 1} {
+			continue
+		}
+		out.flips |= 1 << u64(k)
+		changed += 1
+	}
+	return
+}
+
+// Is the level's goal reachable, and the fragment reachable and optional?
+// For levels whose palace changes; `goal` is the exit.
+check_dynamic :: proc(p: ^Palace, allocator := context.allocator) -> (solvable, fragment_reachable, fragment_optional: bool) {
+	d := p.data
+	if !d.has_exit {
+		return
+	}
+	solvable = solve(p, d.exit, nil, allocator).solved
+	if !d.has_fragment {
+		return solvable, false, true
+	}
+	fragment_reachable = solve(p, d.fragment, d.exit, allocator).solved
+	fragment_optional = solve(p, d.exit, d.fragment, allocator).solved
+	return
+}
+
+// Does the level have blocks that change or parts that turn?
+is_dynamic :: proc(d: ^level.Level_Data) -> bool {
+	if len(d.parts) > 0 {
+		return true
+	}
+	for e in d.blocks {
+		if e.trait != .Stone {
+			return true
+		}
+	}
+	return false
+}

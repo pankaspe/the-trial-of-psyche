@@ -42,6 +42,23 @@ CLAUDE.md for the design history).
 - Design rule: an illusion is clean when walking *toward the camera* onto a nearer
   piece (k ≥ 0). Check every level with `./build.sh check <file>`.
 
+## Act II mechanics (M3, 2026-10-05; `palace.flipped`, `part_rot`)
+- **Crumbling** (`crumble`): a cracked block falls (for good) once Psyche steps off it; what
+  falls stops hiding things, so seams and stairs can appear. Paths avoid cracked stones unless
+  there is no other way (`find_path` tries a careful search first).
+- **Phantom** (`phantom`): real only in the dark (walk, hide, join by illusion); the lamp's
+  light within `palace.TRUTH_RADIUS` (2.5) of her feet dissolves it for good; the lamp cannot
+  be lit over one (`can_light`). Pale, misty material; thin in the light.
+- **Veiled** (`veiled`): absent in the dark; the lamp shows it as a golden ghost, and within
+  the same radius makes it real for good. Never appears where Psyche stands.
+- **Handles** (`part px py ... end`, `handle x y h [n]`): standing on a handle, a click on
+  Psyche (or F) turns the part a quarter, counter-clockwise from above (phase `Mechanism`);
+  parts carry a bronze inlay. Handles are never on a part (Psyche never rides one).
+- **Braziers** (`rest x y h`): lit by passing (one on the start cell is lit already); R brings
+  back Psyche and the palace as they were at the last one; R again restarts the level.
+- Changes are permanent, so levels have dead ends: `palace.solve` (tools and tests) searches
+  every state (cell, view, lamp, changed blocks, part turns) and counts the dead ones.
+
 ## Game design (agreed with the user, 2026-10-04)
 Full design document (Italian, kept up to date there): https://claude.ai/code/artifact/97c37954-ecc7-4b98-a211-40e5c123d11e
 - 20 levels, ~5-6 hours: Act I (4, prologue inside I.1) · Act II (5) · Act III (5) · Act IV (5) · Epilogue (1).
@@ -116,9 +133,17 @@ Full design document (Italian, kept up to date there): https://claude.ai/code/ar
    `outro key` = the ending card at the exit. Keep the layout centred in the grid (it turns about the centre).
 2. Point the slot's `source` in `content.LEVELS` at it (titles and fragments are already in `i18n`).
 3. `./build.sh check assets/levels/level_NN.txt`: unintended illusions, fragment reachable and optional.
-   Translating a whole layout keeps every illusion (handy to recentre it).
-4. A walkthrough test in `tests/` (`act1_test.odin` is the model).
-5. `--shots DIR --level ID` tours it: act card, the four views, lamp, fragment, exit, end card.
+   For a palace that changes it also solves the level: the plan with the fewest decisions,
+   states and dead ends, parts that would turn into the palace. Read the plan: a short one
+   means a shortcut. Translating a whole layout keeps every illusion (handy to recentre it).
+4. A walkthrough test in `tests/` (`act1_test.odin` is the model); Act II levels are covered
+   by `act2_levels_solve_and_play` (the solver's plan played through the game).
+5. `--shots DIR --level ID` tours it: act card, the four views, lamp, fragment, exit, end card;
+   add `--plan` to play the solver's plan with a shot after every decision.
+- Occlusion across four views is hard to foresee: a seam from a high near piece goes down only
+  from its view-mx/my edges to a farther, lower piece. Reserve the cover cells of a seam's foot
+  (view offsets (k,k,k-1), (k,k,k), (1+k,k,k), (k,1+k,k)) and close stray seams with
+  parapets on the far piece rather than on the path.
 
 ## Commands
 ```bash
@@ -127,6 +152,7 @@ Full design document (Italian, kept up to date there): https://claude.ai/code/ar
 ./build.sh check FILE # level analysis
 ./build/trial-of-psyche-debug --shots DIR   # scripted screenshots (no settings read/written)
 ./build/trial-of-psyche-debug --shots DIR --size 1600x900 --level I.2   # tour of one level
+./build/trial-of-psyche-debug --shots DIR --level II.3 --plan   # the solver's plan, a shot per decision
 ```
 Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
 
@@ -172,12 +198,25 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
 - Decoration rules (user: readable, not cluttered): small, few objects; never hide Psyche's start.
   Blocking props must not sit on a needed cell, edge props must not close a side an illusion uses;
   compare `./build.sh check` before and after (same illusions, same goals).
+- Session 5 (2026-10-05): **M3, Act II built, waiting for the user's playtest.** Mechanics above;
+  solver (`palace/solve.odin`), braziers, `--plan` shots, 31 tests.
+  - II.1 Cupid's Flight (crumbling: bridge; break the stone that hides the seam; choose the
+    view before leaving a cracked stone; lower the exit column's cap; fragment: lower a column
+    twice). II.2 The River and Pan (phantoms: stepping stones; the barring block; light from the
+    cliff ledge, out of reach of the river stone; fragment: use the barring block's top first).
+    II.3 The Sisters' Crag (veiled: bridge in the light; climb before revealing the stone that
+    hides the seam's foot; the sisters' phantom road vs the veiled true road; a revealed stone
+    as a seam; fragment on the precipice before the light). II.4 The Temple of Ceres (handles:
+    a turning bridge; an L floor joining two doors at a time, two handles and a trip over a
+    high stone). II.5 The Temple of Juno (all: break to see, reveal the high stone before
+    turning the phantom arm toward the light, the floor, a handle on a cracked stone).
+  - Solver plans: 25/24/18/27/28 steps; the levels are probably 6-15 minutes each, shorter than
+    the 15-18 minute target: to extend after the playtest if the user wants.
 
-## Next session: M3 — Act II (at the user's go)
-- Act II, *Abandoned* (II.1-II.5, design document): new mechanics false/crumbling structures, the
-  lamp unmasking them, handles rotating part of the palace; the last level uses all of them.
-  Same workflow as M2: propose level ideas with screenshots, intro/outro + one tutorial per new
-  mechanic, level_check + walkthrough tests, the user's playtest closes the phase.
+## Next session: M3 playtest, then M4 — Act III (at the user's go)
+- Fix what the user's playtest of Act II finds (difficulty, readability of phantom/veiled
+  stones, handles), maybe lengthen levels; then Act III, Venus' trials (helpers that move
+  pieces, day/night), same workflow.
 - Open: character style; a dedicated font (Noto Serif is a placeholder); the user's review of the
   texts (M1 drafts: fragments, act cards, titles, achievements; Act I lines: table in the design
   document).

@@ -6,6 +6,7 @@
 package main
 
 import "core:fmt"
+import "core:mem/virtual"
 import "core:strconv"
 import "core:strings"
 import rl "vendor:raylib"
@@ -87,9 +88,9 @@ SHOT_SCRIPT := [?]Shot_Step {
 	{2.0, "13_collapse", nil},
 	{4.0, "14_end_card", nil},
 	{0.1, "", proc(app: ^App) {start_level(app, app.ending.level + 1)}},
-	{4.0, "14b_act2_unbuilt", nil},
+	{4.0, "14b_act2_card", nil},
 	{0.1, "", proc(app: ^App) {dismiss_act_card(app)}},
-	{1.0, "14c_back_to_title", nil},
+	{1.0, "14c_act2_begins", nil},
 	// window modes (skipped on an offscreen canvas)
 	{0.1, "", proc(app: ^App) {window_mode(app, true, {1600, 900})}},
 	{1.5, "15_fullscreen", nil},
@@ -186,6 +187,11 @@ Shots :: struct {
 	dir:  string,
 	size: [2]i32, // offscreen canvas size (--size WxH), 0 = the window
 	level: int, // --level ID: the slot to tour, -1 = the full script
+	plan:  bool, // --plan: play the solver's plan of the level, a shot after every decision
+	moves: [dynamic]pl.Plan_Step,
+	arena: virtual.Arena,
+	move:  int,
+	shot:  int,
 	step: int,
 	t:    f32,
 }
@@ -193,6 +199,11 @@ Shots :: struct {
 // Parse `--shots DIR [--size WxH]` from the command line.
 shots_from_args :: proc(args: []string) -> (s: Shots, ok: bool) {
 	s.level = -1
+	for a in args {
+		if a == "--plan" {
+			s.plan = true
+		}
+	}
 	for a, i in args {
 		if i + 1 >= len(args) {
 			break
@@ -206,6 +217,8 @@ shots_from_args :: proc(args: []string) -> (s: Shots, ok: bool) {
 					s.level = n
 				}
 			}
+		case "--plan":
+			s.plan = true
 		case "--size":
 			v := args[i + 1]
 			if x := strings.index_byte(v, 'x'); x > 0 {
@@ -220,6 +233,9 @@ shots_from_args :: proc(args: []string) -> (s: Shots, ok: bool) {
 
 // Advance the script; returns the screenshot name due this frame, if any.
 shots_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool) {
+	if s.plan && s.level >= 0 {
+		return plan_update(app, s, dt)
+	}
 	script := s.level >= 0 ? LEVEL_TOUR[:] : SHOT_SCRIPT[:]
 	if s.step >= len(script) {
 		return "", true
@@ -254,4 +270,77 @@ shots_capture_texture :: proc(s: ^Shots, name: string, tex: rl.Texture2D) {
 	rl.ImageFormat(&img, .UNCOMPRESSED_R8G8B8) // blending leaves partial alpha in the texture
 	path := strings.clone_to_cstring(fmt.tprintf("%s/%s.png", s.dir, name), context.temp_allocator)
 	rl.ExportImage(img, path)
+}
+
+// --plan: start the level, solve it, then play the plan; a shot at the start,
+// after every decision (turn, lamp, handle), after every walk that changed
+// the palace, and at the end.
+@(private = "file")
+plan_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool) {
+	g := &app.game
+	s.t += dt
+	if s.step == 0 {
+		start_level(app, s.level)
+		s.step = 1
+		s.t = 0
+		return "", false
+	}
+	if s.step == 1 {
+		if app.screen == .Card {
+			dismiss_act_card(app)
+			s.t = 0
+			return "", false
+		}
+		if s.t < 6 {
+			return "", false // the title and the intro line
+		}
+		// the plan lives as long as the program (this mode quits at the end)
+		if virtual.arena_init_growing(&s.arena) != nil {
+			return "", true
+		}
+		sol := pl.solve(&g.palace, g.data.exit, nil, virtual.arena_allocator(&s.arena))
+		s.moves = sol.plan
+		s.step = 2
+		s.t = 0
+		return "p000_start", false
+	}
+	if s.step == 3 {
+		if s.t < 5 {
+			return "", false
+		}
+		virtual.arena_destroy(&s.arena)
+		return "", true
+	}
+	if !game.idle(g) || s.t < 0.15 {
+		return "", false
+	}
+	if app.screen == .Fragment {
+		close_fragment(app)
+	}
+	if s.move > 0 {
+		prev := s.moves[s.move - 1]
+		last_step := s.move == len(s.moves) || s.moves[s.move].move != .Step
+		if (prev.move != .Step || prev.changed > 0 || last_step) && s.t >= 0.15 {
+			// show what the move did, once
+			if s.shot < s.move {
+				s.shot = s.move
+				s.t = 0
+				return fmt.tprintf("p%03d_%v", s.move, prev.move), false
+			}
+			if s.t < 0.6 {
+				return "", false
+			}
+		}
+	}
+	if s.move >= len(s.moves) || game.is_over(g) {
+		s.step = 3
+		s.t = 0
+		return "", false
+	}
+	if !game.apply_move(g, s.moves[s.move]) {
+		fmt.eprintfln("plan: the game refused move %d %v", s.move, s.moves[s.move])
+	}
+	s.move += 1
+	s.t = 0
+	return "", false
 }

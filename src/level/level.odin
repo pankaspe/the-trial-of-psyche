@@ -24,9 +24,38 @@ Solid :: struct {
 	dir:  Dir,
 }
 
+// How a block behaves (Act II): fixed stone, or one that changes for good.
+Trait :: enum u8 {
+	Stone,
+	Crumble, // holds one crossing: falls when Psyche steps off it
+	Phantom, // exists only in the dark: the lamp's light dissolves it
+	Veiled, // hidden in the dark: the lamp's light makes it real
+}
+
+TRAIT_NAME := [Trait]string {
+	.Stone   = "block",
+	.Crumble = "crumble",
+	.Phantom = "phantom",
+	.Veiled  = "veiled",
+}
+
 Solid_Entry :: struct {
 	cell:  Cell,
 	solid: Solid,
+	trait: Trait,
+	part:  u8, // 0: fixed; n: turns with part n-1
+}
+
+// A part of the palace that a handle turns a quarter at a time, about the
+// vertical axis through the centre of cell `pivot`.
+Part :: struct {
+	pivot: [2]i32,
+}
+
+// A crank on a surface: standing there, Psyche turns `part` a quarter.
+Handle :: struct {
+	cell: Cell,
+	part: int,
 }
 
 Prop_Kind :: enum u8 {
@@ -76,6 +105,7 @@ Prop :: struct {
 	kind:     Prop_Kind,
 	dir:      Dir,
 	oriented: bool,
+	part:     u8, // 0: fixed; n: turns with part n-1
 }
 
 // A text tied to a cell: a voice line or a hint, given when Psyche first
@@ -111,6 +141,19 @@ Level_Data :: struct {
 	has_outro:    bool,
 	has_lamp:     bool, // Psyche carries the lamp (from the end of Act I)
 	lamp_par:     i32, // lightings that are enough to finish ("no wasted light"); 0 = none
+	oil:          f32, // seconds of oil in the lamp (0: the default)
+	parts:        [dynamic]Part,
+	handles:      [dynamic]Handle,
+	rests:        [dynamic]Cell, // braziers: lit by passing, R brings Psyche back to the last one
+}
+
+MAX_PARTS :: 8
+MAX_DYNAMIC :: 64 // crumbling, phantom and veiled blocks in one level
+
+// The cell of a part's block after `r` quarter turns.
+part_cell :: proc(c: Cell, pivot: [2]i32, r: int) -> Cell {
+	v := iso.rot_vec({c.x - pivot.x, c.y - pivot.y}, r)
+	return {pivot.x + v.x, pivot.y + v.y, c.z}
 }
 
 Parse_Error :: struct {
@@ -132,7 +175,12 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	data.voices = make([dynamic]Cue, 0, 16)
 	data.hints = make([dynamic]Cue, 0, 8)
 	data.lawn = make([dynamic]Cell, 0, 8)
+	data.parts = make([dynamic]Part, 0, 2)
+	data.handles = make([dynamic]Handle, 0, 2)
+	data.rests = make([dynamic]Cell, 0, 4)
 	has_start := false
+	part: u8 = 0 // the part being described (between `part` and `end`)
+	dynamic_count := 0
 	max_z: i32 = 0
 
 	fail :: proc(line: int, format: string, args: ..any) -> Maybe(Parse_Error) {
@@ -184,13 +232,78 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			}
 			data.size = v[0]
 
-		case "block":
+		case "block", "crumble", "phantom", "veiled":
 			v: [3]i32
 			if !ints(args, v[:]) {
-				return data, fail(line_no, "block: expected x y z")
+				return data, fail(line_no, "%s: expected x y z", fields[0])
 			}
-			append(&data.blocks, Solid_Entry{v, {kind = .Block}})
+			trait := Trait.Stone
+			for name, t in TRAIT_NAME {
+				if name == fields[0] {
+					trait = t
+				}
+			}
+			if trait != .Stone {
+				dynamic_count += 1
+				if dynamic_count > MAX_DYNAMIC {
+					return data, fail(line_no, "too many changing blocks (max %d)", MAX_DYNAMIC)
+				}
+			}
+			append(&data.blocks, Solid_Entry{v, {kind = .Block}, trait, part})
 			max_z = max(max_z, v.z)
+
+		case "part":
+			v: [2]i32
+			if !ints(args, v[:]) {
+				return data, fail(line_no, "part: expected the pivot x y")
+			}
+			if part != 0 {
+				return data, fail(line_no, "part: the previous part has no 'end'")
+			}
+			if len(data.parts) == MAX_PARTS {
+				return data, fail(line_no, "too many parts (max %d)", MAX_PARTS)
+			}
+			append(&data.parts, Part{v})
+			part = u8(len(data.parts))
+
+		case "end":
+			if part == 0 {
+				return data, fail(line_no, "end: no part to close")
+			}
+			part = 0
+
+		case "handle":
+			v: [4]i32
+			if !ints(args, v[:3]) {
+				return data, fail(line_no, "handle: expected x y h [part]")
+			}
+			index := len(data.parts) - 1
+			if len(args) > 3 {
+				if !ints(args[3:], v[3:]) {
+					return data, fail(line_no, "handle: expected a part number")
+				}
+				index = int(v[3])
+			}
+			if index < 0 || index >= len(data.parts) {
+				return data, fail(line_no, "handle: no such part")
+			}
+			append(&data.handles, Handle{v.xyz, index})
+			max_z = max(max_z, v.z)
+
+		case "rest":
+			v: [3]i32
+			if !ints(args, v[:]) {
+				return data, fail(line_no, "rest: expected x y h")
+			}
+			append(&data.rests, v)
+			max_z = max(max_z, v.z)
+
+		case "oil":
+			v: [1]i32
+			if !ints(args, v[:]) || v[0] < 1 {
+				return data, fail(line_no, "oil: expected seconds >= 1")
+			}
+			data.oil = f32(v[0])
 
 		case "column":
 			v: [4]i32
@@ -198,7 +311,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				return data, fail(line_no, "column: expected x y z0 z1 with z0 <= z1")
 			}
 			for z in v[2] ..= v[3] {
-				append(&data.blocks, Solid_Entry{{v[0], v[1], z}, {kind = .Block}})
+				append(&data.blocks, Solid_Entry{{v[0], v[1], z}, {kind = .Block}, .Stone, part})
 			}
 			max_z = max(max_z, v[3])
 
@@ -211,7 +324,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			if !ok {
 				return data, fail(line_no, "stairs: unknown direction '%s'", args[3])
 			}
-			append(&data.blocks, Solid_Entry{v, {.Stairs, d}})
+			append(&data.blocks, Solid_Entry{v, {.Stairs, d}, .Stone, part})
 			max_z = max(max_z, v.z)
 
 		case "rise":
@@ -227,7 +340,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 				s = {.Stairs, d}
 			}
-			append(&data.rise, Solid_Entry{v, s})
+			append(&data.rise, Solid_Entry{cell = v, solid = s})
 			max_z = max(max_z, v.z)
 
 		case "prop":
@@ -247,7 +360,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			if !ints(args[1:], v[:]) {
 				return data, fail(line_no, "prop: expected integer coordinates")
 			}
-			p := Prop{cell = v, kind = kind}
+			p := Prop{cell = v, kind = kind, part = part}
 			if len(args) > 4 {
 				d, ok := iso.dir_from_name(args[4])
 				if !ok {
@@ -326,6 +439,9 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	if !has_start {
 		return data, fail(line_no, "missing 'start'")
 	}
+	if part != 0 {
+		return data, fail(line_no, "the last part has no 'end'")
+	}
 	data.height = max_z + 4
 	if data.height > MAX_HEIGHT {
 		return data, fail(line_no, "level too tall (max z %d)", MAX_HEIGHT - 4)
@@ -347,6 +463,17 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	for p in data.props {
 		if !check(p.cell, data.size, data.height) {
 			return data, fail(0, "prop %v outside the grid", p.cell)
+		}
+	}
+	// a part must stay inside the grid in all four positions
+	for e in data.blocks {
+		if e.part == 0 {
+			continue
+		}
+		for r in 1 ..< 4 {
+			if c := part_cell(e.cell, data.parts[e.part - 1].pivot, r); !check(c, data.size, data.height) {
+				return data, fail(0, "part block %v leaves the grid when turned", e.cell)
+			}
 		}
 	}
 	return data, nil

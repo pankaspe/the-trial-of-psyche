@@ -28,6 +28,20 @@
 #   lawn x y z              the block at (x,y,z) has a grassy top
 #   prologue x y h          the level opens with the prologue cutscene; the
 #                           procession comes up at this cell and walks to start
+# Act II (palaces that change; ./build.sh check solves them move by move):
+#   crumble x y z           a cracked block: it falls once Psyche steps off it
+#   phantom x y z           a pale block, real only in the dark: the lamp's
+#                           light (about 2.5 cells from her) dissolves it for good;
+#                           the lamp cannot be lit over one
+#   veiled x y z            a block hidden in the dark: the lamp shows it in gold
+#                           and, as close as above, makes it real for good
+#   part px py ... end      the blocks, stairs and props in between form a part
+#                           that turns a quarter at a time about cell (px, py)
+#   handle x y h [n]        standing there, a click on Psyche (or F) turns part n
+#                           (default: the last part) counter-clockwise from above
+#   rest x y h              a brazier: lit by passing, R brings Psyche back to the
+#                           last one lit, the palace as it was then
+#   oil seconds             the lamp's oil (default 14)
 # Illusions: in the dark two surfaces are joined when they look joined in the
 # current view: (x',y',h) touches (x'+dx+k, y'+dy+k, h+k) in view coordinates,
 # provided both tops are visible (no nearer cube covers them) and no rail closes

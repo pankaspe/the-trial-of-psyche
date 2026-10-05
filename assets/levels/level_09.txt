@@ -1,0 +1,71 @@
+# The Trial of Psyche - level II.5: "The Temple of Juno"
+# Every mechanic of the act together. Psyche comes down into the valley of
+# Juno's temple and crosses it to the altar.
+#   1. the way down from the hillside: a cracked stone stands in front of the
+#      porch in view 2; step on it and back, it falls, the seam appears;
+#   2. the porch: the high stone over it is veiled. Light the lamp here, but
+#      first: once the floor is turned south-west, its north arm (a phantom
+#      stone) lies at the porch's feet, and the light would dissolve it;
+#   3. the floor of offerings (an L about (8,6), as in the temple of Ceres):
+#      its handle on the porch turns it to join west and south (three turns);
+#      from the south door, view 2 joins the high stone, view 3 the north door;
+#   4. the north handle stands on a cracked stone: one visit only. Turn the
+#      floor to join south and east (three turns), then step off;
+#   5. over the high stone back to the south door, across the phantom arm and
+#      the floor to the east door; the lamp shows the last stone to the altar.
+# Fragment: on the column of the goddess by the north door, joined to the
+# high stone in view 1.
+# Format: see level_04.txt.
+size 12
+
+# the hillside where Psyche comes down (h4); K, the cracked stone
+column 1 7 0 3
+column 2 7 0 3
+column 1 8 0 3
+crumble 3 7 3
+# the porch (h2) to the west door
+column 5 9 0 1
+column 5 8 0 1
+column 5 7 0 1
+column 5 6 0 1
+# the floor of offerings (h2): an L about (8,6), its north arm ends in a phantom stone
+part 8 6
+column 8 6 0 1
+column 7 6 0 1
+column 6 6 0 1
+column 8 5 0 1
+column 8 4 0 0
+phantom 8 4 1
+end
+handle 5 6 2 0
+# the south door (h2)
+column 8 9 0 1
+column 8 10 0 1
+column 9 10 0 1
+# the north door (h3); its handle on a cracked stone
+column 8 3 0 2
+column 8 2 0 1
+crumble 8 2 2
+handle 8 2 3 0
+# the east door (h2), the veiled stone and Juno's altar (the exit)
+column 11 6 0 1
+veiled 11 5 1
+column 11 4 0 1
+# the high stone over the porch (h5), veiled
+veiled 5 5 4
+# the column of the goddess, with the fragment
+column 7 2 0 6
+fragment 7 2 7
+
+start 1 8 4
+exit 11 4 2
+rest 5 9 2
+rest 8 10 2
+lamp
+intro intro_ii_5
+outro outro_ii_5
+# offerings in the temple
+prop urn 9 10 2
+prop vase 5 8 2 py
+prop vase 11 6 2 mx
+prop sconce 11 4 1 px

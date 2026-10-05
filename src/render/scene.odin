@@ -7,6 +7,7 @@
 package render
 
 import "core:math"
+import "core:slice"
 import rl "vendor:raylib"
 import "vendor:raylib/rlgl"
 
@@ -143,9 +144,12 @@ Piece :: struct {
 	cell:       Cell,
 	mesh:       Mesh_Id,
 	material:   Material,
-	block:      bool, // marble on top, masonry when covered
+	cube:       bool, // marble on top, masonry when covered
 	lawn:       bool, // a block with a grassy top
 	rise_index: i32, // >= 0: raised by the seal, in this order
+	block:      i32, // >= 0: its data.blocks entry (it may fall, dissolve, appear)
+	part:       u8, // 0: fixed; n: turns with part n-1
+	handle:     i32, // >= 0: the crank of this handle
 	sigil:      enum u8 {
 		None,
 		Off, // only the lamp shows it, until it is lit
@@ -159,18 +163,24 @@ Scene :: struct {
 	motes:      fx.Pool(64), // drifting in front of everything (proto px)
 	sparks:     fx.Pool(64), // around Cupid (world)
 	dust:       fx.Pool(192), // falling from the cracks (world)
+	debris:     fx.Pool(160), // falling stones, dissolving phantoms (world)
 	wind:       fx.Pool(96), // Zephyr's breath over the exit (world)
 	rng:        fx.Rng,
 }
 
 scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 	s^ = {}
-	s.pieces = make([dynamic]Piece, 0, len(g.data.blocks) + len(g.data.props) + len(g.data.rise) + 2, allocator)
+	s.pieces = make([dynamic]Piece, 0, len(g.data.blocks) + len(g.data.props) + len(g.data.rise) + len(g.data.handles) + 2, allocator)
 	s.rng = fx.rng_init(1234)
-	for e in g.data.blocks {
+	for e, i in g.data.blocks {
 		p := solid_piece(e.cell, e.solid, -1)
+		p.block = i32(i)
+		p.part = e.part
 		for c in g.data.lawn {
-			p.lawn ||= c == e.cell && p.block
+			p.lawn ||= c == e.cell && p.cube
+		}
+		if e.trait == .Phantom {
+			p.material = .Phantom
 		}
 		append(&s.pieces, p)
 	}
@@ -180,29 +190,41 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 		if base >= .Stairs_PX && base <= .Candle_MY {
 			mesh = oriented_mesh(base, prop.dir)
 		}
-		append(&s.pieces, Piece{cell = prop.cell, mesh = mesh, material = PROP_MATERIAL[prop.kind], rise_index = -1})
+		append(&s.pieces, Piece{cell = prop.cell, mesh = mesh, material = PROP_MATERIAL[prop.kind], rise_index = -1, block = -1, handle = -1, part = prop.part})
 		if prop.kind == .Sconce {
 			// the unlit candle, in wax
-			append(&s.pieces, Piece{cell = prop.cell, mesh = oriented_mesh(.Candle_PX, prop.dir), material = .Psyche, rise_index = -1})
+			append(&s.pieces, Piece{cell = prop.cell, mesh = oriented_mesh(.Candle_PX, prop.dir), material = .Psyche, rise_index = -1, block = -1, handle = -1, part = prop.part})
 		}
+	}
+	for h, i in g.data.handles {
+		append(&s.pieces, Piece{cell = h.cell, mesh = .Crank_Post, material = .Bronze, rise_index = -1, block = -1, handle = i32(i)})
+	}
+	for c in g.data.rests {
+		append(&s.pieces, Piece{cell = c, mesh = .Altar, material = .Bronze, rise_index = -1, block = -1, handle = -1})
 	}
 	for e, i in g.data.rise {
 		append(&s.pieces, solid_piece(e.cell, e.solid, i32(i)))
 	}
 	if g.data.has_sigil {
-		append(&s.pieces, Piece{cell = g.data.sigil, mesh = .Sigil_Off, material = .Bronze, rise_index = -1, sigil = .Off})
-		append(&s.pieces, Piece{cell = g.data.sigil, mesh = .Sigil_On, material = .Bronze, rise_index = -1, sigil = .On})
+		append(&s.pieces, Piece{cell = g.data.sigil, mesh = .Sigil_Off, material = .Bronze, rise_index = -1, block = -1, handle = -1, sigil = .Off})
+		append(&s.pieces, Piece{cell = g.data.sigil, mesh = .Sigil_On, material = .Bronze, rise_index = -1, block = -1, handle = -1, sigil = .On})
 	}
 
-	// framing: every piece from every view (as the prototype's fit_rect)
+	// framing: every piece from every view (as the prototype's fit_rect), parts in every position
 	first := true
 	for p in s.pieces {
-		for r in 0 ..< 4 {
-			c := iso.floor_center(iso.to_view(p.cell, r, g.data.size))
-			top: f32 = p.mesh == .Block ? -96 : -120
-			rect := Rect{c.x - 64, c.y + top, 128, 152}
-			s.fit = first ? rect : rect_merge(s.fit, rect)
-			first = false
+		for turn in 0 ..< (p.part > 0 ? 4 : 1) {
+			cell := p.cell
+			if p.part > 0 {
+				cell = level.part_cell(cell, g.data.parts[p.part - 1].pivot, turn)
+			}
+			for r in 0 ..< 4 {
+				c := iso.floor_center(iso.to_view(cell, r, g.data.size))
+				top: f32 = p.mesh == .Block ? -96 : -120
+				rect := Rect{c.x - 64, c.y + top, 128, 152}
+				s.fit = first ? rect : rect_merge(s.fit, rect)
+				first = false
+			}
 		}
 	}
 	// ambient motes start mid-life, as if they had always been there
@@ -214,9 +236,9 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 @(private)
 solid_piece :: proc(c: Cell, solid: level.Solid, rise: i32) -> Piece {
 	if solid.kind == .Stairs {
-		return {cell = c, mesh = oriented_mesh(.Stairs_PX, solid.dir), material = .Marble, rise_index = rise}
+		return {cell = c, mesh = oriented_mesh(.Stairs_PX, solid.dir), material = .Marble, rise_index = rise, block = -1, handle = -1}
 	}
-	return {cell = c, mesh = .Block, material = .Marble, block = true, rise_index = rise}
+	return {cell = c, mesh = .Block, material = .Marble, cube = true, rise_index = rise, block = -1, handle = -1}
 }
 
 // Screen shake offset for this frame.
@@ -315,6 +337,39 @@ scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
 			}
 		}
 	}
+	// stones that fall shed grit; phantoms dissolve into pale mist; veiled stones gather gold
+	for t, i in g.flip_t {
+		if t < 0 || t > 0.9 {
+			continue
+		}
+		trait := g.data.blocks[i].trait
+		if fx.randf(&s.rng) > dt * 40 {
+			continue
+		}
+		c := block_world(g, int(i), {0.5, 0.5, 0.5})
+		if trait == .Crumble {
+			c.z -= 7 * fx.quad_in(fx.clamp01(t / game.FALL_TIME))
+		}
+		col := Color4{0.7, 0.72, 0.9, 0.7}
+		vel := Vec3{fx.rand_range(&s.rng, -0.4, 0.4), fx.rand_range(&s.rng, -0.4, 0.4), fx.rand_range(&s.rng, -0.6, 0.2)}
+		#partial switch trait {
+		case .Phantom:
+			col = {0.65, 0.8, 1.0, 0.8}
+			vel.z = fx.rand_range(&s.rng, 0.2, 0.6)
+		case .Veiled:
+			col = {1.0, 0.82, 0.45, 0.85}
+			vel = -vel * 0.5
+		}
+		fx.emit(&s.debris, {
+			pos   = c + {fx.rand_range(&s.rng, -0.5, 0.5), fx.rand_range(&s.rng, -0.5, 0.5), fx.rand_range(&s.rng, -0.5, 0.5)},
+			vel   = vel,
+			accel = trait == .Crumble ? Vec3{0, 0, -3} : Vec3{},
+			life  = 1.4,
+			size  = 32 * fx.rand_range(&s.rng, 0.1, 0.22),
+			color = col,
+		})
+	}
+	fx.update(&s.debris, dt)
 	fx.update(&s.motes, dt)
 	fx.update(&s.sparks, dt)
 	fx.update(&s.dust, dt)
@@ -453,11 +508,56 @@ set_piece_uniforms :: proc(r: ^Renderer, material: Material, detail, hidden, alp
 	set_f(r, .Glow, glow)
 }
 
-// Lift, opacity and visibility of piece i in this frame.
+// Where a point given in cell space of block entry i is in the world now
+// (parts turn about their pivot, animated while a handle turns them).
+block_world :: proc(g: ^game.Game, i: int, local: Vec3) -> Vec3 {
+	e := g.data.blocks[i]
+	return part_point(g, e.part, Vec3{f32(e.cell.x), f32(e.cell.y), f32(e.cell.z)} + local)
+}
+
+// A world point of part n-1 (n = 0: fixed) as the part is turned now.
+part_point :: proc(g: ^game.Game, n: u8, w: Vec3) -> Vec3 {
+	if n == 0 {
+		return w
+	}
+	pv := g.data.parts[n - 1].pivot
+	c := Vec3{f32(pv.x) + 0.5, f32(pv.y) + 0.5, 0}
+	a := game.part_angle(g, int(n - 1)) * math.PI * 0.5
+	d := w - c
+	return c + {d.x * math.cos(a) - d.y * math.sin(a), d.x * math.sin(a) + d.y * math.cos(a), d.z}
+}
+
 @(private)
-piece_state :: proc(g: ^game.Game, p: Piece, i: int) -> (lift, alpha: f32, visible: bool) {
+piece_matrix :: proc(g: ^game.Game, p: Piece, lift: f32) -> rl.Matrix {
+	m := rl.MatrixTranslate(f32(p.cell.x), f32(p.cell.y), f32(p.cell.z) + lift)
+	if p.part > 0 {
+		pv := g.data.parts[p.part - 1].pivot
+		c := Vec3{f32(pv.x) + 0.5, f32(pv.y) + 0.5, 0}
+		a := game.part_angle(g, int(p.part - 1)) * math.PI * 0.5
+		m = rl.MatrixTranslate(c.x, c.y, 0) * rl.MatrixRotateZ(a) * rl.MatrixTranslate(-c.x, -c.y, 0) * m
+	}
+	return m
+}
+
+// The cell a piece stands in now.
+@(private)
+piece_cell :: proc(g: ^game.Game, p: Piece) -> Cell {
+	if p.block >= 0 {
+		return pl.block_cell(&g.palace, int(p.block))
+	}
+	if p.part > 0 {
+		return level.part_cell(p.cell, g.data.parts[p.part - 1].pivot, g.palace.part_rot[p.part - 1])
+	}
+	return p.cell
+}
+
+// Lift, opacity and visibility of piece i in this frame; `ghost`: drawn with
+// the see-through pieces (phantoms, veiled blocks shown by the lamp).
+@(private)
+piece_state :: proc(g: ^game.Game, p: Piece, i: int) -> (lift, alpha: f32, visible, ghost, hidden: bool) {
 	alpha = 1
 	visible = true
+	hidden = p.sigil == .Off
 	switch p.sigil {
 	case .None:
 	case .Off:
@@ -467,11 +567,35 @@ piece_state :: proc(g: ^game.Game, p: Piece, i: int) -> (lift, alpha: f32, visib
 	}
 	if p.rise_index >= 0 {
 		if g.rise_t < 0 {
-			return 0, 0, false
+			return 0, 0, false, false, false
 		}
 		start := f32(p.rise_index) * game.RISE_DELAY
 		lift = -game.RISE_DEPTH * (1 - fx.cubic_out(fx.progress(g.rise_t, start, game.RISE_TIME)))
 		alpha = fx.progress(g.rise_t, start, 0.8)
+	}
+	if p.block >= 0 {
+		t := g.flip_t[p.block]
+		switch g.data.blocks[p.block].trait {
+		case .Stone:
+		case .Crumble:
+			if t >= 0 {
+				lift -= 7 * fx.quad_in(fx.clamp01(t / game.FALL_TIME))
+				alpha = 1 - fx.progress(t, game.FALL_TIME * 0.45, game.FALL_TIME * 0.55)
+			}
+		case .Phantom:
+			ghost = true
+			if t >= 0 {
+				alpha = 1 - fx.progress(t, 0, game.DISSOLVE_TIME)
+				lift += 0.35 * fx.cubic_out(fx.clamp01(t / game.DISSOLVE_TIME))
+			}
+		case .Veiled:
+			if t < 0 {
+				ghost, hidden = true, true
+			} else {
+				alpha = fx.progress(t, 0, game.DISSOLVE_TIME)
+				lift -= 0.3 * (1 - fx.cubic_out(fx.clamp01(t / game.DISSOLVE_TIME)))
+			}
+		}
 	}
 	if g.collapse_t >= 0 {
 		keep := g.collapse_keep
@@ -486,28 +610,52 @@ piece_state :: proc(g: ^game.Game, p: Piece, i: int) -> (lift, alpha: f32, visib
 	return
 }
 
-// Opaque pieces first (transparent = false), then the see-through ones.
+// Opaque pieces first (transparent = false), then the see-through ones, far to near.
 @(private)
 draw_pieces :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, transparent: bool) {
+	Drawn :: struct {
+		index: int,
+		depth: f32,
+	}
+	order := make([dynamic]Drawn, 0, len(s.pieces), context.temp_allocator)
 	for p, i in s.pieces {
-		lift, alpha, visible := piece_state(g, p, i)
-		hidden := p.sigil == .Off
-		if !visible || (alpha < 1 || hidden) != transparent {
-			continue
+		_, alpha, visible, ghost, hidden := piece_state(g, p, i)
+		if visible && (alpha < 1 || hidden || ghost) == transparent {
+			c := piece_cell(g, p)
+			d := iso.depth(iso.view_point({f32(c.x) + 0.5, f32(c.y) + 0.5, f32(c.z) + 0.5}, g.angle, g.data.size))
+			append(&order, Drawn{i, d})
 		}
+	}
+	if transparent {
+		slice.sort_by(order[:], proc(a, b: Drawn) -> bool {return a.depth < b.depth})
+	}
+	for o in order {
+		i := o.index
+		p := s.pieces[i]
+		lift, alpha, _, _, hidden := piece_state(g, p, i)
 		material := p.material
 		detail: f32 = 0
-		if p.block {
-			covered := pl.solid_at(&g.palace, p.cell + {0, 0, 1}).kind != .None
+		if p.cube && material != .Phantom {
+			covered := pl.solid_at(&g.palace, piece_cell(g, p) + {0, 0, 1}).kind != .None
 			material = covered ? .Masonry : .Marble
 			detail = covered ? 2 : 1
 			if p.lawn {
 				material, detail = .Lawn, 0
 			}
 		}
-		set_piece_uniforms(r, material, detail, hidden ? 1 : 0, alpha, 0.25, 0)
-		m := rl.MatrixTranslate(f32(p.cell.x), f32(p.cell.y), f32(p.cell.z) + lift)
+		// a veiled stone shows as a faint golden ghost; the seal's panel glows full
+		ghost_veil := hidden && p.block >= 0
+		set_piece_uniforms(r, material, detail, hidden ? (ghost_veil ? 2 : 1) : 0, alpha, 0.25, 0)
+		m := piece_matrix(g, p, lift)
 		rl.DrawMesh(r.meshes[p.mesh], r.material, m)
+		if p.handle >= 0 {
+			// the wheel turns while the handle works its part
+			part := g.data.handles[p.handle].part
+			spin := game.part_angle(g, part) * math.PI
+			ax := CRANK_AXIS
+			wm := rl.MatrixTranslate(f32(p.cell.x) + ax.x, f32(p.cell.y) + ax.y, f32(p.cell.z) + ax.z) * rl.MatrixRotateZ(spin)
+			rl.DrawMesh(r.meshes[.Crank_Wheel], r.material, wm)
+		}
 	}
 }
 
@@ -686,6 +834,50 @@ draw_decals :: proc(g: ^game.Game) {
 		}
 	}
 
+	// cracks on the stones that will fall; a bronze inlay on the parts that turn
+	for e, i in g.data.blocks {
+		if (e.trait != .Crumble && e.part == 0) || !pl.block_present(&g.palace, i) || g.flip_t[i] >= 0 {
+			continue
+		}
+		if e.solid.kind != .Block || pl.solid_at(&g.palace, pl.block_cell(&g.palace, i) + {0, 0, 1}).kind != .None {
+			continue
+		}
+		top :: proc(g: ^game.Game, i: int, x, y: f32) -> Vec3 {
+			return block_world(g, i, {x, y, 1.006})
+		}
+		if e.part > 0 {
+			col := Color4{0.62, 0.48, 0.26, 0.6}
+			I :: 0.14
+			W :: 0.035
+			corners := [4][2]f32{{I, I}, {1 - I, I}, {1 - I, 1 - I}, {I, 1 - I}}
+			for k in 0 ..< 4 {
+				a, b := corners[k], corners[(k + 1) % 4]
+				inward := top(g, i, 0.5, 0.5) - top(g, i, (a.x + b.x) * 0.5, (a.y + b.y) * 0.5)
+				inward /= math.sqrt(linalg_dot(inward, inward))
+				floor_strip(top(g, i, a.x, a.y), top(g, i, b.x, b.y), inward, W, col)
+			}
+		}
+		if e.trait == .Crumble {
+			// three jagged cracks from near the centre to the edges
+			for k in 0 ..< 3 {
+				h := u32(i * 13 + k * 5)
+				ang := f32(k) * math.TAU / 3 + fx.hash01(h) * 1.2
+				prev := [2]f32{0.5 + 0.06 * math.cos(ang), 0.5 + 0.06 * math.sin(ang)}
+				for step in 1 ..= 4 {
+					rad := 0.06 + 0.4 * f32(step) / 4
+					wob := (fx.hash01(h + u32(step) * 17) - 0.5) * 0.5
+					next := [2]f32{0.5 + rad * math.cos(ang + wob), 0.5 + rad * math.sin(ang + wob)}
+					a, b := top(g, i, prev.x, prev.y), top(g, i, next.x, next.y)
+					d := b - a
+					side := Vec3{-d.y, d.x, 0}
+					side /= max(math.sqrt(linalg_dot(side, side)), 1e-4)
+					floor_strip(a, b, side, 0.022 * (1 - f32(step) / 5), {0.02, 0.02, 0.06, 0.85})
+					prev = next
+				}
+			}
+		}
+	}
+
 	// the exit: rings of wind spreading on the stone
 	if ea := exit_alpha(g); g.data.has_exit && g.phase != .Finished && ea > 0 {
 		c := pl.node_world(&g.palace, g.data.exit) + {0, 0, 0.008}
@@ -800,6 +992,17 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 		col.a *= fx.mote_alpha(p)
 		glow(v, p.pos, p.size * 0.5, col)
 	}
+	// the braziers Psyche has lit
+	for c, i in g.data.rests {
+		if !g.rests_lit[i] {
+			continue
+		}
+		fp := Vec3{f32(c.x), f32(c.y), f32(c.z)} + ALTAR_FLAME
+		fl := 0.85 + 0.1 * math.sin(t * 17 + f32(i) * 2.3) + 0.05 * math.sin(t * 29 + f32(i))
+		glow(v, fp, 70, {1.0, 0.6, 0.25, 0.22 * fl})
+		glow(v, fp + {0, 0, 0.03}, 8, {1.0, 0.75, 0.4, fl}, 1.6)
+		glow(v, fp + {0, 0, 0.03}, 3.5, {1.0, 0.95, 0.8, fl}, 1.5)
+	}
 	// the lit seal breathes
 	if g.activated && g.collapse_t < 0 {
 		c := pl.node_world(&g.palace, g.data.sigil) + {0, 0, 0.05}
@@ -832,6 +1035,11 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	for p in fx.alive(&s.dust) {
 		col := p.color
 		col.a *= fx.mote_alpha(p) * g.light
+		glow(v, p.pos, p.size * 0.5, col)
+	}
+	for p in fx.alive(&s.debris) {
+		col := p.color
+		col.a *= fx.mote_alpha(p)
 		glow(v, p.pos, p.size * 0.5, col)
 	}
 	rlgl.End()

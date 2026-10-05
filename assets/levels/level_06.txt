@@ -1,0 +1,89 @@
+# The Trial of Psyche - level II.2: "The River and Pan"
+# Phantom stones. The river has set Psyche on its bank; mist stones stand
+# over the water. A pale stone exists only in the dark: it holds her, hides
+# what is behind it, joins by illusion like any stone, and dissolves for good
+# when the lamp's light reaches it (about two cells from her). The lamp cannot
+# be lit over a phantom.
+#   1. phantom stepping stones across the river (tutorial);
+#   2. a phantom block bars the south bank: light the lamp beside it;
+#   3. the cliff: a phantom stone in the river (view 1) and the seam of
+#      view 0 lead up to Pan's meadow, but a phantom block stands on the
+#      landing. Light near the stone and it is gone: light from the ledge
+#      on the cliff's face instead (stairs at the end of the bank), out of
+#      the stone's reach.
+# Fragment: on a rock in the river, joined (view 1) only to the top of the
+# phantom block that bars the bank, itself joined to the bank in view 0:
+# use the obstacle before the light dissolves it.
+# Format: see level_04.txt.
+size 12
+
+# the north bank, where the river set her (h1)
+column 1 1 0 0
+column 2 1 0 0
+column 1 2 0 0
+column 2 2 0 0
+column 2 3 0 0
+# phantom stepping stones across the river
+phantom 2 4 0
+phantom 2 5 0
+# the south bank (h1)
+column 2 6 0 0
+column 2 7 0 0
+column 3 7 0 0
+column 4 7 0 0
+column 5 7 0 0
+column 6 7 0 0
+column 7 7 0 0
+column 8 7 0 0
+column 9 7 0 0
+column 10 7 0 0
+column 11 7 0 0
+# the phantom block that bars the bank
+phantom 4 7 1
+# the ledge on the cliff's face (h2), up the stairs at the end of the bank
+stairs 11 8 1 py
+column 11 9 0 1
+# the phantom stone in the river (h2)
+phantom 8 6 1
+# Pan's meadow on the cliff (h4), a phantom block on its landing
+column 9 9 0 3
+column 10 9 0 3
+column 9 10 0 3
+column 10 10 0 3
+phantom 10 9 4
+prop wallBattlement 9 10 4 mx
+# the rock in the river, with the fragment
+column 6 6 0 2
+fragment 6 6 3
+
+# grass on the banks and the meadow
+lawn 1 1 0
+lawn 2 1 0
+lawn 1 2 0
+lawn 2 2 0
+lawn 2 3 0
+lawn 2 6 0
+lawn 2 7 0
+lawn 3 7 0
+lawn 4 7 0
+lawn 5 7 0
+lawn 6 7 0
+lawn 7 7 0
+lawn 8 7 0
+lawn 9 7 0
+lawn 10 7 0
+lawn 11 7 0
+lawn 9 9 3
+lawn 10 9 3
+lawn 9 10 3
+lawn 10 10 3
+prop cypress 9 9 4
+prop vase 1 2 1 mx
+
+start 1 1 1
+exit 10 10 4
+rest 2 7 1
+lamp
+intro intro_ii_2
+outro outro_ii_2
+hint 1 1 1 hint_phantom

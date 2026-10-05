@@ -529,7 +529,10 @@ play_input :: proc(app: ^App) {
 		return
 	}
 	if rl.IsKeyPressed(.R) {
-		play_level(app)
+		// back to the last brazier, or the whole level again
+		if !game.return_to_rest(g) {
+			play_level(app)
+		}
 		return
 	}
 	if rl.IsKeyPressed(.SPACE) || rl.IsKeyPressed(.L) || rl.IsMouseButtonPressed(.RIGHT) {
@@ -540,6 +543,9 @@ play_input :: proc(app: ^App) {
 	}
 	if rl.IsKeyPressed(.E) || rl.IsKeyPressed(.RIGHT) {
 		game.request_turn(g, 1)
+	}
+	if rl.IsKeyPressed(.F) {
+		game.use_handle(g)
 	}
 	if app.ui.pressed && !ui.over_ui(&app.ui) {
 		w, h := canvas_size(app)

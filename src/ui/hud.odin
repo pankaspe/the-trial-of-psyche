@@ -121,7 +121,7 @@ draw_oil :: proc(u: ^Ui, g: ^game.Game) {
 		ring := rl.Rectangle{bar.x - 8 * s, bar.y - 8 * s, bar.width + 16 * s, bar.height + 16 * s}
 		rl.DrawRectangleRoundedLinesEx(ring, 0.6, 8, max(2 * s, 1), fade(GOLD, (0.4 + 0.5 * pulse) * game.fade_alpha(g.hud.hint)))
 	}
-	oil := clamp(g.oil / game.OIL_MAX, 0, 1)
+	oil := clamp(g.oil / g.oil_max, 0, 1)
 	lit := g.light
 	fill := rl.Rectangle{x0 + bw * (1 - oil), y, bw * oil, bar.height}
 	col := rl.Color{255, u8(179 + 51 * lit), u8(77 + 51 * lit), 255}

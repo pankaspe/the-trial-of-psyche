@@ -33,7 +33,16 @@ Mesh_Id :: enum u8 {
 	Head,
 	Lamp,
 	Scroll,
+	Crank_Post, // a handle: a bronze post in the (+x, +y) corner...
+	Crank_Wheel, // ...and its wheel, turning about its own centre
+	Altar, // a small brazier in the (-x, -y) corner: a resting place
 }
+
+// Where the resting brazier's flame burns, in cell space.
+ALTAR_FLAME :: [3]f32{0.2, 0.2, 0.42}
+
+// Where the crank's wheel turns, in cell space.
+CRANK_AXIS :: [3]f32{0.8, 0.8, 0.42}
 
 oriented_mesh :: proc(base: Mesh_Id, d: iso.Dir) -> Mesh_Id {
 	return Mesh_Id(u8(base) + u8(d))
@@ -48,6 +57,7 @@ Material :: enum u8 {
 	Cupid,
 	Mourner,
 	Lawn, // grass on top, earth on the sides
+	Phantom, // a stone real only in the dark: pale, see-through in the light
 }
 
 PROP_MESH := [level.Prop_Kind]Mesh_Id {
@@ -252,6 +262,34 @@ build_meshes :: proc(meshes: ^[Mesh_Id]rl.Mesh) {
 	meshes[.Brazier] = one(BRAZIER[:])
 	meshes[.Sigil_Off] = one(SIGIL_OFF[:])
 	meshes[.Sigil_On] = one(SIGIL_ON[:])
+	{
+		// a tripod brazier: three thin legs under a wide shallow bowl
+		a := builder_make()
+		f := ALTAR_FLAME
+		boxes(&a, {
+			{{f.x - 0.1, f.y - 0.015, 0}, {f.x - 0.07, f.y + 0.015, 0.3}},
+			{{f.x + 0.04, f.y + 0.05, 0}, {f.x + 0.07, f.y + 0.08, 0.3}},
+			{{f.x + 0.04, f.y - 0.08, 0}, {f.x + 0.07, f.y - 0.05, 0.3}},
+		})
+		lathe(&a, {{0.0, 0.28}, {0.07, 0.28}, {0.15, 0.34}, {0.15, 0.37}, {0.12, 0.36}, {0.0, 0.33}}, 14, {f.x, f.y, 0})
+		meshes[.Altar] = upload(&a)
+	}
+	meshes[.Crank_Post] = one({{{0.76, 0.76, 0}, {0.84, 0.84, 0.42}}, {{0.7, 0.7, 0}, {0.9, 0.9, 0.05}}})
+	{
+		// a capstan: a ring on four spokes, with four upright grips
+		w := builder_make()
+		lathe(&w, {{0.14, 0.0}, {0.19, 0.0}, {0.19, 0.04}, {0.14, 0.04}, {0.14, 0.0}}, 20)
+		lathe(&w, {{0.0, 0.0}, {0.045, 0.0}, {0.045, 0.06}, {0.0, 0.06}}, 10)
+		boxes(&w, {
+			{{-0.17, -0.012, 0.01}, {0.17, 0.012, 0.035}},
+			{{-0.012, -0.17, 0.01}, {0.012, 0.17, 0.035}},
+			{{0.19, -0.015, 0.0}, {0.22, 0.015, 0.12}},
+			{{-0.22, -0.015, 0.0}, {-0.19, 0.015, 0.12}},
+			{{-0.015, 0.19, 0.0}, {0.015, 0.22, 0.12}},
+			{{-0.015, -0.22, 0.0}, {0.015, -0.19, 0.12}},
+		})
+		meshes[.Crank_Wheel] = upload(&w)
+	}
 
 	lathe_mesh :: proc(profile: [][2]f32, segments: int) -> rl.Mesh {
 		b := builder_make()

@@ -13,6 +13,12 @@
 // behind the palace leads nowhere. Stairs work in the dark only when every
 // tread is visible in the current view; in the lamp light they always work.
 //
+// Act II: some blocks change for good (`flipped`): a crumbling block falls once
+// Psyche steps off it, a phantom block (real only in the dark) dissolves when
+// the lamp's light reaches it, a veiled block (hidden in the dark) becomes
+// real there. Parts of the palace turn a quarter at a time about a pivot
+// (`part_rot`). The graph is rebuilt after every change.
+//
 // Memory: every array is allocated once from the allocator given to `init`
 // (the level arena) and reused; rebuilding the graph or the illusions does not
 // allocate again once the arrays have grown. Scratch work uses the temp allocator.
@@ -52,11 +58,15 @@ Palace :: struct {
 	height:     i32,
 	rot:        int, // current view (0..3)
 	risen:      bool,
+	flipped:    []bool, // per data.blocks entry: changed for good (see the top)
+	part_rot:   [level.MAX_PARTS]int, // quarter turns of each part
+	overlap:    bool, // two blocks share a cell (a part turned into the palace)
 	// world grid, indexed by cell_index
 	solid:      []level.Solid,
 	blocked:    []bool,
 	fences:     []iso.Dirs,
 	node_at:    []i32,
+	block_at:   []i32, // index of the data.blocks entry in the cell, -1
 	// view grid (same shape), for the current view
 	view_node:  []i32,
 	view_solid: []bool,
@@ -77,6 +87,8 @@ init :: proc(p: ^Palace, data: ^level.Level_Data, allocator := context.allocator
 	p.blocked = make([]bool, n)
 	p.fences = make([]iso.Dirs, n)
 	p.node_at = make([]i32, n)
+	p.block_at = make([]i32, n)
+	p.flipped = make([]bool, len(data.blocks))
 	p.view_node = make([]i32, n)
 	p.view_solid = make([]bool, n)
 	p.stair_seen = make([]bool, n) // one per grid cell: enough for any node count
@@ -125,13 +137,131 @@ open :: proc(p: ^Palace, c: Cell, d: Dir) -> bool {
 	return !in_grid(p, c) || d not_in p.fences[cell_index(p, c)]
 }
 
+// Is block entry i there now?
+block_present :: proc(p: ^Palace, i: int) -> bool {
+	return (p.data.blocks[i].trait == .Veiled) == p.flipped[i]
+}
+
+// Where block entry i is now (parts turn).
+block_cell :: proc(p: ^Palace, i: int) -> Cell {
+	e := p.data.blocks[i]
+	if e.part == 0 {
+		return e.cell
+	}
+	return level.part_cell(e.cell, p.data.parts[e.part - 1].pivot, p.part_rot[e.part - 1])
+}
+
+block_solid :: proc(p: ^Palace, i: int) -> level.Solid {
+	e := p.data.blocks[i]
+	s := e.solid
+	if e.part != 0 && s.kind == .Stairs {
+		s.dir = iso.rot_dir(s.dir, p.part_rot[e.part - 1])
+	}
+	return s
+}
+
+// Where a prop is now, and the side it closes.
+prop_place :: proc(p: ^Palace, prop: level.Prop) -> (c: Cell, d: Dir) {
+	if prop.part == 0 {
+		return prop.cell, prop.dir
+	}
+	r := p.part_rot[prop.part - 1]
+	return level.part_cell(prop.cell, p.data.parts[prop.part - 1].pivot, r), iso.rot_dir(prop.dir, r)
+}
+
+// The block entry Psyche stands on at feet cell c (-1: none, or stairs).
+support :: proc(p: ^Palace, c: Cell) -> int {
+	below := c - {0, 0, 1}
+	if !in_grid(p, below) {
+		return -1
+	}
+	return int(p.block_at[cell_index(p, below)])
+}
+
+// The lamp's light makes things true within this distance of Psyche's feet.
+TRUTH_RADIUS :: 2.5
+
+// Does the light of a lamp held by Psyche at feet cell `feet` reach block b?
+in_truth :: proc(feet, b: Cell) -> bool {
+	d := [3]f32{f32(b.x - feet.x), f32(b.y - feet.y), f32(b.z) + 0.5 - (f32(feet.z) + 0.4)}
+	return d.x * d.x + d.y * d.y + d.z * d.z <= TRUTH_RADIUS * TRUTH_RADIUS
+}
+
+// The lamp cannot be lit over a phantom: it would vanish under Psyche's feet.
+can_light :: proc(p: ^Palace, feet: Cell) -> bool {
+	i := support(p, feet)
+	return i < 0 || p.data.blocks[i].trait != .Phantom || !block_present(p, i)
+}
+
+// The lamp's light at feet cell `feet`: phantoms within reach dissolve, veiled
+// blocks become real (never where Psyche stands: `keep` holds the feet cells
+// she occupies). Returns true if anything changed (the graph is rebuilt).
+lamp_touch :: proc(p: ^Palace, feet: Cell, keep: []Cell) -> bool {
+	changed := false
+	blocks: for e, i in p.data.blocks {
+		if (e.trait != .Phantom && e.trait != .Veiled) || p.flipped[i] {
+			continue
+		}
+		c := block_cell(p, i)
+		if !in_truth(feet, c) {
+			continue
+		}
+		for k in keep {
+			if c == k || c == k - {0, 0, 1} {
+				continue blocks
+			}
+		}
+		p.flipped[i] = true
+		changed = true
+	}
+	if changed {
+		rebuild_graph(p)
+	}
+	return changed
+}
+
+// Psyche has left feet cell c: a crumbling block under it falls.
+leave :: proc(p: ^Palace, c: Cell) -> (fell: int) {
+	i := support(p, c)
+	if i < 0 || p.data.blocks[i].trait != .Crumble || !block_present(p, i) {
+		return -1
+	}
+	p.flipped[i] = true
+	rebuild_graph(p)
+	return i
+}
+
+// The handle at feet cell c, or -1.
+handle_at :: proc(p: ^Palace, c: Cell) -> int {
+	for h, i in p.data.handles {
+		if h.cell == c {
+			return i
+		}
+	}
+	return -1
+}
+
+// Turn part n a quarter (counter-clockwise seen from above).
+turn_part :: proc(p: ^Palace, n: int) {
+	p.part_rot[n] = (p.part_rot[n] + 1) % 4
+	rebuild_graph(p)
+}
+
 rebuild_graph :: proc(p: ^Palace) {
 	slice.zero(p.solid)
 	slice.zero(p.blocked)
 	slice.zero(p.fences)
 	slice.fill(p.node_at, -1)
-	for e in p.data.blocks {
-		p.solid[cell_index(p, e.cell)] = e.solid
+	slice.fill(p.block_at, -1)
+	p.overlap = false
+	for _, i in p.data.blocks {
+		if !block_present(p, i) {
+			continue
+		}
+		c := cell_index(p, block_cell(p, i))
+		p.overlap ||= p.solid[c].kind != .None
+		p.solid[c] = block_solid(p, i)
+		p.block_at[c] = i32(i)
 	}
 	if p.risen {
 		for e in p.data.rise {
@@ -139,12 +269,13 @@ rebuild_graph :: proc(p: ^Palace) {
 		}
 	}
 	for prop in p.data.props {
-		i := cell_index(p, prop.cell)
+		c, d := prop_place(p, prop)
+		i := cell_index(p, c)
 		if prop.kind in level.BLOCKING_PROPS {
 			p.blocked[i] = true
 		}
 		if prop.kind in level.EDGE_PROPS {
-			p.fences[i] += {prop.dir}
+			p.fences[i] += {d}
 		}
 	}
 
@@ -365,6 +496,23 @@ neighbours :: proc(g: ^Graph, n: i32) -> []i32 {
 	return g.list[g.start[n]:g.start[n + 1]]
 }
 
+is_real_edge :: proc(p: ^Palace, a, b: Cell) -> bool {
+	ia, ib := node_index(p, a), node_index(p, b)
+	if ia < 0 || ib < 0 {
+		return false
+	}
+	return slice.contains(neighbours(&p.real, ia), ib)
+}
+
+// Does Psyche stand on a crumbling block at node n?
+on_crumble :: proc(p: ^Palace, n: i32) -> bool {
+	if p.nodes[n].stair {
+		return false
+	}
+	b := support(p, p.nodes[n].cell)
+	return b >= 0 && p.data.blocks[b].trait == .Crumble
+}
+
 is_illusion :: proc(p: ^Palace, a, b: Cell) -> bool {
 	ia, ib := node_index(p, a), node_index(p, b)
 	if ia < 0 || ib < 0 {
@@ -376,8 +524,15 @@ is_illusion :: proc(p: ^Palace, a, b: Cell) -> bool {
 // --- search --------------------------------------------------------------------
 
 // Breadth-first path from `from` to `to` (excluding `from`) into `out`.
-// Returns false (and an empty path) when unreachable.
+// Returns false (and an empty path) when unreachable. A path that crosses no
+// crumbling block on the way is preferred: those fall behind her, so she
+// crosses them only when there is no other way.
 find_path :: proc(p: ^Palace, from, to: Cell, dark: bool, out: ^Path) -> bool {
+	return search_path(p, from, to, dark, out, true) || search_path(p, from, to, dark, out, false)
+}
+
+@(private)
+search_path :: proc(p: ^Palace, from, to: Cell, dark: bool, out: ^Path, careful: bool) -> bool {
 	sa.clear(out)
 	start, goal := node_index(p, from), node_index(p, to)
 	if start < 0 || goal < 0 || start == goal {
@@ -400,6 +555,9 @@ find_path :: proc(p: ^Palace, from, to: Cell, dark: bool, out: ^Path) -> bool {
 			}
 			for nb in neighbours(g, cur) {
 				if parent[nb] < 0 && step_allowed(p, cur, nb, dark) {
+					if careful && nb != goal && on_crumble(p, nb) {
+						continue
+					}
 					parent[nb] = cur
 					if nb == goal {
 						break search
@@ -536,11 +694,17 @@ reach_goals :: proc(p: ^Palace, avoid: Maybe(Cell) = nil) -> (goals: Goals) {
 }
 
 // The fragment of the tale must be reachable and never required: blocking its
-// cell must not cut the way to any goal, before or after the seal.
+// cell must not cut the way to any goal, before or after the seal (for a
+// palace that changes, the solver checks it).
 // The palace is left with its blocks lowered.
 check_fragment :: proc(p: ^Palace) -> (reachable, optional: bool) {
 	if !p.data.has_fragment {
 		return false, true
+	}
+	if is_dynamic(p.data) {
+		// the palace changes as she goes: only a full search can tell
+		_, reachable, optional = check_dynamic(p, context.temp_allocator)
+		return
 	}
 	optional = true
 	for risen in ([2]bool{false, true}) {

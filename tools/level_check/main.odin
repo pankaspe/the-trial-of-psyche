@@ -7,11 +7,17 @@
 // lists the illusions of every view: watch out for unintended shortcuts.
 // The fragment of the tale must be reachable and optional (the exit status
 // is 1 otherwise).
+// Levels whose palace changes (crumbling, phantom, veiled blocks, parts that
+// turn) are also solved move by move: the tool prints the plan with the
+// fewest decisions, how many states can be reached and how many of them are
+// dead ends (the level must be restarted), and checks that no part turns
+// into the palace.
 package level_check
 
 import "core:fmt"
 import "core:mem/virtual"
 import "core:os"
+import "base:runtime"
 
 import "../../src/iso"
 import "../../src/level"
@@ -79,6 +85,10 @@ main :: proc() {
 		fmt.println()
 	}
 
+	if pl.is_dynamic(&data) {
+		solve_report(&p, &data, alloc)
+		return
+	}
 	if data.has_fragment {
 		reachable, optional := pl.check_fragment(&p)
 		fmt.printfln("\nfragment %v: reachable %v, optional %v", data.fragment, reachable, optional)
@@ -119,4 +129,88 @@ report :: proc(p: ^pl.Palace, data: ^level.Level_Data, label: string, reached: [
 		fmt.printf("  fragment:%v", i >= 0 && reached[i])
 	}
 	fmt.println()
+}
+
+solve_report :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Allocator) {
+	failed := false
+	// parts must never turn into the palace, in any combination
+	combos := 1
+	for _ in data.parts {
+		combos *= 4
+	}
+	for c in 0 ..< combos {
+		k := c
+		for n in 0 ..< len(data.parts) {
+			p.part_rot[n] = k % 4
+			k /= 4
+		}
+		pl.rebuild_graph(p)
+		if p.overlap {
+			fmt.eprintfln("error: parts turned %v overlap the palace", p.part_rot[:len(data.parts)])
+			failed = true
+		}
+	}
+	p.part_rot = {}
+	pl.rebuild_graph(p)
+
+	if !data.has_exit {
+		fmt.eprintln("error: a level whose palace changes needs an exit")
+		os.exit(1)
+	}
+	sol := pl.solve(p, data.exit, nil, alloc)
+	fmt.printfln("\nsolver: %d states reached, %d dead ends", sol.states, sol.dead)
+	if !sol.solved {
+		fmt.eprintln("error: the exit cannot be reached")
+		os.exit(1)
+	}
+	fmt.printfln("plan: %d steps (%d in the light), %d turns, %d lightings, %d handles", sol.steps, sol.light_steps, sol.turns, sol.lightings, sol.handles)
+	walk := 0
+	illusions := 0
+	flush :: proc(walk, illusions: ^int, cell: iso.Cell) {
+		if walk^ > 0 {
+			fmt.printfln("  walk %2d to %v%s", walk^, cell, illusions^ > 0 ? fmt.tprintf(" (%d illusions)", illusions^) : "")
+		}
+		walk^, illusions^ = 0, 0
+	}
+	last := data.start
+	for st, i in sol.plan {
+		if st.move == .Step {
+			walk += 1
+			illusions += int(st.illusion)
+			last = st.cell
+			if st.changed > 0 {
+				flush(&walk, &illusions, last)
+				fmt.printfln("        %d blocks change", st.changed)
+			}
+			continue
+		}
+		flush(&walk, &illusions, last)
+		switch st.move {
+		case .Turn_Left, .Turn_Right: fmt.printfln("  turn to view %d", st.view)
+		case .Light: fmt.printfln("  light the lamp at %v (%d blocks change)", st.cell, st.changed)
+		case .Douse: fmt.printfln("  put the lamp out")
+		case .Handle: fmt.printfln("  turn the handle at %v", st.cell)
+		case .Start, .Step:
+		}
+		_ = i
+	}
+	flush(&walk, &illusions, last)
+
+	if data.has_fragment {
+		reach := pl.solve(p, data.fragment, data.exit, alloc)
+		optional := pl.solve(p, data.exit, data.fragment, alloc)
+		fmt.printfln("\nfragment %v: reachable %v, optional %v", data.fragment, reach.solved, optional.solved)
+		if reach.solved {
+			fmt.printfln("  fragment plan: %d steps, %d turns, %d lightings, %d handles", reach.steps, reach.turns, reach.lightings, reach.handles)
+		}
+		if !reach.solved || !optional.solved {
+			fmt.eprintln("error: the fragment must be reachable and never required")
+			failed = true
+		}
+	} else {
+		fmt.println("\nwarning: no fragment of the tale in this level")
+	}
+	if failed {
+		os.exit(1)
+	}
 }
