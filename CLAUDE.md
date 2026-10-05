@@ -147,46 +147,37 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   queue instead of cutting each other off. 23 tests. Commits are local, not pushed yet.
 - Testing tip: a collected fragment shows faint and cannot be taken again; to replay from
   scratch delete `~/.config/the-trial-of-psyche/progress.cfg`.
+- Session 4 (2026-10-05): **M2 done and approved by the user** ("adesso è perfetto"). Act I is
+  playable end to end:
+  - I.1 Zephyr's Crag (walk, first turn) opens with the **prologue cutscene** (`prologue x y h`,
+    `game/prologue.odin`, a timeline): the oracle, the procession of veiled mourners with torches
+    climbs the crag, leaves Psyche and puts the torches out, Zephyr's breath, "press any key" (a key
+    skips it, a restart skips it; it replaces the Act I card). I.2 The Invisible Palace (one seam per
+    view: 0, 1, 3; fragment from view 2; starts on a meadow), I.3 The Sisters on the Crag (two hidden
+    stairs, a decoy tower; fragment on the second tower), I.4 as before. Each has an exit or ending,
+    fragment, intro/outro and a walkthrough test.
+  - Exits: a column of light, floor rings and a spiral of wind; at the end the wind lifts Psyche.
+  - Text: prologue -> one `intro` line per level -> outro card (`outro`); no mid-level voices (only
+    V_Doubt beside Cupid). Each new mechanic taught once by a tutorial hint that stays until done
+    (`game.learn`): move/turn/Esc-R in I.1, illusions I.2, hidden stairs I.3, lamp, oil (the gauge
+    pulses) and seal I.4. Controls legend only in the pause menu. Fragment and ending cards darken
+    the game (`ui.focus_shade`).
+  - Sound: no chime on lines or tap on clicks, quieter steps/turns/seams; a wind sound for exits.
+  - Look: Lawn material (`lawn x y z`, grass, earth, flowers); mourner material; decoration set:
+    slim `arch`, corner `vase`, unlit wall `sconce`; slender battlements; no windows (disliked).
+  - Tools: `--shots DIR --level ID` tours a level; README has screenshots (`docs/screenshots/`).
+  - 27 tests. Pushed to GitHub.
 - Text rule (user, 2026-10-05): little text, so the gameplay comes first: prologue -> one intro line
   per level -> outro at the end; mechanics explained once, by tutorial hints.
-- Session 4 (2026-10-05): **M2 started**. I.1 Zephyr's Crag (walk, first turn), I.2 The Invisible
-  Palace (one seam per view: 0, 1, 3; fragment from view 2), I.3 The Sisters on the Crag (two hidden
-  stairs, a decoy tower; fragment on the second tower) built, each with exit, fragment, outro and a
-  walkthrough test (26 tests). Per-cell `voice`/`hint` and `outro` in level files (no hard-coded
-  welcome); the exit glows with Zephyr's wind and lifts Psyche; no lamp mesh without `lamp`. All
-  Act I lines rewritten (narrator I.1, palace voices I.2, the bridegroom I.3, night of the lamp I.4).
-  Maps, screenshots and the full IT/EN text table are in the design document for the user's review.
-  The user liked the gameplay and asked for a prologue cutscene: `prologue x y h` in I.1 plays it
-  (`game/prologue.odin`, a timeline): Apollo's oracle, the procession of veiled mourners with
-  torches climbs the crag with Psyche, leaves her and puts the torches out, Zephyr's first breath,
-  then "press any key" (a key during the scene skips it; a restart skips it). It replaces the
-  Act I card in play. Then: tutorial hints (move, turn, lamp) on a framed band that stays until
-  the action is done (`game.learn`); the fixed controls legend moved to the pause menu; the exit
-  has a column of light, floor rings and a stronger spiral of wind; fragment and ending cards
-  darken the game (`ui.focus_shade`) and sit centred. Then, at the user's request, less text and
-  sound: each level has only an `intro` line and its outro (prologue in I.1); no mid-level voices
-  (only V_Doubt beside Cupid); each new mechanic is taught once by a tutorial hint that stays until
-  done (move/turn I.1, illusions I.2, hidden stairs I.3, lamp/seal I.4); no voice chime or click
-  tap, quieter steps and turns. I.2 starts on a real meadow (`lawn x y z`, Lawn material, flowers).
-  Then: palace decoration in I.2-I.4 (colonnade, arches, walls and windows, balustrades,
-  battlements; checked with level_check: same illusions), and the oil lesson (`Hint_Oil`, right
-  after the first lighting in the level that teaches the lamp; the gauge pulses). 27 tests.
-- Decoration set (user: readable, not cluttered): slim `arch`, small `vase` in a cell corner,
-  unlit `sconce` candles on block faces; no windows (the user disliked them).
-- Decorating a level: blocking props must not sit on a needed cell, edge props must not close a
-  side an illusion uses; compare `./build.sh check` before and after (same illusions, same goals). Committed locally, not pushed. Waiting for the user's playtest.
+- Decoration rules (user: readable, not cluttered): small, few objects; never hide Psyche's start.
+  Blocking props must not sit on a needed cell, edge props must not close a side an illusion uses;
+  compare `./build.sh check` before and after (same illusions, same goals).
 
-## M2 — prologue and Act I (agreed with the user; in progress, see Session 4)
-- Build I.1 (Zephyr's Crag, with the prologue card), I.2 (The Invisible Palace), I.3 (The
-  Sisters on the Crag), following the design document's level map: I.1 walking + first turn,
-  I.2 first illusions, I.3 hidden stairs; I.2 and I.3 are played in the dark only (no `lamp`).
-  Each level has its fragment on an optional, harder spot (level_check must pass) and a
-  walkthrough test; I.1-I.3 end at an `exit`.
-- Restructure Act I as a whole and rewrite **all** its texts (voices, hints, I.4 included): the
-  I.4 lines are still the prototype's tutorial texts ("only the dark leads to me", while the
-  canonical ending needs the lamp). The lamp is introduced only in I.4. Claude proposes, the
-  user reviews; one voice per act (Act I: Cupid and the palace voices).
-- Show the user the level ideas (sketches / screenshots) before polishing; the user's playtest
-  of Act I closes M2.
-- Open: character style; a dedicated font (Noto Serif is a placeholder); review of the M1 text
-  drafts (fragments, act cards, titles, achievements).
+## Next session: M3 — Act II (at the user's go)
+- Act II, *Abandoned* (II.1-II.5, design document): new mechanics false/crumbling structures, the
+  lamp unmasking them, handles rotating part of the palace; the last level uses all of them.
+  Same workflow as M2: propose level ideas with screenshots, intro/outro + one tutorial per new
+  mechanic, level_check + walkthrough tests, the user's playtest closes the phase.
+- Open: character style; a dedicated font (Noto Serif is a placeholder); the user's review of the
+  texts (M1 drafts: fragments, act cards, titles, achievements; Act I lines: table in the design
+  document).
