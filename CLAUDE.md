@@ -64,6 +64,22 @@ CLAUDE.md for the design history).
 - Changes are permanent, so levels have dead ends: `palace.solve` (tools and tests) searches
   every state (cell, view, lamp, changed blocks, part turns) and counts the dead ones.
 
+## Art direction (user, 2026-10-05: "l'ambientazione è tutto")
+- **Platforms**: call every walkable surface a *piattaforma* (EN: platform). One visual
+  language for all of them: a light top with a thin bright rim, the same shape whatever the
+  material. Material (grass, rock, marble, wood) lives on the sides and in details, never on
+  the top: walking from a meadow onto stone must always read as possible. Stones that do not
+  hold (phantom, veiled, cracked) change the top in a recognisable way in every style.
+- **Settings**: each act has its own setting, always at night (the lamp needs the dark); each
+  level a sub-setting of it, with props coherent with the place (add/remove elements per level).
+  Act I the palace of voices · Act II the land without the palace (II.1 the palace crumbling onto
+  living rock, II.2 river and reeds of Pan, II.3 sea crag, II.4 mountain sanctuary of Ceres with
+  wheat terraces, II.5 valley temple of Juno) · III house of Venus · IV the underworld ·
+  Epilogue Olympus (proposal, to confirm level by level).
+- **Art style**: to be chosen by the user among five mockups (canvas
+  https://claude.ai/artifact/L4ScxhCgDi5rJNCThSX7jZ): moonlit marble (today's, refined),
+  red-figure vase, Pompeian fresco, mosaic, book engraving. Then a total graphics overhaul.
+
 ## Game design (agreed with the user, 2026-10-04)
 Full design document (Italian, kept up to date there): https://claude.ai/code/artifact/97c37954-ecc7-4b98-a211-40e5c123d11e
 - 20 levels, ~5-6 hours: Act I (4, prologue inside I.1) · Act II (5) · Act III (5) · Act IV (5) · Epilogue (1).
@@ -80,9 +96,8 @@ Full design document (Italian, kept up to date there): https://claude.ai/code/ar
   levels do not show; the last reveals the frame: an old woman telling the tale to Charite (Met. IV.27, VI.25).
 - The Book (menu): fragments in the text's order + achievements. Progress saved next to the settings.
 - All texts written by us from the Latin (no modern translations: copyright), IT/EN, the user reviews them.
-- Roadmap: M0 foundations (done) → M1 game structure (acts, level select, save, fragments, Book,
-  achievements, canonical ending) → M2 Act I → M3 Act II → M4 Act III → M5 Act IV → M6 epilogue + polish.
-  The user's playtest closes every phase. Work starts only at the user's go.
+- Roadmap: M0 foundations, M1 game structure, M2 Act I, M3 Act II mechanics and levels (done);
+  from now on art direction, then level by level (see "Roadmap from now" at the end).
 
 ## Rendering (render/)
 - True 3D with a hand-made projection equal to the prototype's 2D formula
@@ -218,10 +233,19 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   - Solver plans: 25/24/18/27/28 steps; the levels are probably 6-15 minutes each, shorter than
     the 15-18 minute target: to extend after the playtest if the user wants.
 
-## Next session: M3 playtest, then M4 — Act III (at the user's go)
-- Fix what the user's playtest of Act II finds (difficulty, readability of phantom/veiled
-  stones, handles), maybe lengthen levels; then Act III, Venus' trials (helpers that move
-  pieces, day/night), same workflow.
+- Session 5, later: the user, testing Act II, asked for a card that presents each new mechanic
+  (done: `mechanic` command) and found the meadow/stone floors unreadable as one walkway. New
+  direction: art direction first (settings per act, platform language, art style, total graphics
+  overhaul), then **level by level, not act by act**.
+
+## Roadmap from now (user, 2026-10-05): level by level
+- **A0 art direction**: the user picks a style among the five mockups (or a blend).
+- **A1 the new look**: platform language, materials per setting, renderer overhaul; I.1 is the
+  pilot level, then the rest of Act I is restyled.
+- **Then one level at a time**, in order I.1 … E: its setting and props, puzzle depth (aim
+  15-18 minutes), texts, level_check + tests, the user's playtest closes each level before the
+  next. Act II levels already built (mechanics, solver) are reworked in turn, not thrown away.
+- Mechanics of Acts III-IV are designed when their first level comes.
 - Open: character style; a dedicated font (Noto Serif is a placeholder); the user's review of the
   texts (M1 drafts: fragments, act cards, titles, achievements; Act I lines: table in the design
   document).
