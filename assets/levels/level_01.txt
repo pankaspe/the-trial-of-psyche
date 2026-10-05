@@ -35,5 +35,4 @@ outro outro_i_1
 prologue 6 5 3
 hint 3 1 5 hint_move
 hint 6 2 4 hint_keys
-voice 4 5 3 v_crag_edge
 hint 4 5 3 hint_turn

@@ -147,6 +147,8 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   queue instead of cutting each other off. 23 tests. Commits are local, not pushed yet.
 - Testing tip: a collected fragment shows faint and cannot be taken again; to replay from
   scratch delete `~/.config/the-trial-of-psyche/progress.cfg`.
+- Text rule (user, 2026-10-05): little text, so the gameplay comes first: prologue -> one intro line
+  per level -> outro at the end; mechanics explained once, by tutorial hints.
 - Session 4 (2026-10-05): **M2 started**. I.1 Zephyr's Crag (walk, first turn), I.2 The Invisible
   Palace (one seam per view: 0, 1, 3; fragment from view 2), I.3 The Sisters on the Crag (two hidden
   stairs, a decoy tower; fragment on the second tower) built, each with exit, fragment, outro and a
@@ -161,7 +163,12 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   Act I card in play. Then: tutorial hints (move, turn, lamp) on a framed band that stays until
   the action is done (`game.learn`); the fixed controls legend moved to the pause menu; the exit
   has a column of light, floor rings and a stronger spiral of wind; fragment and ending cards
-  darken the game (`ui.focus_shade`) and sit centred. 27 tests. Committed locally, not pushed. Waiting for the user's playtest.
+  darken the game (`ui.focus_shade`) and sit centred. Then, at the user's request, less text and
+  sound: each level has only an `intro` line and its outro (prologue in I.1); no mid-level voices
+  (only V_Doubt beside Cupid); each new mechanic is taught once by a tutorial hint that stays until
+  done (move/turn I.1, illusions I.2, hidden stairs I.3, lamp/seal I.4); no voice chime or click
+  tap, quieter steps and turns. I.2 starts on a real meadow (`lawn x y z`, Lawn material, flowers).
+  27 tests. Committed locally, not pushed. Waiting for the user's playtest.
 
 ## M2 — prologue and Act I (agreed with the user; in progress, see Session 4)
 - Build I.1 (Zephyr's Crag, with the prologue card), I.2 (The Invisible Palace), I.3 (The

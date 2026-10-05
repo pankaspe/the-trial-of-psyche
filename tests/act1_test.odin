@@ -77,7 +77,10 @@ level_I_2_invisible_palace :: proc(t: ^testing.T) {
 	COURT :: iso.Cell{4, 5, 2}
 	BATHS :: iso.Cell{7, 4, 3}
 	testing.expect(t, palace.is_illusion(&g.palace, g.psyche.cell, COURT), "the first seam, in the first view")
+	run(&g, game.start_cues_time(&g))
+	testing.expect(t, g.hud.hint.key == .Hint_Illusion && game.fade_alpha(g.hud.hint) > 0, "after the intro: the lesson of the illusions")
 	testing.expect(t, walk(t, &g, COURT), "the lawn leads to the court")
+	testing.expect(t, g.learned[i18n.Key.Hint_Illusion], "crossing a seam ends the lesson")
 	testing.expect(t, !can_reach(&g, BATHS), "the baths are not joined yet")
 	game.set_view(&g, 1)
 	testing.expect(t, walk(t, &g, BATHS), "view 1 joins the court to the baths")
@@ -116,7 +119,6 @@ level_I_3_sisters :: proc(t: ^testing.T) {
 	DECOY :: iso.Cell{5, 6, 4}
 	testing.expect(t, !can_reach(&g, TERRACE), "view 0: the first stairs are hidden")
 	testing.expect(t, walk(t, &g, DECOY), "the decoy tower is joined to the garden")
-	testing.expect(t, g.heard[i18n.Key.V_Sisters_Decoy], "and it speaks of the sisters' words")
 	for r in 0 ..< 4 {
 		game.set_view(&g, r)
 		testing.expectf(t, !can_reach(&g, g.data.exit), "view %d: the tower leads nowhere", r)
@@ -125,6 +127,7 @@ level_I_3_sisters :: proc(t: ^testing.T) {
 	testing.expect(t, walk(t, &g, g.data.start), "back down to the garden")
 	game.set_view(&g, 1)
 	testing.expect(t, walk(t, &g, TERRACE) && walk(t, &g, LEDGE), "view 1: up the stairs and across to the crag")
+	testing.expect(t, g.learned[i18n.Key.Hint_Stairs], "climbing in the dark ends the lesson of the stairs")
 	testing.expect(t, !can_reach(&g, STAIRS_TOP), "view 1: the second stairs are hidden")
 	game.toggle_lamp(&g)
 	testing.expect(t, !g.lamp_on, "no lamp to cheat with")

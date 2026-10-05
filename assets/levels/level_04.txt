@@ -19,7 +19,9 @@
 #                           start cell, when the level begins
 #                           (key = an i18n.Key name, case-insensitive)
 #   hint x y h key          the same for a hint (controls, rules)
+#   intro key               the line shown when the level begins
 #   outro key               the text of the ending card at the exit
+#   lawn x y z              the block at (x,y,z) has a grassy top
 #   prologue x y h          the level opens with the prologue cutscene; the
 #                           procession comes up at this cell and walks to start
 # Illusions: in the dark two surfaces are joined when they look joined in the
@@ -76,11 +78,7 @@ amore 6 6 5
 lamp 2
 # the fragment waits on the pillar that only one view joins to the balcony
 fragment 2 7 4
-voice 10 10 1 v_night
-voice 8 9 1 v_rule
-voice 7 9 1 v_turn
-hint 7 9 1 hint_turn
-voice 3 4 3 v_lamp
+intro intro_i_4
+# the lamp is taught where it is first needed: the balcony
 hint 3 4 3 hint_lamp
-voice 1 3 4 v_decoy
-voice 5 5 5 v_chamber
+hint 6 2 4 hint_sigil

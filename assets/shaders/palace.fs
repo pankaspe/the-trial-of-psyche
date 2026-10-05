@@ -23,7 +23,8 @@ uniform float mist_bottom;
 uniform float screen_height;
 
 // per piece
-uniform float material;      // 0 marble, 1 masonry, 2 foliage, 3 bronze, 4 psyche, 5 cupid, 6 mourner
+uniform float material;      // 0 marble, 1 masonry, 2 foliage, 3 bronze, 4 psyche, 5 cupid, 6 mourner, 7 lawn
+                             // (palette 7 grass, 8 earth)
 uniform float detail;        // 0 none, 1 marble block, 2 masonry block
 uniform float hidden;        // 1: visible only in the lamp light, glowing gold
 uniform float alpha;
@@ -60,10 +61,20 @@ void palette(float m, float t, out vec3 night, out vec3 warm) {
     } else if (m < 5.5) {   // Cupid: a figure of light
         night = mix(vec3(0.55, 0.30, 0.10), vec3(1.0, 0.86, 0.55), t);
         warm = night;
-    } else {                // the mourners of the prologue: dark veils
+    } else if (m < 6.5) {   // the mourners of the prologue: dark veils
         night = mix(vec3(0.07, 0.06, 0.13), vec3(0.36, 0.33, 0.48), t);
         warm = mix(vec3(0.16, 0.09, 0.07), vec3(0.62, 0.45, 0.34), t);
+    } else if (m < 7.5) {   // grass: blue-green under the moon
+        night = ramp(vec3(0.02, 0.06, 0.07), vec3(0.08, 0.22, 0.21), vec3(0.30, 0.52, 0.43), t);
+        warm = ramp(vec3(0.06, 0.08, 0.02), vec3(0.28, 0.38, 0.10), vec3(0.62, 0.72, 0.30), t);
+    } else {                // earth
+        night = ramp(vec3(0.05, 0.04, 0.09), vec3(0.16, 0.12, 0.21), vec3(0.38, 0.31, 0.40), t);
+        warm = ramp(vec3(0.16, 0.08, 0.03), vec3(0.45, 0.28, 0.14), vec3(0.70, 0.50, 0.30), t);
     }
+}
+
+float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
 // 1 on a line of half-width w at `pos`, anti-aliased.
@@ -125,6 +136,15 @@ void main() {
             }
         }
     }
+    float m = material;
+    if (material > 6.5) {
+        // lawn: grass on top and in a ragged fringe under the edge, earth below
+        float fringe = 0.84 - 0.05 * abs(sin(L.x * 23.0 + L.y * 17.0));
+        m = (n.z > 0.5 || (n.z > -0.5 && L.z > fringe)) ? 7.0 : 8.0;
+        if (n.z > 0.5) {
+            tone *= 0.88 + 0.2 * hash(floor(L.xy * 16.0));
+        }
+    }
     float lum = (t * 0.40 + 0.16) * tone;
     t = clamp((lum - 0.16) / 0.40, 0.0, 1.0);
 
@@ -133,9 +153,9 @@ void main() {
 
     vec3 night;
     vec3 warm;
-    palette(material, t, night, warm);
+    palette(m, t, night, warm);
     vec3 col = mix(night, warm, lit);
-    if (material < 3.5) {
+    if (material < 3.5 || material > 6.5) {
         // under the lamp the eye adapts: what is far from the flame sinks into the dark
         col *= mix(1.0, 0.55, light_amount * (1.0 - lit));
         // true depth, visible only in the light

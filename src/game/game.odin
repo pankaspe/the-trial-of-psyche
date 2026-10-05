@@ -48,7 +48,8 @@ ROTATE_TIME :: 0.75
 RISE_DELAY :: 0.45
 RISE_TIME :: 1.4
 RISE_DEPTH :: 520.0 / iso.WALL // risen blocks come up from this far below
-WELCOME_DELAY :: 1.6
+WELCOME_DELAY :: 1.6 // the start cell's cues, in a level without an intro
+INTRO_AT :: 0.8 // the intro line, under the level's title
 MAX_STAINS :: 96
 MAX_DROPS :: 8
 MAX_MARKERS :: 4
@@ -307,7 +308,12 @@ update :: proc(g: ^Game, dt: f32) {
 	if g.begin_t >= 0 {
 		before := g.begin_t
 		g.begin_t += dt
-		if before < WELCOME_DELAY && g.begin_t >= WELCOME_DELAY && g.phase == .Play {
+		if g.data.has_intro && before < INTRO_AT && g.begin_t >= INTRO_AT && g.phase == .Play {
+			speak(g, g.data.intro)
+		}
+		// the start cell's hints wait for the intro to be read
+		at := start_cues_time(g)
+		if before < at && g.begin_t >= at && g.phase == .Play {
 			cues(g, g.data.start)
 		}
 	}
@@ -334,7 +340,6 @@ update :: proc(g: ^Game, dt: f32) {
 	case .Sigil:
 		if g.phase_t >= rise_duration(g) {
 			set_phase(g, .Play)
-			say(g, .V_Sigil)
 		}
 	case .Ending_Oil:
 		update_ending_oil(g, dt)
@@ -378,7 +383,7 @@ request_turn :: proc(g: ^Game, step: int) {
 
 @(private)
 start_turn :: proc(g: ^Game, step: int) {
-	audio.play(.Turn, -4)
+	audio.play(.Turn, -9)
 	learn(g, .Hint_Turn)
 	pl.reachable(&g.palace, g.psyche.cell, !g.lamp_on, g.reach_before[:len(g.palace.nodes)])
 	g.turning = true
@@ -406,7 +411,7 @@ update_turn :: proc(g: ^Game, dt: f32) {
 	for ok, i in after {
 		if ok && !g.reach_before[i] {
 			// a new way has opened in this view
-			audio.play(.Seam, -6, 0.9)
+			audio.play(.Seam, -12, 0.9)
 			break
 		}
 	}
@@ -432,7 +437,6 @@ toggle_lamp :: proc(g: ^Game) {
 		g.lightings += 1
 		set_lamp(g, true)
 		learn(g, .Hint_Lamp)
-		say(g, .V_First_Light)
 	} else {
 		audio.play(.Blocked, -6)
 		hint(g, .Hint_No_Oil, 0, true)
@@ -501,7 +505,6 @@ click :: proc(g: ^Game, point: Vec2) {
 		return
 	}
 	add_marker(g, target, true)
-	audio.play(.Tap, -12)
 	learn(g, .Hint_Move)
 	g.pending_turn = 0
 	g.path = path
@@ -553,7 +556,11 @@ next_step :: proc(g: ^Game) {
 	psy.step_illusion = illusion
 	psy.walking = true
 	if illusion {
-		audio.play(.Seam, -8)
+		audio.play(.Seam, -14)
+		learn(g, .Hint_Illusion)
+	}
+	if !g.lamp_on && (pl.is_stair(&g.palace, psy.cell) || pl.is_stair(&g.palace, next)) {
+		learn(g, .Hint_Stairs)
 	}
 	a, _ := step_points(g, 0)
 	b, _ := step_points(g, 0.49)
@@ -641,7 +648,7 @@ update_walk :: proc(g: ^Game, dt: f32) {
 	}
 	psy.cell = psy.step_to
 	psy.pos = pl.node_world(&g.palace, psy.cell)
-	audio.play(.Step, -12, fx.rand_range(&g.rng, 0.85, 1.15))
+	audio.play(.Step, -18, fx.rand_range(&g.rng, 0.85, 1.15))
 	arrive(g, psy.cell)
 	next_step(g)
 }
@@ -733,6 +740,7 @@ amore_world :: proc(g: ^Game) -> Vec3 {
 @(private)
 activate_sigil :: proc(g: ^Game) {
 	g.activated = true
+	learn(g, .Hint_Sigil)
 	set_phase(g, .Sigil)
 	sa.clear(&g.path)
 	audio.play(.Rumble, -2)
@@ -951,13 +959,21 @@ say :: proc(g: ^Game, key: Key) {
 speak :: proc(g: ^Game, key: Key) {
 	length := f32(utf8.rune_count_in_string(i18n.tr(key)))
 	show(&g.hud.voice, key, 0.9, 2.8 + length * 0.045, 1.6)
-	audio.play(.Voice, -6)
+}
+
+// When the start cell's hints come: after the intro line, if there is one.
+start_cues_time :: proc(g: ^Game) -> f32 {
+	if !g.data.has_intro {
+		return WELCOME_DELAY
+	}
+	length := f32(utf8.rune_count_in_string(i18n.tr(g.data.intro)))
+	return INTRO_AT + 0.9 + 2.8 + length * 0.045 + 0.6
 }
 
 // Tutorial hints stay on screen until Psyche does what they teach.
 is_tutorial :: proc(key: Key) -> bool {
 	#partial switch key {
-	case .Hint_Move, .Hint_Turn, .Hint_Lamp:
+	case .Hint_Move, .Hint_Turn, .Hint_Lamp, .Hint_Illusion, .Hint_Stairs, .Hint_Sigil:
 		return true
 	}
 	return false

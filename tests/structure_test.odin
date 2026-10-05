@@ -178,20 +178,32 @@ trust_waits_for_the_end_of_the_game :: proc(t: ^testing.T) {
 }
 
 // Two lines said one right after the other: the second waits for the first.
+@(private)
+VOICE_LEVEL :: `
+size 4
+column 0 0 0 0
+column 1 0 0 0
+column 2 0 0 0
+start 0 0 1
+voice 1 0 1 intro_i_2
+voice 2 0 1 intro_i_3
+`
+
 @(test)
 voices_wait_their_turn :: proc(t: ^testing.T) {
 	g: game.Game
 	defer game.destroy(&g)
-	if !start(t, &g) {
+	if err := game.load_text(&g, 0, VOICE_LEVEL); err != nil {
+		testing.expect(t, false, "the test level does not load")
 		return
 	}
-	run(&g, 2) // the welcome
-	testing.expect(t, walk(t, &g, {8, 9, 1}) && walk(t, &g, {7, 9, 1}), "Psyche walks over both voices")
-	testing.expect(t, g.hud.voice.key != i18n.Key.V_Turn, "the second line does not cut off the first")
-	for i := 0; i < 60 * 30 && g.hud.voice.key != i18n.Key.V_Turn; i += 1 {
+	game.begin(&g)
+	testing.expect(t, walk(t, &g, {1, 0, 1}) && walk(t, &g, {2, 0, 1}), "Psyche walks over both voices")
+	testing.expect(t, g.hud.voice.key == i18n.Key.Intro_I_2, "the second line does not cut off the first")
+	for i := 0; i < 60 * 30 && g.hud.voice.key != i18n.Key.Intro_I_3; i += 1 {
 		run(&g, 1.0 / 60)
 	}
-	testing.expect(t, g.hud.voice.active && g.hud.voice.key == i18n.Key.V_Turn, "then it is spoken")
+	testing.expect(t, g.hud.voice.active && g.hud.voice.key == i18n.Key.Intro_I_3, "then it is spoken")
 }
 
 @(private)

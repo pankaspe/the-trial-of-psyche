@@ -101,6 +101,9 @@ Level_Data :: struct {
 	has_exit:     bool,
 	prologue:     Cell, // where the prologue's procession comes up onto the level
 	has_prologue: bool, // the level opens with the prologue cutscene (I.1)
+	intro:        i18n.Key, // the line shown when the level begins
+	has_intro:    bool,
+	lawn:         [dynamic]Cell, // blocks with a grassy top
 	outro:        i18n.Key, // the text of the ending card at the exit
 	has_outro:    bool,
 	has_lamp:     bool, // Psyche carries the lamp (from the end of Act I)
@@ -125,6 +128,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	data.props = make([dynamic]Prop, 0, 32)
 	data.voices = make([dynamic]Cue, 0, 16)
 	data.hints = make([dynamic]Cue, 0, 8)
+	data.lawn = make([dynamic]Cell, 0, 8)
 	has_start := false
 	max_z: i32 = 0
 
@@ -279,15 +283,26 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				data.lamp_par = v[0]
 			}
 
-		case "outro":
+		case "outro", "intro":
 			if len(args) < 1 {
-				return data, fail(line_no, "outro: expected a text key")
+				return data, fail(line_no, "%s: expected a text key", fields[0])
 			}
 			key, ok := i18n.key_from_name(args[0])
 			if !ok {
-				return data, fail(line_no, "outro: unknown text key '%s'", args[0])
+				return data, fail(line_no, "%s: unknown text key '%s'", fields[0], args[0])
 			}
-			data.outro, data.has_outro = key, true
+			if fields[0] == "outro" {
+				data.outro, data.has_outro = key, true
+			} else {
+				data.intro, data.has_intro = key, true
+			}
+
+		case "lawn":
+			v: [3]i32
+			if !ints(args, v[:]) {
+				return data, fail(line_no, "lawn: expected x y z")
+			}
+			append(&data.lawn, v)
 
 		case "voice", "hint":
 			v: [3]i32

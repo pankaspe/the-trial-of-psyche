@@ -36,7 +36,10 @@ exit 8 6 4
 fragment 1 3 4
 outro outro_i_2
 
-voice 2 4 1 v_palace_wake
-voice 2 4 1 v_palace_rule
-voice 4 5 2 v_palace_yours
-voice 7 4 3 v_palace_baths
+intro intro_i_2
+hint 2 4 1 hint_illusion
+# the meadow where Zephyr laid her
+lawn 2 4 0
+lawn 3 4 0
+lawn 2 5 0
+lawn 3 5 0

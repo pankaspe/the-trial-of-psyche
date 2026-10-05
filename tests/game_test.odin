@@ -51,7 +51,7 @@ lamp_level_rules :: proc(t: ^testing.T) {
 		return
 	}
 	run(&g, 2)
-	testing.expect(t, g.heard[i18n.Key.V_Night] && g.hinted[i18n.Key.Hint_Turn] == false, "the night begins: the start cell speaks")
+	testing.expect(t, g.hud.voice.active && g.hud.voice.key == .Intro_I_4, "the level opens with its intro line")
 
 	game.set_view(&g, 3)
 	testing.expect(t, walk(t, &g, TERRACE), "Psyche crosses the gap to the west terrace in view 3")
@@ -76,7 +76,7 @@ lamp_level_rules :: proc(t: ^testing.T) {
 	testing.expect(t, g.oil < oil, "oil burns while lit")
 	run(&g, game.rise_duration(&g) + 0.2)
 	testing.expect(t, g.phase == .Play && g.palace.risen, "the bridge has risen and play resumes")
-	testing.expect(t, g.heard[i18n.Key.V_Sigil], "Cupid speaks of the seal")
+	testing.expect(t, g.learned[i18n.Key.Hint_Sigil], "the seal's lesson is done")
 	run(&g, 2)
 	testing.expect(t, g.stain_count > 0, "the burning lamp drops oil")
 
@@ -144,8 +144,8 @@ every_text_is_translated :: proc(t: ^testing.T) {
 			testing.expectf(t, i18n.tr_in(l, k) != "", "%v: %v is empty", l, k)
 		}
 	}
-	k, ok := i18n.key_from_name("v_rule")
-	testing.expect(t, ok && k == .V_Rule, "voice keys are found by name")
+	k, ok := i18n.key_from_name("v_doubt")
+	testing.expect(t, ok && k == .V_Doubt, "text keys are found by name")
 }
 
 // Crossing an illusion, Psyche jumps between two surfaces far apart in the

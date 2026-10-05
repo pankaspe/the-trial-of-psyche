@@ -144,6 +144,7 @@ Piece :: struct {
 	mesh:       Mesh_Id,
 	material:   Material,
 	block:      bool, // marble on top, masonry when covered
+	lawn:       bool, // a block with a grassy top
 	rise_index: i32, // >= 0: raised by the seal, in this order
 	sigil:      enum u8 {
 		None,
@@ -167,7 +168,11 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 	s.pieces = make([dynamic]Piece, 0, len(g.data.blocks) + len(g.data.props) + len(g.data.rise) + 2, allocator)
 	s.rng = fx.rng_init(1234)
 	for e in g.data.blocks {
-		append(&s.pieces, solid_piece(e.cell, e.solid, -1))
+		p := solid_piece(e.cell, e.solid, -1)
+		for c in g.data.lawn {
+			p.lawn ||= c == e.cell && p.block
+		}
+		append(&s.pieces, p)
 	}
 	for prop in g.data.props {
 		base := PROP_MESH[prop.kind]
@@ -492,6 +497,9 @@ draw_pieces :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, transparent: bool) {
 			covered := pl.solid_at(&g.palace, p.cell + {0, 0, 1}).kind != .None
 			material = covered ? .Masonry : .Marble
 			detail = covered ? 2 : 1
+			if p.lawn {
+				material, detail = .Lawn, 0
+			}
 		}
 		set_piece_uniforms(r, material, detail, hidden ? 1 : 0, alpha, 0.25, 0)
 		m := rl.MatrixTranslate(f32(p.cell.x), f32(p.cell.y), f32(p.cell.z) + lift)
@@ -660,6 +668,19 @@ draw_decals :: proc(g: ^game.Game) {
 		floor_ellipse(st.pos + {0, 0, 0.004}, 0.06, 0.06, {0.5, 0.3, 0.08, 0.55 * stain_fade})
 	}
 	floor_ellipse(g.psyche.pos + {0, 0, 0.006}, 0.13, 0.13, {0, 0, 0.04, 0.4 * game.psyche_alpha(g)})
+
+	// a few small flowers in the grass, pale in the moonlight
+	FLOWER := [3]Color4{{0.92, 0.9, 1.0, 0.85}, {1.0, 0.9, 0.55, 0.8}, {0.8, 0.65, 1.0, 0.8}}
+	for c, n in g.data.lawn {
+		for k in 0 ..< 6 {
+			h := u32(n * 31 + k * 7)
+			p := Vec3{f32(c.x) + 0.12 + 0.76 * fx.hash01(h * 3 + 1), f32(c.y) + 0.12 + 0.76 * fx.hash01(h * 3 + 2), f32(c.z) + 1.006}
+			if g.psyche.cell == c + {0, 0, 1} && linalg_dot(p - g.psyche.pos, p - g.psyche.pos) < 0.04 {
+				continue // trodden under her feet
+			}
+			floor_ellipse(p, 0.028, 0.028, FLOWER[k % 3])
+		}
+	}
 
 	// the exit: rings of wind spreading on the stone
 	if ea := exit_alpha(g); g.data.has_exit && g.phase != .Finished && ea > 0 {

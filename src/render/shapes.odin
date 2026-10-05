@@ -45,6 +45,7 @@ Material :: enum u8 {
 	Psyche,
 	Cupid,
 	Mourner,
+	Lawn, // grass on top, earth on the sides
 }
 
 PROP_MESH := [level.Prop_Kind]Mesh_Id {
