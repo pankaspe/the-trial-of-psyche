@@ -135,8 +135,22 @@ Key :: enum u16 {
 	Controls,
 	Controls_Dark,
 
-	// Cupid's voice (level files refer to these by name, case-insensitive)
-	V_Welcome,
+	// voices in the levels (level files refer to these by name, case-insensitive)
+	// I.1: the narrator on the crag
+	V_Crag_Alone,
+	V_Crag_Edge,
+	// I.2: the palace voices
+	V_Palace_Wake,
+	V_Palace_Rule,
+	V_Palace_Yours,
+	V_Palace_Baths,
+	// I.3: Cupid's warnings
+	V_Sisters_Warn,
+	V_Sisters_Stairs,
+	V_Sisters_Decoy,
+	V_Sisters_Face,
+	// I.4: the night of the lamp
+	V_Night,
 	V_Rule,
 	V_Lamp,
 	V_Decoy,
@@ -152,6 +166,11 @@ Key :: enum u16 {
 	Hint_Seam,
 	Hint_No_Oil,
 	Hint_Hidden_Stairs,
+
+	// the ending card of a level that ends at an exit
+	Outro_I_1,
+	Outro_I_2,
+	Outro_I_3,
 
 	// endings
 	End_Trust_Title,
@@ -347,13 +366,23 @@ IT := [Key]string {
 	.Controls       = "Clic: cammina  ·  Q / E: ruota il palazzo  ·  Spazio / tasto destro: lampada  ·  R: ricomincia  ·  Esc: pausa",
 	.Controls_Dark  = "Clic: cammina  ·  Q / E: ruota il palazzo  ·  R: ricomincia  ·  Esc: pausa",
 
-	.V_Welcome      = "Benvenuta, Psiche. Questa casa è tua, e ogni voce che senti è qui per servirti.",
-	.V_Rule         = "Non cercare di vedere. Al buio, ciò che sembra unito è unito.",
-	.V_Lamp         = "Le tue sorelle ti hanno dato una lampada. Accendila, se devi… ma ciò che la luce mostra, la luce lo divide.",
+	.V_Crag_Alone   = "Il corteo è tornato in città con le fiaccole spente. Psiche resta sola sulla cima, a piangere.",
+	.V_Crag_Edge    = "Sotto, solo il vuoto. Ma l'aria si muove: un vento leggero gira intorno al monte.",
+	.V_Palace_Wake  = "Psiche si sveglia sul prato. Davanti a lei, una reggia che non è opera di mani umane.",
+	.V_Palace_Rule  = "Una voce senza corpo: «Qui non serve vedere, signora. Al buio, ciò che sembra unito è unito.»",
+	.V_Palace_Yours = "«Perché ti stupisci? Tutto questo è tuo. Noi, di cui senti le voci, siamo le tue serve.»",
+	.V_Palace_Baths = "«Riposa, se vuoi, e scendi al bagno. La cena reale non tarderà.»",
+	.V_Sisters_Warn = "La voce dello sposo: «Le tue sorelle ti cercano sulla rupe. Se le senti piangere, non rispondere.»",
+	.V_Sisters_Stairs = "«Al buio, una scala che non vedi non porta da nessuna parte. Gira la casa, finché non ti si mostra.»",
+	.V_Sisters_Decoy = "«Da qui la rupe si vede, ma non si raggiunge. Come le parole delle tue sorelle.»",
+	.V_Sisters_Face = "«Vorranno convincerti a guardare il mio volto. Se lo vedrai, non lo vedrai più.»",
+	.V_Night        = "Notte. Lo sposo dorme in cima alla torre. Psiche ha con sé la lampada, come le hanno detto le sorelle.",
+	.V_Rule         = "Le voci del palazzo sussurrano: «Torna a letto, signora. È notte.»",
+	.V_Lamp         = "Qui nessuno ti vede. Accendi la lampada: la luce mostra ciò che è vero, e consuma l'olio.",
 	.V_Decoy        = "Solo vento, qui. Il palazzo custodisce altrove i suoi segreti.",
-	.V_Turn         = "Il palazzo ha molti volti. Giralo, e cerca quello che ti accoglie.",
-	.V_Sigil        = "Hai trovato il sigillo. Ora spegni la lampada: da me si arriva solo al buio.",
-	.V_Chamber      = "Sono qui. Non guardarmi: se vedi il mio volto, mi perderai.",
+	.V_Turn         = "La passerella finisce nel vuoto. Ma questa casa ha molti volti.",
+	.V_Sigil        = "Il sigillo cede alla luce, e la pietra sale dal buio. Spegni la lampada: l'olio è poco, e al buio la casa ti porta da lui.",
+	.V_Chamber      = "La stanza dello sposo. Il suo respiro, lento, nel buio.",
 	.V_First_Light  = "La luce rivela… e divide.",
 	.V_Doubt        = "Dorme. Ti tornano in mente le parole delle sorelle: e se fosse un mostro? La lampada è nella tua mano.",
 
@@ -363,6 +392,10 @@ IT := [Key]string {
 	.Hint_Seam      = "Alla luce, il passaggio non c'è",
 	.Hint_No_Oil    = "L'olio è finito. Premi R per ricominciare.",
 	.Hint_Hidden_Stairs = "Al buio, una scala che non vedi non porta da nessuna parte",
+
+	.Outro_I_1      = "Il soffio mite di Zefiro la solleva piano, le gonfia la veste e la porta giù per il pendio, fino a deporla nella valle, in grembo a un prato fiorito.",
+	.Outro_I_2      = "Viene la notte. Uno sposo sconosciuto sale sul letto, la fa sua e se ne va prima dell'alba. Psiche non ha visto il suo volto.",
+	.Outro_I_3      = "Zefiro porta giù le sorelle. Vedono le stanze d'oro, e l'invidia le rode.\n«Tuo marito è un serpente enorme» dicono. «Prendi una lampada e un rasoio.»",
 
 	.End_Trust_Title = "Fiducia",
 	.End_Trust      = "Resti al buio, accanto a lui.\nNon conosci il suo volto, ma conosci il suo respiro.",
@@ -511,13 +544,23 @@ EN := [Key]string {
 	.Controls       = "Click: walk  ·  Q / E: turn the palace  ·  Space / right click: lamp  ·  R: restart  ·  Esc: pause",
 	.Controls_Dark  = "Click: walk  ·  Q / E: turn the palace  ·  R: restart  ·  Esc: pause",
 
-	.V_Welcome      = "Welcome, Psyche. This house is yours, and every voice you hear is here to serve you.",
-	.V_Rule         = "Do not try to see. In the dark, what seems joined is joined.",
-	.V_Lamp         = "Your sisters gave you a lamp. Light it if you must… but what the light reveals, the light divides.",
+	.V_Crag_Alone   = "The procession has gone back to the city, its torches put out. Psyche is left alone on the summit, weeping.",
+	.V_Crag_Edge    = "Below, only emptiness. But the air stirs: a light wind circles the mountain.",
+	.V_Palace_Wake  = "Psyche wakes on the lawn. Before her stands a palace not made by human hands.",
+	.V_Palace_Rule  = "A voice without a body: “Here you need not see, lady. In the dark, what seems joined is joined.”",
+	.V_Palace_Yours = "“Why so amazed? All this is yours. We, whose voices you hear, are your servants.”",
+	.V_Palace_Baths = "“Rest if you like, then go down to the bath. The royal supper will not be long.”",
+	.V_Sisters_Warn = "The bridegroom's voice: “Your sisters are looking for you on the crag. If you hear them weep, do not answer.”",
+	.V_Sisters_Stairs = "“In the dark, stairs you cannot see lead nowhere. Turn the house until they show themselves.”",
+	.V_Sisters_Decoy = "“From here the crag can be seen, but not reached. Like your sisters' words.”",
+	.V_Sisters_Face = "“They will try to make you look at my face. If you see it, you will never see it again.”",
+	.V_Night        = "Night. The bridegroom sleeps at the top of the tower. Psyche has the lamp with her, as her sisters told her.",
+	.V_Rule         = "The palace voices whisper: “Go back to bed, lady. It is night.”",
+	.V_Lamp         = "No one sees you here. Light the lamp: the light shows what is true, and burns the oil.",
 	.V_Decoy        = "Only wind, here. The palace keeps its secrets elsewhere.",
-	.V_Turn         = "The palace has many faces. Turn it, and look for the one that welcomes you.",
-	.V_Sigil        = "You found the seal. Now put out the lamp: only the dark leads to me.",
-	.V_Chamber      = "I am here. Do not look at me: if you see my face, you will lose me.",
+	.V_Turn         = "The walkway ends in nothing. But this house has many faces.",
+	.V_Sigil        = "The seal yields to the light, and stone rises from the dark. Put out the lamp: oil is short, and in the dark the house will take you to him.",
+	.V_Chamber      = "The bridegroom's chamber. His breathing, slow, in the dark.",
 	.V_First_Light  = "The light reveals… and divides.",
 	.V_Doubt        = "He sleeps. Your sisters' words come back to you: what if he is a monster? The lamp is in your hand.",
 
@@ -527,6 +570,10 @@ EN := [Key]string {
 	.Hint_Seam      = "In the light, there is no passage",
 	.Hint_No_Oil    = "The oil is gone. Press R to start again.",
 	.Hint_Hidden_Stairs = "In the dark, stairs you cannot see lead nowhere",
+
+	.Outro_I_1      = "The gentle breath of Zephyr lifts her softly, fills her robe and carries her down the slope, laying her in the valley, in the lap of a flowering meadow.",
+	.Outro_I_2      = "Night comes. An unknown bridegroom climbs into the bed, makes her his wife and leaves before dawn. Psyche has not seen his face.",
+	.Outro_I_3      = "Zephyr carries the sisters down. They see the golden rooms, and envy gnaws at them.\n“Your husband is a huge serpent,” they say. “Take a lamp and a razor.”",
 
 	.End_Trust_Title = "Trust",
 	.End_Trust      = "You stay in the dark, beside him.\nYou do not know his face, but you know his breath.",

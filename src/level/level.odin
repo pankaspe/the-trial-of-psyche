@@ -75,7 +75,9 @@ Prop :: struct {
 	oriented: bool,
 }
 
-Voice :: struct {
+// A text tied to a cell: a voice line or a hint, given when Psyche first
+// stands there (the start cell: when the level begins).
+Cue :: struct {
 	cell: Cell,
 	key:  i18n.Key,
 }
@@ -86,7 +88,8 @@ Level_Data :: struct {
 	blocks:    [dynamic]Solid_Entry,
 	rise:      [dynamic]Solid_Entry, // raised when the sigil is lit
 	props:     [dynamic]Prop,
-	voices:    [dynamic]Voice,
+	voices:    [dynamic]Cue,
+	hints:     [dynamic]Cue,
 	start:        Cell,
 	sigil:        Cell,
 	amore:        Cell,
@@ -96,6 +99,8 @@ Level_Data :: struct {
 	has_amore:    bool,
 	has_fragment: bool,
 	has_exit:     bool,
+	outro:        i18n.Key, // the text of the ending card at the exit
+	has_outro:    bool,
 	has_lamp:     bool, // Psyche carries the lamp (from the end of Act I)
 	lamp_par:     i32, // lightings that are enough to finish ("no wasted light"); 0 = none
 }
@@ -116,7 +121,8 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	data.blocks = make([dynamic]Solid_Entry, 0, 128)
 	data.rise = make([dynamic]Solid_Entry, 0, 8)
 	data.props = make([dynamic]Prop, 0, 32)
-	data.voices = make([dynamic]Voice, 0, 16)
+	data.voices = make([dynamic]Cue, 0, 16)
+	data.hints = make([dynamic]Cue, 0, 8)
 	has_start := false
 	max_z: i32 = 0
 
@@ -270,16 +276,26 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				data.lamp_par = v[0]
 			}
 
-		case "voice":
+		case "outro":
+			if len(args) < 1 {
+				return data, fail(line_no, "outro: expected a text key")
+			}
+			key, ok := i18n.key_from_name(args[0])
+			if !ok {
+				return data, fail(line_no, "outro: unknown text key '%s'", args[0])
+			}
+			data.outro, data.has_outro = key, true
+
+		case "voice", "hint":
 			v: [3]i32
 			if !ints(args, v[:]) || len(args) < 4 {
-				return data, fail(line_no, "voice: expected x y h key")
+				return data, fail(line_no, "%s: expected x y h key", fields[0])
 			}
 			key, ok := i18n.key_from_name(args[3])
 			if !ok {
-				return data, fail(line_no, "voice: unknown text key '%s'", args[3])
+				return data, fail(line_no, "%s: unknown text key '%s'", fields[0], args[3])
 			}
-			append(&data.voices, Voice{v, key})
+			append(fields[0] == "voice" ? &data.voices : &data.hints, Cue{v, key})
 
 		case:
 			return data, fail(line_no, "unknown command '%s'", fields[0])

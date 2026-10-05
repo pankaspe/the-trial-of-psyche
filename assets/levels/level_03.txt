@@ -1,0 +1,45 @@
+# The Trial of Psyche - level I.3: "The Sisters on the Crag"
+# Hidden stairs. Psyche climbs back to the crag where her sisters call.
+# In the dark, stairs she cannot see lead nowhere: the first flight hides
+# behind a tower in the first view, the second behind another tower in the
+# view that joins the terrace to the crag. The first tower, joined to the
+# garden from the start, is a decoy that leads nowhere.
+# Format: see level_04.txt.
+size 10
+
+# the garden terrace (h1)
+column 1 3 0 0
+column 2 3 0 0
+column 1 4 0 0
+column 2 4 0 0
+prop cypress 1 4 1
+# first stairs, hidden behind the tower in the first view
+stairs 3 4 1 px
+# the upper terrace (h2)
+column 4 4 0 1
+column 4 5 0 1
+column 5 5 0 1
+# the decoy tower (h4): the start joins it in the first view, and it leads nowhere
+column 5 6 0 3
+# the crag ledge (h3): joined to the upper terrace from view 1
+column 5 3 0 2
+column 6 3 0 2
+column 7 3 0 2
+# second stairs, hidden from view 1 behind the second tower
+stairs 7 4 3 py
+# the top of the crag (h4), where the sisters call
+column 7 5 0 3
+column 8 5 0 3
+# the second tower (h5): joined to the top of the stairs from view 1; the fragment
+column 8 3 0 4
+
+start 1 3 1
+exit 8 5 4
+fragment 8 3 5
+outro outro_i_3
+
+voice 1 3 1 v_sisters_warn
+voice 2 4 1 v_sisters_stairs
+hint 2 4 1 hint_hidden_stairs
+voice 5 6 4 v_sisters_decoy
+voice 5 3 3 v_sisters_face

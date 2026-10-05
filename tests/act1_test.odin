@@ -1,0 +1,132 @@
+// Walkthroughs of the first three levels of Act I, played through the game
+// rules frame by frame (no window): each one checks the intended route, the
+// mechanic it teaches, the fragment and the exit.
+package tests
+
+import "core:testing"
+
+import "../src/game"
+import "../src/i18n"
+import "../src/iso"
+import "../src/palace"
+
+@(private)
+start_level :: proc(t: ^testing.T, g: ^game.Game, index: int) -> bool {
+	if err := game.load(g, index); err != nil {
+		testing.expectf(t, false, "level %d does not load", index)
+		return false
+	}
+	game.begin(g)
+	run(g, game.WELCOME_DELAY + 0.1)
+	return true
+}
+
+// Can Psyche go from her cell to c in the current view?
+@(private)
+can_reach :: proc(g: ^game.Game, c: iso.Cell) -> bool {
+	path: palace.Path
+	return palace.find_path(&g.palace, g.psyche.cell, c, !g.lamp_on, &path)
+}
+
+@(private)
+exits :: proc(t: ^testing.T, g: ^game.Game) {
+	run(g, game.EXIT_END + 0.5)
+	testing.expect(t, g.phase == .Finished && g.ending == .Exit, "the exit ends the level")
+	testing.expect(t, game.exit_lift(g) > 1, "the wind lifts Psyche")
+	testing.expect(t, g.data.has_outro, "the level has its own ending text")
+}
+
+// I.1: walk down the crag; the rock where Zephyr waits joins the edge only
+// when the crag is turned.
+@(test)
+level_I_1_zephyrs_crag :: proc(t: ^testing.T) {
+	g: game.Game
+	defer game.destroy(&g)
+	if !start_level(t, &g, 0) {
+		return
+	}
+	testing.expect(t, !g.data.has_lamp, "no lamp on the crag")
+	testing.expect(t, g.heard[i18n.Key.V_Crag_Alone] && g.hinted[i18n.Key.Hint_Move], "the narrator and the first hint at the start")
+	EDGE :: iso.Cell{4, 5, 3}
+	testing.expect(t, walk(t, &g, EDGE), "the path down the crag needs no turn")
+	testing.expect(t, g.hinted[i18n.Key.Hint_Turn], "at the edge: the turning hint")
+	testing.expect(t, !can_reach(&g, g.data.exit), "the first view does not join Zephyr's rock")
+	game.request_turn(&g, -1)
+	run(&g, 1)
+	testing.expect(t, game.rot(&g) == 3, "one turn")
+	testing.expect(t, walk(t, &g, g.data.exit), "the turned crag joins the edge to the rock")
+	exits(t, &g)
+}
+
+// I.2: three seams, each closed by its own view; the fragment from a fourth.
+@(test)
+level_I_2_invisible_palace :: proc(t: ^testing.T) {
+	g: game.Game
+	defer game.destroy(&g)
+	if !start_level(t, &g, 1) {
+		return
+	}
+	testing.expect(t, !g.data.has_lamp, "no lamp in the palace of voices")
+	COURT :: iso.Cell{4, 5, 2}
+	BATHS :: iso.Cell{7, 4, 3}
+	testing.expect(t, palace.is_illusion(&g.palace, g.psyche.cell, COURT), "the first seam, in the first view")
+	testing.expect(t, walk(t, &g, COURT), "the lawn leads to the court")
+	testing.expect(t, !can_reach(&g, BATHS), "the baths are not joined yet")
+	game.set_view(&g, 1)
+	testing.expect(t, walk(t, &g, BATHS), "view 1 joins the court to the baths")
+	testing.expect(t, !can_reach(&g, g.data.exit), "the bedchamber is not joined in view 1")
+	game.set_view(&g, 3)
+	testing.expect(t, walk(t, &g, g.data.exit), "view 3 joins the baths to the bedchamber")
+	exits(t, &g)
+
+	// the fragment: from the court, in view 2
+	h: game.Game
+	defer game.destroy(&h)
+	if !start_level(t, &h, 1) {
+		return
+	}
+	testing.expect(t, walk(t, &h, COURT), "back to the court")
+	for r in ([3]int{0, 1, 3}) {
+		game.set_view(&h, r)
+		testing.expectf(t, !can_reach(&h, h.data.fragment), "view %d does not join the fragment's column", r)
+	}
+	game.set_view(&h, 2)
+	testing.expect(t, walk(t, &h, h.data.fragment) && h.fragment_taken, "view 2 does")
+}
+
+// I.3: hidden stairs. The first flight hides in the first view, the second
+// in the view that joins the terrace to the crag.
+@(test)
+level_I_3_sisters :: proc(t: ^testing.T) {
+	g: game.Game
+	defer game.destroy(&g)
+	if !start_level(t, &g, 2) {
+		return
+	}
+	TERRACE :: iso.Cell{4, 4, 2}
+	LEDGE :: iso.Cell{5, 3, 3}
+	STAIRS_TOP :: iso.Cell{7, 5, 4}
+	DECOY :: iso.Cell{5, 6, 4}
+	testing.expect(t, !can_reach(&g, TERRACE), "view 0: the first stairs are hidden")
+	testing.expect(t, walk(t, &g, DECOY), "the decoy tower is joined to the garden")
+	testing.expect(t, g.heard[i18n.Key.V_Sisters_Decoy], "and it speaks of the sisters' words")
+	for r in 0 ..< 4 {
+		game.set_view(&g, r)
+		testing.expectf(t, !can_reach(&g, g.data.exit), "view %d: the tower leads nowhere", r)
+	}
+	game.set_view(&g, 0)
+	testing.expect(t, walk(t, &g, g.data.start), "back down to the garden")
+	game.set_view(&g, 1)
+	testing.expect(t, walk(t, &g, TERRACE) && walk(t, &g, LEDGE), "view 1: up the stairs and across to the crag")
+	testing.expect(t, !can_reach(&g, STAIRS_TOP), "view 1: the second stairs are hidden")
+	game.toggle_lamp(&g)
+	testing.expect(t, !g.lamp_on, "no lamp to cheat with")
+	game.set_view(&g, 2)
+	testing.expect(t, walk(t, &g, STAIRS_TOP), "another view shows the stairs")
+	game.set_view(&g, 1)
+	testing.expect(t, walk(t, &g, g.data.fragment) && g.fragment_taken, "view 1 joins the stairs' top to the second tower")
+	testing.expect(t, walk(t, &g, STAIRS_TOP), "and back")
+	game.set_view(&g, 2)
+	testing.expect(t, walk(t, &g, g.data.exit), "the top of the crag")
+	exits(t, &g)
+}

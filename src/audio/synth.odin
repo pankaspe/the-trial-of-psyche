@@ -22,6 +22,7 @@ Sound_Id :: enum u8 {
 	Drop,
 	Reveal,
 	Good,
+	Wind,
 }
 
 @(private)
@@ -144,6 +145,20 @@ synthesize :: proc(id: Sound_Id, rng: ^fx.Rng, allocator := context.allocator) -
 		}
 		bell(b, 0.4, 587.33, 0.08, 0.9)
 		bell(b, 1.1, 739.99, 0.06, 0.9)
+	case .Wind:
+		// Zephyr: a gust of filtered noise that swells and passes, over a soft open fifth
+		b = buffer(4.0, allocator)
+		lp2: f32 = 0
+		for &s, i in b {
+			t := time_of(i)
+			cut := 0.012 + 0.05 * math.sin(math.PI * min(t / 3.2, 1))
+			lp += (noise(rng) - lp) * cut
+			lp2 += (lp - lp2) * cut
+			env := math.sin(math.PI * min(t / 3.8, 1))
+			tone := (math.sin(math.TAU * 293.66 * t) + math.sin(math.TAU * 440.0 * t) * 0.7) * 0.035
+			s = (lp2 * 5 + tone * min(t / 1.0, 1)) * env
+		}
+		bell(b, 0.6, 1174.66, 0.04, 1.2)
 	}
 	return b
 }

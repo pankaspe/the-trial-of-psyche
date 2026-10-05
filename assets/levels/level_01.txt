@@ -1,0 +1,37 @@
+# The Trial of Psyche - level I.1: "Zephyr's Crag" (the prologue)
+# Walking, and the first turn. Psyche is left alone on the summit; a path
+# winds down the crag to its edge. The rock where Zephyr waits joins the
+# edge only from one side: turn the crag to find it.
+# Format: see level_04.txt.
+size 9
+
+# the summit (h5)
+column 3 1 0 4
+column 4 1 0 4
+column 3 2 0 4
+column 4 2 0 4
+# the brazier the wedding procession left behind
+prop brazier 3 2 5
+# the path down: stairs, a ledge (h4), stairs, the edge (h3)
+stairs 5 2 4 mx
+column 6 2 0 3
+column 6 3 0 3
+stairs 6 4 3 my
+column 6 5 0 2
+column 5 5 0 2
+column 4 5 0 2
+# Zephyr's rock: joined to the edge only when the crag is turned (view 3)
+column 3 7 0 3
+column 2 7 0 3
+# a spire off the ledge, joined only in view 1: the fragment
+column 7 0 0 4
+
+start 3 1 5
+exit 2 7 4
+fragment 7 0 5
+outro outro_i_1
+
+voice 3 1 5 v_crag_alone
+hint 3 1 5 hint_move
+voice 4 5 3 v_crag_edge
+hint 4 5 3 hint_turn

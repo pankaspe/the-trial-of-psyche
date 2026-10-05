@@ -150,6 +150,8 @@ Ending_Info :: struct {
 	level:        int,
 	unlocked:     progress.Achievements, // achievements earned by this ending
 	can_continue: bool,
+	outro:        i18n.Key, // the level's own ending text at the exit
+	has_outro:    bool,
 }
 
 // The card after an ending; `t` is the time since it appeared.
@@ -170,6 +172,9 @@ ending_card :: proc(u: ^Ui, info: Ending_Info, t: f32) -> (act: Menu_Action) {
 		title_col = {255, 179, 128, 255}
 	case .Exit, .None:
 		title, msg = i18n.tr(.End_Exit_Title), level_name(info.level)
+		if info.has_outro {
+			title, msg = i18n.tr(content.LEVELS[info.level].title), i18n.tr(info.outro)
+		}
 	}
 	if note == "" && content.closes_act(info.level) {
 		note = fmt.tprintf("%s%s", i18n.tr(.End_Of_Act), i18n.tr(content.ACT_LABEL[content.LEVELS[info.level].act]))

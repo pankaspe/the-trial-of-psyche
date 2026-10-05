@@ -299,8 +299,7 @@ update :: proc(g: ^Game, dt: f32) {
 		before := g.begin_t
 		g.begin_t += dt
 		if before < WELCOME_DELAY && g.begin_t >= WELCOME_DELAY && g.phase == .Play {
-			say(g, .V_Welcome)
-			hint(g, .Hint_Move, 6)
+			cues(g, g.data.start)
 		}
 	}
 
@@ -616,7 +615,7 @@ update_walk :: proc(g: ^Game, dt: f32) {
 	psy.yaw += diff * min(dt * 14, 1)
 
 	if !psy.walking {
-		psy.pos = pl.node_world(&g.palace, psy.cell)
+		psy.pos = pl.node_world(&g.palace, psy.cell) + {0, 0, exit_lift(g)}
 		return
 	}
 	psy.walk_anim += dt
@@ -633,19 +632,24 @@ update_walk :: proc(g: ^Game, dt: f32) {
 	next_step(g)
 }
 
+// The voice lines and hints tied to cell n (each is given once per level).
 @(private)
-arrive :: proc(g: ^Game, n: Cell) {
+cues :: proc(g: ^Game, n: Cell) {
 	for v in g.data.voices {
 		if v.cell == n {
 			say(g, v.key)
 		}
 	}
-	if g.heard[.V_Turn] {
-		hint(g, .Hint_Turn, 7)
+	for h in g.data.hints {
+		if h.cell == n {
+			hint(g, h.key, 7)
+		}
 	}
-	if g.heard[.V_Lamp] {
-		hint(g, .Hint_Lamp, 7)
-	}
+}
+
+@(private)
+arrive :: proc(g: ^Game, n: Cell) {
+	cues(g, n)
 	if g.data.has_fragment && n == g.data.fragment && !g.fragment_taken && !g.fragment_known {
 		take_fragment(g)
 	}
@@ -748,12 +752,23 @@ start_ending :: proc(g: ^Game, p: Phase) {
 		face_point(g, amore_world(g))
 		audio.play(.Good, -2)
 	case .Ending_Exit:
-		audio.play(.Good, -4)
+		audio.play(.Wind, -4)
 	case .Play, .Sigil, .Finished:
 	}
 }
 
-EXIT_END :: 1.6
+// Timeline of an exit: the wind gathers, lifts Psyche and takes her away.
+EXIT_LIFT :: 0.5
+EXIT_END :: 2.6
+
+// How high the wind has lifted Psyche (cells) at the exit.
+exit_lift :: proc(g: ^Game) -> f32 {
+	if g.phase != .Ending_Exit && !(g.phase == .Finished && g.ending == .Exit) {
+		return 0
+	}
+	t := g.phase == .Finished ? EXIT_END : g.phase_t
+	return 1.6 * fx.quad_in(fx.clamp01((t - EXIT_LIFT) / (EXIT_END - EXIT_LIFT)))
+}
 
 // Timeline of "the drop of oil".
 OIL_DROP_START :: 1.4

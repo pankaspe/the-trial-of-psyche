@@ -51,7 +51,7 @@ lamp_level_rules :: proc(t: ^testing.T) {
 		return
 	}
 	run(&g, 2)
-	testing.expect(t, g.heard[i18n.Key.V_Welcome], "Cupid welcomes Psyche")
+	testing.expect(t, g.heard[i18n.Key.V_Night] && g.hinted[i18n.Key.Hint_Turn] == false, "the night begins: the start cell speaks")
 
 	game.set_view(&g, 3)
 	testing.expect(t, walk(t, &g, TERRACE), "Psyche crosses the gap to the west terrace in view 3")

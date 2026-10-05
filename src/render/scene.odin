@@ -158,6 +158,7 @@ Scene :: struct {
 	motes:      fx.Pool(64), // drifting in front of everything (proto px)
 	sparks:     fx.Pool(64), // around Cupid (world)
 	dust:       fx.Pool(192), // falling from the cracks (world)
+	wind:       fx.Pool(64), // Zephyr's breath over the exit (world)
 	rng:        fx.Rng,
 }
 
@@ -266,6 +267,28 @@ scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
 			})
 		}
 	}
+	// Zephyr's breath: motes spiralling up from the exit, a gust when it takes Psyche
+	if g.data.has_exit && g.phase != .Finished {
+		gust := g.phase == .Ending_Exit
+		want := gust ? 60 : 18
+		if s.wind.count < want && fx.randf(&s.rng) < dt * f32(want) / 3 * 2 {
+			c := pl.node_world(&g.palace, g.data.exit)
+			if gust {
+				c = g.psyche.pos
+			}
+			a := fx.rand_range(&s.rng, 0, math.TAU)
+			r := fx.rand_range(&s.rng, 0.15, 0.45)
+			swirl := Vec3{-math.sin(a), math.cos(a), 0} * 0.35
+			fx.emit(&s.wind, {
+				pos   = c + {math.cos(a) * r, math.sin(a) * r, fx.rand_range(&s.rng, 0, 0.2)},
+				vel   = swirl + {0, 0, fx.rand_range(&s.rng, 0.25, 0.55) * (gust ? 2 : 1)},
+				accel = -swirl * 0.6,
+				life  = 3,
+				size  = 32 * fx.rand_range(&s.rng, 0.1, 0.22),
+				color = {0.75, 0.88, 1.0, 0.75},
+			})
+		}
+	}
 	// dust falling from the cracks while the lamp shows them
 	if g.light > 0.5 && !g.turning && g.collapse_t < 0 {
 		for e in g.palace.illusion.pairs {
@@ -285,6 +308,7 @@ scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
 	fx.update(&s.motes, dt)
 	fx.update(&s.sparks, dt)
 	fx.update(&s.dust, dt)
+	fx.update(&s.wind, dt)
 }
 
 // Where Cupid is drawn (he rises when he flies away).
@@ -474,9 +498,11 @@ draw_figures :: proc(r: ^Renderer, g: ^game.Game) {
 	set_piece_uniforms(r, .Psyche, 0, 0, 1, 0.9, 0.04)
 	rl.DrawMesh(r.meshes[.Robe], r.material, rl.MatrixTranslate(base.x, base.y, base.z) * rot)
 	rl.DrawMesh(r.meshes[.Head], r.material, rl.MatrixTranslate(base.x, base.y, base.z + 0.548) * rl.MatrixScale(0.046, 0.046, 0.05))
-	lamp := game.lamp_world(g)
-	set_piece_uniforms(r, .Bronze, 0, 0, 1, 0.9, 0)
-	rl.DrawMesh(r.meshes[.Lamp], r.material, rl.MatrixTranslate(lamp.x, lamp.y, lamp.z - 0.05))
+	if g.data.has_lamp {
+		lamp := game.lamp_world(g)
+		set_piece_uniforms(r, .Bronze, 0, 0, 1, 0.9, 0)
+		rl.DrawMesh(r.meshes[.Lamp], r.material, rl.MatrixTranslate(lamp.x, lamp.y, lamp.z - 0.05))
+	}
 
 	draw_fragment(r, g)
 
@@ -650,6 +676,17 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 		c := game.fragment_world(g) + {0, 0, lift}
 		glow(v, c, 58, {1.0, 0.86, 0.55, a * (0.3 + 0.08 * math.sin(t * 2.1))})
 		glow(v, c, 16, {1.0, 0.95, 0.8, a * 0.45})
+	}
+	// the exit: a pale breath of wind on the stone
+	if g.data.has_exit && g.phase != .Finished {
+		c := pl.node_world(&g.palace, g.data.exit) + {0, 0, 0.3}
+		glow(v, c, 70, {0.6, 0.78, 1.0, 0.22 + 0.08 * math.sin(t * 1.3)}, 1.4)
+		glow(v, c + {0, 0, -0.25}, 30, {0.85, 0.93, 1.0, 0.3})
+	}
+	for p in fx.alive(&s.wind) {
+		col := p.color
+		col.a *= fx.mote_alpha(p)
+		glow(v, p.pos, p.size * 0.5, col)
 	}
 	// the lit seal breathes
 	if g.activated && g.collapse_t < 0 {

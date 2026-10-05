@@ -54,9 +54,9 @@ Level_Info :: struct {
 }
 
 LEVELS := [?]Level_Info {
-	{"I.1", .I, .Level_I_1, .Fragment_01, "IV.28", ""},
-	{"I.2", .I, .Level_I_2, .Fragment_02, "IV.28–29", ""},
-	{"I.3", .I, .Level_I_3, .Fragment_03, "IV.30–31", ""},
+	{"I.1", .I, .Level_I_1, .Fragment_01, "IV.28", #load("../../assets/levels/level_01.txt", string)},
+	{"I.2", .I, .Level_I_2, .Fragment_02, "IV.28–29", #load("../../assets/levels/level_02.txt", string)},
+	{"I.3", .I, .Level_I_3, .Fragment_03, "IV.30–31", #load("../../assets/levels/level_03.txt", string)},
 	{"I.4", .I, .Level_I_4, .Fragment_04, "IV.32–33", #load("../../assets/levels/level_04.txt", string)},
 	{"II.1", .II, .Level_II_1, .Fragment_05, "V.23", ""},
 	{"II.2", .II, .Level_II_2, .Fragment_06, "IV.33–35", ""},

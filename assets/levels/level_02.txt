@@ -1,0 +1,42 @@
+# The Trial of Psyche - level I.2: "The Invisible Palace"
+# The first illusions. Psyche wakes on the lawn where Zephyr laid her; the
+# voices lead her through the fountain court and the baths up to the
+# bedchamber. Each passage is a seam that only one view closes: the first
+# needs no turn, the next one turn, the last the other way round.
+# Format: see level_04.txt.
+size 10
+
+# the lawn (h1)
+column 2 4 0 0
+column 3 4 0 0
+column 2 5 0 0
+column 3 5 0 0
+prop cypress 2 5 1
+# the fountain court (h2): joined to the lawn in the first view
+column 4 5 0 1
+column 5 5 0 1
+column 4 6 0 1
+column 5 6 0 1
+prop urn 5 6 2
+# the baths (h3): joined to the court from view 1
+column 7 3 0 2
+column 8 3 0 2
+column 7 4 0 2
+column 8 4 0 2
+prop brazier 7 3 3
+# the bedchamber (h4): joined to the baths from view 3
+column 7 5 0 3
+column 7 6 0 3
+column 8 6 0 3
+# a lone column behind the lawn, joined to the court only from view 2: the fragment
+column 1 3 0 3
+
+start 2 4 1
+exit 8 6 4
+fragment 1 3 4
+outro outro_i_2
+
+voice 2 4 1 v_palace_wake
+voice 2 4 1 v_palace_rule
+voice 4 5 2 v_palace_yours
+voice 7 4 3 v_palace_baths

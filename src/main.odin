@@ -264,6 +264,8 @@ finish_level :: proc(app: ^App) {
 		unlocked     = unlocked,
 		// the secret ending is outside the story: it leads nowhere
 		can_continue = g.ending != .Trust && g.level_index + 1 < content.LEVEL_COUNT,
+		outro        = g.data.outro,
+		has_outro    = g.data.has_outro,
 	}
 	app.screen = .Ending
 	app.card_t = 0
