@@ -116,7 +116,16 @@ LEVEL_TOUR := [?]Shot_Step {
 			if app.screen == .Card {dismiss_act_card(app)}
 			for app.game.phase == .Prologue {game.prologue_advance(&app.game); if !game.prologue_ready(&app.game) {app.game.phase_t = 1e3}}
 		}},
-	{4.5, "01_view0", nil},
+	{2.5, "01_view0", nil},
+	{0.1, "", proc(app: ^App) {
+			// walk to where the level teaches turning, if it does
+			for h in app.game.data.hints {
+				if h.key == .Hint_Turn {
+					tour_walk(app, h.cell)
+				}
+			}
+		}},
+	{4.0, "01b_turn_hint", nil},
 	{0.1, "", proc(app: ^App) {game.request_turn(&app.game, 1)}},
 	{1.5, "02_view1", nil},
 	{0.1, "", proc(app: ^App) {game.request_turn(&app.game, 1)}},

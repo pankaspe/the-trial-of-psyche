@@ -171,6 +171,7 @@ Game :: struct {
 
 	heard:          [Key]bool,
 	hinted:         [Key]bool,
+	learned:        [Key]bool, // tutorial hints whose action has been done
 	begin_t:        f32, // time since begin(), < 0 before
 	rise_t:         f32, // < 0 until the seal is lit
 	rise_count:     int,
@@ -378,6 +379,7 @@ request_turn :: proc(g: ^Game, step: int) {
 @(private)
 start_turn :: proc(g: ^Game, step: int) {
 	audio.play(.Turn, -4)
+	learn(g, .Hint_Turn)
 	pl.reachable(&g.palace, g.psyche.cell, !g.lamp_on, g.reach_before[:len(g.palace.nodes)])
 	g.turning = true
 	g.turn_from = math.round(g.angle)
@@ -429,6 +431,7 @@ toggle_lamp :: proc(g: ^Game) {
 		g.oil = max(g.oil - LIGHT_COST, 0)
 		g.lightings += 1
 		set_lamp(g, true)
+		learn(g, .Hint_Lamp)
 		say(g, .V_First_Light)
 	} else {
 		audio.play(.Blocked, -6)
@@ -499,6 +502,7 @@ click :: proc(g: ^Game, point: Vec2) {
 	}
 	add_marker(g, target, true)
 	audio.play(.Tap, -12)
+	learn(g, .Hint_Move)
 	g.pending_turn = 0
 	g.path = path
 	if !g.psyche.walking {
@@ -652,7 +656,7 @@ cues :: proc(g: ^Game, n: Cell) {
 	}
 	for h in g.data.hints {
 		if h.cell == n {
-			hint(g, h.key, 7)
+			hint(g, h.key, is_tutorial(h.key) ? 0 : 7)
 		}
 	}
 }
@@ -878,6 +882,15 @@ drop_position :: proc(d: Drop) -> Vec3 {
 
 // --- voices and hints ---------------------------------------------------------------
 
+// Psyche has done what a tutorial hint teaches: it goes away.
+@(private)
+learn :: proc(g: ^Game, key: Key) {
+	g.learned[key] = true
+	if g.hud.hint.active && g.hud.hint.key == key {
+		hide(&g.hud.hint)
+	}
+}
+
 @(private)
 show :: proc(f: ^Fade_Text, key: Key, fade_in, hold, fade_out: f32) {
 	f^ = {key, true, 0, fade_in, hold, fade_out, -1}
@@ -941,10 +954,22 @@ speak :: proc(g: ^Game, key: Key) {
 	audio.play(.Voice, -6)
 }
 
+// Tutorial hints stay on screen until Psyche does what they teach.
+is_tutorial :: proc(key: Key) -> bool {
+	#partial switch key {
+	case .Hint_Move, .Hint_Turn, .Hint_Lamp:
+		return true
+	}
+	return false
+}
+
 // A hint, shown once per level unless `again`; seconds = 0 keeps it on screen.
 hint :: proc(g: ^Game, key: Key, seconds: f32, again := false) {
 	if g.hinted[key] && !again {
 		return
+	}
+	if is_tutorial(key) && g.learned[key] {
+		return // already done: nothing to teach
 	}
 	g.hinted[key] = true
 	show(&g.hud.hint, key, 0.5, seconds > 0 ? seconds : -1, 1.0)

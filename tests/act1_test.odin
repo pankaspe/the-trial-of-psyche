@@ -47,14 +47,20 @@ level_I_1_zephyrs_crag :: proc(t: ^testing.T) {
 		return
 	}
 	testing.expect(t, !g.data.has_lamp, "no lamp on the crag")
-	testing.expect(t, g.hinted[i18n.Key.Hint_Move], "the first hint at the start")
+	testing.expect(t, g.hud.hint.active && g.hud.hint.key == .Hint_Move, "the first hint at the start")
+	run(&g, 15)
+	testing.expect(t, game.fade_alpha(g.hud.hint) > 0.9, "a tutorial hint stays until it is done")
+	game.click(&g, palace.node_screen(&g.palace, {4, 1, 5}, g.angle))
+	run(&g, 1)
+	testing.expect(t, game.fade_alpha(g.hud.hint) == 0 && g.learned[i18n.Key.Hint_Move], "a click on a tile moves Psyche and the hint goes")
 	EDGE :: iso.Cell{4, 5, 3}
 	testing.expect(t, walk(t, &g, EDGE), "the path down the crag needs no turn")
-	testing.expect(t, g.hinted[i18n.Key.Hint_Turn], "at the edge: the turning hint")
+	testing.expect(t, g.hud.hint.key == .Hint_Turn, "at the edge: the turning hint")
 	testing.expect(t, !can_reach(&g, g.data.exit), "the first view does not join Zephyr's rock")
 	game.request_turn(&g, -1)
 	run(&g, 1)
 	testing.expect(t, game.rot(&g) == 3, "one turn")
+	testing.expect(t, !g.hud.hint.active, "turning dismisses the turning hint")
 	testing.expect(t, walk(t, &g, g.data.exit), "the turned crag joins the edge to the rock")
 	exits(t, &g)
 }

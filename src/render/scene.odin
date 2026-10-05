@@ -158,7 +158,7 @@ Scene :: struct {
 	motes:      fx.Pool(64), // drifting in front of everything (proto px)
 	sparks:     fx.Pool(64), // around Cupid (world)
 	dust:       fx.Pool(192), // falling from the cracks (world)
-	wind:       fx.Pool(64), // Zephyr's breath over the exit (world)
+	wind:       fx.Pool(96), // Zephyr's breath over the exit (world)
 	rng:        fx.Rng,
 }
 
@@ -271,7 +271,7 @@ scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
 	alone_wind := g.phase == .Prologue && g.phase_t > game.prologue_alone(g) - 0.5
 	if (g.data.has_exit && g.phase != .Finished && exit_alpha(g) > 0) || alone_wind {
 		gust := g.phase == .Ending_Exit || alone_wind
-		want := gust ? 60 : 18
+		want := gust ? 60 : 40
 		if s.wind.count < want && fx.randf(&s.rng) < dt * f32(want) / 3 * 2 {
 			c := g.data.has_exit ? pl.node_world(&g.palace, g.data.exit) : g.psyche.pos
 			if gust && (g.phase == .Ending_Exit || fx.randf(&s.rng) < 0.7) {
@@ -285,8 +285,8 @@ scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
 				vel   = swirl + {0, 0, fx.rand_range(&s.rng, 0.25, 0.55) * (gust ? 2 : 1)},
 				accel = -swirl * 0.6,
 				life  = 3,
-				size  = 32 * fx.rand_range(&s.rng, 0.1, 0.22),
-				color = {0.75, 0.88, 1.0, 0.75},
+				size  = 32 * fx.rand_range(&s.rng, 0.14, 0.3),
+				color = {0.8, 0.92, 1.0, 0.9},
 			})
 		}
 	}
@@ -612,6 +612,27 @@ floor_ellipse :: proc(center: Vec3, rx, ry: f32, c: Color4) {
 	rlgl.End()
 }
 
+// A ring on the floor between radius r and r + width.
+@(private)
+floor_ring :: proc(center: Vec3, r, width: f32, c: Color4) {
+	N :: 32
+	rlgl.Begin(rlgl.TRIANGLES)
+	color(c)
+	for i in 0 ..< N {
+		a0 := f32(i) / N * math.TAU
+		a1 := f32(i + 1) / N * math.TAU
+		d0 := Vec3{math.cos(a0), math.sin(a0), 0}
+		d1 := Vec3{math.cos(a1), math.sin(a1), 0}
+		vtx(center + d0 * r)
+		vtx(center + d1 * r)
+		vtx(center + d1 * (r + width))
+		vtx(center + d0 * r)
+		vtx(center + d1 * (r + width))
+		vtx(center + d0 * (r + width))
+	}
+	rlgl.End()
+}
+
 // A thin strip on the floor from a to b, `width` wide toward `side`.
 @(private)
 floor_strip :: proc(a, b, side: Vec3, width: f32, c: Color4) {
@@ -638,7 +659,17 @@ draw_decals :: proc(g: ^game.Game) {
 		st := g.stains[i]
 		floor_ellipse(st.pos + {0, 0, 0.004}, 0.06, 0.06, {0.5, 0.3, 0.08, 0.55 * stain_fade})
 	}
-	floor_ellipse(g.psyche.pos + {0, 0, 0.006}, 0.13, 0.13, {0, 0, 0.04, 0.4})
+	floor_ellipse(g.psyche.pos + {0, 0, 0.006}, 0.13, 0.13, {0, 0, 0.04, 0.4 * game.psyche_alpha(g)})
+
+	// the exit: rings of wind spreading on the stone
+	if ea := exit_alpha(g); g.data.has_exit && g.phase != .Finished && ea > 0 {
+		c := pl.node_world(&g.palace, g.data.exit) + {0, 0, 0.008}
+		floor_ellipse(c, 0.3, 0.3, {0.55, 0.75, 1.0, 0.22 * ea})
+		for k in 0 ..< 3 {
+			u := math.mod(g.time / 2.2 + f32(k) / 3, 1)
+			floor_ring(c, 0.08 + 0.36 * u, 0.025, {0.75, 0.9, 1.0, 0.7 * (1 - u) * ea})
+		}
+	}
 
 	if g.light > 0.01 && !g.turning && g.collapse_t < 0 {
 		for e, n in g.palace.illusion.pairs {
@@ -732,8 +763,12 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	// the exit: a pale breath of wind on the stone
 	if ea := exit_alpha(g); g.data.has_exit && g.phase != .Finished && ea > 0 {
 		c := pl.node_world(&g.palace, g.data.exit) + {0, 0, 0.3}
-		glow(v, c, 70, {0.6, 0.78, 1.0, (0.22 + 0.08 * math.sin(t * 1.3)) * ea}, 1.4)
-		glow(v, c + {0, 0, -0.25}, 30, {0.85, 0.93, 1.0, 0.3 * ea})
+		pulse := 0.85 + 0.15 * math.sin(t * 1.3)
+		glow(v, c, 130, {0.5, 0.7, 1.0, 0.3 * pulse * ea}, 1.2)
+		// a column of pale light rising from the stone
+		glow(v, c + {0, 0, 0.75}, 30, {0.7, 0.85, 1.0, 0.32 * pulse * ea}, 5.5)
+		glow(v, c + {0, 0, 0.6}, 12, {0.92, 0.97, 1.0, 0.45 * pulse * ea}, 8)
+		glow(v, c + {0, 0, -0.25}, 40, {0.85, 0.93, 1.0, 0.45 * ea})
 	}
 	for p in fx.alive(&s.wind) {
 		col := p.color

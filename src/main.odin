@@ -607,7 +607,7 @@ draw_screens :: proc(app: ^App) {
 		}
 	case .Pause:
 		ui.draw_hud(u, g)
-		switch ui.pause_menu(u) {
+		switch ui.pause_menu(u, g.data.has_lamp) {
 		case .Resume:
 			app.screen = .Play
 		case .Restart:

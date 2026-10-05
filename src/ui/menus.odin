@@ -92,7 +92,7 @@ title_menu :: proc(u: ^Ui, alpha: f32 = 1, lift: f32 = 0) -> (act: Menu_Action) 
 	return
 }
 
-pause_menu :: proc(u: ^Ui) -> (act: Menu_Action) {
+pause_menu :: proc(u: ^Ui, lamp: bool) -> (act: Menu_Action) {
 	s := u.scale
 	shade(u, 0.6)
 	cx := u.width * 0.5
@@ -114,6 +114,8 @@ pause_menu :: proc(u: ^Ui) -> (act: Menu_Action) {
 	if button(u, i18n.tr(.Menu), {cx, y}, 26) {
 		act = .Main_Menu
 	}
+	// the controls live here, out of the way of the story
+	text(u, i18n.tr(lamp ? .Controls : .Controls_Dark), {cx, u.height - 70 * s}, {size = 22, color = DIM, shadow = true})
 	return
 }
 
@@ -157,7 +159,8 @@ Ending_Info :: struct {
 // The card after an ending; `t` is the time since it appeared.
 ending_card :: proc(u: ^Ui, info: Ending_Info, t: f32) -> (act: Menu_Action) {
 	s := u.scale
-	shade(u, 0.7 * clamp(t / 1.5, 0, 1))
+	focus_shade(u, clamp(t / 1.2, 0, 1))
+	shade(u, 0.25 * clamp(t / 1.5, 0, 1))
 	a := clamp(t / 2, 0, 1)
 	cx := u.width * 0.5
 	body := Style{size = 32, color = TEXT, shadow = true}
@@ -180,11 +183,14 @@ ending_card :: proc(u: ^Ui, info: Ending_Info, t: f32) -> (act: Menu_Action) {
 		note = fmt.tprintf("%s%s", i18n.tr(.End_Of_Act), i18n.tr(content.ACT_LABEL[content.LEVELS[info.level].act]))
 	}
 	extra := f32(card(info.unlocked)) * 40 * s
-	bh := block_height(u, msg, body, 1400 * s)
+	bh := block_height(u, msg, body, 1100 * s, 1.3)
 	y := u.height * 0.5 - (bh + 300 * s + extra) * 0.5
 	text(u, title, {cx, y}, {size = 72, color = title_col, shadow = true}, .Center, a)
-	y += 110 * s
-	y += paragraph(u, msg, {cx, y}, body, 1400 * s, a)
+	y += 100 * s
+	rl.DrawRectangleRec({cx - 160 * s, y, 320 * s, max(1.5 * s, 1)}, fade(GOLD, 0.5 * a))
+	diamond(u, {cx, y + 0.5 * s}, 5 * s, fade(GOLD, a), true)
+	y += 26 * s
+	y += paragraph(u, msg, {cx, y}, body, 1100 * s, a, 1.3)
 	y += 40 * s
 	text(u, note, {cx, y}, {size = 22, color = DIM, shadow = true}, .Center, a)
 	y += 50 * s

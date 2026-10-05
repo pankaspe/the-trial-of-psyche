@@ -158,7 +158,10 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   (`game/prologue.odin`, a timeline): Apollo's oracle, the procession of veiled mourners with
   torches climbs the crag with Psyche, leaves her and puts the torches out, Zephyr's first breath,
   then "press any key" (a key during the scene skips it; a restart skips it). It replaces the
-  Act I card in play. 27 tests. Committed locally, not pushed. Waiting for the user's playtest.
+  Act I card in play. Then: tutorial hints (move, turn, lamp) on a framed band that stays until
+  the action is done (`game.learn`); the fixed controls legend moved to the pause menu; the exit
+  has a column of light, floor rings and a stronger spiral of wind; fragment and ending cards
+  darken the game (`ui.focus_shade`) and sit centred. 27 tests. Committed locally, not pushed. Waiting for the user's playtest.
 
 ## M2 — prologue and Act I (agreed with the user; in progress, see Session 4)
 - Build I.1 (Zephyr's Crag, with the prologue card), I.2 (The Invisible Palace), I.3 (The
