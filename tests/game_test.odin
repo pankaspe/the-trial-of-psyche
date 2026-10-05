@@ -70,6 +70,7 @@ lamp_level_rules :: proc(t: ^testing.T) {
 
 	game.toggle_lamp(&g)
 	testing.expect(t, g.lamp_on, "the lamp is lit")
+	testing.expect(t, g.hud.hint.key == .Hint_Oil, "lighting it for the first time teaches the oil")
 	oil := g.oil
 	run(&g, 0.5)
 	testing.expect(t, g.activated && g.phase == .Sigil, "the lamp on the seal starts the rising")
@@ -81,6 +82,7 @@ lamp_level_rules :: proc(t: ^testing.T) {
 	testing.expect(t, g.stain_count > 0, "the burning lamp drops oil")
 
 	game.toggle_lamp(&g)
+	testing.expect(t, g.learned[i18n.Key.Hint_Oil], "putting it out ends the oil lesson")
 	game.set_view(&g, 3)
 	path: palace.Path
 	testing.expect(t, palace.find_path(&g.palace, g.psyche.cell, ROOF_ENTRY, true, &path), "view 3: the roof is reachable in the dark")

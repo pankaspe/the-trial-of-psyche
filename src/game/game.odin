@@ -432,11 +432,16 @@ toggle_lamp :: proc(g: ^Game) {
 	}
 	if g.lamp_on {
 		set_lamp(g, false)
+		learn(g, .Hint_Oil)
 	} else if g.oil > 0.05 {
 		g.oil = max(g.oil - LIGHT_COST, 0)
 		g.lightings += 1
 		set_lamp(g, true)
 		learn(g, .Hint_Lamp)
+		if teaches(g, .Hint_Lamp) {
+			// the level that teaches the lamp teaches its oil right after
+			hint(g, .Hint_Oil, 0)
+		}
 	} else {
 		audio.play(.Blocked, -6)
 		hint(g, .Hint_No_Oil, 0, true)
@@ -890,6 +895,16 @@ drop_position :: proc(d: Drop) -> Vec3 {
 
 // --- voices and hints ---------------------------------------------------------------
 
+// Does this level teach `key` (a hint cue in its file)?
+teaches :: proc(g: ^Game, key: Key) -> bool {
+	for h in g.data.hints {
+		if h.key == key {
+			return true
+		}
+	}
+	return false
+}
+
 // Psyche has done what a tutorial hint teaches: it goes away.
 @(private)
 learn :: proc(g: ^Game, key: Key) {
@@ -973,7 +988,7 @@ start_cues_time :: proc(g: ^Game) -> f32 {
 // Tutorial hints stay on screen until Psyche does what they teach.
 is_tutorial :: proc(key: Key) -> bool {
 	#partial switch key {
-	case .Hint_Move, .Hint_Turn, .Hint_Lamp, .Hint_Illusion, .Hint_Stairs, .Hint_Sigil:
+	case .Hint_Move, .Hint_Turn, .Hint_Lamp, .Hint_Illusion, .Hint_Stairs, .Hint_Sigil, .Hint_Oil:
 		return true
 	}
 	return false

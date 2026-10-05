@@ -115,6 +115,12 @@ draw_oil :: proc(u: ^Ui, g: ^game.Game) {
 	y := 58 * s
 	bar := rl.Rectangle{x0, y, bw, 8 * s}
 	rl.DrawRectangleRec(bar, {38, 38, 77, 180})
+	if g.hud.hint.active && g.hud.hint.key == .Hint_Oil {
+		// the oil lesson points at the gauge
+		pulse := 0.5 + 0.5 * math.sin(g.time * 4)
+		ring := rl.Rectangle{bar.x - 8 * s, bar.y - 8 * s, bar.width + 16 * s, bar.height + 16 * s}
+		rl.DrawRectangleRoundedLinesEx(ring, 0.6, 8, max(2 * s, 1), fade(GOLD, (0.4 + 0.5 * pulse) * game.fade_alpha(g.hud.hint)))
+	}
 	oil := clamp(g.oil / game.OIL_MAX, 0, 1)
 	lit := g.light
 	fill := rl.Rectangle{x0 + bw * (1 - oil), y, bw * oil, bar.height}

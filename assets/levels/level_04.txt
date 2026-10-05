@@ -37,8 +37,13 @@ column 10 9 0 0
 column 9 10 0 0
 column 10 10 0 0
 prop cypress 10 9 1
+prop rail 10 10 1 px
+prop rail 10 10 1 py
+prop rail 9 10 1 py
 column 8 9 0 0
 column 7 9 0 0
+prop rail 8 9 1 py
+prop rail 7 9 1 py
 # ...unless the palace is turned: then it runs on, one level higher (h2)
 column 5 10 0 1
 column 4 10 0 1
@@ -48,6 +53,11 @@ column 3 9 0 1
 column 3 8 0 1
 column 3 7 0 1
 column 3 6 0 1
+# the west wing: a wall with windows along the terrace
+prop window 3 9 2 mx
+prop wall 3 8 2 mx
+prop window 3 7 2 mx
+prop arch 4 10 2 px
 stairs 3 6 2 my
 # west balcony (h3), the lamp's vantage point
 column 3 5 0 2

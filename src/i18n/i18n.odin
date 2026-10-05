@@ -156,6 +156,7 @@ Key :: enum u16 {
 	Hint_Illusion,
 	Hint_Stairs,
 	Hint_Sigil,
+	Hint_Oil,
 	Hint_Seam,
 	Hint_No_Oil,
 	Hint_Hidden_Stairs,
@@ -371,7 +372,8 @@ IT := [Key]string {
 	.V_Doubt        = "Dorme. Ti tornano in mente le parole delle sorelle: e se fosse un mostro? La lampada è nella tua mano.",
 
 	.Hint_Move      = "Clicca su una casella per muovere Psiche",
-	.Hint_Lamp      = "Premi Spazio (o il tasto destro) per accendere la lampada: la luce mostra ciò che è vero, e consuma l'olio",
+	.Hint_Lamp      = "Premi Spazio (o il tasto destro) per accendere la lampada: la luce mostra ciò che è vero",
+	.Hint_Oil       = "La lampada consuma olio finché è accesa (la barra in alto): premi di nuovo Spazio per spegnerla",
 	.Hint_Illusion  = "Al buio, ciò che sembra unito è unito: cammina dove le pietre sembrano toccarsi",
 	.Hint_Stairs    = "Al buio, una scala porta in alto solo se la vedi tutta: ruota finché non ti si mostra",
 	.Hint_Sigil     = "Accendi la lampada qui, sul sigillo: la luce fa salire la pietra",
@@ -544,7 +546,8 @@ EN := [Key]string {
 	.V_Doubt        = "He sleeps. Your sisters' words come back to you: what if he is a monster? The lamp is in your hand.",
 
 	.Hint_Move      = "Click a tile to move Psyche",
-	.Hint_Lamp      = "Press Space (or right click) to light the lamp: the light shows what is true, and burns the oil",
+	.Hint_Lamp      = "Press Space (or right click) to light the lamp: the light shows what is true",
+	.Hint_Oil       = "The lamp burns oil while it is lit (the bar at the top): press Space again to put it out",
 	.Hint_Illusion  = "In the dark, what seems joined is joined: walk where the stones seem to touch",
 	.Hint_Stairs    = "In the dark, stairs lead up only if you see all of them: turn until they show",
 	.Hint_Sigil     = "Light the lamp here, on the seal: the light raises the stone",

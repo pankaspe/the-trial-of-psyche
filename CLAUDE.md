@@ -168,7 +168,11 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   (only V_Doubt beside Cupid); each new mechanic is taught once by a tutorial hint that stays until
   done (move/turn I.1, illusions I.2, hidden stairs I.3, lamp/seal I.4); no voice chime or click
   tap, quieter steps and turns. I.2 starts on a real meadow (`lawn x y z`, Lawn material, flowers).
-  27 tests. Committed locally, not pushed. Waiting for the user's playtest.
+  Then: palace decoration in I.2-I.4 (colonnade, arches, walls and windows, balustrades,
+  battlements; checked with level_check: same illusions), and the oil lesson (`Hint_Oil`, right
+  after the first lighting in the level that teaches the lamp; the gauge pulses). 27 tests.
+- Decorating a level: blocking props must not sit on a needed cell, edge props must not close a
+  side an illusion uses; compare `./build.sh check` before and after (same illusions, same goals). Committed locally, not pushed. Waiting for the user's playtest.
 
 ## M2 — prologue and Act I (agreed with the user; in progress, see Session 4)
 - Build I.1 (Zephyr's Crag, with the prologue card), I.2 (The Invisible Palace), I.3 (The
