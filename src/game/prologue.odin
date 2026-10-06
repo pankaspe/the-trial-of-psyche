@@ -105,10 +105,10 @@ route_point :: proc(g: ^Game, s: f32) -> (pos: Vec3, dir: Vec3) {
 	r := &g.prologue.route
 	n := sa.len(r^)
 	if n < 2 {
-		return pl.node_world(&g.palace, g.data.start), {1, 0, 0}
+		return pl.stand_world(&g.palace, g.data.start), {1, 0, 0}
 	}
 	if s < 0 {
-		a := pl.node_world(&g.palace, sa.get(r^, 0))
+		a := pl.stand_world(&g.palace, sa.get(r^, 0))
 		b := pl.node_world(&g.palace, sa.get(r^, 1))
 		return a + {0, 0, s * 0.8}, b - a
 	}
@@ -116,7 +116,7 @@ route_point :: proc(g: ^Game, s: f32) -> (pos: Vec3, dir: Vec3) {
 	u := min(s - f32(i), 1)
 	a := pl.node_world(&g.palace, sa.get(r^, i))
 	b := pl.node_world(&g.palace, sa.get(r^, i + 1))
-	return fx.lerp(a, b, u), b - a
+	return walk_point(g, sa.get(r^, i), sa.get(r^, i + 1), u), b - a
 }
 
 @(private)
@@ -237,7 +237,7 @@ prologue_advance :: proc(g: ^Game) {
 	}
 	set_phase(g, .Play)
 	set_view(g, 0)
-	g.psyche.pos = pl.node_world(&g.palace, g.data.start)
+	g.psyche.pos = pl.stand_world(&g.palace, g.data.start)
 	g.hud.visible = true
 	show(&g.hud.title, title_key(g), 1.5, 3.5, 2.0)
 	g.begin_t = 0

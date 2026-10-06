@@ -271,7 +271,7 @@ load_text :: proc(g: ^Game, index: int, text: string) -> (err: Maybe(Load_Error)
 	g.teach_after = -1
 	g.amore = {fly_t = -1, breath = 1}
 	g.psyche.cell = g.data.start
-	g.psyche.pos = pl.node_world(&g.palace, g.data.start)
+	g.psyche.pos = pl.stand_world(&g.palace, g.data.start)
 	g.psyche.yaw = math.PI * 0.75 // facing the camera
 	g.psyche.target_yaw = g.psyche.yaw
 	g.rng = fx.rng_init(u32(index) * 7919 + 17)
@@ -699,7 +699,7 @@ step_points :: proc(g: ^Game, u: f32) -> (pos: Vec3, second_half: bool) {
 	a := pl.node_world(&g.palace, psy.step_from)
 	b := pl.node_world(&g.palace, psy.step_to)
 	if !psy.step_illusion {
-		return fx.lerp(a, b, u), u >= 0.5
+		return walk_point(g, psy.step_from, psy.step_to, u), u >= 0.5
 	}
 	r, size := g.palace.rot, g.palace.size
 	av := iso.to_view(psy.step_from, r, size)
@@ -713,6 +713,17 @@ step_points :: proc(g: ^Game, u: f32) -> (pos: Vec3, second_half: bool) {
 	}
 	edge_b := iso.world_point(edge_view + f32(k), f32(r), size)
 	return fx.lerp(edge_b, b, (u - 0.5) * 2), true
+}
+
+// A point on the way from cell a to the next cell b (u = 0..1), on the
+// ground: stairs are climbed tread by tread.
+walk_point :: proc(g: ^Game, a, b: Cell, u: f32) -> Vec3 {
+	p := fx.lerp(pl.node_world(&g.palace, a), pl.node_world(&g.palace, b), u)
+	on_a, on_b := pl.is_stair(&g.palace, a), pl.is_stair(&g.palace, b)
+	if on_a || on_b {
+		p.z = pl.stair_ground(&g.palace, on_a && (!on_b || u < 0.5) ? a : b, p)
+	}
+	return p
 }
 
 @(private)
@@ -735,7 +746,7 @@ update_walk :: proc(g: ^Game, dt: f32) {
 	psy.yaw += diff * min(dt * 14, 1)
 
 	if !psy.walking {
-		psy.pos = pl.node_world(&g.palace, psy.cell) + {0, 0, exit_lift(g)}
+		psy.pos = pl.stand_world(&g.palace, psy.cell) + {0, 0, exit_lift(g)}
 		return
 	}
 	psy.walk_anim += dt
@@ -746,7 +757,7 @@ update_walk :: proc(g: ^Game, dt: f32) {
 		return
 	}
 	psy.cell = psy.step_to
-	psy.pos = pl.node_world(&g.palace, psy.cell)
+	psy.pos = pl.stand_world(&g.palace, psy.cell)
 	audio.play(.Step, -18, fx.rand_range(&g.rng, 0.85, 1.15))
 	if fell := pl.leave(&g.palace, psy.step_from); fell >= 0 {
 		// the cracked stone she has just left falls
@@ -935,7 +946,7 @@ return_to_rest :: proc(g: ^Game) -> bool {
 	psy := &g.psyche
 	psy.walking = false
 	psy.cell = r.cell
-	psy.pos = pl.node_world(&g.palace, r.cell)
+	psy.pos = pl.stand_world(&g.palace, r.cell)
 	g.markers = {}
 	audio.play(.Wind, -14)
 	return true

@@ -49,7 +49,7 @@ walk_to_fragment :: proc(app: ^App) {
 place :: proc(app: ^App, c: iso.Cell) {
 	g := &app.game
 	g.psyche.cell = c
-	g.psyche.pos = pl.node_world(&g.palace, c)
+	g.psyche.pos = pl.stand_world(&g.palace, c)
 }
 
 SHOT_SCRIPT := [?]Shot_Step {

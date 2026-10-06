@@ -24,6 +24,7 @@
 // allocate again once the arrays have grown. Scratch work uses the temp allocator.
 package palace
 
+import "core:math"
 import "core:slice"
 import sa "core:container/small_array"
 
@@ -730,6 +731,37 @@ check_fragment :: proc(p: ^Palace) -> (reachable, optional: bool) {
 node_world :: proc(p: ^Palace, c: Cell) -> iso.Vec3 {
 	lift: f32 = is_stair(p, c) ? 0.5 : 0
 	return {f32(c.x) + 0.5, f32(c.y) + 0.5, f32(c.z) + lift}
+}
+
+// Where a figure stands on a node: on stairs, on the middle tread (the node
+// itself is half way up, inside the steps).
+stand_world :: proc(p: ^Palace, c: Cell) -> iso.Vec3 {
+	w := node_world(p, c)
+	if is_stair(p, c) {
+		w.z = stair_ground(p, c, w)
+	}
+	return w
+}
+
+// The ground under world point w on or beside the stairs at cell s: the tread
+// under the feet, rising a little before each riser, so a figure walking the
+// stairs climbs them step by step instead of cutting through them. Beyond the
+// low end it is the lower floor, beyond the high end the upper one.
+stair_ground :: proc(p: ^Palace, s: Cell, w: iso.Vec3) -> f32 {
+	STEPS :: 4
+	local := w.xy - {f32(s.x), f32(s.y)}
+	f: f32
+	switch solid_at(p, s).dir {
+	case .PX: f = local.x
+	case .MX: f = 1 - local.x
+	case .PY: f = local.y
+	case .MY: f = 1 - local.y
+	}
+	g := clamp(f * STEPS, -1, STEPS - 0.001)
+	k := math.floor(g)
+	lift := clamp((g - k - 0.7) / 0.3, 0, 1)
+	lift = lift * lift * (3 - 2 * lift)
+	return f32(s.z) + clamp((k + 1 + lift) / STEPS, 0, 1)
 }
 
 // Node position in proto pixels for the view angle.
