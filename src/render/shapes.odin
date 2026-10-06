@@ -28,6 +28,8 @@ Mesh_Id :: enum u8 {
 	Shrub_PX, Shrub_MX, Shrub_PY, Shrub_MY,
 	Cairn_PX, Cairn_MX, Cairn_PY, Cairn_MY,
 	Statue_PX, Statue_MX, Statue_PY, Statue_MY,
+	Candelabrum_PX, Candelabrum_MX, Candelabrum_PY, Candelabrum_MY, // a standing candelabrum in a corner...
+	Candelabrum_Wax_PX, Candelabrum_Wax_MX, Candelabrum_Wax_PY, Candelabrum_Wax_MY, // ...and its three candles
 	Pillar,
 	Plinth,
 	Cypress,
@@ -298,6 +300,38 @@ CAIRN_PX := [?]Box {
 	{{0.77, 0.78, 0.19}, {0.84, 0.84, 0.27}},
 }
 
+// A standing candelabrum about its own foot (0, 0): a round foot, a slender
+// shaft with a knot, a bar with three cups; the candles are their own piece.
+@(private)
+CANDELABRUM := [?]Box {
+	{{-0.08, -0.08, 0}, {0.08, 0.08, 0.025}},
+	{{-0.05, -0.05, 0.025}, {0.05, 0.05, 0.05}},
+	{{-0.016, -0.016, 0.05}, {0.016, 0.016, 0.86}},
+	{{-0.032, -0.032, 0.42}, {0.032, 0.032, 0.47}},
+	{{-0.14, -0.012, 0.84}, {0.14, 0.012, 0.865}},
+	{{-0.165, -0.03, 0.865}, {-0.105, 0.03, 0.885}},
+	{{-0.03, -0.03, 0.865}, {0.03, 0.03, 0.885}},
+	{{0.105, -0.03, 0.865}, {0.165, 0.03, 0.885}},
+}
+@(private)
+CANDELABRUM_WAX := [?]Box {
+	{{-0.15, -0.014, 0.885}, {-0.12, 0.014, 0.97}},
+	{{-0.015, -0.015, 0.885}, {0.015, 0.015, 1.0}},
+	{{0.12, -0.014, 0.885}, {0.15, 0.014, 0.97}},
+}
+// Where its three flames burn, about its foot.
+CANDELABRUM_FLAMES :: [3][3]f32{{-0.135, 0, 0.995}, {0, 0, 1.025}, {0.135, 0, 0.995}}
+
+@(private)
+at_corner :: proc(list: []Box, c: [2]f32) -> []Box {
+	out := make([]Box, len(list), context.temp_allocator)
+	for b, i in list {
+		o := [3]f32{c.x, c.y, 0}
+		out[i] = {b.lo + o, b.hi + o}
+	}
+	return out
+}
+
 // --- figures -------------------------------------------------------------------------
 
 // A sister of Psyche in marble: Psyche's robed figure, larger, on a plinth,
@@ -427,6 +461,12 @@ build_meshes :: proc(meshes: ^[Mesh_Id]rl.Mesh) {
 		lathe(&vb, VASE_PROFILE[:], 12, {c.x, c.y, 0})
 		meshes[oriented_mesh(.Vase_PX, d)] = upload(&vb)
 		meshes[oriented_mesh(.Statue_PX, d)] = statue(d)
+		cb := builder_make()
+		boxes(&cb, at_corner(CANDELABRUM[:], c))
+		meshes[oriented_mesh(.Candelabrum_PX, d)] = upload(&cb)
+		wb := builder_make()
+		boxes(&wb, at_corner(CANDELABRUM_WAX[:], c))
+		meshes[oriented_mesh(.Candelabrum_Wax_PX, d)] = upload(&wb)
 	}
 	b := builder_make()
 	sphere(&b, {}, 1, 7, 12)

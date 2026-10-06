@@ -178,6 +178,8 @@ Game :: struct {
 	fragment_new:   bool, // event for the app: `fragment_last` just picked up (it clears it)
 	fragment_last:  int, // index into data.fragments
 	fragment_t:     [level.MAX_FRAGMENTS]f32, // time since each was picked up, < 0 before
+	candelabra_lit: bit_set[0 ..< level.MAX_CANDELABRA],
+	candelabrum_t:  [level.MAX_CANDELABRA]f32, // time since the lamp lit each, < 0 before (or lit from the start)
 
 	angle:          f32, // continuous view angle in quarter turns (unbounded)
 	turning:        bool,
@@ -273,6 +275,14 @@ load_text :: proc(g: ^Game, index: int, text: string) -> (err: Maybe(Load_Error)
 	g.collapse_t = -1
 	for &t in g.fragment_t {
 		t = -1
+	}
+	for &t in g.candelabrum_t {
+		t = -1
+	}
+	for c, i in g.data.candelabra {
+		if c.lit {
+			g.candelabra_lit += {i}
+		}
 	}
 	g.teach_after = -1
 	g.amore = {fly_t = -1, breath = 1}
@@ -422,6 +432,10 @@ update :: proc(g: ^Game, dt: f32) {
 	update_effects(g, dt)
 	update_hud(g, dt)
 	audio.set_light(g.light)
+
+	if g.lamp_on && g.light > 0.25 && g.phase != .Arrival && g.phase != .Prologue {
+		light_candelabra(g)
+	}
 
 	switch g.phase {
 	case .Play:
@@ -696,9 +710,6 @@ next_step :: proc(g: ^Game) {
 	if illusion {
 		audio.play(.Seam, -14)
 		learn(g, .Hint_Illusion)
-	}
-	if !g.lamp_on && (pl.is_stair(&g.palace, psy.cell) || pl.is_stair(&g.palace, next)) {
-		learn(g, .Hint_Stairs)
 	}
 	a, _ := step_points(g, 0)
 	b, _ := step_points(g, 0.49)
@@ -1027,6 +1038,11 @@ activate_sigil :: proc(g: ^Game) {
 	g.rise_t = 0
 }
 
+// When the i-th stone raised by the seal reaches its place (seconds after the seal is lit).
+rise_landing :: proc(i: int) -> f32 {
+	return f32(i) * RISE_DELAY + RISE_TIME * 0.55
+}
+
 rise_duration :: proc(g: ^Game) -> f32 {
 	return f32(max(g.rise_count - 1, 0)) * RISE_DELAY + RISE_TIME
 }
@@ -1168,7 +1184,16 @@ update_ending_trust :: proc(g: ^Game) {
 @(private)
 update_effects :: proc(g: ^Game, dt: f32) {
 	if g.rise_t >= 0 {
+		before := g.rise_t
 		g.rise_t += dt
+		// each stone the seal raises lands with a thud: the bridge forms stone by stone
+		for i in 0 ..< g.rise_count {
+			at := rise_landing(i)
+			if before < at && g.rise_t >= at {
+				audio.play(.Drop, -7, 0.8 + 0.06 * f32(i))
+				shake(g, 0.3)
+			}
+		}
 	}
 	if g.collapse_t >= 0 {
 		g.collapse_t += dt
@@ -1183,6 +1208,11 @@ update_effects :: proc(g: ^Game, dt: f32) {
 		g.amore.fly_t += dt
 	}
 	for &t in g.fragment_t {
+		if t >= 0 {
+			t += dt
+		}
+	}
+	for &t in g.candelabrum_t {
 		if t >= 0 {
 			t += dt
 		}
@@ -1333,9 +1363,51 @@ start_cues_time :: proc(g: ^Game) -> f32 {
 }
 
 // Tutorial hints stay on screen until Psyche does what they teach.
+CANDELABRUM_REACH :: 1.5 // cells from Psyche: the lamp's flame lights a candelabrum
+
+// Where candelabrum i stands, in world space (its foot, in the corner of its surface).
+candelabrum_base :: proc(g: ^Game, i: int) -> Vec3 {
+	c := g.data.candelabra[i]
+	k := [2]f32{0.8, 0.8}
+	switch c.dir {
+	case .PX:
+	case .PY: k = {1 - k.y, k.x}
+	case .MX: k = {1 - k.x, 1 - k.y}
+	case .MY: k = {k.y, 1 - k.x}
+	}
+	return {f32(c.cell.x) + k.x, f32(c.cell.y) + k.y, f32(c.cell.z)}
+}
+
+// The lamp lit beside an unlit candelabrum lights it, for good.
+@(private)
+light_candelabra :: proc(g: ^Game) {
+	for _, i in g.data.candelabra {
+		if i in g.candelabra_lit {
+			continue
+		}
+		d := candelabrum_base(g, i) - g.psyche.pos
+		if d.x * d.x + d.y * d.y <= CANDELABRUM_REACH * CANDELABRUM_REACH && abs(d.z) < 1.2 {
+			g.candelabra_lit += {i}
+			g.candelabrum_t[i] = 0
+			audio.play(.Lamp_On, -5, 1.25)
+		}
+	}
+}
+
+// How bright candelabrum i burns now (0 unlit, 1 burning; it catches over a moment).
+candelabrum_flame :: proc(g: ^Game, i: int) -> f32 {
+	if i not_in g.candelabra_lit {
+		return 0
+	}
+	if t := g.candelabrum_t[i]; t >= 0 {
+		return fx.cubic_out(fx.clamp01(t / 0.9))
+	}
+	return 1
+}
+
 is_tutorial :: proc(key: Key) -> bool {
 	#partial switch key {
-	case .Hint_Move, .Hint_Turn, .Hint_Lamp, .Hint_Illusion, .Hint_Stairs, .Hint_Sigil, .Hint_Oil,
+	case .Hint_Move, .Hint_Turn, .Hint_Lamp, .Hint_Illusion, .Hint_Sigil, .Hint_Oil,
 	     .Hint_Crumble, .Hint_Phantom, .Hint_Veiled, .Hint_Handle:
 		return true
 	}

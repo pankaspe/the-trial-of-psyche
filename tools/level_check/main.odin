@@ -100,7 +100,7 @@ main :: proc() {
 	if len(data.fragments) == 0 {
 		fmt.println("\nwarning: no fragment of the tale in this level")
 	}
-	if data.has_exit && !print_plan(&p, &data, alloc) {
+	if (data.has_exit || data.has_amore) && !print_plan(&p, &data, alloc) {
 		os.exit(1)
 	}
 }
@@ -184,9 +184,10 @@ solve_report :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Allo
 	}
 }
 
-// The plan to the exit with the fewest decisions, step by step.
+// The plan to the exit (or to Cupid's side) with the fewest decisions, step by step.
 print_plan :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Allocator) -> bool {
-	sol := pl.solve(p, data.exit, nil, alloc)
+	goal := pl.goal_cell(p)
+	sol := pl.solve(p, goal, nil, alloc)
 	fmt.printfln("\nsolver: %d states reached, %d dead ends", sol.states, sol.dead)
 	if !sol.solved {
 		fmt.eprintln("error: the exit cannot be reached")

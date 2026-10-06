@@ -94,11 +94,6 @@ to_view :: proc(c: Cell, r: int, size: i32) -> Cell {
 	return {x, y, c.z}
 }
 
-// View cell -> world cell (inverse of to_view).
-from_view :: proc(v: Cell, r: int, size: i32) -> Cell {
-	return to_view(v, 4 - ((r % 4) + 4) % 4, size)
-}
-
 // A world point seen from the continuous view angle (in quarter turns),
 // rotated about the vertical axis through the centre of the size x size grid.
 view_point :: proc(p: Vec3, angle: f32, size: i32) -> Vec3 {

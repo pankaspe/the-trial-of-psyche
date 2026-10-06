@@ -360,6 +360,9 @@ update_toasts :: proc(app: ^App, dt: f32) {
 
 frame :: proc(app: ^App) {
 	dt := min(rl.GetFrameTime(), 0.1)
+	if app.shooting && app.shots.record {
+		dt = 1.0 / 30 // a steady clock for a video, however slow the capture
+	}
 	app.time += dt
 	g := &app.game
 	u := &app.ui

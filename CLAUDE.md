@@ -68,7 +68,7 @@ CLAUDE.md for the design history).
   fragment on a rock in the river (view 2 from the first ford stone, back by view 3).
   **II.1 and II.2 approved by the user (2026-10-06)**: II.2 "bello, ambientazione perfetta",
   all mechanics used well, not too hard: right for its place. Pushed.
-- **Next: II.3 "The Sisters' Crag" (La rupe delle sorelle)** — the user's brief (2026-10-06):
+- **II.3 "The Sisters' Crag" (La rupe delle sorelle), when its turn comes** — the user's brief (2026-10-06):
   a real puzzle, **longer to play** (the user will time it), introduces **handles** (Act II's
   second mechanic, with its `mechanic` card), and **several buttons to press**: today only one
   `sigil` per level exists, so build multiple seals (each lit by the lamp raising its own set of
@@ -160,12 +160,14 @@ Full design document (Italian, kept up to date there): https://claude.ai/code/ar
   view (left .075 / right .625 / top .9) re-coloured with the prototype palettes
   (night / warm, per material); procedural masonry courses and marble bevels; lamp
   light, depth cue, mist. Output is not gamma-corrected (matches the prototype's look).
-- Settings per level (`setting night|night_candles|crag_sunset|dusk`, `render/setting.odin` `LOOKS`): sky gradient,
+- Settings per level (`setting night|night_candles|deep_night|crag_sunset|dusk`, `render/setting.odin` `LOOKS`): sky gradient,
   orb, stars, layered ranges (`ridges.fs`, panoramas that close over a full turn), clouds,
   mist, and a sunset palette for the stones (`daylight`). I.1 is the crag at sunset (approved).
   `dusk` (I.2): the palace at twilight, pink clouds, first stars, a pale moon, `daylight` 0.4,
   and `candles` lit (a flame glow on every `sconce`, and warm light on the stones around it:
-  `candle_lights` -> `candles[]` in palace.fs). `night_candles` (I.3): the night with candles lit.
+  `candle_lights` -> `candles[]` in palace.fs). `night_candles` (I.3): the night with candles lit. `deep_night` (I.4): darker stones (`gloom`),
+  candles out, clouds drifting across the moon (`moon_clouds`; sky.fs draws them, `moon_cover` mirrors
+  them on the CPU and dims the stones while the moon is hidden: `moonlight` in palace.fs).
 - Post-processing (`render/post.odin`, `post*.fs`): the world goes to a canvas, then bloom,
   soft scene, light shafts, tilt-shift (focus on Psyche), Kuwahara paint, grade, vignette,
   grain; the UI is drawn after, untouched. Six visual styles (`settings.Look`: off, clean
@@ -221,7 +223,8 @@ Full design document (Italian, kept up to date there): https://claude.ai/code/ar
 4. A walkthrough test in `tests/` (`act1_test.odin` is the model); Act II levels are covered
    by `act2_levels_solve_and_play` (the solver's plan played through the game).
 5. `--shots DIR --level ID` tours it: act card, the four views, lamp, fragment, exit, end card;
-   add `--plan` to play the solver's plan with a shot after every decision.
+   add `--plan` to play the solver's plan with a shot after every decision (`--record`: every
+   frame at a steady 30 fps instead, for a video; I.4's plan ends lighting the lamp beside Cupid).
 - Occlusion across four views is hard to foresee: a seam from a high near piece goes down only
   from its view-mx/my edges to a farther, lower piece. Reserve the cover cells of a seam's foot
   (view offsets (k,k,k-1), (k,k,k), (1+k,k,k), (k,1+k,k)) and close stray seams with
@@ -273,7 +276,7 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   - Sound: no chime on lines or tap on clicks, quieter steps/turns/seams; a wind sound for exits.
   - Look: Lawn material (`lawn x y z`, grass, earth, flowers); mourner material; decoration set:
     slim `arch`, corner `vase`, unlit wall `sconce`; slender battlements; no windows (disliked).
-  - Tools: `--shots DIR --level ID` tours a level; README has screenshots (`docs/screenshots/`).
+  - Tools: `--shots DIR --level ID` tours a level.
   - 27 tests. Pushed to GitHub.
 - Text rule (user, 2026-10-05): little text, so the gameplay comes first: prologue -> one intro line
   per level -> outro at the end; mechanics explained once, by tutorial hints.
@@ -329,14 +332,30 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
     grass, stairs, transitions. It is the reference for every level from now on.
   - I.2 reworked (2026-10-06): the layout turned so the start view shows Psyche on the lawn
     (seams now in views 1, 2, 0; fragment view 3), setting `dusk`, five lit candles.
-  - **I.2 approved** (dusk, start view). **I.3 rebuilt (2026-10-06), waiting for the user's playtest**:
+  - **I.2 approved** (dusk, start view). **I.3 rebuilt (2026-10-06)**:
     night with candles lit (`night_candles`), bigger (13x13), no tutorial hint; three hidden
     stairs and three seams, each in its own view (solver: 6 turns, 15 steps); a candle tower as
     a decoy; two fragments on the sisters' statues (`prop statue`), texts from Met. V.9-10 (the
     elder's and the younger's complaints; the old Venus fragment IV.30-31 was dropped).
     `./build.sh check` now prints the solver's plan for static levels too.
-  - **Next: I.2 "The Invisible Palace"** (done): the user plays it and says what to change (setting,
-    props); then I.3, I.4, then Act II (II.3's brief below still stands when its turn comes).
+    **I.3 approved** ("bellissimo").
+  - **I.4 rebuilt (2026-10-06), approved by the user ("perfetto")**: deep night, 16x16; the lamp is
+    introduced under a portico whose four columns hide the stairs from every view (only the light
+    climbs them); the seal raises a bridge of five stones (gold trail, a thud and dust as each
+    lands: `rise_landing`) to the gallery; view 0 joins the gallery to Cupid's chamber. Fragment:
+    four pillars joined in views 3, 2, 1, 0. Solver: 27 steps, 3 lightings (`lamp 3`).
+  - Where to light the lamp: candelabra (user, 2026-10-06, after a floor symbol and a pool of shadow
+    with a wandering light were both rejected): `candelabrum x y h dir [lit]` stands in a corner of a
+    surface (not blocking). Lit ones light the stones around (`candles[]`/`candle_reach[]` in
+    palace.fs); unlit ones catch the flame when the lamp burns within `CANDELABRUM_REACH` of Psyche
+    (`light_candelabra`), for good. I.4: two lit at the arrival, a row of unlit ones along the lamp's
+    path (portico, balcony, seal, gallery) up to Cupid's in the chamber. Decoration only: the rules
+    and the solver ignore them. The lamp's tutorial card draws a candelabrum.
+  - End of session 7: orphan code removed (Hint_Stairs: the hidden stairs are found by turning, no
+    lesson; unused helpers), README shortened with badges and a gameplay GIF (`docs/gameplay.gif`,
+    made from `--plan --record` frames of I.2-I.4 with ffmpeg). **Act I is done and approved.**
+  - **Next session: Act II, from II.1**, level by level as for Act I (its settings, props, depth;
+    II.3's brief above still stands when its turn comes).
 
 ## Roadmap from now (user, 2026-10-06): level by level
 - Art direction is settled as: settings per level (`render/setting.odin`, add a `Look` per new

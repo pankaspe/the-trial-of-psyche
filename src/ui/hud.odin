@@ -252,12 +252,27 @@ tutorial_sign :: proc(u: ^Ui, g: ^game.Game, key: i18n.Key, c: Vec2, col: rl.Col
 		tangent := Vec2{-math.sin(head), math.cos(head)} * -1
 		h := 10 * s
 		tri(tip + tangent * h, tip + normal * h * 0.75, tip - normal * h * 0.75, col)
-	case .Hint_Lamp, .Hint_Oil, .Hint_Sigil:
+	case .Hint_Lamp, .Hint_Sigil:
+		// a standing candelabrum, its three candles catching the flame one by one
+		th := 2.5 * s
+		rl.DrawLineEx(c + Vec2{0, 22} * s, c + Vec2{0, -6} * s, th, col)
+		rl.DrawLineEx(c + Vec2{-10, 22} * s, c + Vec2{10, 22} * s, th, col)
+		rl.DrawLineEx(c + Vec2{-14, -6} * s, c + Vec2{14, -6} * s, th, col)
+		k := math.mod(g.time, 2.4) / 2.4
+		for n in 0 ..< 3 {
+			x := f32(n - 1) * 14
+			rl.DrawLineEx(c + Vec2{x, -6} * s, c + Vec2{x, -12} * s, 3 * s, col)
+			if k > f32(n) * 0.22 {
+				flick := 1 + 0.12 * math.sin(g.time * 13 + f32(n))
+				tri(c + Vec2{x - 3, -13} * s, c + Vec2{x + 3, -13} * s, c + Vec2{x, -13 - 9 * flick} * s, col)
+			}
+		}
+	case .Hint_Oil:
 		// a flame
 		flick := 1 + 0.08 * math.sin(g.time * 13)
 		rl.DrawCircleV(c + {0, 6 * s}, 10 * s, col)
 		tri(c + {-10 * s, 4 * s}, c + {10 * s, 4 * s}, c + {0, -20 * s * flick}, col)
-	case .Hint_Illusion, .Hint_Stairs:
+	case .Hint_Illusion:
 		// two tiles that seem to touch
 		tile(c + {-9 * s, 5 * s}, 15 * s, col, true)
 		tile(c + {9 * s, -5 * s}, 15 * s, col, false)

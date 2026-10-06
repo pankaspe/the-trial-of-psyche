@@ -8,7 +8,7 @@ import "../src/i18n"
 import "../src/iso"
 import "../src/palace"
 
-BEDSIDE :: iso.Cell{6, 5, 5}
+BEDSIDE :: iso.Cell{14, 10, 6}
 DT :: 1.0 / 60.0
 
 @(private)
@@ -53,24 +53,28 @@ lamp_level_rules :: proc(t: ^testing.T) {
 	run(&g, 2)
 	testing.expect(t, g.hud.voice.active && g.hud.voice.key == .Intro_I_4, "the level opens with its intro line")
 
-	game.set_view(&g, 3)
-	testing.expect(t, walk(t, &g, TERRACE), "Psyche crosses the gap to the west terrace in view 3")
-	testing.expect(t, !game.walk_to(&g, BALCONY), "view 3: the hidden stairs do not lead up in the dark")
 	game.request_turn(&g, 1)
 	run(&g, 1)
-	testing.expect(t, game.rot(&g) == 0, "turned to view 0, where the stairs show")
-	testing.expect(t, walk(t, &g, BALCONY), "Psyche climbs the stairs to the balcony")
-	game.set_view(&g, 3)
-
-	game.request_turn(&g, -1)
-	run(&g, 1)
-	testing.expect(t, game.rot(&g) == 2 && !g.turning, "the animated turn ends on view 2")
+	testing.expect(t, game.rot(&g) == 1 && !g.turning, "the animated turn ends on view 1")
+	testing.expect(t, walk(t, &g, TERRACE), "view 1: up the first stairs and across to the west terrace")
+	for r in 0 ..< 4 {
+		game.set_view(&g, r)
+		testing.expectf(t, !game.walk_to(&g, BALCONY), "view %d: the portico's stairs do not lead up in the dark", r)
+	}
+	PORTICO_CANDELABRUM :: 2 // the third in the level file, by the portico's stairs
+	testing.expect(t, 0 in g.candelabra_lit && PORTICO_CANDELABRUM not_in g.candelabra_lit, "the arrival's candelabra burn, the portico's waits")
+	game.toggle_lamp(&g)
+	testing.expect(t, g.lamp_on, "the lamp is lit")
+	testing.expect(t, g.hud.hint.key == .Hint_Oil, "lighting it for the first time teaches the oil")
+	run(&g, 0.3)
+	testing.expect(t, PORTICO_CANDELABRUM in g.candelabra_lit, "the lamp's flame lights the candelabrum beside her")
+	testing.expect(t, walk(t, &g, BALCONY), "in the light Psyche climbs the stairs under the portico")
+	game.toggle_lamp(&g)
+	testing.expect(t, g.learned[i18n.Key.Hint_Oil], "putting it out ends the oil lesson")
 	game.set_view(&g, 1)
 	testing.expect(t, walk(t, &g, g.data.sigil), "Psyche reaches the seal in view 1")
 
 	game.toggle_lamp(&g)
-	testing.expect(t, g.lamp_on, "the lamp is lit")
-	testing.expect(t, g.hud.hint.key == .Hint_Oil, "lighting it for the first time teaches the oil")
 	oil := g.oil
 	run(&g, 0.5)
 	testing.expect(t, g.activated && g.phase == .Sigil, "the lamp on the seal starts the rising")
@@ -82,10 +86,10 @@ lamp_level_rules :: proc(t: ^testing.T) {
 	testing.expect(t, g.stain_count > 0, "the burning lamp drops oil")
 
 	game.toggle_lamp(&g)
-	testing.expect(t, g.learned[i18n.Key.Hint_Oil], "putting it out ends the oil lesson")
-	game.set_view(&g, 3)
+	testing.expect(t, walk(t, &g, GALLERY), "the bridge leads to the gallery")
+	game.set_view(&g, 0)
 	path: palace.Path
-	testing.expect(t, palace.find_path(&g.palace, g.psyche.cell, ROOF_ENTRY, true, &path), "view 3: the roof is reachable in the dark")
+	testing.expect(t, palace.find_path(&g.palace, g.psyche.cell, ROOF_ENTRY, true, &path), "view 0: the chamber is reachable in the dark")
 }
 
 @(test)
@@ -112,9 +116,9 @@ ending :: proc(t: ^testing.T, bad: bool) {
 	g.trust_allowed = true // the secret ending, after the game has been finished
 	g.palace.risen = true
 	palace.rebuild_graph(&g.palace)
-	game.set_view(&g, 3)
+	game.set_view(&g, 0)
 	g.activated = true
-	g.psyche.cell = BRIDGE
+	g.psyche.cell = GALLERY
 	testing.expect(t, walk(t, &g, ROOF_ENTRY), "Psyche reaches the roof")
 	if bad {
 		game.toggle_lamp(&g)
@@ -159,9 +163,9 @@ illusion_steps_look_continuous :: proc(t: ^testing.T) {
 	if !start(t, &g) {
 		return
 	}
-	game.set_view(&g, 3)
-	a, b := iso.Cell{7, 9, 1}, iso.Cell{5, 10, 2}
-	testing.expect(t, palace.is_illusion(&g.palace, a, b), "view 3 joins the walkway to the west terrace")
+	game.set_view(&g, 1)
+	a, b := iso.Cell{4, 11, 2}, iso.Cell{6, 10, 3}
+	testing.expect(t, palace.is_illusion(&g.palace, a, b), "view 1 joins the west walk to the west terrace")
 	g.psyche.step_from, g.psyche.step_to, g.psyche.step_illusion = a, b, true
 	screen :: proc(g: ^game.Game, u: f32) -> iso.Vec2 {
 		p, _ := game.step_points(g, u)

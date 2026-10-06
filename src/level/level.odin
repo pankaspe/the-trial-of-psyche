@@ -47,6 +47,7 @@ Setting :: enum u8 {
 	Crag_Sunset, // a mountain crag above a sea of clouds, the sun going down
 	Dusk, // the palace of voices at twilight: the last light, its candles lit
 	Night_Candles, // the palace of voices by night, its candles lit
+	Deep_Night, // the dead of night: candles out, clouds drifting across the moon
 }
 
 SETTING_NAME := [Setting]string {
@@ -54,6 +55,7 @@ SETTING_NAME := [Setting]string {
 	.Crag_Sunset = "crag_sunset",
 	.Dusk        = "dusk",
 	.Night_Candles = "night_candles",
+	.Deep_Night  = "deep_night",
 }
 
 // How a block behaves (Act II): fixed stone, or one that changes for good.
@@ -146,6 +148,14 @@ PROP_NAME := [Prop_Kind]string {
 	.Cairn           = "cairn",
 }
 
+// A standing candelabrum in a corner of a surface: lit from the start, or
+// waiting for the lamp's flame.
+Candelabrum :: struct {
+	cell: Cell, // the surface it stands on (x, y, h)
+	dir:  Dir, // its corner, as the vase's
+	lit:  bool,
+}
+
 Prop :: struct {
 	cell:     Cell,
 	kind:     Prop_Kind,
@@ -182,6 +192,7 @@ Level_Data :: struct {
 	intro:        i18n.Key, // the line shown when the level begins
 	has_intro:    bool,
 	lawn:         [dynamic]Cell, // blocks with a grassy top
+	candelabra:   [dynamic]Candelabrum,
 	ground:       [dynamic]Cell, // blocks and stairs of living rock (earth, not masonry)
 	water:        [dynamic][4]i32, // rectangles of water (x0 y0 x1 y1), just under the h1 surfaces
 	outro:        i18n.Key, // the text of the ending card at the exit
@@ -198,6 +209,7 @@ Level_Data :: struct {
 
 MAX_PARTS :: 8
 MAX_FRAGMENTS :: 4
+MAX_CANDELABRA :: 12
 MAX_DYNAMIC :: 64 // crumbling, phantom and veiled blocks in one level
 
 // The cell of a part's block after `r` quarter turns.
@@ -226,6 +238,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	data.hints = make([dynamic]Cue, 0, 8)
 	data.fragments = make([dynamic]Cell, 0, MAX_FRAGMENTS)
 	data.lawn = make([dynamic]Cell, 0, 8)
+	data.candelabra = make([dynamic]Candelabrum, 0, MAX_CANDELABRA)
 	data.ground = make([dynamic]Cell, 0, 16)
 	data.water = make([dynamic][4]i32, 0, 2)
 	data.parts = make([dynamic]Part, 0, 2)
@@ -404,7 +417,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 			}
 			if !found {
-				return data, fail(line_no, "setting: expected one of night, crag_sunset, dusk, night_candles")
+				return data, fail(line_no, "setting: expected one of night, crag_sunset, dusk, night_candles, deep_night")
 			}
 
 		case "water":
@@ -444,6 +457,24 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			}
 			append(&data.rise, Solid_Entry{cell = v, solid = s})
 			max_z = max(max_z, v.z)
+
+		case "candelabrum":
+			if len(args) < 4 {
+				return data, fail(line_no, "candelabrum: expected x y h dir [lit]")
+			}
+			v: [3]i32
+			if !ints(args[:3], v[:]) {
+				return data, fail(line_no, "candelabrum: expected integer coordinates")
+			}
+			d, ok := iso.dir_from_name(args[3])
+			if !ok {
+				return data, fail(line_no, "candelabrum: unknown direction '%s'", args[3])
+			}
+			if len(data.candelabra) == MAX_CANDELABRA {
+				return data, fail(line_no, "candelabrum: at most %d per level", MAX_CANDELABRA)
+			}
+			append(&data.candelabra, Candelabrum{cell = v, dir = d, lit = len(args) > 4 && args[4] == "lit"})
+			max_z = max(max_z, v.z + 1)
 
 		case "prop":
 			if len(args) < 4 {
@@ -525,6 +556,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				return data, fail(line_no, "lawn: expected x y z")
 			}
 			append(&data.lawn, v)
+
 
 		case "voice", "hint":
 			v: [3]i32

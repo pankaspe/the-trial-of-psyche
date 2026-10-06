@@ -3,6 +3,8 @@
 // Night is the palace of voices under the moon; the others follow the acts.
 package render
 
+import "core:math"
+
 import "../level"
 
 Look :: struct {
@@ -28,6 +30,8 @@ Look :: struct {
 	mist:          Vec3, // the foot of the level sinks into it
 	daylight:      f32, // stones: 0 moonlit palette .. 1 the low sun
 	candles:       bool, // the candles on the walls are lit
+	gloom:         f32, // 0 .. 1: how much darker the stones are than under a clear moon
+	moon_clouds:   f32, // 0 none .. 1 dark clouds drifting across the moon (they dim the stones)
 	mote:          Color4,
 }
 
@@ -69,6 +73,27 @@ LOOKS := [level.Setting]Look {
 		daylight = 0,
 		candles = true,
 		mote = {0.9, 0.75, 0.6, 0.45},
+	},
+	// deep night in the palace of voices: candles out, clouds drifting across the moon
+	.Deep_Night = {
+		sky_top = {0.004, 0.006, 0.024},
+		sky_mid = {0.022, 0.022, 0.066},
+		sky_horizon = {0.04, 0.036, 0.1},
+		orb_pos = {0.80, 0.2},
+		orb_radius = 0.045,
+		orb_color = {0.8, 0.83, 0.95},
+		halo_color = {0.07, 0.08, 0.14},
+		halo_width = 10,
+		stars = 0.7,
+		haze = {0.05, 0.05, 0.11},
+		islands = true,
+		cloud_back = {0.08, 0.08, 0.19},
+		cloud_front = {0.12, 0.12, 0.25},
+		mist = {0.04, 0.04, 0.11},
+		daylight = 0,
+		gloom = 0.4,
+		moon_clouds = 1,
+		mote = {0.55, 0.6, 0.9, 0.35},
 	},
 	// Zephyr's crag: the sun sets behind far ranges, the crag stands over the clouds
 	.Crag_Sunset = {
@@ -115,6 +140,47 @@ LOOKS := [level.Setting]Look {
 		candles = true,
 		mote = {1.0, 0.82, 0.55, 0.4},
 	},
+}
+
+// The night clouds of sky.fs, as they cover the moon's centre at `time`
+// (`angle`: the view turn, which pans the sky).
+MOON_CLOUDS :: 3
+@(private = "file")
+C_SPEED := [MOON_CLOUDS]f32{0.009, 0.007, 0.011}
+@(private = "file")
+C_PHASE := [MOON_CLOUDS]f32{0.10, 0.55, 0.85}
+@(private = "file")
+C_DY := [MOON_CLOUDS]f32{0.0, -0.02, 0.025}
+@(private = "file")
+C_W := [MOON_CLOUDS]f32{0.22, 0.17, 0.2}
+@(private = "file")
+C_H := [MOON_CLOUDS]f32{0.07, 0.06, 0.075}
+@(private = "file")
+LOBE := [3][2]f32{{-0.55, 0.15}, {0.0, -0.3}, {0.5, 0.1}}
+@(private = "file")
+LOBE_S := [3]f32{0.7, 1.0, 0.75}
+
+moon_cover :: proc(lk: ^Look, time, angle, aspect: f32) -> f32 {
+	if lk.moon_clouds <= 0 {
+		return 0
+	}
+	shift := angle
+	mx := lk.orb_pos.x - shift * 0.03
+	cover: f32 = 0
+	for i in 0 ..< MOON_CLOUDS {
+		t := C_PHASE[i] + time * C_SPEED[i]
+		cx := (t - math.floor(t)) * 1.9 - 0.45 - shift * 0.03
+		for l, j in LOBE {
+			ox := cx + l.x * C_W[i] / aspect
+			oy := C_DY[i] + l.y * C_H[i] // relative to the moon
+			ex := (mx - ox) * aspect / (C_W[i] * LOBE_S[j])
+			ey := -oy / (C_H[i] * LOBE_S[j])
+			e := ex * ex + ey * ey
+			u := clamp((1.0 - e) / 0.75, 0, 1)
+			cover = max(cover, u * u * (3 - 2 * u))
+		}
+	}
+	return cover * lk.moon_clouds * 0.93
 }
 
 look :: proc(s: level.Setting) -> ^Look {

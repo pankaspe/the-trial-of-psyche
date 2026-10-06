@@ -9,11 +9,12 @@ import "../src/iso"
 import "../src/level"
 import "../src/palace"
 
-BALCONY :: iso.Cell{3, 4, 3}
-TERRACE :: iso.Cell{3, 7, 2} // foot of the stairs
-ROOF_ENTRY :: iso.Cell{5, 5, 5}
-BRIDGE :: iso.Cell{6, 3, 4}
-LAMP_LEVEL :: 3 // I.4, "The Lamp and the Razor": the prototype's level
+BALCONY :: iso.Cell{6, 5, 4} // top of the portico's stairs
+TERRACE :: iso.Cell{6, 7, 3} // foot of the portico's stairs
+GALLERY :: iso.Cell{11, 9, 5} // where the bridge ends
+ROOF_ENTRY :: iso.Cell{13, 10, 6} // Cupid's chamber
+BRIDGE :: iso.Cell{11, 4, 5} // the first stone the seal raises
+LAMP_LEVEL :: 3 // I.4, "The Lamp and the Razor"
 
 // Parse level I.4 and build its palace inside `arena`.
 @(private)
@@ -119,35 +120,34 @@ level_1_walkthrough :: proc(t: ^testing.T) {
 	start, sigil := data.start, data.sigil
 
 	palace.set_view(&p, 0)
-	testing.expect(t, !reach(&p, start, TERRACE, true), "view 0: the walkway ends in a gap")
-	palace.set_view(&p, 3)
-	testing.expect(t, reach(&p, start, TERRACE, true), "view 3: the gap closes in the dark")
-	testing.expect(t, !reach(&p, start, TERRACE, false), "view 3: but not in the light")
-	testing.expect(t, !reach(&p, TERRACE, BALCONY, true), "view 3: the stairs are hidden, they lead nowhere in the dark")
-	testing.expect(t, reach(&p, TERRACE, BALCONY, false), "view 3: the lamp shows the hidden stairs")
-	for r in ([2]int{0, 2}) {
-		palace.set_view(&p, r)
-		testing.expectf(t, reach(&p, TERRACE, BALCONY, true), "view %d: the stairs are in sight and can be climbed", r)
-	}
+	testing.expect(t, !reach(&p, start, TERRACE, true), "view 0: the first stairs hide behind the candle post")
 	palace.set_view(&p, 1)
-	testing.expect(t, !reach(&p, TERRACE, BALCONY, true), "view 1: the stairs are half hidden")
-	palace.set_view(&p, 3)
-	testing.expect(t, !reach(&p, BALCONY, sigil, true), "view 3: the seal's pillar is out of reach")
-	palace.set_view(&p, 1)
-	testing.expect(t, reach(&p, BALCONY, sigil, true), "view 1: the seal's pillar joins the balcony")
-	testing.expect(t, !reach(&p, sigil, ROOF_ENTRY, true), "view 1: the chamber is sealed before the lamp")
+	testing.expect(t, reach(&p, start, TERRACE, true), "view 1: up the stairs and across the seam, in the dark")
+	testing.expect(t, !reach(&p, start, TERRACE, false), "view 1: but not in the light")
 	for r in 0 ..< 4 {
 		palace.set_view(&p, r)
-		testing.expectf(t, !reach(&p, sigil, ROOF_ENTRY, true), "view %d: no way to the roof before the seal", r)
+		testing.expectf(t, !reach(&p, TERRACE, BALCONY, true), "view %d: the portico hides the stairs in the dark", r)
+	}
+	testing.expect(t, reach(&p, TERRACE, BALCONY, false), "the lamp shows the portico's stairs")
+	for r in ([3]int{0, 2, 3}) {
+		palace.set_view(&p, r)
+		testing.expectf(t, !reach(&p, BALCONY, sigil, true), "view %d: the seal's pillar is out of reach", r)
+	}
+	palace.set_view(&p, 1)
+	testing.expect(t, reach(&p, BALCONY, sigil, true), "view 1: the seal's pillar joins the balcony")
+	for r in 0 ..< 4 {
+		palace.set_view(&p, r)
+		testing.expectf(t, !reach(&p, sigil, GALLERY, true) && !reach(&p, sigil, ROOF_ENTRY, true), "view %d: no way to the tower before the seal", r)
 	}
 
-	// the lamp on the seal raises the last stone
+	// the lamp on the seal raises a bridge of five stones
 	p.risen = true
 	palace.rebuild_graph(&p)
-	palace.set_view(&p, 3)
-	testing.expect(t, reach(&p, sigil, ROOF_ENTRY, true), "view 3: the bridge reaches the roof in the dark")
-	testing.expect(t, !reach(&p, sigil, ROOF_ENTRY, false), "...and never in the light")
+	testing.expect(t, reach(&p, sigil, GALLERY, false), "the bridge is real: it joins the seal to the gallery")
 	testing.expect(t, reach(&p, sigil, BRIDGE, false), "the risen stone is really joined to the seal")
+	palace.set_view(&p, 0)
+	testing.expect(t, reach(&p, GALLERY, ROOF_ENTRY, true), "view 0: the gallery joins Cupid's chamber in the dark")
+	testing.expect(t, !reach(&p, GALLERY, ROOF_ENTRY, false), "...and never in the light")
 }
 
 @(test)

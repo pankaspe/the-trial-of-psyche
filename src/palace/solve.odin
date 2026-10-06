@@ -16,6 +16,7 @@ package palace
 
 import "core:slice"
 
+import "../iso"
 import "../level"
 
 Config :: struct {
@@ -104,21 +105,6 @@ configure :: proc(s: ^Solver, cfg: Config) {
 	}
 	p.risen = cfg.risen
 	rebuild_graph(p)
-}
-
-@(private = "file")
-config_of :: proc(s: ^Solver) -> (cfg: Config) {
-	p := s.p
-	for b, k in s.changing {
-		if p.flipped[b] {
-			cfg.flips |= 1 << u64(k)
-		}
-	}
-	for n in 0 ..< len(p.data.parts) {
-		cfg.rots |= u32(p.part_rot[n]) << (2 * u32(n))
-	}
-	cfg.risen = p.risen
-	return
 }
 
 @(private = "file")
@@ -429,6 +415,20 @@ seal :: proc(p: ^Palace, cfg: Config, feet: Cell, changed: int) -> (Config, int)
 	out := cfg
 	out.risen = true
 	return out, changed + len(p.data.rise)
+}
+
+// Where the level is won: its exit, or a surface beside Cupid (the lamp is lit there).
+goal_cell :: proc(p: ^Palace) -> Cell {
+	d := p.data
+	if d.has_exit || !d.has_amore {
+		return d.exit
+	}
+	for v in iso.DIR_VEC {
+		if c := d.amore + {v.x, v.y, 0}; is_surface(p, c) {
+			return c
+		}
+	}
+	return d.exit
 }
 
 // Is the level's goal (the exit) reachable? For levels whose palace changes.

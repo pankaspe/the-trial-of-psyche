@@ -23,8 +23,10 @@ uniform float mist_bottom;
 uniform float screen_height;
 uniform vec3 mist_color;
 uniform float daylight;      // 0 the moonlit palette .. 1 the low sun of a setting (no lamp needed)
+uniform float moonlight;     // the moon's light on the stones: < 1 in a darker night, or behind a cloud
 #define MAX_CANDLES 16
-uniform vec4 candles[MAX_CANDLES]; // lit candles on the walls: world position, strength
+uniform vec4 candles[MAX_CANDLES]; // lit candles and candelabra: world position, strength
+uniform float candle_reach[MAX_CANDLES]; // how far each lights the stones
 uniform int candle_count;
 
 // per piece
@@ -280,6 +282,7 @@ void main() {
     vec3 warm;
     palette(m, t, night, warm);
     night = mix(night, sunset(m, t, warm), daylight);
+    night *= moonlight;
     vec3 col = mix(night, warm, lit);
     // the candles warm the stones around them, most the faces that look at them
     float cl = 0.0;
@@ -288,7 +291,7 @@ void main() {
         vec3 d = candles[i].xyz - fragWorld;
         float dist = length(d);
         float facing = 0.35 + 0.65 * max(dot(normalize(fragNormal), d / max(dist, 1e-4)), 0.0);
-        cl += candles[i].w * facing * (1.0 - smoothstep(0.1, 1.7, dist));
+        cl += candles[i].w * facing * (1.0 - smoothstep(0.1, candle_reach[i], dist));
     }
     col = mix(col, warm, clamp(cl, 0.0, 1.0) * 0.65);
     if (material < 3.5 || material > 6.5) {

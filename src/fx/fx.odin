@@ -38,10 +38,6 @@ quad_in :: proc(t: f32) -> f32 {
 	return t * t
 }
 
-quad_out :: proc(t: f32) -> f32 {
-	return 1 - (1 - t) * (1 - t)
-}
-
 cubic_out :: proc(t: f32) -> f32 {
 	u := 1 - t
 	return 1 - u * u * u
@@ -148,10 +144,6 @@ update :: proc(pool: ^Pool($N), dt: f32) {
 		p.pos += p.vel * dt
 		i += 1
 	}
-}
-
-clear_pool :: proc(pool: ^Pool($N)) {
-	pool.count = 0
 }
 
 alive :: proc(pool: ^Pool($N)) -> []Particle {

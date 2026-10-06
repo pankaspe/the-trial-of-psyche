@@ -22,6 +22,29 @@ uniform vec3 halo_color;
 uniform float halo_width;
 uniform float stars;
 uniform vec3 haze;
+uniform float night_clouds; // 0 none .. 1 dark clouds drifting across the moon
+
+// The drifting night clouds: soft ellipses around the moon's height (the first
+// three cross the moon; render/setting.odin `moon_cover` mirrors them).
+const int CLOUDS = 6;
+const float C_SPEED[6] = float[](0.009, 0.007, 0.011, 0.005, 0.006, 0.004);
+const float C_PHASE[6] = float[](0.10, 0.55, 0.85, 0.30, 0.70, 0.20);
+const float C_DY[6] = float[](0.0, -0.02, 0.025, -0.13, 0.15, 0.3);
+const float C_W[6] = float[](0.22, 0.17, 0.2, 0.28, 0.22, 0.32);
+const float C_H[6] = float[](0.07, 0.06, 0.075, 0.06, 0.055, 0.07);
+// each cloud is three lobes: offsets (in its own width / height) and sizes
+const vec2 LOBE[3] = vec2[](vec2(-0.55, 0.15), vec2(0.0, -0.3), vec2(0.5, 0.1));
+const float LOBE_S[3] = float[](0.7, 1.0, 0.75);
+
+float cloud(vec2 uv, vec2 c, float w, float h, float rag) {
+    float d = 0.0;
+    for (int j = 0; j < 3; j++) {
+        vec2 o = c + vec2(LOBE[j].x * w / aspect, LOBE[j].y * h);
+        vec2 e = vec2((uv.x - o.x) * aspect / (w * LOBE_S[j]), (uv.y - o.y) / (h * LOBE_S[j]));
+        d = max(d, smoothstep(1.0, 0.25, dot(e, e) + rag));
+    }
+    return d;
+}
 
 out vec4 finalColor;
 
@@ -63,6 +86,22 @@ void main() {
     float spots = stars > 0.99 ? noise(dv * 60.0) * 0.12 + noise(dv * 140.0) * 0.06 : 0.0;
     col = mix(col, orb_color - spots, disc * (1.0 - light_amount * 0.35));
     col += halo_color * exp(-md * halo_width) * (1.0 - light_amount * 0.4);
+    // night clouds: they cover the moon and its halo, their edges lit silver
+    if (night_clouds > 0.0) {
+        float dens = 0.0;
+        for (int i = 0; i < CLOUDS; i++) {
+            float cx = fract(C_PHASE[i] + time * C_SPEED[i]) * 1.9 - 0.45 - shift * 0.03;
+            float rag = (noise(uv * vec2(12.0, 26.0) + vec2(time * 0.03 + float(i) * 7.0, float(i))) - 0.5) * 0.9
+                + (noise(uv * vec2(40.0, 80.0) + float(i) * 3.0) - 0.5) * 0.3;
+            dens = max(dens, cloud(uv, vec2(cx, mp.y + C_DY[i]), C_W[i], C_H[i], rag));
+        }
+        // grey-blue in the moonlight, paler near the moon, a silver lining on the edges
+        float shade = mix(0.75, 1.0, smoothstep(0.0, 0.8, dens));
+        vec3 body = (sky_mid * 1.5 + vec3(0.025, 0.027, 0.045)) * shade;
+        float rim = dens * (1.0 - dens) * 4.0;
+        float lit = exp(-md * 6.0) * (0.3 + rim);
+        col = mix(col, body + orb_color * 0.4 * lit, dens * 0.94 * night_clouds);
+    }
     // drifting haze bands, low in the sky
     float m = noise(uv * vec2(3.0, 6.0) + vec2(time * 0.015 + shift * 0.1, 0.0)) * 0.6
         + noise(uv * vec2(7.0, 12.0) - vec2(time * 0.02, 0.0)) * 0.4;

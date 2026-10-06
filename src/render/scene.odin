@@ -43,7 +43,9 @@ Uniform :: enum u8 {
 	Glow,
 	Mist_Color,
 	Daylight,
+	Moonlight,
 	Candles,
+	Candle_Reach,
 	Candle_Count,
 }
 
@@ -68,7 +70,9 @@ UNIFORM_NAME := [Uniform]cstring {
 	.Glow          = "glow",
 	.Mist_Color    = "mist_color",
 	.Daylight      = "daylight",
+	.Moonlight     = "moonlight",
 	.Candles       = "candles",
+	.Candle_Reach  = "candle_reach",
 	.Candle_Count  = "candle_count",
 }
 
@@ -91,6 +95,7 @@ Backdrop_Uniform :: enum u8 {
 	Halo_Width,
 	Stars,
 	Haze,
+	Night_Clouds,
 	Crest_Color,
 	Color_Far,
 	Color_Mid,
@@ -117,6 +122,7 @@ BACKDROP_NAME := [Backdrop_Uniform]cstring {
 	.Halo_Width   = "halo_width",
 	.Stars        = "stars",
 	.Haze         = "haze",
+	.Night_Clouds = "night_clouds",
 	.Crest_Color  = "crest_color",
 	.Color_Far    = "color_far",
 	.Color_Mid    = "color_mid",
@@ -224,11 +230,12 @@ Scene :: struct {
 	wind:       fx.Pool(96), // Zephyr's breath over the exit (world)
 	rng:        fx.Rng,
 	mote:       Color4, // the colour of the drifting motes (from the setting)
+	moon_cover: f32, // how much the night clouds hide the moon now (0..1)
 }
 
 scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 	s^ = {}
-	s.pieces = make([dynamic]Piece, 0, len(g.data.blocks) + 2 * len(g.data.props) + len(g.data.rise) + len(g.data.handles) + 2, allocator)
+	s.pieces = make([dynamic]Piece, 0, len(g.data.blocks) + 2 * len(g.data.props) + 2 * len(g.data.candelabra) + len(g.data.rise) + len(g.data.handles) + 2, allocator)
 	s.rng = fx.rng_init(1234)
 	s.mote = look(g.data.setting).mote
 	for e, i in g.data.blocks {
@@ -262,6 +269,10 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 		case .Pine:
 			append(&s.pieces, Piece{cell = prop.cell, mesh = oriented_mesh(.Trunk_PX, prop.dir), material = .Wood, rise_index = -1, block = -1, handle = -1, part = prop.part})
 		}
+	}
+	for c in g.data.candelabra {
+		append(&s.pieces, Piece{cell = c.cell, mesh = oriented_mesh(.Candelabrum_PX, c.dir), material = .Bronze, rise_index = -1, block = -1, handle = -1})
+		append(&s.pieces, Piece{cell = c.cell, mesh = oriented_mesh(.Candelabrum_Wax_PX, c.dir), material = .Psyche, rise_index = -1, block = -1, handle = -1})
 	}
 	for h, i in g.data.handles {
 		append(&s.pieces, Piece{cell = h.cell, mesh = .Crank_Post, material = .Bronze, rise_index = -1, block = -1, handle = i32(i)})
@@ -414,6 +425,38 @@ scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
 					size  = 32 * fx.rand_range(&s.rng, 0.08, 0.16),
 					color = {1.0, 0.85, 0.6, 0.7},
 				})
+			}
+		}
+	}
+	// the stones the seal raises: a trail of gold as they come up, a burst of dust as they land
+	if g.rise_t >= 0 && g.rise_t < game.rise_duration(g) + 0.5 {
+		for e, i in g.data.rise {
+			k := fx.progress(g.rise_t, f32(i) * game.RISE_DELAY, game.RISE_TIME)
+			c := Vec3{f32(e.cell.x) + 0.5, f32(e.cell.y) + 0.5, f32(e.cell.z)} + {0, 0, rise_lift(g, i)}
+			if k > 0 && k < 0.6 && fx.randf(&s.rng) < dt * 50 {
+				fx.emit(&s.debris, {
+					pos   = c + {fx.rand_range(&s.rng, -0.45, 0.45), fx.rand_range(&s.rng, -0.45, 0.45), fx.rand_range(&s.rng, -0.2, 0.1)},
+					vel   = {0, 0, fx.rand_range(&s.rng, -0.8, -0.2)},
+					life  = 1.2,
+					size  = 32 * fx.rand_range(&s.rng, 0.08, 0.18),
+					color = {1.0, 0.82, 0.45, 0.85},
+				})
+			}
+			land := game.rise_landing(i)
+			if g.rise_t >= land && g.rise_t - dt < land {
+				for n in 0 ..< 22 {
+					a := f32(n) / 22 * math.TAU + fx.randf(&s.rng) * 0.3
+					edge := Vec3{math.cos(a), math.sin(a), 0}
+					edge /= max(abs(edge.x), abs(edge.y)) // on the square's rim
+					fx.emit(&s.dust, {
+						pos   = c + {edge.x * 0.5, edge.y * 0.5, 1.0},
+						vel   = {edge.x * fx.rand_range(&s.rng, 0.3, 0.8), edge.y * fx.rand_range(&s.rng, 0.3, 0.8), fx.rand_range(&s.rng, 0.1, 0.5)},
+						accel = {0, 0, -1.2},
+						life  = 1.1,
+						size  = 32 * fx.rand_range(&s.rng, 0.1, 0.2),
+						color = {1.0, 0.9, 0.7, 0.8},
+					})
+				}
 			}
 		}
 	}
@@ -582,13 +625,42 @@ set_frame_uniforms :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	lk := look(g.data.setting)
 	set_v3(r, .Mist_Color, lk.mist)
 	set_f(r, .Daylight, lk.daylight)
+	set_f(r, .Moonlight, (1 - lk.gloom) * (1 - 0.45 * s.moon_cover))
 	list, n := candle_lights(g)
+	reach: [MAX_CANDLES]f32
+	for k in 0 ..< n {
+		reach[k] = 1.7
+	}
+	// the candelabra burning light far more of the palace than a candle
+	for _, i in g.data.candelabra {
+		f := game.candelabrum_flame(g, i)
+		if f <= 0.003 || n == MAX_CANDLES {
+			continue
+		}
+		p := candelabrum_world(g, i) + {0, 0, 1.0}
+		fl := 0.9 + 0.07 * math.sin(g.time * 11 + f32(i) * 2.3) + 0.03 * math.sin(g.time * 29 + f32(i))
+		list[n] = {p.x, p.y, p.z, 1.15 * f * fl}
+		reach[n] = 1.2 + 1.6 * f
+		n += 1
+	}
 	rl.SetShaderValueV(r.material.shader, r.loc[.Candles], &list, .VEC4, i32(max(n, 1)))
+	rl.SetShaderValueV(r.material.shader, r.loc[.Candle_Reach], &reach, .FLOAT, i32(max(n, 1)))
 	count := i32(n)
 	rl.SetShaderValue(r.material.shader, r.loc[.Candle_Count], &count, .INT)
 }
 
 MAX_CANDLES :: 16 // as in palace.fs
+
+// Where candelabrum i's foot is drawn now (it rises with the palace on arrival).
+candelabrum_world :: proc(g: ^game.Game, i: int) -> Vec3 {
+	p := game.candelabrum_base(g, i)
+	if g.phase == .Arrival {
+		d := g.data.candelabra[i].cell - g.data.start
+		k := game.arrival_rise(g, math.sqrt(f32(d.x * d.x + d.y * d.y)) + f32(abs(d.z)) * 0.3, 1)
+		p.z -= 9 * (1 - k)
+	}
+	return p
+}
 
 // The candles lit on the walls (where the setting lights them): their flames
 // in the world and how bright each burns now (flickering; during the arrival,
@@ -694,7 +766,7 @@ piece_state :: proc(g: ^game.Game, p: Piece, i: int) -> (lift, alpha: f32, visib
 			return 0, 0, false, false, false
 		}
 		start := f32(p.rise_index) * game.RISE_DELAY
-		lift = -game.RISE_DEPTH * (1 - fx.cubic_out(fx.progress(g.rise_t, start, game.RISE_TIME)))
+		lift = rise_lift(g, int(p.rise_index))
 		alpha = fx.progress(g.rise_t, start, 0.8)
 	}
 	if p.block >= 0 {
@@ -878,6 +950,14 @@ cupid_fade :: proc(g: ^game.Game) -> f32 {
 		return 1
 	}
 	return 1 - fx.progress(g.amore.fly_t, 0.6, 2.2)
+}
+
+// How far below its place the i-th stone raised by the seal is now (<= 0).
+rise_lift :: proc(g: ^game.Game, i: int) -> f32 {
+	if g.rise_t < 0 {
+		return -game.RISE_DEPTH
+	}
+	return -game.RISE_DEPTH * (1 - fx.cubic_out(fx.progress(g.rise_t, f32(i) * game.RISE_DELAY, game.RISE_TIME)))
 }
 
 // --- immediate-mode helpers (3D) ----------------------------------------------------
@@ -1086,6 +1166,7 @@ draw_decals :: proc(g: ^game.Game) {
 		}
 	}
 
+
 	// the exit: rings of wind spreading on the stone
 	if ea := exit_alpha(g); g.data.has_exit && g.phase != .Finished && ea > 0 {
 		c := pl.node_world(&g.palace, g.data.exit) + {0, 0, 0.008}
@@ -1213,6 +1294,25 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 			glow(v, fp + {0, 0, 0.02}, 2.6, {1.0, 0.96, 0.85, fl}, 1.6)
 		}
 	}
+	// the candelabra: three flames each, a warm halo; one just lit flares up
+	for _, i in g.data.candelabra {
+		burn := game.candelabrum_flame(g, i)
+		if burn <= 0.003 {
+			continue
+		}
+		base := candelabrum_world(g, i)
+		flare: f32 = 0
+		if since := g.candelabrum_t[i]; since >= 0 {
+			flare = math.exp(-since * 2.5)
+		}
+		glow(v, base + {0, 0, 1.0}, 90 * (1 + flare), {1.0, 0.62, 0.28, (0.22 + 0.3 * flare) * burn})
+		for fp, k in CANDELABRUM_FLAMES {
+			fl := (0.85 + 0.1 * math.sin(t * 13 + f32(i * 3 + k) * 1.7) + 0.05 * math.sin(t * 31 + f32(k))) * burn
+			p := base + Vec3(fp)
+			glow(v, p, 5, {1.0, 0.78, 0.42, fl}, 1.8)
+			glow(v, p, 2.2, {1.0, 0.96, 0.85, fl}, 1.6)
+		}
+	}
 	// the braziers Psyche has lit
 	for c, i in g.data.rests {
 		if !g.rests_lit[i] {
@@ -1223,6 +1323,20 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 		glow(v, fp, 70, {1.0, 0.6, 0.25, 0.22 * fl})
 		glow(v, fp + {0, 0, 0.03}, 8, {1.0, 0.75, 0.4, fl}, 1.6)
 		glow(v, fp + {0, 0, 0.03}, 3.5, {1.0, 0.95, 0.8, fl}, 1.5)
+	}
+	// the stones the seal raises glow gold as they come up, and a while after
+	if g.rise_t >= 0 {
+		for e, i in g.data.rise {
+			k := fx.progress(g.rise_t, f32(i) * game.RISE_DELAY, game.RISE_TIME)
+			after := g.rise_t - game.rise_landing(i)
+			a := k > 0 ? (after < 0 ? 0.55 * k + 0.2 : 0.75 * math.exp(-after * 1.3)) : 0
+			if a < 0.01 {
+				continue
+			}
+			c := Vec3{f32(e.cell.x) + 0.5, f32(e.cell.y) + 0.5, f32(e.cell.z) + 1.0} + {0, 0, rise_lift(g, i)}
+			glow(v, c, 70, {1.0, 0.75, 0.35, a * 0.5})
+			glow(v, c - {0, 0, 0.5}, 40, {1.0, 0.85, 0.5, a * 0.35}, 2.2)
+		}
 	}
 	// the lit seal breathes
 	if g.activated && g.collapse_t < 0 {
@@ -1405,6 +1519,8 @@ draw_sky :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 	set_bf(b, .Orb_Radius, lk.orb_radius)
 	set_bv3(b, .Orb_Color, lk.orb_color)
 	set_bf(b, .Stars, lk.stars)
+	set_bf(b, .Night_Clouds, lk.moon_clouds)
+	s.moon_cover = moon_cover(lk, time, g.angle, v.width / v.height)
 	rl.BeginShaderMode(b.shader)
 	full_rect(r, {0, 0, v.width, v.height})
 	rl.EndShaderMode()

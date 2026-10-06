@@ -125,7 +125,9 @@ level_unlocking :: proc(t: ^testing.T) {
 }
 
 @(private)
-FRAGMENT :: iso.Cell{2, 7, 4}
+FRAGMENT :: iso.Cell{3, 11, 6}
+@(private)
+LAST_PILLAR :: iso.Cell{1, 10, 5} // joined to the fragment's pillar in view 0
 
 @(test)
 fragment_of_the_tale :: proc(t: ^testing.T) {
@@ -135,17 +137,17 @@ fragment_of_the_tale :: proc(t: ^testing.T) {
 		return
 	}
 	testing.expect(t, len(g.data.fragments) == 1 && g.data.fragments[0] == FRAGMENT, "I.4 hides its fragment on a pillar")
-	g.psyche.cell = BALCONY
+	g.psyche.cell = LAST_PILLAR
 	found := false
 	for r in 0 ..< 4 {
 		game.set_view(&g, r)
 		path: palace.Path
-		if palace.find_path(&g.palace, BALCONY, FRAGMENT, true, &path) {
+		if palace.find_path(&g.palace, LAST_PILLAR, FRAGMENT, true, &path) {
 			found = walk(t, &g, FRAGMENT)
 			break
 		}
 	}
-	testing.expect(t, found, "one view joins the pillar to the balcony")
+	testing.expect(t, found, "one view joins the last pillar to the fragment's")
 	testing.expect(t, 0 in g.fragments_taken && g.fragment_new, "Psyche picks up the fragment")
 	testing.expect(t, game.fragment_key(&g, 0) == i18n.Key.Fragment_04, "the fragment of I.4")
 
@@ -156,11 +158,11 @@ fragment_of_the_tale :: proc(t: ^testing.T) {
 		return
 	}
 	h.fragments_known = {0}
-	h.psyche.cell = BALCONY
+	h.psyche.cell = LAST_PILLAR
 	for r in 0 ..< 4 {
 		game.set_view(&h, r)
 		path: palace.Path
-		if palace.find_path(&h.palace, BALCONY, FRAGMENT, true, &path) {
+		if palace.find_path(&h.palace, LAST_PILLAR, FRAGMENT, true, &path) {
 			walk(t, &h, FRAGMENT)
 			break
 		}
@@ -179,9 +181,9 @@ trust_waits_for_the_end_of_the_game :: proc(t: ^testing.T) {
 	}
 	g.palace.risen = true
 	palace.rebuild_graph(&g.palace)
-	game.set_view(&g, 3)
+	game.set_view(&g, 0)
 	g.activated = true
-	g.psyche.cell = BRIDGE
+	g.psyche.cell = GALLERY
 	testing.expect(t, walk(t, &g, ROOF_ENTRY), "Psyche reaches the roof")
 	testing.expect(t, walk(t, &g, BEDSIDE), "Psyche walks to Cupid's side")
 	run(&g, 6)

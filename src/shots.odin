@@ -28,15 +28,17 @@ Shot_Step :: struct {
 @(private = "file")
 LAMP_LEVEL :: 3 // I.4, the level of the lamp
 @(private = "file")
-BALCONY :: iso.Cell{3, 4, 3}
+BALCONY :: iso.Cell{6, 5, 4}
 @(private = "file")
-ROOF_ENTRY :: iso.Cell{5, 5, 5}
+ROOF_ENTRY :: iso.Cell{13, 10, 6}
+@(private = "file")
+LAST_PILLAR :: iso.Cell{1, 10, 5} // the pillar before the fragment's
 
-// Turn to a view that joins the balcony to the fragment's pillar and walk there.
+// Turn to a view that joins the last pillar to the fragment's and walk there.
 @(private = "file")
 walk_to_fragment :: proc(app: ^App) {
 	g := &app.game
-	place(app, BALCONY)
+	place(app, LAST_PILLAR)
 	for r in 0 ..< 4 {
 		game.set_view(g, r)
 		if game.walk_to(g, g.data.fragments[0]) {
@@ -75,6 +77,9 @@ SHOT_SCRIPT := [?]Shot_Step {
 	{3.0, "03_view0_dark", nil},
 	{0.1, "", proc(app: ^App) {game.request_turn(&app.game, -1)}},
 	{0.37, "04_mid_turn", nil},
+	{0.1, "", proc(app: ^App) {game.set_view(&app.game, 0); place(app, {6, 9, 3}); game.walk_to(&app.game, {6, 7, 3})}},
+	{3.0, "04b_candelabrum", nil},
+	{0.1, "", proc(app: ^App) {game.set_view(&app.game, 3)}},
 	{1.0, "05_view3_dark", proc(app: ^App) {place(app, BALCONY)}},
 	{0.1, "", proc(app: ^App) {game.toggle_lamp(&app.game)}},
 	{1.2, "06_view3_lamp", nil},
@@ -86,7 +91,7 @@ SHOT_SCRIPT := [?]Shot_Step {
 	{0.1, "", proc(app: ^App) {game.toggle_lamp(&app.game)}},
 	{1.5, "08_rising", nil},
 	{3.0, "09_risen_lamp", nil},
-	{0.1, "", proc(app: ^App) {game.toggle_lamp(&app.game); game.set_view(&app.game, 3)}},
+	{0.1, "", proc(app: ^App) {game.toggle_lamp(&app.game); game.set_view(&app.game, 0)}},
 	{1.0, "10_roof_path_dark", proc(app: ^App) {place(app, ROOF_ENTRY)}},
 	{0.5, "", proc(app: ^App) {game.toggle_lamp(&app.game)}},
 	{1.6, "11_reveal", nil},
@@ -211,6 +216,8 @@ Shots :: struct {
 	post:  settings.Look, // --post NAME: a visual style (off, clean, miniature, film, dream, painted)
 	has_post: bool,
 	plan:  bool, // --plan: play the solver's plan of the level, a shot after every decision
+	record: bool, // --record (with --plan): every frame at 30 fps instead, for a video
+	frame: int,
 	moves: [dynamic]pl.Plan_Step,
 	arena: virtual.Arena,
 	move:  int,
@@ -225,6 +232,9 @@ shots_from_args :: proc(args: []string) -> (s: Shots, ok: bool) {
 	for a in args {
 		if a == "--plan" {
 			s.plan = true
+		}
+		if a == "--record" {
+			s.record = true
 		}
 	}
 	for a, i in args {
@@ -263,7 +273,15 @@ shots_from_args :: proc(args: []string) -> (s: Shots, ok: bool) {
 // Advance the script; returns the screenshot name due this frame, if any.
 shots_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool) {
 	if s.plan && s.level >= 0 {
-		return plan_update(app, s, dt)
+		name, done = plan_update(app, s, dt)
+		if s.record {
+			name = ""
+			if s.step >= 2 && !done {
+				name = fmt.tprintf("f%05d", s.frame)
+				s.frame += 1
+			}
+		}
+		return
 	}
 	if s.level >= 0 && app.screen == .Mechanic && app.mechanic_t > 1.6 {
 		close_mechanic(app) // the card of the new mechanic would hide the tour
@@ -343,7 +361,7 @@ plan_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool)
 		if virtual.arena_init_growing(&s.arena) != nil {
 			return "", true
 		}
-		sol := pl.solve(&g.palace, g.data.exit, nil, virtual.arena_allocator(&s.arena))
+		sol := pl.solve(&g.palace, pl.goal_cell(&g.palace), nil, virtual.arena_allocator(&s.arena))
 		s.moves = sol.plan
 		s.step = 2
 		s.t = 0
@@ -376,6 +394,11 @@ plan_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool)
 				return "", false
 			}
 		}
+	}
+	if s.move >= len(s.moves) && g.data.has_amore && !game.is_over(g) && !g.lamp_on {
+		game.toggle_lamp(g) // beside Cupid: the lamp, the canonical ending
+		s.t = 0
+		return "", false
 	}
 	if s.move >= len(s.moves) || game.is_over(g) {
 		s.step = 3
