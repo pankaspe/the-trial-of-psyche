@@ -10,8 +10,8 @@ CLAUDE.md for the design history).
 - Read this file, then the design document (link in "Game design") for the current phase.
 - `./build.sh test` must be green before and after any work; commit in English, push when the user asks.
 - Everything visual is generated in code: meshes from box lists, figures, sky. `assets/` holds only
-  what is embedded at compile time (levels, GLSL shaders, the placeholder font, the act soundtracks in
-  `assets/music`, the recorded footsteps in `assets/sfx`); no image assets.
+  what is embedded at compile time (levels, GLSL shaders, the placeholder font,
+  the recorded footsteps in `assets/sfx`); no image assets.
   The Kenney pack is not in the repo: the pieces are modelled after it in `render/shapes.odin`.
 
 ## Rules
@@ -178,23 +178,16 @@ Full design document (Italian, kept up to date there): https://claude.ai/code/ar
   user picks a character style.
 
 ## Sound (session 8, 2026-10-06; kept by the user "per ora": generative music, new effects, beds)
-- User's direction: one soundtrack per act (Suno tracks by the user, non-commercial for now; better
-  ones may come), played across the act's levels; when an act outlasts its track it jumps back
-  seamlessly; professional effects; the player's senses first ("esperienza sensoriale").
-- Soundtracks (`audio/music.odin`): OGG embedded, decoded with raylib's own stb_vorbis on the audio
-  thread (`mix_callback`). Loop: at A the track crossfades (1.5 s, equal power) into itself at B;
-  `tools/music_prep.sh SRC NAME` normalises (-16 LUFS, lows trimmed) and runs `tools/music_loop`,
-  which finds (A, B) by chroma + band similarity over ±6 s and aligns the pulse; copy the best pair
-  into `TRACKS`. Act -> track and key in `main.odin` (`ACT_TRACK`, `ACT_KEY`): I Suspended Light (A
-  minor), II Fragile Light, III Midway Through, IV Sombras de Cristal (G minor), Epilogue = I.
-  F6 with the debug overlay (F3) jumps to 6 s before the loop point, to judge the jump.
-- **The Suno tracks did not convince the user** ("troppo agitate"): the act music is now **generative**
-  (`audio/generative.odin`, the user asked for soft, meditative, relaxing): a mood per act
-  (`ACT_MOOD`: Palace A minor, Abandonment G minor, Trials D minor, Underworld E Phrygian), played live
-  in the mixer: additive pads breathing through 4 chords, a Karplus-Strong lyre with short phrases
-  of the pentatonic, rare glass bells, a low drone, a stereo FDN hall; no beat. Demo WAVs:
-  `tools/sound_board` -> `build/sounds/music_*.wav`. The OGG player stays (set_track) in case
-  better recorded tracks come; `ACT_KEY` follows the moods' roots.
+- User's direction: soft, meditative, relaxing music, one per act, never heard to start again;
+  professional effects; the player's senses first ("esperienza sensoriale"). The user's Suno tracks
+  were tried and dropped ("troppo agitate"; removed with their OGG player and loop tools, in git
+  history at c219b4f if ever needed).
+- The act music is **generative** (`audio/generative.odin`), played live in the mixer
+  (`audio/music.odin`, audio thread): a mood per act (`ACT_MOOD` in main.odin: Palace A minor,
+  Abandonment G minor, Trials D minor, Underworld E Phrygian; Epilogue = Palace): additive pads
+  breathing through 4 chords, a Karplus-Strong lyre with short pentatonic phrases, rare glass bells,
+  a low drone, a stereo FDN hall; no beat. `ACT_KEY` follows the moods' roots. Demo WAVs:
+  `tools/sound_board` -> `build/sounds/music_*.wav`.
 - `update_sound` (main.odin): music per act (silent while the screen goes black), ambience bed per
   setting (`SETTING_BED`: mountain wind, dusk breeze + crickets, night crickets, deep night), duck
   under cards and menus. Veil: where Psyche carries the lamp, in the dark the music is low-passed;
@@ -391,9 +384,8 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
 
 - Session 8 (2026-10-06): **sound design** (section "Sound"): mixer on the audio thread, ambience
   beds per setting, effects rebuilt (recorded footsteps + synthesis), the music veiled in the dark.
-  The user's Suno tracks were tried (OGG player with seamless loop, `tools/music_loop`) and judged too
-  agitated: the act music is now generative; the user keeps it for now. The Suno OGGs are still
-  embedded (17 MB): drop them if the generative music stays for good. **Next: back to Act II, II.1.**
+  The user's Suno tracks were tried and judged too agitated: the act music is now generative (kept);
+  the Suno tracks were then removed. **Next: a restyling the user will explain, then Act II, II.1.**
 
 ## Roadmap from now (user, 2026-10-06): level by level
 - Art direction is settled as: settings per level (`render/setting.odin`, add a `Look` per new

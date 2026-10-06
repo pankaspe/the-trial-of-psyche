@@ -60,13 +60,6 @@ synthesised_sounds_are_sane :: proc(t: ^testing.T) {
 		jump := abs(b[0] - b[len(b) - 2])
 		testing.expectf(t, jump < 0.05, "%v loops without a click (jump %v)", bed, jump)
 	}
-	for info, track in audio.TRACKS {
-		if track == .None {
-			continue
-		}
-		testing.expectf(t, len(info.data) > 0 && string(info.data[:4]) == "OggS", "%v is an embedded OGG", track)
-		testing.expectf(t, info.loop_to > 0 && info.loop_to < info.loop_from, "%v jumps back from A to an earlier B", track)
-	}
 }
 
 check_samples :: proc(t: ^testing.T, b: []f32, name: string) {

@@ -1,7 +1,0 @@
-Act soundtracks: instrumental tracks generated with Suno (suno.com) by the
-project's author (keronea), 2026-10-06. Sources kept outside the repository;
-prepared with tools/music_prep.sh (loudness, low end, Vorbis, loop points).
-  suspended_light.ogg     "Suspended Light"     Act I, Epilogue
-  fragile_light.ogg       "Fragile Light"       Act II
-  midway_through.ogg      "Midway Through"      Act III
-  sombras_de_cristal.ogg  "Sombras de Cristal"  Act IV
