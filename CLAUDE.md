@@ -65,8 +65,17 @@ CLAUDE.md for the design history).
   spur behind a cracked stone (way back: the view-0 seam it hid). II.2 rebuilt (proposal B, "Pan's
   crag"): ford of cracked rocks, a spiral of ledges round the crag, the broken east ledge bridged
   by view 1 from its cracked end, the seal on the summit raises the bridge to Pan's meadow;
-  fragment on a rock in the river (view 2 from the first ford stone, back by view 3). Waiting for
-  the user's playtest.
+  fragment on a rock in the river (view 2 from the first ford stone, back by view 3).
+  **II.1 and II.2 approved by the user (2026-10-06)**: II.2 "bello, ambientazione perfetta",
+  all mechanics used well, not too hard: right for its place. Pushed.
+- **Next: II.3 "The Sisters' Crag" (La rupe delle sorelle)** — the user's brief (2026-10-06):
+  a real puzzle, **longer to play** (the user will time it), introduces **handles** (Act II's
+  second mechanic, with its `mechanic` card), and **several buttons to press**: today only one
+  `sigil` per level exists, so build multiple seals (each lit by the lamp raising its own set of
+  blocks; the solver must track each one). Coherent with the title (Met. V.11-21: the jealous
+  sisters climb the crag where Zephyr carried Psyche; sea crag setting, wind, the sisters' road):
+  reuse the current handle level (II.4 today) as material, restyled to the crag. Then the user
+  plays it and reports the time.
 
 ## Act II mechanics (M3, 2026-10-05; `palace.flipped`, `part_rot`)
 - **Crumbling** (`crumble`): a cracked block falls (for good) once Psyche steps off it; what
