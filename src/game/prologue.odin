@@ -241,4 +241,38 @@ prologue_advance :: proc(g: ^Game) {
 	g.hud.visible = true
 	show(&g.hud.title, title_key(g), 1.5, 3.5, 2.0)
 	g.begin_t = 0
+	g.cine_out = 0
+}
+
+// --- the camera -------------------------------------------------------------------
+
+CINE_BARS_OUT :: 1.2 // seconds for the bars to withdraw once the play begins
+
+// How the prologue is filmed at this moment: the camera opens on the sky and
+// tilts down to the crag while the scene fades in, closes in on Psyche as the
+// procession climbs, and draws back to the usual framing once she is alone.
+Cine :: struct {
+	look_up: f32, // 1: the sky above the level .. 0: the level framed as in play
+	zoom:    f32, // times the usual framing
+	focus:   f32, // 0 the level's centre .. 1 Psyche
+	bars:    f32, // the letterbox, 0 .. 1
+}
+
+cine :: proc(g: ^Game) -> (c: Cine) {
+	c.zoom = 1
+	if g.phase != .Prologue {
+		if g.cine_out >= 0 {
+			c.bars = 1 - fx.sine_in_out(fx.clamp01(g.cine_out / CINE_BARS_OUT))
+		}
+		return
+	}
+	t := g.phase_t
+	back := prologue_back(g)
+	alone := prologue_alone(g)
+	c.bars = 1
+	c.look_up = 1 - fx.sine_in_out(fx.clamp01(t / (PRO_WALK_START + 4.5)))
+	closer := fx.sine_in_out(fx.progress(t, PRO_WALK_START + 3, 4)) * (1 - fx.sine_in_out(fx.progress(t, back, alone + 0.5 - back)))
+	c.zoom = 1 + 0.32 * closer
+	c.focus = 0.55 * closer
+	return
 }

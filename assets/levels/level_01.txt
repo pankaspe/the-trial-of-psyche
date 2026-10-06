@@ -1,30 +1,42 @@
 # The Trial of Psyche - level I.1: "Zephyr's Crag" (the prologue)
-# Walking, and the first turn. Psyche is left alone on the summit; a path
-# winds down the crag to its edge. The rock where Zephyr waits joins the
-# edge only from one side: turn the crag to find it.
+# Walking, and the first turn. Psyche is left alone on the summit of a crag
+# above a sea of clouds, at sunset; a path winds down the crag to its edge.
+# The rock where Zephyr waits joins the edge only from one side: turn the crag
+# to find it.
 # Format: see level_04.txt.
 size 9
+setting crag_sunset
 
-# the summit (h5)
-column 3 1 0 4
-column 4 1 0 4
-column 3 2 0 4
-column 4 2 0 4
+# the summit (h5): a patch of mountain grass on the rock
+ground 3 1 0 4
+ground 4 1 0 4
+ground 3 2 0 4
+ground 4 2 0 4
 # the brazier the wedding procession left behind
 prop brazier 3 2 5
-# the path down: stairs, a ledge (h4), stairs, the edge (h3)
-stairs 5 2 4 mx
-column 6 2 0 3
-column 6 3 0 3
-stairs 6 4 3 my
-column 6 5 0 2
-column 5 5 0 2
-column 4 5 0 2
+prop shrub 4 1 5 my
+# the path down: steps cut in the rock, a bare ledge (h4), steps, the edge (h3)
+steps 5 2 4 mx
+rock 6 2 0 3
+rock 6 3 0 3
+prop cairn 6 3 4 px
+steps 6 4 3 my
+ground 6 5 0 2
+ground 5 5 0 2
+ground 4 5 0 2
+prop shrub 6 5 3 px
+prop shrub 4 5 3 mx
 # Zephyr's rock: joined to the edge only when the crag is turned (view 3)
-column 3 7 0 3
-column 2 7 0 3
+ground 3 7 0 3
+ground 2 7 0 3
+prop shrub 2 7 4 py
+# scenery, out of reach: a pine on a lower spur of the summit, fallen rocks below the edge
+rock 2 2 0 2
+prop pine 2 2 3 mx
+rock 7 6 0 0
+prop boulder 7 6 1
 # a spire off the ledge, joined only in view 1: the fragment
-column 7 0 0 4
+rock 7 0 0 4
 
 start 3 1 5
 exit 2 7 4

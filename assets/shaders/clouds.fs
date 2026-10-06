@@ -10,6 +10,7 @@ uniform float shift;
 uniform float time;
 uniform vec3 tint;
 uniform float density;
+uniform vec3 crest_color; // sunlight on the crests (black at night)
 
 out vec4 finalColor;
 
@@ -46,5 +47,6 @@ void main() {
     float fade = smoothstep(0.0, 0.55, uv.y);
     vec3 col = tint * (0.7 + crest * 0.9);
     col += vec3(0.5, 0.32, 0.15) * crest * light_amount * 0.35;
+    col += crest_color * crest;
     finalColor = vec4(col, body * fade * density);
 }

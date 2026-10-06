@@ -23,6 +23,7 @@ draw_hud :: proc(u: ^Ui, g: ^game.Game) -> (act: Hud_Action) {
 		draw_prologue(u, g)
 		return
 	}
+	cinema_bars(u, game.cine(g).bars)
 
 	// title and voice stay visible even when the rest of the HUD is hidden
 	if a := game.fade_alpha(hud.title); a > 0 {
@@ -57,8 +58,23 @@ draw_hud :: proc(u: ^Ui, g: ^game.Game) -> (act: Hud_Action) {
 	return
 }
 
-// The prologue over the palace: the fade from black, the act's name, the
-// captions, and at the end the invitation to begin.
+// The letterbox of the cutscenes: black bands at the top and the bottom, k = 0..1.
+@(private)
+cinema_bars :: proc(u: ^Ui, k: f32) -> (height: f32) {
+	if k <= 0 {
+		return 0
+	}
+	height = u.height * CINEMA_BAR * k
+	rl.DrawRectangleRec({0, 0, u.width, height}, {0, 0, 0, 255})
+	rl.DrawRectangleRec({0, u.height - height, u.width, height}, {0, 0, 0, 255})
+	return
+}
+
+CINEMA_BAR :: 0.12 // of the screen height
+
+// The prologue over the palace, filmed: the letterbox, the fade from black,
+// the act's name in the upper band, the captions in the lower one, and at
+// the end the invitation to begin.
 @(private)
 draw_prologue :: proc(u: ^Ui, g: ^game.Game) {
 	s := u.scale
@@ -67,21 +83,28 @@ draw_prologue :: proc(u: ^Ui, g: ^game.Game) {
 	if t < game.PRO_WALK_START {
 		rl.DrawRectangleRec({0, 0, w, h}, fade({3, 3, 10, 255}, 1 - t / game.PRO_WALK_START))
 	}
+	bar := cinema_bars(u, game.cine(g).bars)
 	act := content.LEVELS[g.level_index].act
 	if a := clamp((t - 0.6) / 1.2, 0, 1) * clamp((7.5 - t) / 1.5, 0, 1); a > 0 {
-		text(u, i18n.tr(content.ACT_LABEL[act]), {w * 0.5, 54 * s}, {size = 24, color = GOLD, shadow = true}, .Center, a)
-		text(u, i18n.tr(content.ACT_TITLE[act]), {w * 0.5, 90 * s}, {size = 46, color = TEXT, shadow = true}, .Center, a)
+		label := Style{size = 22, color = GOLD}
+		title := Style{size = 40, color = TEXT}
+		lh := measure(u, "A", label).y
+		th := measure(u, "A", title).y
+		top := (bar - lh - th - 4 * s) * 0.5
+		text(u, i18n.tr(content.ACT_LABEL[act]), {w * 0.5, top}, label, .Center, a)
+		text(u, i18n.tr(content.ACT_TITLE[act]), {w * 0.5, top + lh + 4 * s}, title, .Center, a)
 	}
 	if key, a := game.prologue_caption(g); a > 0 {
-		st := Style{size = 34, color = {255, 230, 184, 255}, italic = true, shadow = true}
+		st := Style{size = 30, color = {255, 230, 184, 255}, italic = true}
 		msg := i18n.tr(key)
-		bh := block_height(u, msg, st, 1300 * s)
-		paragraph(u, msg, {w * 0.5, h - 165 * s - bh * 0.5}, st, 1300 * s, a)
+		bh := block_height(u, msg, st, 1500 * s)
+		paragraph(u, msg, {w * 0.5, h - bar * 0.5 - bh * 0.5}, st, 1500 * s, a)
 	}
 	if game.prologue_ready(g) {
 		since := t - game.prologue_alone(g) - game.PRO_PROMPT
 		blink := 0.6 + 0.3 * math.sin(t * 2.4)
-		text(u, i18n.tr(.Pro_Start), {w * 0.5, h - 72 * s}, {size = 28, color = TEXT, shadow = true}, .Center, blink * clamp(since / 1, 0, 1))
+		st := Style{size = 26, color = TEXT}
+		text(u, i18n.tr(.Pro_Start), {w * 0.5, bar * 0.5 - measure(u, "A", st).y * 0.5}, st, .Center, blink * clamp(since / 1, 0, 1))
 	}
 }
 

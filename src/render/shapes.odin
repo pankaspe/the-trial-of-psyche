@@ -22,6 +22,11 @@ Mesh_Id :: enum u8 {
 	Reeds_PX, Reeds_MX, Reeds_PY, Reeds_MY,
 	Sconce_PX, Sconce_MX, Sconce_PY, Sconce_MY,
 	Candle_PX, Candle_MX, Candle_PY, Candle_MY,
+	Pine_PX, Pine_MX, Pine_PY, Pine_MY, // the crown, leaning toward dir...
+	Trunk_PX, Trunk_MX, Trunk_PY, Trunk_MY, // ...on its bent trunk
+	Boulder_PX, Boulder_MX, Boulder_PY, Boulder_MY,
+	Shrub_PX, Shrub_MX, Shrub_PY, Shrub_MY,
+	Cairn_PX, Cairn_MX, Cairn_PY, Cairn_MY,
 	Pillar,
 	Plinth,
 	Cypress,
@@ -60,6 +65,7 @@ Material :: enum u8 {
 	Lawn, // grass on top, earth on the sides
 	Phantom, // a stone real only in the dark: pale, see-through in the light
 	Rock, // living rock under the meadows: brown earth in rough strata
+	Wood, // bark
 }
 
 PROP_MESH := [level.Prop_Kind]Mesh_Id {
@@ -78,6 +84,10 @@ PROP_MESH := [level.Prop_Kind]Mesh_Id {
 	.Vase            = .Vase_PX,
 	.Reeds           = .Reeds_PX,
 	.Sconce          = .Sconce_PX,
+	.Pine            = .Pine_PX,
+	.Boulder         = .Boulder_PX,
+	.Shrub           = .Shrub_PX,
+	.Cairn           = .Cairn_PX,
 }
 
 PROP_MATERIAL := [level.Prop_Kind]Material {
@@ -96,6 +106,10 @@ PROP_MATERIAL := [level.Prop_Kind]Material {
 	.Vase            = .Bronze,
 	.Reeds           = .Foliage,
 	.Sconce          = .Bronze,
+	.Pine            = .Foliage,
+	.Boulder         = .Rock,
+	.Shrub           = .Foliage,
+	.Cairn           = .Rock,
 }
 
 // --- box lists ---------------------------------------------------------------------
@@ -233,6 +247,44 @@ cypress :: proc() -> []Box {
 	return out[:]
 }
 
+// The mountain's pieces, designed for the (+x) direction or the (+x, +y) corner.
+// A pine bent by the wind: the trunk leans toward +x, the crown in flat pads.
+@(private)
+PINE_TRUNK_PX := [?]Box {
+	{{0.4, 0.43, 0}, {0.54, 0.57, 0.36}},
+	{{0.45, 0.44, 0.36}, {0.58, 0.56, 0.7}},
+	{{0.51, 0.45, 0.7}, {0.63, 0.55, 1.0}},
+	{{0.28, 0.47, 0.78}, {0.5, 0.53, 0.84}}, // a branch to the lee side
+}
+@(private)
+PINE_PX := [?]Box {
+	{{0.3, 0.2, 0.96}, {0.98, 0.8, 1.14}},
+	{{0.42, 0.3, 1.14}, {0.88, 0.7, 1.28}},
+	{{0.54, 0.38, 1.28}, {0.78, 0.6, 1.36}},
+	{{0.1, 0.36, 0.8}, {0.4, 0.64, 0.94}},
+}
+// fallen rocks, three of them, with a small one aside
+@(private)
+BOULDER_PX := [?]Box {
+	{{0.12, 0.18, 0}, {0.6, 0.68, 0.36}},
+	{{0.5, 0.32, 0}, {0.88, 0.84, 0.26}},
+	{{0.26, 0.3, 0.36}, {0.54, 0.58, 0.54}},
+	{{0.64, 0.12, 0}, {0.84, 0.3, 0.14}},
+}
+@(private)
+SHRUB_PX := [?]Box {
+	{{0.66, 0.66, 0}, {0.95, 0.95, 0.13}},
+	{{0.71, 0.71, 0.13}, {0.91, 0.91, 0.22}},
+	{{0.56, 0.8, 0}, {0.68, 0.96, 0.09}},
+}
+@(private)
+CAIRN_PX := [?]Box {
+	{{0.68, 0.68, 0}, {0.94, 0.94, 0.07}},
+	{{0.71, 0.72, 0.07}, {0.9, 0.9, 0.13}},
+	{{0.74, 0.75, 0.13}, {0.87, 0.86, 0.19}},
+	{{0.77, 0.78, 0.19}, {0.84, 0.84, 0.27}},
+}
+
 // --- figures -------------------------------------------------------------------------
 
 // Psyche: a slender robed figure about 0.6 cells tall, abstract on purpose.
@@ -279,6 +331,11 @@ build_meshes :: proc(meshes: ^[Mesh_Id]rl.Mesh) {
 	four(meshes, .Sconce_PX, SCONCE_PX[:])
 	four(meshes, .Reeds_PX, reeds_px())
 	four(meshes, .Candle_PX, CANDLE_PX[:])
+	four(meshes, .Pine_PX, PINE_PX[:])
+	four(meshes, .Trunk_PX, PINE_TRUNK_PX[:])
+	four(meshes, .Boulder_PX, BOULDER_PX[:])
+	four(meshes, .Shrub_PX, SHRUB_PX[:])
+	four(meshes, .Cairn_PX, CAIRN_PX[:])
 	meshes[.Pillar] = one(PILLAR[:])
 	meshes[.Plinth] = one(PLINTH[:])
 	meshes[.Cypress] = one(cypress())

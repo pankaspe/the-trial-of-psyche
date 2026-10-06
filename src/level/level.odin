@@ -41,6 +41,17 @@ MECHANIC_NAME := [Mechanic]string {
 	.Handle  = "handle",
 }
 
+// Where a level takes place: the sky, the backdrop, the light on the stones.
+Setting :: enum u8 {
+	Night, // the palace of voices under the moon (the default)
+	Crag_Sunset, // a mountain crag above a sea of clouds, the sun going down
+}
+
+SETTING_NAME := [Setting]string {
+	.Night       = "night",
+	.Crag_Sunset = "crag_sunset",
+}
+
 // How a block behaves (Act II): fixed stone, or one that changes for good.
 Trait :: enum u8 {
 	Stone,
@@ -94,12 +105,18 @@ Prop_Kind :: enum u8 {
 	Vase, // small, in one corner of the cell: px (+x,+y), py (-x,+y), mx (-x,-y), my (+x,-y)
 	Reeds, // a clump of reeds in one corner of the cell (as the vase)
 	Sconce, // an unlit candle on the side `dir` of the block at (x,y,z)
+	// the mountain: blocking
+	Pine, // a wind-bent pine
+	Boulder, // a heap of fallen rocks
+	// the mountain: decoration only, in one corner of the cell (as the vase)
+	Shrub, // a low bush
+	Cairn, // a few stones piled up by passers-by
 }
 
 EDGE_PROPS :: bit_set[Prop_Kind]{.Rail, .Wall, .Wall_Half, .Wall_Battlement, .Fence}
-BLOCKING_PROPS :: bit_set[Prop_Kind]{.Pillar, .Plinth, .Cypress, .Urn, .Brazier, .Bed}
-ORIENTED_PROPS :: EDGE_PROPS + bit_set[Prop_Kind]{.Bed, .Arch, .Vase, .Reeds, .Sconce}
-NEEDS_DIR :: EDGE_PROPS + bit_set[Prop_Kind]{.Vase, .Reeds, .Sconce}
+BLOCKING_PROPS :: bit_set[Prop_Kind]{.Pillar, .Plinth, .Cypress, .Urn, .Brazier, .Bed, .Pine, .Boulder}
+ORIENTED_PROPS :: EDGE_PROPS + bit_set[Prop_Kind]{.Bed, .Arch, .Vase, .Reeds, .Sconce, .Pine, .Boulder, .Shrub, .Cairn}
+NEEDS_DIR :: EDGE_PROPS + bit_set[Prop_Kind]{.Vase, .Reeds, .Sconce, .Shrub, .Cairn}
 
 PROP_NAME := [Prop_Kind]string {
 	.Rail            = "rail",
@@ -117,6 +134,10 @@ PROP_NAME := [Prop_Kind]string {
 	.Vase            = "vase",
 	.Reeds           = "reeds",
 	.Sconce          = "sconce",
+	.Pine            = "pine",
+	.Boulder         = "boulder",
+	.Shrub           = "shrub",
+	.Cairn           = "cairn",
 }
 
 Prop :: struct {
@@ -167,6 +188,7 @@ Level_Data :: struct {
 	handles:      [dynamic]Handle,
 	rests:        [dynamic]Cell, // braziers: lit by passing, R brings Psyche back to the last one
 	mechanic:     Mechanic, // the new mechanic this level introduces (a card at the start)
+	setting:      Setting, // the sky, the backdrop, the light on the stones
 }
 
 MAX_PARTS :: 8
@@ -353,17 +375,30 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			}
 			max_z = max(max_z, v[3])
 
-		case "ground":
+		case "ground", "rock":
 			v: [4]i32
 			if !ints(args, v[:]) || v[3] < v[2] {
-				return data, fail(line_no, "ground: expected x y z0 z1 with z0 <= z1")
+				return data, fail(line_no, "%s: expected x y z0 z1 with z0 <= z1", fields[0])
 			}
 			for z in v[2] ..= v[3] {
 				append(&data.blocks, Solid_Entry{{v[0], v[1], z}, {kind = .Block}, .Stone, part})
 				append(&data.ground, Cell{v[0], v[1], z})
 			}
-			append(&data.lawn, Cell{v[0], v[1], v[3]})
+			if fields[0] == "ground" {
+				append(&data.lawn, Cell{v[0], v[1], v[3]}) // rock: bare on top too
+			}
 			max_z = max(max_z, v[3])
+
+		case "setting":
+			found := false
+			for name, st in SETTING_NAME {
+				if len(args) == 1 && name == args[0] {
+					data.setting, found = st, true
+				}
+			}
+			if !found {
+				return data, fail(line_no, "setting: expected one of night, crag_sunset")
+			}
 
 		case "water":
 			v: [4]i32

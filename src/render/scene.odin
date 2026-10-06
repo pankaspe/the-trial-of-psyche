@@ -41,6 +41,8 @@ Uniform :: enum u8 {
 	Alpha,
 	Shade_Soft,
 	Glow,
+	Mist_Color,
+	Daylight,
 }
 
 @(private)
@@ -62,8 +64,11 @@ UNIFORM_NAME := [Uniform]cstring {
 	.Alpha         = "alpha",
 	.Shade_Soft    = "shade_soft",
 	.Glow          = "glow",
+	.Mist_Color    = "mist_color",
+	.Daylight      = "daylight",
 }
 
+// Uniforms of the backdrop shaders (sky, ridges, clouds); each uses some of them.
 Backdrop_Uniform :: enum u8 {
 	Light_Amount,
 	Shift,
@@ -71,6 +76,22 @@ Backdrop_Uniform :: enum u8 {
 	Aspect,
 	Tint,
 	Density,
+	Horizon,
+	Sky_Top,
+	Sky_Mid,
+	Sky_Horizon,
+	Orb_Pos,
+	Orb_Radius,
+	Orb_Color,
+	Halo_Color,
+	Halo_Width,
+	Stars,
+	Haze,
+	Crest_Color,
+	Color_Far,
+	Color_Mid,
+	Color_Near,
+	Rim,
 }
 
 @(private)
@@ -81,16 +102,37 @@ BACKDROP_NAME := [Backdrop_Uniform]cstring {
 	.Aspect       = "aspect",
 	.Tint         = "tint",
 	.Density      = "density",
+	.Horizon      = "horizon",
+	.Sky_Top      = "sky_top",
+	.Sky_Mid      = "sky_mid",
+	.Sky_Horizon  = "sky_horizon",
+	.Orb_Pos      = "orb_pos",
+	.Orb_Radius   = "orb_radius",
+	.Orb_Color    = "orb_color",
+	.Halo_Color   = "halo_color",
+	.Halo_Width   = "halo_width",
+	.Stars        = "stars",
+	.Haze         = "haze",
+	.Crest_Color  = "crest_color",
+	.Color_Far    = "color_far",
+	.Color_Mid    = "color_mid",
+	.Color_Near   = "color_near",
+	.Rim          = "rim",
+}
+
+// A backdrop shader and the locations of its uniforms (-1: not used by it).
+Backdrop :: struct {
+	shader: rl.Shader,
+	loc:    [Backdrop_Uniform]i32,
 }
 
 Renderer :: struct {
 	meshes:     [Mesh_Id]rl.Mesh,
 	material:   rl.Material, // owns the palace shader
 	loc:        [Uniform]i32,
-	sky:        rl.Shader,
-	sky_loc:    [Backdrop_Uniform]i32,
-	clouds:     rl.Shader,
-	clouds_loc: [Backdrop_Uniform]i32,
+	sky:        Backdrop,
+	ridges:     Backdrop,
+	clouds:     Backdrop,
 	radial:     rl.Texture2D, // soft round gradient for glows and particles
 	white:      rl.Texture2D, // 1x1, for full-rect shader passes
 }
@@ -102,12 +144,16 @@ init :: proc(r: ^Renderer) {
 	for name, u in UNIFORM_NAME {
 		r.loc[u] = rl.GetShaderLocation(shader, name)
 	}
-	r.sky = rl.LoadShaderFromMemory(nil, content.SHADER_SKY_FS)
-	r.clouds = rl.LoadShaderFromMemory(nil, content.SHADER_CLOUDS_FS)
-	for name, u in BACKDROP_NAME {
-		r.sky_loc[u] = rl.GetShaderLocation(r.sky, name)
-		r.clouds_loc[u] = rl.GetShaderLocation(r.clouds, name)
+	load_backdrop :: proc(fs: cstring) -> (b: Backdrop) {
+		b.shader = rl.LoadShaderFromMemory(nil, fs)
+		for name, u in BACKDROP_NAME {
+			b.loc[u] = rl.GetShaderLocation(b.shader, name)
+		}
+		return
 	}
+	r.sky = load_backdrop(content.SHADER_SKY_FS)
+	r.ridges = load_backdrop(content.SHADER_RIDGES_FS)
+	r.clouds = load_backdrop(content.SHADER_CLOUDS_FS)
 	build_meshes(&r.meshes)
 
 	// radial gradient: white centre, 0.45 alpha at 35%, transparent edge
@@ -131,8 +177,9 @@ init :: proc(r: ^Renderer) {
 shutdown :: proc(r: ^Renderer) {
 	unload_meshes(&r.meshes)
 	rl.UnloadMaterial(r.material) // also unloads its shader
-	rl.UnloadShader(r.sky)
-	rl.UnloadShader(r.clouds)
+	rl.UnloadShader(r.sky.shader)
+	rl.UnloadShader(r.ridges.shader)
+	rl.UnloadShader(r.clouds.shader)
 	rl.UnloadTexture(r.radial)
 	rl.UnloadTexture(r.white)
 	r^ = {}
@@ -167,12 +214,14 @@ Scene :: struct {
 	debris:     fx.Pool(160), // falling stones, dissolving phantoms (world)
 	wind:       fx.Pool(96), // Zephyr's breath over the exit (world)
 	rng:        fx.Rng,
+	mote:       Color4, // the colour of the drifting motes (from the setting)
 }
 
 scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 	s^ = {}
-	s.pieces = make([dynamic]Piece, 0, len(g.data.blocks) + len(g.data.props) + len(g.data.rise) + len(g.data.handles) + 2, allocator)
+	s.pieces = make([dynamic]Piece, 0, len(g.data.blocks) + 2 * len(g.data.props) + len(g.data.rise) + len(g.data.handles) + 2, allocator)
 	s.rng = fx.rng_init(1234)
+	s.mote = look(g.data.setting).mote
 	for e, i in g.data.blocks {
 		p := solid_piece(e.cell, e.solid, -1)
 		p.block = i32(i)
@@ -192,15 +241,17 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 		append(&s.pieces, p)
 	}
 	for prop in g.data.props {
-		base := PROP_MESH[prop.kind]
-		mesh := base
-		if base >= .Stairs_PX && base <= .Candle_MY {
-			mesh = oriented_mesh(base, prop.dir)
+		mesh := PROP_MESH[prop.kind]
+		if prop.kind in level.ORIENTED_PROPS {
+			mesh = oriented_mesh(mesh, prop.dir)
 		}
 		append(&s.pieces, Piece{cell = prop.cell, mesh = mesh, material = PROP_MATERIAL[prop.kind], rise_index = -1, block = -1, handle = -1, part = prop.part})
-		if prop.kind == .Sconce {
+		#partial switch prop.kind {
+		case .Sconce:
 			// the unlit candle, in wax
 			append(&s.pieces, Piece{cell = prop.cell, mesh = oriented_mesh(.Candle_PX, prop.dir), material = .Psyche, rise_index = -1, block = -1, handle = -1, part = prop.part})
+		case .Pine:
+			append(&s.pieces, Piece{cell = prop.cell, mesh = oriented_mesh(.Trunk_PX, prop.dir), material = .Wood, rise_index = -1, block = -1, handle = -1, part = prop.part})
 		}
 	}
 	for h, i in g.data.handles {
@@ -258,8 +309,17 @@ shake_offset :: proc(g: ^game.Game) -> Vec2 {
 	return Vec2{(fx.hash01(step * 2) * 2 - 1) * 4, (fx.hash01(step * 2 + 1) * 2 - 1) * 3} * k
 }
 
+CINE_LOOK_UP :: 520 // proto px the prologue's camera starts above the level
+
 scene_view :: proc(s: ^Scene, g: ^game.Game, width, height: f32) -> View {
-	return make_view(s.fit, width, height, g.angle, g.data.size, g.data.height, shake_offset(g))
+	v := make_view(s.fit, width, height, g.angle, g.data.size, g.data.height, shake_offset(g))
+	if g.phase == .Prologue {
+		cam := game.cine(g)
+		her := world_to_proto(v, g.psyche.pos + {0, 0, 0.3})
+		v.center = fx.lerp(v.center, her, cam.focus) - {0, cam.look_up * CINE_LOOK_UP}
+		v.zoom *= cam.zoom
+	}
+	return v
 }
 
 // --- particles -------------------------------------------------------------------
@@ -275,7 +335,7 @@ emit_mote :: proc(s: ^Scene, aged: bool) {
 		accel = {0, -6, 0},
 		life  = 7,
 		size  = 32 * fx.rand_range(&s.rng, 0.12, 0.3),
-		color = {0.6, 0.7, 1.0, 0.5},
+		color = s.mote,
 	}
 	if aged {
 		p.age = fx.rand_range(&s.rng, 0, p.life)
@@ -424,8 +484,14 @@ seam_edge :: proc(g: ^game.Game, e: [2]i32) -> (p0, p1, inward: Vec3) {
 // --- drawing -----------------------------------------------------------------------
 
 draw_world :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
-	draw_sky(r, g, v, time)
-	draw_islands(g, v, time)
+	lk := look(g.data.setting)
+	draw_sky(r, s, g, v, time)
+	if lk.islands {
+		draw_islands(g, v, time)
+	}
+	if lk.ridges > 0 {
+		draw_ridges(r, s, g, v)
+	}
 	draw_clouds(r, s, g, v, time, false)
 
 	begin_3d(v)
@@ -500,6 +566,9 @@ set_frame_uniforms :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	set_f(r, .Mist_Top, proto_to_screen(v, {0, s.fit.y + s.fit.h - 330}).y)
 	set_f(r, .Mist_Bottom, proto_to_screen(v, {0, s.fit.y + s.fit.h + 60}).y)
 	set_f(r, .Screen_Height, v.height)
+	lk := look(g.data.setting)
+	set_v3(r, .Mist_Color, lk.mist)
+	set_f(r, .Daylight, lk.daylight)
 }
 
 @(private)
@@ -649,8 +718,7 @@ draw_pieces :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, transparent: bool) {
 			material = covered ? .Masonry : .Marble
 			detail = covered ? 2 : 1
 			if p.ground {
-				bare := p.block >= 0 && g.data.blocks[p.block].trait == .Crumble
-				material, detail = covered || bare ? .Rock : .Lawn, 0
+				material, detail = covered || !p.lawn ? .Rock : .Lawn, 0
 			} else if p.lawn {
 				material, detail = .Lawn, 0
 			}
@@ -1199,35 +1267,95 @@ full_rect :: proc(r: ^Renderer, dest: rl.Rectangle) {
 }
 
 @(private)
-set_bf :: proc(sh: rl.Shader, loc: i32, value: f32) {
+set_bf :: proc(b: Backdrop, u: Backdrop_Uniform, value: f32) {
 	v := value
-	rl.SetShaderValue(sh, loc, &v, .FLOAT)
+	rl.SetShaderValue(b.shader, b.loc[u], &v, .FLOAT)
 }
 
 @(private)
-draw_sky :: proc(r: ^Renderer, g: ^game.Game, v: View, time: f32) {
-	set_bf(r.sky, r.sky_loc[.Light_Amount], g.light * 0.8)
-	set_bf(r.sky, r.sky_loc[.Shift], g.angle)
-	set_bf(r.sky, r.sky_loc[.Time], time)
-	set_bf(r.sky, r.sky_loc[.Aspect], v.width / v.height)
-	rl.BeginShaderMode(r.sky)
+set_bv2 :: proc(b: Backdrop, u: Backdrop_Uniform, value: Vec2) {
+	v := value
+	rl.SetShaderValue(b.shader, b.loc[u], &v, .VEC2)
+}
+
+@(private)
+set_bv3 :: proc(b: Backdrop, u: Backdrop_Uniform, value: Vec3) {
+	v := value
+	rl.SetShaderValue(b.shader, b.loc[u], &v, .VEC3)
+}
+
+// Where the sky meets the sea of clouds, in screen uv (the bottom of the
+// screen when the setting has no ranges: the night sky as it always was).
+@(private)
+horizon_uv :: proc(s: ^Scene, g: ^game.Game, v: View) -> f32 {
+	if look(g.data.setting).ridges == 0 {
+		return 1
+	}
+	return proto_to_screen(v, {0, s.fit.y + s.fit.h - 430}).y / v.height
+}
+
+// The sky and the far ranges share the orb, the horizon and the turn.
+@(private)
+set_sky_uniforms :: proc(b: Backdrop, s: ^Scene, g: ^game.Game, v: View) {
+	lk := look(g.data.setting)
+	set_bf(b, .Shift, g.angle)
+	set_bf(b, .Aspect, v.width / v.height)
+	set_bf(b, .Horizon, horizon_uv(s, g, v))
+	set_bv2(b, .Orb_Pos, lk.orb_pos)
+	set_bv3(b, .Halo_Color, lk.halo_color)
+	set_bf(b, .Halo_Width, lk.halo_width)
+	set_bv3(b, .Haze, lk.haze)
+}
+
+@(private)
+draw_sky :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
+	b := r.sky
+	lk := look(g.data.setting)
+	set_sky_uniforms(b, s, g, v)
+	set_bf(b, .Light_Amount, g.light * 0.8)
+	set_bf(b, .Time, time)
+	set_bv3(b, .Sky_Top, lk.sky_top)
+	set_bv3(b, .Sky_Mid, lk.sky_mid)
+	set_bv3(b, .Sky_Horizon, lk.sky_horizon)
+	set_bf(b, .Orb_Radius, lk.orb_radius)
+	set_bv3(b, .Orb_Color, lk.orb_color)
+	set_bf(b, .Stars, lk.stars)
+	rl.BeginShaderMode(b.shader)
+	full_rect(r, {0, 0, v.width, v.height})
+	rl.EndShaderMode()
+}
+
+// The mountain ranges between the sky and the sea of clouds.
+@(private)
+draw_ridges :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
+	b := r.ridges
+	lk := look(g.data.setting)
+	set_sky_uniforms(b, s, g, v)
+	set_bf(b, .Light_Amount, g.light * 0.8)
+	set_bv3(b, .Color_Far, lk.ridge_color[0])
+	set_bv3(b, .Color_Mid, lk.ridge_color[1])
+	set_bv3(b, .Color_Near, lk.ridge_color[2])
+	set_bv3(b, .Rim, lk.ridge_rim)
+	rl.BeginShaderMode(b.shader)
 	full_rect(r, {0, 0, v.width, v.height})
 	rl.EndShaderMode()
 }
 
 @(private)
 draw_clouds :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32, front: bool) {
+	b := r.clouds
+	lk := look(g.data.setting)
 	top := s.fit.y + s.fit.h - (front ? 330 : 520)
 	a := proto_to_screen(v, {s.fit.x - 1400, top})
-	b := proto_to_screen(v, {s.fit.x + s.fit.w + 1400, top + 700})
-	tint := front ? Vec3{0.19, 0.19, 0.38} : Vec3{0.13, 0.13, 0.29}
-	set_bf(r.clouds, r.clouds_loc[.Light_Amount], g.light)
-	set_bf(r.clouds, r.clouds_loc[.Shift], g.angle * 0.8)
-	set_bf(r.clouds, r.clouds_loc[.Time], time)
-	set_bf(r.clouds, r.clouds_loc[.Density], front ? 0.9 : 1.0)
-	rl.SetShaderValue(r.clouds, r.clouds_loc[.Tint], &tint, .VEC3)
-	rl.BeginShaderMode(r.clouds)
-	full_rect(r, {a.x, a.y, b.x - a.x, b.y - a.y})
+	c := proto_to_screen(v, {s.fit.x + s.fit.w + 1400, top + 700})
+	set_bf(b, .Light_Amount, g.light)
+	set_bf(b, .Shift, g.angle * 0.8)
+	set_bf(b, .Time, time)
+	set_bf(b, .Density, front ? 0.9 : 1.0)
+	set_bv3(b, .Tint, front ? lk.cloud_front : lk.cloud_back)
+	set_bv3(b, .Crest_Color, lk.cloud_crest)
+	rl.BeginShaderMode(b.shader)
+	full_rect(r, {a.x, a.y, c.x - a.x, c.y - a.y})
 	rl.EndShaderMode()
 }
 

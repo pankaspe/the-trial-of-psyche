@@ -21,10 +21,12 @@ uniform float depth_max;
 uniform float mist_top;      // screen px from the top
 uniform float mist_bottom;
 uniform float screen_height;
+uniform vec3 mist_color;
+uniform float daylight;      // 0 the moonlit palette .. 1 the low sun of a setting (no lamp needed)
 
 // per piece
 uniform float material;      // 0 marble, 1 masonry, 2 foliage, 3 bronze, 4 psyche, 5 cupid, 6 mourner, 7 lawn,
-                             // 8 phantom, 9 rock (palette 7 grass, 8 earth, 9 phantom)
+                             // 8 phantom, 9 rock, 10 wood (palette 7 grass, 8 earth, 9 phantom, 10 wood)
 uniform float detail;        // 0 none, 1 marble block, 2 masonry block
 uniform float hidden;        // 1: visible only in the lamp light, glowing gold; 2: the same, a faint ghost
 uniform float alpha;
@@ -33,7 +35,6 @@ uniform float glow;          // figures: inner light
 
 out vec4 finalColor;
 
-const vec3 MIST = vec3(0.07, 0.07, 0.17);
 const float T_LEFT = 0.075;
 const float T_RIGHT = 0.625;
 const float T_TOP = 0.9;
@@ -70,10 +71,35 @@ void palette(float m, float t, out vec3 night, out vec3 warm) {
     } else if (m < 8.5) {   // earth: brown, cooled by the moon
         night = ramp(vec3(0.05, 0.035, 0.06), vec3(0.18, 0.12, 0.14), vec3(0.42, 0.31, 0.28), t);
         warm = ramp(vec3(0.16, 0.08, 0.03), vec3(0.45, 0.28, 0.14), vec3(0.70, 0.50, 0.30), t);
+    } else if (m > 9.5) {   // wood: dark bark
+        night = ramp(vec3(0.03, 0.025, 0.05), vec3(0.11, 0.08, 0.12), vec3(0.24, 0.19, 0.22), t);
+        warm = ramp(vec3(0.10, 0.05, 0.03), vec3(0.30, 0.17, 0.09), vec3(0.50, 0.33, 0.18), t);
     } else {                // phantom: paler and colder than marble; the lamp does not warm it
         night = ramp(vec3(0.09, 0.12, 0.24), vec3(0.28, 0.38, 0.60), vec3(0.72, 0.82, 1.0), t);
         warm = night * vec3(0.75, 0.8, 0.9);
     }
+}
+
+// The palette under a low sun: shadows violet, lit faces gold and rose.
+vec3 sunset(float m, float t, vec3 warm) {
+    if (m < 0.5) {          // marble
+        return ramp(vec3(0.22, 0.16, 0.30), vec3(0.82, 0.58, 0.48), vec3(1.0, 0.88, 0.72), t);
+    } else if (m < 1.5) {   // masonry
+        return ramp(vec3(0.14, 0.09, 0.20), vec3(0.58, 0.38, 0.34), vec3(0.82, 0.62, 0.50), t);
+    } else if (m < 2.5) {   // foliage: dark pine green, gilded on top
+        return ramp(vec3(0.06, 0.07, 0.11), vec3(0.22, 0.27, 0.15), vec3(0.50, 0.52, 0.24), t);
+    } else if (m < 3.5) {   // bronze: dark, a warm gleam on top
+        return ramp(vec3(0.12, 0.07, 0.09), vec3(0.48, 0.30, 0.20), vec3(0.88, 0.66, 0.40), t);
+    } else if (m < 6.5) {   // the figures: as in the lamp light
+        return warm;
+    } else if (m < 7.5) {   // grass: alpine, golden in the evening light
+        return ramp(vec3(0.10, 0.10, 0.14), vec3(0.40, 0.40, 0.22), vec3(0.74, 0.70, 0.42), t);
+    } else if (m < 8.5) {   // mountain stone: grey ochre, violet in the shade
+        return ramp(vec3(0.17, 0.12, 0.20), vec3(0.62, 0.44, 0.36), vec3(0.92, 0.76, 0.58), t);
+    } else if (m > 9.5) {   // wood
+        return ramp(vec3(0.07, 0.04, 0.07), vec3(0.30, 0.17, 0.12), vec3(0.50, 0.32, 0.20), t);
+    }
+    return warm;
 }
 
 float hash(vec2 p) {
@@ -103,6 +129,51 @@ float courses(float u, float z, float z0, float z1, float n) {
         }
         tone = min(tone, mix(1.0, 0.84, j));
     }
+    return tone;
+}
+
+vec2 hash2(vec2 p) {
+    return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);
+}
+
+// Irregular plates (Voronoi): the distance to the nearest crack and the id of the plate.
+vec2 plates(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    float d1 = 8.0;
+    float d2 = 8.0;
+    vec2 id = vec2(0.0);
+    for (int y = -1; y <= 1; y++) {
+        for (int x = -1; x <= 1; x++) {
+            vec2 g = vec2(float(x), float(y));
+            vec2 o = g + hash2(i + g) * 0.8 + 0.1 - f;
+            float d = dot(o, o);
+            if (d < d1) {
+                d2 = d1;
+                d1 = d;
+                id = i + g;
+            } else if (d < d2) {
+                d2 = d;
+            }
+        }
+    }
+    return vec2(sqrt(d2) - sqrt(d1), hash(id));
+}
+
+// Mountain stone, in world space so the faces of a column read as one rock:
+// plates stretched along the bedding, dark cracks between them, fine grain.
+float stone(vec3 n) {
+    vec2 p;
+    if (n.z > 0.5) {
+        p = fragWorld.xy * 2.2;
+    } else {
+        float wu = abs(n.x) > 0.5 ? fragWorld.y : fragWorld.x;
+        p = vec2(wu * 1.5, fragWorld.z * 3.0);
+    }
+    vec2 v = plates(p);
+    float tone = 0.86 + 0.18 * v.y;
+    tone *= mix(0.7, 1.0, smoothstep(0.0, 0.09, v.x));
+    tone *= 0.95 + 0.07 * hash(floor(p * 14.0));
     return tone;
 }
 
@@ -140,16 +211,25 @@ void main() {
         }
     }
     float m = material;
-    if (material > 8.5) {
-        // living rock: earth in rough, slanted strata with a few dark seams
+    if (material > 9.5) {
+        // bark: vertical grain
+        m = 10.0;
+        float u = abs(n.x) > 0.5 ? L.y : L.x;
+        tone *= 0.88 + 0.16 * hash(vec2(floor(u * 40.0), floor(fragWorld.x + fragWorld.y)));
+    } else if (material > 8.5) {
         m = 8.0;
         float u = abs(n.x) > 0.5 ? L.y : L.x;
-        float z = L.z + 0.06 * sin(u * 9.0 + floor(fragWorld.z) * 2.3) + 0.03 * sin(u * 23.0);
-        float band = floor(z * 4.0);
-        tone *= 0.9 + 0.12 * hash(vec2(band, floor(fragWorld.x + fragWorld.y)));
-        tone *= mix(1.0, 0.78, line(fract(z * 4.0), 0.5, 0.03));
-        if (n.z > 0.5) {
-            tone *= 0.9 + 0.15 * hash(floor(L.xy * 9.0));
+        if (daylight > 0.5) {
+            tone *= n.z > 0.5 ? mix(1.0, stone(n), 0.6) : stone(n);
+        } else {
+            // living rock: earth in rough, slanted strata with a few dark seams
+            float z = L.z + 0.06 * sin(u * 9.0 + floor(fragWorld.z) * 2.3) + 0.03 * sin(u * 23.0);
+            float band = floor(z * 4.0);
+            tone *= 0.9 + 0.12 * hash(vec2(band, floor(fragWorld.x + fragWorld.y)));
+            tone *= mix(1.0, 0.78, line(fract(z * 4.0), 0.5, 0.03));
+            if (n.z > 0.5) {
+                tone *= 0.9 + 0.15 * hash(floor(L.xy * 9.0));
+            }
         }
     } else if (material > 7.5) {
         // phantom: faint bands of mist drift across the stone
@@ -159,6 +239,9 @@ void main() {
         // lawn: grass on top and in a ragged fringe under the edge, earth below
         float fringe = 0.84 - 0.05 * abs(sin(L.x * 23.0 + L.y * 17.0));
         m = (n.z > 0.5 || (n.z > -0.5 && L.z > fringe)) ? 7.0 : 8.0;
+        if (m > 7.5 && daylight > 0.5) {
+            tone *= stone(n);
+        }
         if (n.z > 0.5) {
             tone *= 0.88 + 0.2 * hash(floor(L.xy * 16.0));
         }
@@ -172,6 +255,7 @@ void main() {
     vec3 night;
     vec3 warm;
     palette(m, t, night, warm);
+    night = mix(night, sunset(m, t, warm), daylight);
     vec3 col = mix(night, warm, lit);
     if (material < 3.5 || material > 6.5) {
         // under the lamp the eye adapts: what is far from the flame sinks into the dark
@@ -184,7 +268,7 @@ void main() {
     }
     // the foot of the palace sinks into the sea of mist
     float sy = screen_height - gl_FragCoord.y;
-    col = mix(col, MIST, smoothstep(mist_top, mist_bottom, sy) * 0.85);
+    col = mix(col, mist_color, smoothstep(mist_top, mist_bottom, sy) * 0.85);
 
     float a = alpha;
     if (material > 7.5 && material < 8.5) {

@@ -193,6 +193,7 @@ Game :: struct {
 	hinted:         [Key]bool,
 	learned:        [Key]bool, // tutorial hints whose action has been done
 	begin_t:        f32, // time since begin(), < 0 before
+	cine_out:       f32, // time since the prologue gave way to play, < 0 before (the bars withdraw)
 	rise_t:         f32, // < 0 until the seal is lit
 	rise_count:     int,
 	collapse_t:     f32, // < 0 until the palace falls
@@ -262,6 +263,7 @@ load_text :: proc(g: ^Game, index: int, text: string) -> (err: Maybe(Load_Error)
 	g.oil = g.oil_max
 	g.flicker = 1
 	g.begin_t = -1
+	g.cine_out = -1
 	g.rise_t = -1
 	g.collapse_t = -1
 	g.fragment_t = -1
@@ -363,6 +365,9 @@ update :: proc(g: ^Game, dt: f32) {
 		}
 	}
 
+	if g.cine_out >= 0 {
+		g.cine_out += dt
+	}
 	if g.begin_t >= 0 {
 		before := g.begin_t
 		g.begin_t += dt

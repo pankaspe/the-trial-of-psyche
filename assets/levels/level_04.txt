@@ -12,6 +12,10 @@
 #                           corner: px (+x,+y), py (-x,+y), mx (-x,-y), my (+x,-y)),
 #                           sconce dir (an unlit candle on side `dir` of the block
 #                           at x y z), reeds dir (a clump of reeds in a corner, as the vase)
+#                           mountain: pine [dir] (bent toward dir) and boulder [dir]
+#                           block the cell; shrub dir and cairn dir sit in a corner
+#   setting name            night (the default: the palace under the moon) |
+#                           crag_sunset (a crag over a sea of clouds, mountains, sunset)
 #   start|sigil x y h       (h = surface height = block z + 1)
 #   amore x y h             the cell of the bed where Cupid sleeps
 #   exit x y h              reaching it completes the level
@@ -28,6 +32,7 @@
 #   lawn x y z              the block at (x,y,z) has a grassy top
 #   ground x y z0 z1        a column of living rock (earth, not masonry), its
 #                           top block grassy
+#   rock x y z0 z1          the same, bare rock on top too
 #   steps x y z dir         stairs cut in the rock (as stairs, earth and grass)
 #   water x0 y0 x1 y1       a river over these cells, just under the h1 surfaces
 #                           (decoration: it holds nobody)

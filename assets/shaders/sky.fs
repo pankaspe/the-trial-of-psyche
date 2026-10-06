@@ -1,6 +1,9 @@
 #version 330
-// Night sky behind the palace: deep gradient, twinkling stars, the moon, low mist.
-// `shift` pans it a little when the diorama turns. Warms while the lamp burns.
+// The sky behind the level: a gradient from the zenith to the horizon, stars,
+// the sun or the moon with its halo, drifting haze. The colours come from the
+// setting. `horizon` is where the sea of clouds meets the sky (screen uv), so
+// the gradient follows the camera; `shift` pans the stars a little when the
+// diorama turns. Warms while the lamp burns.
 
 in vec2 fragTexCoord;
 
@@ -8,6 +11,17 @@ uniform float light_amount;
 uniform float shift;
 uniform float time;
 uniform float aspect;  // width / height
+uniform float horizon; // screen uv y of the horizon
+uniform vec3 sky_top;
+uniform vec3 sky_mid;
+uniform vec3 sky_horizon;
+uniform vec2 orb_pos;  // x in screen uv, y as a fraction of the horizon height
+uniform float orb_radius;
+uniform vec3 orb_color;
+uniform vec3 halo_color;
+uniform float halo_width;
+uniform float stars;
+uniform vec3 haze;
 
 out vec4 finalColor;
 
@@ -25,11 +39,11 @@ float noise(vec2 p) {
 
 void main() {
     vec2 uv = fragTexCoord;
-    vec3 top = vec3(0.012, 0.015, 0.05);
-    vec3 bottom = vec3(0.08, 0.07, 0.18);
-    vec3 col = mix(top, bottom, smoothstep(0.0, 1.0, uv.y));
+    float y = uv.y / max(horizon, 0.05); // 0 zenith .. 1 horizon
+    vec3 col = mix(sky_top, sky_mid, smoothstep(0.0, 0.6, y));
+    col = mix(col, sky_horizon, smoothstep(0.35, 1.0, y));
 
-    // stars, drifting with the turn of the palace
+    // stars, drifting with the turn of the palace; fewer toward the horizon
     vec2 suv = uv + vec2(shift * 0.06, 0.0);
     vec2 grid = suv * vec2(160.0, 90.0);
     vec2 cell = floor(grid);
@@ -38,20 +52,21 @@ void main() {
         vec2 c = cell + vec2(hash(cell + 3.1), hash(cell + 7.7));
         float d = length(grid - c);
         float tw = 0.55 + 0.45 * sin(time * (1.0 + h * 3.0) + h * 40.0);
-        col += vec3(0.75, 0.8, 1.0) * smoothstep(0.2, 0.0, d) * tw * (1.0 - uv.y * 0.8) * (1.0 - light_amount * 0.6);
+        float fade = stars < 0.99 ? stars * smoothstep(0.6, 0.0, y) : 1.0 - uv.y * 0.8;
+        col += vec3(0.75, 0.8, 1.0) * smoothstep(0.2, 0.0, d) * tw * fade * (1.0 - light_amount * 0.6);
     }
-    // the moon, with a wide halo
-    vec2 mp = vec2(0.80 - shift * 0.03, 0.2);
+    // the orb, with a wide halo
+    vec2 mp = vec2(orb_pos.x - shift * 0.03, orb_pos.y * horizon);
     vec2 dv = (uv - mp) * vec2(aspect, 1.0);
     float md = length(dv);
-    float disc = smoothstep(0.052, 0.046, md);
-    float spots = noise(dv * 60.0) * 0.12 + noise(dv * 140.0) * 0.06;
-    col = mix(col, vec3(0.86, 0.88, 1.0) - spots, disc * (1.0 - light_amount * 0.35));
-    col += vec3(0.3, 0.33, 0.55) * exp(-md * 9.0) * 0.35 * (1.0 - light_amount * 0.4);
-    // drifting mist bands
+    float disc = smoothstep(orb_radius + 0.003, orb_radius - 0.003, md);
+    float spots = stars > 0.99 ? noise(dv * 60.0) * 0.12 + noise(dv * 140.0) * 0.06 : 0.0;
+    col = mix(col, orb_color - spots, disc * (1.0 - light_amount * 0.35));
+    col += halo_color * exp(-md * halo_width) * (1.0 - light_amount * 0.4);
+    // drifting haze bands, low in the sky
     float m = noise(uv * vec2(3.0, 6.0) + vec2(time * 0.015 + shift * 0.1, 0.0)) * 0.6
         + noise(uv * vec2(7.0, 12.0) - vec2(time * 0.02, 0.0)) * 0.4;
-    col += vec3(0.16, 0.16, 0.32) * m * smoothstep(0.35, 1.0, uv.y) * 0.55;
+    col += haze * m * smoothstep(0.35, 1.0, y);
     // the lamp warms the air
     col = mix(col, col * vec3(1.6, 1.1, 0.7) + vec3(0.04, 0.02, 0.0), light_amount * 0.5);
     finalColor = vec4(col, 1.0);
