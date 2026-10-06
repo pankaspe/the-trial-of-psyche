@@ -3,7 +3,8 @@
 // real edge (or, in the dark, an illusion of the current view, with the
 // hidden-stairs rule), a turn of the view, lighting or putting out the lamp,
 // a handle. Crumbling blocks fall when she steps off them; the lamp's light
-// dissolves phantoms and makes veiled blocks real within its reach.
+// dissolves phantoms and makes veiled blocks real within its reach; the lamp
+// lit on the seal raises the `rise` blocks.
 // A state is her cell, the view, the lamp and the palace's configuration
 // (which blocks changed, how each part is turned). The search is a cheapest
 // path (steps cost 1; turns, lightings and handles more, so the plan it
@@ -20,6 +21,7 @@ import "../level"
 Config :: struct {
 	flips: u64, // bit k: the k-th changing block has changed
 	rots:  u32, // 2 bits per part
+	risen: bool, // the seal has been lit
 }
 
 @(private = "file")
@@ -100,6 +102,7 @@ configure :: proc(s: ^Solver, cfg: Config) {
 	for n in 0 ..< len(p.data.parts) {
 		p.part_rot[n] = int((cfg.rots >> (2 * u32(n))) & 3)
 	}
+	p.risen = cfg.risen
 	rebuild_graph(p)
 }
 
@@ -114,6 +117,7 @@ config_of :: proc(s: ^Solver) -> (cfg: Config) {
 	for n in 0 ..< len(p.data.parts) {
 		cfg.rots |= u32(p.part_rot[n]) << (2 * u32(n))
 	}
+	cfg.risen = p.risen
 	return
 }
 
@@ -262,6 +266,7 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 					on := st
 					on.lamp = true
 					cfg, changed := touch(&s, st.cfg, st.cell)
+					cfg, changed = seal(p, cfg, st.cell, changed)
 					on.cfg = cfg
 					if _, still := graph_of(&s, cfg).index[st.cell]; still {
 						next(&entries, &seen, &buckets, &edges, id, on, .Light, false, changed)
@@ -312,7 +317,7 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 					if st.lamp {
 						n := 0
 						moved.cfg, n = touch(&s, moved.cfg, to)
-						changed += n
+						moved.cfg, changed = seal(p, moved.cfg, to, changed + n)
 					}
 					if _, still := graph_of(&s, moved.cfg).index[to]; still {
 						next(&entries, &seen, &buckets, &edges, id, moved, .Step, pass == 1, changed)
@@ -415,6 +420,17 @@ touch :: proc(s: ^Solver, cfg: Config, feet: Cell) -> (out: Config, changed: int
 	return
 }
 
+// The lamp lit on the seal raises the `rise` blocks for good.
+@(private = "file")
+seal :: proc(p: ^Palace, cfg: Config, feet: Cell, changed: int) -> (Config, int) {
+	if !p.data.has_sigil || cfg.risen || feet != p.data.sigil {
+		return cfg, changed
+	}
+	out := cfg
+	out.risen = true
+	return out, changed + len(p.data.rise)
+}
+
 // Is the level's goal reachable, and the fragment reachable and optional?
 // For levels whose palace changes; `goal` is the exit.
 check_dynamic :: proc(p: ^Palace, allocator := context.allocator) -> (solvable, fragment_reachable, fragment_optional: bool) {
@@ -435,6 +451,9 @@ check_dynamic :: proc(p: ^Palace, allocator := context.allocator) -> (solvable, 
 is_dynamic :: proc(d: ^level.Level_Data) -> bool {
 	if len(d.parts) > 0 {
 		return true
+	}
+	if d.has_sigil && len(d.rise) > 0 && !d.has_amore {
+		return true // the seal changes the palace on the way to the exit
 	}
 	for e in d.blocks {
 		if e.trait != .Stone {

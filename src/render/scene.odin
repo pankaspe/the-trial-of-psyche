@@ -146,6 +146,7 @@ Piece :: struct {
 	material:   Material,
 	cube:       bool, // marble on top, masonry when covered
 	lawn:       bool, // a block with a grassy top
+	ground:     bool, // living rock: earth sides, grass where uncovered
 	rise_index: i32, // >= 0: raised by the seal, in this order
 	block:      i32, // >= 0: its data.blocks entry (it may fall, dissolve, appear)
 	part:       u8, // 0: fixed; n: turns with part n-1
@@ -178,6 +179,12 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 		p.part = e.part
 		for c in g.data.lawn {
 			p.lawn ||= c == e.cell && p.cube
+		}
+		for c in g.data.ground {
+			p.ground ||= c == e.cell
+		}
+		if p.ground && !p.cube {
+			p.material = .Lawn // steps cut in the rock: grassy treads, earth risers
 		}
 		if e.trait == .Phantom {
 			p.material = .Phantom
@@ -425,6 +432,7 @@ draw_world :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 	set_frame_uniforms(r, s, g, v)
 	draw_pieces(r, s, g, false)
 	draw_figures(r, g)
+	draw_water(g, time)
 	draw_pieces(r, s, g, true)
 	draw_decals(g)
 	draw_glows(r, s, g, v)
@@ -640,7 +648,10 @@ draw_pieces :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, transparent: bool) {
 			covered := pl.solid_at(&g.palace, piece_cell(g, p) + {0, 0, 1}).kind != .None
 			material = covered ? .Masonry : .Marble
 			detail = covered ? 2 : 1
-			if p.lawn {
+			if p.ground {
+				bare := p.block >= 0 && g.data.blocks[p.block].trait == .Crumble
+				material, detail = covered || bare ? .Rock : .Lawn, 0
+			} else if p.lawn {
 				material, detail = .Lawn, 0
 			}
 		}
@@ -806,6 +817,78 @@ floor_strip :: proc(a, b, side: Vec3, width: f32, c: Color4) {
 	vtx(b + side * width)
 	vtx(a + side * width)
 	rlgl.End()
+}
+
+WATER_Z :: 0.72 // the river's surface: just under the h1 platforms
+
+// The river: a dark surface that fades out at the edges of its rectangle,
+// glints of moonlight drifting with the current (along x), the lamp's warmth
+// near Psyche, and a ring of foam around every stone standing in it.
+@(private)
+draw_water :: proc(g: ^game.Game, time: f32) {
+	if len(g.data.water) == 0 {
+		return
+	}
+	rlgl.DrawRenderBatchActive()
+	rlgl.DisableDepthMask()
+	rlgl.SetTexture(rlgl.GetTextureIdDefault())
+	lamp := game.lamp_world(g)
+	warm := g.data.has_lamp ? g.light : 0
+	for w in g.data.water {
+		x0, y0 := f32(w[0]), f32(w[1])
+		x1, y1 := f32(w[2] + 1), f32(w[3] + 1)
+		edge :: proc(v, lo, hi: f32) -> f32 {
+			return fx.clamp01(min(v - lo, hi - v) / 1.2)
+		}
+		point :: proc(x, y, x0, y0, x1, y1: f32, lamp: Vec3, warm: f32) {
+			a := edge(x, x0, x1) * edge(y, y0, y1)
+			a = a * a * (3 - 2 * a)
+			d := Vec2{x - lamp.x, y - lamp.y}
+			lit := warm * fx.clamp01(1 - math.sqrt(d.x * d.x + d.y * d.y) / 3)
+			c := fx.lerp(Color4{0.08, 0.12, 0.27, 0.8}, Color4{0.4, 0.25, 0.1, 0.85}, lit)
+			c.a *= a
+			color(c)
+			vtx({x, y, WATER_Z})
+		}
+		STEP :: 0.5
+		rlgl.Begin(rlgl.TRIANGLES)
+		for y := y0; y < y1 - 0.001; y += STEP {
+			for x := x0; x < x1 - 0.001; x += STEP {
+				point(x, y, x0, y0, x1, y1, lamp, warm)
+				point(x + STEP, y, x0, y0, x1, y1, lamp, warm)
+				point(x + STEP, y + STEP, x0, y0, x1, y1, lamp, warm)
+				point(x, y, x0, y0, x1, y1, lamp, warm)
+				point(x + STEP, y + STEP, x0, y0, x1, y1, lamp, warm)
+				point(x, y + STEP, x0, y0, x1, y1, lamp, warm)
+			}
+		}
+		rlgl.End()
+		// glints of moonlight drifting with the current
+		for cy in w[1] ..= w[3] {
+			for cx in w[0] ..= w[2] {
+				for k in 0 ..< 3 {
+					h := u32(cx * 73 + cy * 151 + i32(k) * 31)
+					u := math.mod(time * (0.08 + 0.05 * fx.hash01(h)) + fx.hash01(h + 1), 1)
+					px := f32(cx) + u
+					py := f32(cy) + 0.15 + 0.7 * fx.hash01(h + 2)
+					a := edge(px, x0, x1) * edge(py, y0, y1) * math.sin(u * math.PI)
+					len := 0.12 + 0.18 * fx.hash01(h + 3)
+					floor_strip({px, py, WATER_Z + 0.003}, {px + len, py, WATER_Z + 0.003}, {0, 1, 0}, 0.022, {0.65, 0.75, 1.0, 0.4 * a})
+				}
+			}
+		}
+		// foam where the stones stand in the river
+		for e, i in g.data.blocks {
+			c := e.cell
+			if c.z != 0 || c.x < w[0] || c.x > w[2] || c.y < w[1] || c.y > w[3] || !pl.block_present(&g.palace, i) {
+				continue
+			}
+			t := math.mod(time * 0.35 + fx.hash01(u32(i) * 7), 1)
+			floor_ring({f32(c.x) + 0.5, f32(c.y) + 0.5, WATER_Z + 0.002}, 0.68 + 0.12 * t, 0.025, {0.7, 0.8, 1.0, 0.3 * (1 - t)})
+		}
+	}
+	rlgl.DrawRenderBatchActive()
+	rlgl.EnableDepthMask()
 }
 
 // Oil stains, Psyche's shadow and the cracks of the illusions.

@@ -24,7 +24,7 @@ uniform float screen_height;
 
 // per piece
 uniform float material;      // 0 marble, 1 masonry, 2 foliage, 3 bronze, 4 psyche, 5 cupid, 6 mourner, 7 lawn,
-                             // 8 phantom (palette 7 grass, 8 earth, 9 phantom)
+                             // 8 phantom, 9 rock (palette 7 grass, 8 earth, 9 phantom)
 uniform float detail;        // 0 none, 1 marble block, 2 masonry block
 uniform float hidden;        // 1: visible only in the lamp light, glowing gold; 2: the same, a faint ghost
 uniform float alpha;
@@ -67,8 +67,8 @@ void palette(float m, float t, out vec3 night, out vec3 warm) {
     } else if (m < 7.5) {   // grass: blue-green under the moon
         night = ramp(vec3(0.02, 0.06, 0.07), vec3(0.08, 0.22, 0.21), vec3(0.30, 0.52, 0.43), t);
         warm = ramp(vec3(0.06, 0.08, 0.02), vec3(0.28, 0.38, 0.10), vec3(0.62, 0.72, 0.30), t);
-    } else if (m < 8.5) {   // earth
-        night = ramp(vec3(0.05, 0.04, 0.09), vec3(0.16, 0.12, 0.21), vec3(0.38, 0.31, 0.40), t);
+    } else if (m < 8.5) {   // earth: brown, cooled by the moon
+        night = ramp(vec3(0.05, 0.035, 0.06), vec3(0.18, 0.12, 0.14), vec3(0.42, 0.31, 0.28), t);
         warm = ramp(vec3(0.16, 0.08, 0.03), vec3(0.45, 0.28, 0.14), vec3(0.70, 0.50, 0.30), t);
     } else {                // phantom: paler and colder than marble; the lamp does not warm it
         night = ramp(vec3(0.09, 0.12, 0.24), vec3(0.28, 0.38, 0.60), vec3(0.72, 0.82, 1.0), t);
@@ -140,7 +140,18 @@ void main() {
         }
     }
     float m = material;
-    if (material > 7.5) {
+    if (material > 8.5) {
+        // living rock: earth in rough, slanted strata with a few dark seams
+        m = 8.0;
+        float u = abs(n.x) > 0.5 ? L.y : L.x;
+        float z = L.z + 0.06 * sin(u * 9.0 + floor(fragWorld.z) * 2.3) + 0.03 * sin(u * 23.0);
+        float band = floor(z * 4.0);
+        tone *= 0.9 + 0.12 * hash(vec2(band, floor(fragWorld.x + fragWorld.y)));
+        tone *= mix(1.0, 0.78, line(fract(z * 4.0), 0.5, 0.03));
+        if (n.z > 0.5) {
+            tone *= 0.9 + 0.15 * hash(floor(L.xy * 9.0));
+        }
+    } else if (material > 7.5) {
         // phantom: faint bands of mist drift across the stone
         m = 9.0;
         tone *= 0.94 + 0.06 * sin(L.z * 31.0 + (L.x + L.y) * 7.0);
@@ -176,7 +187,7 @@ void main() {
     col = mix(col, MIST, smoothstep(mist_top, mist_bottom, sy) * 0.85);
 
     float a = alpha;
-    if (material > 7.5) {
+    if (material > 7.5 && material < 8.5) {
         // what the light unmasks: the phantom grows thin near the flame
         a *= mix(1.0, 0.3, lit);
     }

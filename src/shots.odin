@@ -236,6 +236,9 @@ shots_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool
 	if s.plan && s.level >= 0 {
 		return plan_update(app, s, dt)
 	}
+	if s.level >= 0 && app.screen == .Mechanic && app.mechanic_t > 1.6 {
+		close_mechanic(app) // the card of the new mechanic would hide the tour
+	}
 	script := s.level >= 0 ? LEVEL_TOUR[:] : SHOT_SCRIPT[:]
 	if s.step >= len(script) {
 		return "", true

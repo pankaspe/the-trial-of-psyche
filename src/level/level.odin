@@ -92,13 +92,14 @@ Prop_Kind :: enum u8 {
 	// decoration only
 	Arch,
 	Vase, // small, in one corner of the cell: px (+x,+y), py (-x,+y), mx (-x,-y), my (+x,-y)
+	Reeds, // a clump of reeds in one corner of the cell (as the vase)
 	Sconce, // an unlit candle on the side `dir` of the block at (x,y,z)
 }
 
 EDGE_PROPS :: bit_set[Prop_Kind]{.Rail, .Wall, .Wall_Half, .Wall_Battlement, .Fence}
 BLOCKING_PROPS :: bit_set[Prop_Kind]{.Pillar, .Plinth, .Cypress, .Urn, .Brazier, .Bed}
-ORIENTED_PROPS :: EDGE_PROPS + bit_set[Prop_Kind]{.Bed, .Arch, .Vase, .Sconce}
-NEEDS_DIR :: EDGE_PROPS + bit_set[Prop_Kind]{.Vase, .Sconce}
+ORIENTED_PROPS :: EDGE_PROPS + bit_set[Prop_Kind]{.Bed, .Arch, .Vase, .Reeds, .Sconce}
+NEEDS_DIR :: EDGE_PROPS + bit_set[Prop_Kind]{.Vase, .Reeds, .Sconce}
 
 PROP_NAME := [Prop_Kind]string {
 	.Rail            = "rail",
@@ -114,6 +115,7 @@ PROP_NAME := [Prop_Kind]string {
 	.Bed             = "bed",
 	.Arch            = "arch",
 	.Vase            = "vase",
+	.Reeds           = "reeds",
 	.Sconce          = "sconce",
 }
 
@@ -154,6 +156,8 @@ Level_Data :: struct {
 	intro:        i18n.Key, // the line shown when the level begins
 	has_intro:    bool,
 	lawn:         [dynamic]Cell, // blocks with a grassy top
+	ground:       [dynamic]Cell, // blocks and stairs of living rock (earth, not masonry)
+	water:        [dynamic][4]i32, // rectangles of water (x0 y0 x1 y1), just under the h1 surfaces
 	outro:        i18n.Key, // the text of the ending card at the exit
 	has_outro:    bool,
 	has_lamp:     bool, // Psyche carries the lamp (from the end of Act I)
@@ -193,6 +197,8 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	data.voices = make([dynamic]Cue, 0, 16)
 	data.hints = make([dynamic]Cue, 0, 8)
 	data.lawn = make([dynamic]Cell, 0, 8)
+	data.ground = make([dynamic]Cell, 0, 16)
+	data.water = make([dynamic][4]i32, 0, 2)
 	data.parts = make([dynamic]Part, 0, 2)
 	data.handles = make([dynamic]Handle, 0, 2)
 	data.rests = make([dynamic]Cell, 0, 4)
@@ -268,6 +274,9 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 			}
 			append(&data.blocks, Solid_Entry{v, {kind = .Block}, trait, part})
+			if len(args) > 3 && args[3] == "rock" {
+				append(&data.ground, v) // a stone of living rock, bare: no grass
+			}
 			max_z = max(max_z, v.z)
 
 		case "part":
@@ -344,16 +353,38 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			}
 			max_z = max(max_z, v[3])
 
-		case "stairs":
+		case "ground":
+			v: [4]i32
+			if !ints(args, v[:]) || v[3] < v[2] {
+				return data, fail(line_no, "ground: expected x y z0 z1 with z0 <= z1")
+			}
+			for z in v[2] ..= v[3] {
+				append(&data.blocks, Solid_Entry{{v[0], v[1], z}, {kind = .Block}, .Stone, part})
+				append(&data.ground, Cell{v[0], v[1], z})
+			}
+			append(&data.lawn, Cell{v[0], v[1], v[3]})
+			max_z = max(max_z, v[3])
+
+		case "water":
+			v: [4]i32
+			if !ints(args, v[:]) || v[2] < v[0] || v[3] < v[1] {
+				return data, fail(line_no, "water: expected x0 y0 x1 y1 with x0 <= x1, y0 <= y1")
+			}
+			append(&data.water, v)
+
+		case "stairs", "steps":
 			v: [3]i32
 			if !ints(args, v[:]) || len(args) < 4 {
-				return data, fail(line_no, "stairs: expected x y z dir")
+				return data, fail(line_no, "%s: expected x y z dir", fields[0])
 			}
 			d, ok := iso.dir_from_name(args[3])
 			if !ok {
-				return data, fail(line_no, "stairs: unknown direction '%s'", args[3])
+				return data, fail(line_no, "%s: unknown direction '%s'", fields[0], args[3])
 			}
 			append(&data.blocks, Solid_Entry{v, {.Stairs, d}, .Stone, part})
+			if fields[0] == "steps" {
+				append(&data.ground, v)
+			}
 			max_z = max(max_z, v.z)
 
 		case "rise":

@@ -42,6 +42,32 @@ CLAUDE.md for the design history).
 - Design rule: an illusion is clean when walking *toward the camera* onto a nearer
   piece (k ≥ 0). Check every level with `./build.sh check <file>`.
 
+## Mechanics per act (user, 2026-10-06: decided)
+- **Two new mechanics per act, eight in all**, every one used in the final level. A level is
+  never a tutorial of its own: after an act's two introductions its other levels only deepen.
+  Act I: rotation (with the hidden stairs, found by intuition) and the lamp (light on/off).
+  Act II: crumbling and handles. Acts III, IV: two each, designed when their first level comes.
+- The game may be deliberately hard (not as relaxed as Monument Valley): the last levels of an
+  act are true puzzles.
+- **Act II plan**: II.1 discover crumbling (done, approved 2026-10-06) · II.2 crumbling without
+  tutorial, a bigger, better designed level · II.3 handles (today's II.4 handle level) · II.4 and
+  II.5 two real puzzles using all four: rotation, light, crumbling, handles.
+- Phantom and veiled stones are **out of Act II** (code kept for now, no level uses them after
+  the rework; decide later whether a later act reuses them or they are removed).
+- Settings follow the slot titles (each level reflects its title): II.2 river and Pan, II.3 the
+  sisters' crag, II.4 Ceres, II.5 Juno; level content is rebuilt to fit.
+- Work strictly step by step: one level, the user plays and judges, then the next.
+- Natural settings (2026-10-06): `ground x y z0 z1` (living rock, brown strata, grassy top),
+  `steps x y z dir` (stairs cut in the rock), `crumble x y z rock` (a cracked stone of bare rock),
+  `water x0 y0 x1 y1` (a river just under h1, decoration), `prop reeds x y z dir`. The solver also
+  handles the seal (`rise` blocks raised by the lamp on `sigil`), so a seal can open an Act II exit.
+- II.1 rebuilt at the bottom: a meadow on living rock, steps up to the exit, the fragment on a rock
+  spur behind a cracked stone (way back: the view-0 seam it hid). II.2 rebuilt (proposal B, "Pan's
+  crag"): ford of cracked rocks, a spiral of ledges round the crag, the broken east ledge bridged
+  by view 1 from its cracked end, the seal on the summit raises the bridge to Pan's meadow;
+  fragment on a rock in the river (view 2 from the first ford stone, back by view 3). Waiting for
+  the user's playtest.
+
 ## Act II mechanics (M3, 2026-10-05; `palace.flipped`, `part_rot`)
 - **Crumbling** (`crumble`): a cracked block falls (for good) once Psyche steps off it; what
   falls stops hiding things, so seams and stairs can appear. Paths avoid cracked stones unless
@@ -95,7 +121,7 @@ CLAUDE.md for the design history).
 ## Game design (agreed with the user, 2026-10-04)
 Full design document (Italian, kept up to date there): https://claude.ai/code/artifact/97c37954-ecc7-4b98-a211-40e5c123d11e
 - 20 levels, ~5-6 hours: Act I (4, prologue inside I.1) · Act II (5) · Act III (5) · Act IV (5) · Epilogue (1).
-  Each act adds one new mechanic (Monument Valley style); the last level of an act uses all of them.
+  Each act adds two new mechanics (see "Mechanics per act"); the last level uses all eight.
 - Follows Apuleius in order (Met. IV.28 - VI.24). **Canonical ending**: Psyche lights the lamp at the
   end of Act I (the drop of oil starts Act II). "Trust" (reaching Cupid in the dark) = secret, non-canonical
   ending, an achievement after finishing the game. The lamp appears only at the end of Act I.

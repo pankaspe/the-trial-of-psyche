@@ -5,12 +5,12 @@
 #   1. the first cracked bridge, off the tower where Cupid slept (tutorial);
 #   2. the terrace: a cracked stone stands right where the way down would
 #      be (view 0); step on it and back, it falls, the seam appears;
-#   3. the lower terrace (brazier): a cracked stone joined to the garden only
+#   3. the lower terrace (brazier): a cracked stone joined to the meadow only
 #      in view 1: turn before leaving it, or it falls behind her for nothing;
-#   4. the garden: the exit pillar is too high while its cracked cap stands:
-#      climb the cap by the seam of view 0, step back down, it falls.
-# Fragment: a broken column with two cracked stones; lower it twice (view 0,
-# then view 3) and the fragment waits on the second.
+#   4. the meadow on living rock: steps cut in the rock lead up to the exit.
+# Fragment: on a rock spur, up the other steps and over a fallen cracked
+# stone; once it has fallen behind her, the way back is the seam of view 0
+# onto the patch of meadow it hid.
 # Format: see level_04.txt.
 size 12
 
@@ -33,46 +33,42 @@ block 7 5 4
 block 7 4 4
 crumble 6 4 4
 prop rail 6 5 5 my
+prop rail 7 5 5 py
 # C: lower terrace (h3), joined to B in view 0 once K has fallen
 column 4 2 0 2
 block 5 2 2
-# Q: a cracked stone, joined to the garden in view 1 only
+# Q: a cracked stone, joined to the meadow in view 1 only
 crumble 6 2 2
-# the garden at the foot of the palace (h1)
-column 4 5 0 0
-column 4 6 0 0
-column 4 7 0 0
-column 5 7 0 0
-column 6 7 0 0
-column 7 7 0 0
-column 8 7 0 0
-column 9 7 0 0
-column 9 8 0 0
-column 9 9 0 0
-lawn 4 5 0
-lawn 4 6 0
-lawn 4 7 0
-lawn 5 7 0
-lawn 6 7 0
-lawn 7 7 0
-lawn 8 7 0
-lawn 9 7 0
-lawn 9 8 0
-lawn 9 9 0
-column 10 9 0 0
-lawn 10 9 0
-prop cypress 10 9 1
-# E: the exit column, too high while its cracked cap stands
-column 8 8 0 0
-crumble 8 8 1
-# P: a broken column with two cracked stones; the fragment under the top one
-column 7 10 0 0
-crumble 7 10 1
-crumble 7 10 2
-fragment 7 10 2
+# the meadow at the foot of the palace (h1), on living rock
+ground 4 5 0 0
+ground 4 6 0 0
+ground 4 7 0 0
+ground 3 7 0 0
+ground 3 8 0 0
+ground 3 9 0 0
+ground 5 7 0 0
+ground 6 7 0 0
+ground 7 7 0 0
+ground 8 7 0 0
+# E: steps cut in the rock up to the exit outcrop (h2)
+ground 9 7 0 0
+steps 9 7 1 px
+ground 10 7 0 1
+ground 10 8 0 1
+ground 11 8 0 1
+prop cypress 11 8 2
+# F: a rock spur, reached by steps and a fallen cracked stone; once it has
+# fallen, the way back is the seam of view 0 down to the meadow
+ground 4 8 0 0
+steps 4 8 1 py
+crumble 4 9 1
+ground 5 9 0 1
+prop fence 5 9 2 my
+ground 5 10 0 1
+fragment 5 10 2
 
 start 2 1 6
-exit 8 8 1
+exit 10 8 2
 rest 4 2 3
 rest 4 5 1
 lamp

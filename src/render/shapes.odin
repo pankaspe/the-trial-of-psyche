@@ -19,6 +19,7 @@ Mesh_Id :: enum u8 {
 	Bed_PX, Bed_MX, Bed_PY, Bed_MY,
 	Arch_PX, Arch_MX, Arch_PY, Arch_MY,
 	Vase_PX, Vase_MX, Vase_PY, Vase_MY,
+	Reeds_PX, Reeds_MX, Reeds_PY, Reeds_MY,
 	Sconce_PX, Sconce_MX, Sconce_PY, Sconce_MY,
 	Candle_PX, Candle_MX, Candle_PY, Candle_MY,
 	Pillar,
@@ -58,6 +59,7 @@ Material :: enum u8 {
 	Mourner,
 	Lawn, // grass on top, earth on the sides
 	Phantom, // a stone real only in the dark: pale, see-through in the light
+	Rock, // living rock under the meadows: brown earth in rough strata
 }
 
 PROP_MESH := [level.Prop_Kind]Mesh_Id {
@@ -74,6 +76,7 @@ PROP_MESH := [level.Prop_Kind]Mesh_Id {
 	.Bed             = .Bed_PX,
 	.Arch            = .Arch_PX,
 	.Vase            = .Vase_PX,
+	.Reeds           = .Reeds_PX,
 	.Sconce          = .Sconce_PX,
 }
 
@@ -91,6 +94,7 @@ PROP_MATERIAL := [level.Prop_Kind]Material {
 	.Bed             = .Bronze,
 	.Arch            = .Masonry,
 	.Vase            = .Bronze,
+	.Reeds           = .Foliage,
 	.Sconce          = .Bronze,
 }
 
@@ -195,6 +199,25 @@ SIGIL_OFF := [?]Box{{{0.1, 0.1, 0}, {0.9, 0.9, 0.035}}, {{0.24, 0.24, 0.035}, {0
 @(private)
 SIGIL_ON := [?]Box{{{0.1, 0.1, 0}, {0.9, 0.9, 0.035}}, {{0.24, 0.24, 0.02}, {0.76, 0.76, 0.045}}}
 
+// a clump of reeds in the (+x, +y) corner: thin stalks of different heights,
+// some with a dark head (Pan's syrinx was cut from them)
+@(private)
+reeds_px :: proc() -> []Box {
+	stalks := [?][3]f32 {
+		{0.86, 0.84, 0.62}, {0.78, 0.9, 0.48}, {0.92, 0.74, 0.55}, {0.7, 0.8, 0.36},
+		{0.84, 0.66, 0.42}, {0.9, 0.93, 0.7}, {0.74, 0.7, 0.3}, {0.64, 0.9, 0.4},
+	}
+	out := make([dynamic]Box, 0, 12, context.temp_allocator)
+	for st, i in stalks {
+		W :: 0.012
+		append(&out, Box{{st.x - W, st.y - W, 0}, {st.x + W, st.y + W, st.z}})
+		if i % 3 == 0 {
+			append(&out, Box{{st.x - 0.022, st.y - 0.022, st.z - 0.1}, {st.x + 0.022, st.y + 0.022, st.z - 0.02}})
+		}
+	}
+	return out[:]
+}
+
 @(private)
 cypress :: proc() -> []Box {
 	out := make([dynamic]Box, 0, 10, context.temp_allocator)
@@ -254,6 +277,7 @@ build_meshes :: proc(meshes: ^[Mesh_Id]rl.Mesh) {
 	four(meshes, .Bed_PX, bed_px())
 	four(meshes, .Arch_PX, ARCH_PX[:])
 	four(meshes, .Sconce_PX, SCONCE_PX[:])
+	four(meshes, .Reeds_PX, reeds_px())
 	four(meshes, .Candle_PX, CANDLE_PX[:])
 	meshes[.Pillar] = one(PILLAR[:])
 	meshes[.Plinth] = one(PLINTH[:])

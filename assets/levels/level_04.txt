@@ -11,7 +11,7 @@
 #                           decoration only: arch [dir], vase dir (a small vase in a
 #                           corner: px (+x,+y), py (-x,+y), mx (-x,-y), my (+x,-y)),
 #                           sconce dir (an unlit candle on side `dir` of the block
-#                           at x y z)
+#                           at x y z), reeds dir (a clump of reeds in a corner, as the vase)
 #   start|sigil x y h       (h = surface height = block z + 1)
 #   amore x y h             the cell of the bed where Cupid sleeps
 #   exit x y h              reaching it completes the level
@@ -26,10 +26,16 @@
 #   intro key               the line shown when the level begins
 #   outro key               the text of the ending card at the exit
 #   lawn x y z              the block at (x,y,z) has a grassy top
+#   ground x y z0 z1        a column of living rock (earth, not masonry), its
+#                           top block grassy
+#   steps x y z dir         stairs cut in the rock (as stairs, earth and grass)
+#   water x0 y0 x1 y1       a river over these cells, just under the h1 surfaces
+#                           (decoration: it holds nobody)
 #   prologue x y h          the level opens with the prologue cutscene; the
 #                           procession comes up at this cell and walks to start
 # Act II (palaces that change; ./build.sh check solves them move by move):
-#   crumble x y z           a cracked block: it falls once Psyche steps off it
+#   crumble x y z [rock]    a cracked block: it falls once Psyche steps off it
+#                           (rock: bare living rock instead of palace stone)
 #   phantom x y z           a pale block, real only in the dark: the lamp's
 #                           light (about 2.5 cells from her) dissolves it for good;
 #                           the lamp cannot be lit over one

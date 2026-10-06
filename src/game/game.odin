@@ -907,7 +907,7 @@ return_to_rest :: proc(g: ^Game) -> bool {
 		return false
 	}
 	r := &g.rest
-	if g.psyche.cell == r.cell && !g.psyche.walking && slice.equal(g.palace.flipped, r.flipped) && g.palace.part_rot == r.part_rot {
+	if g.psyche.cell == r.cell && !g.psyche.walking && slice.equal(g.palace.flipped, r.flipped) && g.palace.part_rot == r.part_rot && g.activated == r.activated {
 		return false
 	}
 	set_lamp(g, false)
@@ -916,6 +916,9 @@ return_to_rest :: proc(g: ^Game) -> bool {
 	g.lightings = r.lightings
 	copy(g.palace.flipped, r.flipped)
 	g.palace.part_rot = r.part_rot
+	g.activated = r.activated
+	g.palace.risen = r.activated
+	g.rise_t = r.activated ? 1e3 : -1
 	pl.rebuild_graph(&g.palace)
 	for &t, i in g.flip_t {
 		t = g.palace.flipped[i] ? 1e3 : -1
@@ -1068,6 +1071,12 @@ update_effects :: proc(g: ^Game, dt: f32) {
 	}
 	if g.collapse_t >= 0 {
 		g.collapse_t += dt
+	}
+	// stones that fell, dissolved or appeared: their animations run on this clock
+	for &t in g.flip_t {
+		if t >= 0 {
+			t = min(t + dt, 1e3)
+		}
 	}
 	if g.amore.fly_t >= 0 {
 		g.amore.fly_t += dt

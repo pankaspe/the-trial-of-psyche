@@ -64,6 +64,7 @@ exit 2 0 1
 	testing.expect(t, walk(t, &g, {0, 0, 1}), "and steps back")
 	run(&g, 2)
 	testing.expect(t, !palace.is_node(&g.palace, {1, 0, 1}), "the cracked stone has fallen")
+	testing.expect(t, g.flip_t[1] > game.FALL_TIME, "and its fall has played out (it is gone from sight)")
 	path: palace.Path
 	testing.expect(t, !palace.find_path(&g.palace, g.psyche.cell, {2, 0, 1}, true, &path), "no way across any more")
 	testing.expect(t, game.has_rest(&g) == false, "no brazier in this palace")
@@ -100,6 +101,7 @@ lamp
 	game.toggle_lamp(&g)
 	run(&g, 1)
 	testing.expect(t, palace.is_node(&g.palace, {3, 0, 1}), "for good: the veiled stone stays in the dark")
+	testing.expect(t, g.flip_t[1] > game.DISSOLVE_TIME, "the phantom's dissolving has played out")
 	testing.expect(t, walk(t, &g, g.data.exit), "the revealed stone leads to the exit")
 }
 

@@ -1,90 +1,87 @@
 # The Trial of Psyche - level II.2: "The River and Pan"
-# Phantom stones. The river has set Psyche on its bank; mist stones stand
-# over the water. A pale stone exists only in the dark: it holds her, hides
-# what is behind it, joins by illusion like any stone, and dissolves for good
-# when the lamp's light reaches it (about two cells from her). The lamp cannot
-# be lit over a phantom.
-#   1. phantom stepping stones across the river (tutorial);
-#   2. a phantom block bars the south bank: light the lamp beside it;
-#   3. the cliff: a phantom stone in the river (view 1) and the seam of
-#      view 0 lead up to Pan's meadow, but a phantom block stands on the
-#      landing. Light near the stone and it is gone: light from the ledge
-#      on the cliff's face instead (stairs at the end of the bank), out of
-#      the stone's reach.
-# Fragment: on a rock in the river, joined (view 1) only to the top of the
-# phantom block that bars the bank, itself joined to the bank in view 0:
-# use the obstacle before the light dissolves it.
+# Crumbling stones, no tutorial: a bigger climb. The river has set Psyche on
+# its south bank; across the water stands the crag where Pan sits, and the
+# way up spirals around it on ledges, some of them cracked.
+#   1. the ford: two cracked stepping stones, crossed once;
+#   2. the south ledge and the steps cut in the rock (seen only from some
+#      views in the dark);
+#   3. the east ledge is broken: from its cracked end, view 1 joins it to a
+#      cracked outcrop on the north-east corner. Turn before stepping off it,
+#      or it falls behind her for nothing (the brazier brings her back);
+#   4. the north ledge, steps up (other views), the west ledge and a last
+#      cracked stone onto the summit;
+#   5. the seal on the summit: the lamp lit there raises the bridge to Pan's
+#      meadow, where the river's journey ends.
+# Fragment: on a rock in the river, joined (view 2) only to the first stone
+# of the ford; from the rock, view 3 joins the south ledge.
 # Format: see level_04.txt.
 size 12
 
-# the north bank, where the river set her (h1)
-column 1 1 0 0
-column 2 1 0 0
-column 1 2 0 0
-column 2 2 0 0
-column 2 3 0 0
-# phantom stepping stones across the river
-phantom 2 4 0
-phantom 2 5 0
-# the south bank (h1)
-column 2 6 0 0
-column 2 7 0 0
-column 3 7 0 0
-column 4 7 0 0
-column 5 7 0 0
-column 6 7 0 0
-column 7 7 0 0
-column 8 7 0 0
-column 9 7 0 0
-column 10 7 0 0
-column 11 7 0 0
-# the phantom block that bars the bank
-phantom 4 7 1
-# the ledge on the cliff's face (h2), up the stairs at the end of the bank
-stairs 11 8 1 py
-column 11 9 0 1
-# the phantom stone in the river (h2)
-phantom 8 6 1
-# Pan's meadow on the cliff (h4), a phantom block on its landing
-column 9 9 0 3
-column 10 9 0 3
-column 9 10 0 3
-column 10 10 0 3
-phantom 10 9 4
-prop wallBattlement 9 10 4 mx
-# the rock in the river, with the fragment
-column 6 6 0 2
-fragment 6 6 3
+# the south bank, where the river set her (h1)
+ground 5 10 0 0
+ground 6 10 0 0
+ground 6 11 0 0
+# the ford
+crumble 5 9 0 rock
+crumble 5 8 0 rock
+# the rock in the river, with the fragment (h2)
+ground 3 8 0 1
+fragment 3 8 2
 
-# grass on the banks and the meadow
-lawn 1 1 0
-lawn 2 1 0
-lawn 1 2 0
-lawn 2 2 0
-lawn 2 3 0
-lawn 2 6 0
-lawn 2 7 0
-lawn 3 7 0
-lawn 4 7 0
-lawn 5 7 0
-lawn 6 7 0
-lawn 7 7 0
-lawn 8 7 0
-lawn 9 7 0
-lawn 10 7 0
-lawn 11 7 0
-lawn 9 9 3
-lawn 10 9 3
-lawn 9 10 3
-lawn 10 10 3
-prop cypress 9 9 4
-prop vase 1 2 1 mx
+# the crag: its core, the summit (h4)
+ground 5 5 0 3
+ground 6 5 0 3
+ground 5 6 0 3
+ground 6 6 0 3
+prop fence 6 5 4 px
+# south ledge (h1) and steps up east
+ground 4 7 0 0
+ground 5 7 0 0
+ground 6 7 0 0
+steps 6 7 1 px
+# east ledge (h2), broken: its last stone is cracked
+ground 7 7 0 1
+ground 7 6 0 0
+crumble 7 6 1 rock
+# the cracked outcrop on the north-east corner (h3)
+ground 8 4 0 1
+crumble 8 4 2 rock
+# north ledge (h3), steps up west
+ground 7 4 0 2
+ground 6 4 0 2
+ground 5 4 0 2
+steps 5 4 3 mx
+# west ledge (h4): a cracked stone onto the summit
+ground 4 4 0 3
+ground 4 5 0 2
+crumble 4 5 3 rock
 
-start 1 1 1
-exit 10 10 4
-rest 2 7 1
+# Pan's meadow (h4), across the gap the seal bridges
+ground 6 1 0 3
+ground 7 1 0 3
+ground 7 0 0 3
+prop cypress 7 0 4
+rise 6 4 3
+rise 6 3 3
+rise 6 2 3
+
+# the river, all around the crag
+water 0 0 11 11
+# reeds on the banks
+prop reeds 5 10 1 mx
+prop reeds 6 10 1 px
+prop reeds 4 7 1 mx
+prop reeds 3 8 2 my
+prop reeds 7 7 2 px
+
+start 5 10 1
+sigil 6 6 4
+exit 7 1 4
+rest 5 10 1
+rest 7 7 2
+rest 6 4 3
 lamp
-mechanic phantom
+oil 6
 intro intro_ii_2
 outro outro_ii_2
-hint 1 1 1 hint_phantom
+hint 6 6 4 hint_sigil
