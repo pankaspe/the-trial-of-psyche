@@ -310,6 +310,9 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   - Tutorial hints (`game.is_tutorial`) are a card over the game on the left (`ui.draw_tutorial`):
     "How to play" label, a drawn sign per mechanic, slides in, stays until done, then a tick;
     the controls it talks about pulse (`point_at`). Other hints keep the bottom band.
+  - A keys badge top left (Esc pause and controls, R restart: `ui.keys_badge`) replaces the old
+    Hint_Keys; it comes once the turning tutorial is done (at once in levels that do not teach it).
+    The turning tutorial now speaks in the tale's voice (the mountain never shows itself whole...).
   - **Next: I.2 "The Invisible Palace"**: the user plays it and says what to change (setting,
     props); then I.3, I.4, then Act II (II.3's brief below still stands when its turn comes).
 

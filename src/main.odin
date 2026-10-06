@@ -615,6 +615,7 @@ play_input :: proc(app: ^App) {
 draw_screens :: proc(app: ^App) {
 	g := &app.game
 	u := &app.ui
+	u.toast_visible = app.toast_count > 0
 	switch app.screen {
 	case .Title:
 		act := ui.title_menu(u)

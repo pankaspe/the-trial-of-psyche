@@ -99,6 +99,7 @@ Hud :: struct {
 	title:    Fade_Text,
 	voice:    Fade_Text,
 	hint:     Fade_Text,
+	badge_t:  f32, // time the keys badge (Esc, R) has been on screen
 	queued:   sa.Small_Array(MAX_QUEUED_VOICES, Key), // lines waiting for the current one
 }
 
@@ -1164,8 +1165,30 @@ fade_alpha :: proc(f: Fade_Text) -> f32 {
 	return a
 }
 
+// The badge of the keys (Esc, R) comes once the basic tutorial is done:
+// in a level that teaches turning, after the first turn; elsewhere at once.
+keys_badge_alpha :: proc(g: ^Game) -> f32 {
+	return fx.clamp01(g.hud.badge_t / 1.2)
+}
+
+@(private)
+keys_badge_due :: proc(g: ^Game) -> bool {
+	if g.phase != .Play || !g.hud.visible {
+		return false
+	}
+	for h in g.data.hints {
+		if h.key == .Hint_Turn && !g.learned[.Hint_Turn] {
+			return false
+		}
+	}
+	return true
+}
+
 @(private)
 update_hud :: proc(g: ^Game, dt: f32) {
+	if g.hud.badge_t > 0 || keys_badge_due(g) {
+		g.hud.badge_t += dt
+	}
 	for f in ([]^Fade_Text{&g.hud.title, &g.hud.voice, &g.hud.hint}) {
 		if !f.active {
 			continue

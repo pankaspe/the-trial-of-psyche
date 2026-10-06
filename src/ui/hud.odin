@@ -41,6 +41,9 @@ draw_hud :: proc(u: ^Ui, g: ^game.Game) -> (act: Hud_Action) {
 	if !hud.visible {
 		return
 	}
+	if a := game.keys_badge_alpha(g); a > 0 && !u.toast_visible {
+		keys_badge(u, a)
+	}
 	teaching := hud.hint.active && game.is_tutorial(hud.hint.key) && hud.hint.hide_t < 0
 	if hud.hint.active && game.is_tutorial(hud.hint.key) {
 		draw_tutorial(u, g)
@@ -121,6 +124,32 @@ draw_prologue :: proc(u: ^Ui, g: ^game.Game) {
 	}
 }
 
+// Top left, quiet: the keys for the pause (with the controls) and the restart.
+@(private)
+keys_badge :: proc(u: ^Ui, a: f32) {
+	s := u.scale
+	st := Style{size = 21, color = DIM, shadow = true}
+	kst := Style{size = 18, color = TEXT}
+	x := 36 * s
+	y := 30 * s
+	items := [2]struct {
+		key:   string,
+		label: i18n.Key,
+	}{{"Esc", .Badge_Pause}, {"R", .Badge_Restart}}
+	for it in items {
+		km := measure(u, it.key, kst)
+		cap := rl.Rectangle{x, y, max(km.x + 16 * s, 30 * s), 30 * s}
+		rl.DrawRectangleRounded(cap, 0.3, 6, fade({8, 7, 22, 255}, 0.7 * a))
+		rl.DrawRectangleRoundedLinesEx(cap, 0.3, 6, max(s, 1), fade(DIM, 0.6 * a))
+		text(u, it.key, {cap.x + cap.width * 0.5, cap.y + (cap.height - km.y) * 0.5}, kst, .Center, a * 0.9)
+		x += cap.width + 10 * s
+		label := i18n.tr(it.label)
+		lm := measure(u, label, st)
+		text(u, label, {x, y + (cap.height - lm.y) * 0.5}, st, .Left, a * 0.85)
+		x += lm.x + 30 * s
+	}
+}
+
 // A frame breathing around the controls the tutorial points at.
 @(private)
 point_at :: proc(u: ^Ui, g: ^game.Game, r: rl.Rectangle) {
@@ -153,15 +182,15 @@ draw_tutorial :: proc(u: ^Ui, g: ^game.Game) {
 		return
 	}
 	msg := i18n.tr(f.key)
-	st := Style{size = 30, color = TEXT, shadow = true}
+	st := Style{size = 28, color = TEXT, shadow = true}
 	lst := Style{size = 19, color = GOLD, shadow = true}
-	width := 540 * s
+	width := 620 * s
 	text_w := width - 150 * s
 	lines := wrap(u, msg, st, text_w)
 	step := st.size * s * 1.25
 	label_h := measure(u, "A", lst).y
 	height := max(f32(len(lines)) * step + label_h + 54 * s, 128 * s)
-	card := rl.Rectangle{40 * s + slide, u.height * 0.36 - height * 0.5, width, height}
+	card := rl.Rectangle{40 * s + slide, u.height * 0.3 - height * 0.5, width, height}
 
 	breath := 0.75 + 0.25 * math.sin(g.time * 3)
 	rl.DrawRectangleRounded(card, 0.14, 10, fade({8, 7, 22, 255}, 0.82 * a))
