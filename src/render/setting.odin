@@ -27,6 +27,7 @@ Look :: struct {
 	cloud_crest:   Vec3, // light on the crests (sunlight)
 	mist:          Vec3, // the foot of the level sinks into it
 	daylight:      f32, // stones: 0 moonlit palette .. 1 the low sun
+	candles:       bool, // the candles on the walls are lit
 	mote:          Color4,
 }
 
@@ -71,6 +72,28 @@ LOOKS := [level.Setting]Look {
 		mist = {0.42, 0.28, 0.38},
 		daylight = 1,
 		mote = {1.0, 0.8, 0.5, 0.45},
+	},
+	// the palace of voices at twilight: the sun is gone, its last light low on
+	// the clouds, the first stars, the moon rising; the candles are lit
+	.Dusk = {
+		sky_top = {0.035, 0.045, 0.15},
+		sky_mid = {0.17, 0.13, 0.30},
+		sky_horizon = {0.58, 0.33, 0.34},
+		orb_pos = {0.80, 0.3},
+		orb_radius = 0.03,
+		orb_color = {0.78, 0.72, 0.74},
+		halo_color = {0.14, 0.11, 0.2},
+		halo_width = 8,
+		stars = 0.5,
+		haze = {0.30, 0.19, 0.30},
+		islands = true,
+		cloud_back = {0.30, 0.21, 0.36},
+		cloud_front = {0.40, 0.28, 0.42},
+		cloud_crest = {0.40, 0.20, 0.10},
+		mist = {0.20, 0.14, 0.25},
+		daylight = 0.4,
+		candles = true,
+		mote = {1.0, 0.82, 0.55, 0.4},
 	},
 }
 

@@ -253,7 +253,7 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 		append(&s.pieces, Piece{cell = prop.cell, mesh = mesh, material = PROP_MATERIAL[prop.kind], rise_index = -1, block = -1, handle = -1, part = prop.part})
 		#partial switch prop.kind {
 		case .Sconce:
-			// the unlit candle, in wax
+			// the candle, in wax
 			append(&s.pieces, Piece{cell = prop.cell, mesh = oriented_mesh(.Candle_PX, prop.dir), material = .Psyche, rise_index = -1, block = -1, handle = -1, part = prop.part})
 		case .Pine:
 			append(&s.pieces, Piece{cell = prop.cell, mesh = oriented_mesh(.Trunk_PX, prop.dir), material = .Wood, rise_index = -1, block = -1, handle = -1, part = prop.part})
@@ -1160,6 +1160,28 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 		col := p.color
 		col.a *= fx.mote_alpha(p)
 		glow(v, p.pos, p.size * 0.5, col)
+	}
+	// the candles on the walls, where the setting has them lit
+	if look(g.data.setting).candles {
+		for prop, i in g.data.props {
+			if prop.kind != .Sconce || prop.part > 0 {
+				continue
+			}
+			fp := Vec3{f32(prop.cell.x), f32(prop.cell.y), f32(prop.cell.z)} + candle_flame(prop.dir)
+			a := f32(1)
+			if g.phase == .Arrival {
+				// the flame comes once its wall has risen into place
+				c := prop.cell - g.data.start
+				k := game.arrival_rise(g, math.sqrt(f32(c.x * c.x + c.y * c.y)) + f32(abs(c.z)) * 0.3, 1)
+				fp.z -= 9 * (1 - k)
+				a = k * k
+			}
+			fl := (0.85 + 0.1 * math.sin(t * 13 + f32(i) * 1.7) + 0.05 * math.sin(t * 31 + f32(i))) * a
+			glow(v, fp, 64, {1.0, 0.6, 0.26, 0.26 * fl})
+			glow(v, fp, 18, {1.0, 0.7, 0.35, 0.35 * fl})
+			glow(v, fp + {0, 0, 0.02}, 6, {1.0, 0.78, 0.42, fl}, 1.8)
+			glow(v, fp + {0, 0, 0.02}, 2.6, {1.0, 0.96, 0.85, fl}, 1.6)
+		}
 	}
 	// the braziers Psyche has lit
 	for c, i in g.data.rests {

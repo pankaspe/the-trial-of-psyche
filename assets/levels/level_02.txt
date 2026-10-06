@@ -1,57 +1,62 @@
 # The Trial of Psyche - level I.2: "The Invisible Palace"
-# The first illusions. Psyche wakes on the lawn where Zephyr laid her; the
+# The first illusions. Psyche wakes at twilight on the lawn where Zephyr laid
+# her; the candles of the palace are already lit by no visible hand. The
 # voices lead her through the fountain court and the baths up to the
-# bedchamber. Each passage is a seam that only one view closes: the first
-# needs no turn, the next one turn, the last the other way round.
+# bedchamber. Each passage is a seam that only one view closes: the lawn
+# joins the court in view 1, the court the baths in view 2, the baths the
+# bedchamber back in the first view.
 # Format: see level_04.txt.
 size 10
+setting dusk
 
 # the lawn (h1)
-column 2 4 0 0
-column 3 4 0 0
-column 2 5 0 0
-column 3 5 0 0
-prop cypress 2 5 1
-# the fountain court (h2): joined to the lawn in the first view
-column 4 5 0 1
+column 4 7 0 0
+column 4 6 0 0
+column 5 7 0 0
+column 5 6 0 0
+prop cypress 5 7 1
+# the fountain court (h2): joined to the lawn in view 1
 column 5 5 0 1
-column 4 6 0 1
-column 5 6 0 1
-prop urn 5 6 2
+column 5 4 0 1
+column 6 5 0 1
+column 6 4 0 1
+prop urn 6 4 2
 # an arch where the lawn's seam lands
-prop arch 4 5 2 px
-# the baths (h3): joined to the court from view 1
-column 7 3 0 2
-column 8 3 0 2
-column 7 4 0 2
-column 8 4 0 2
-prop brazier 7 3 3
-# the bedchamber (h4): joined to the baths from view 3
-column 7 5 0 3
-column 7 6 0 3
-column 8 6 0 3
+prop arch 5 5 2 my
+# the baths (h3): joined to the court in view 2
+column 3 2 0 2
+column 3 1 0 2
+column 4 2 0 2
+column 4 1 0 2
+prop brazier 3 2 3
+# the bedchamber (h4): joined to the baths in view 0
+column 5 2 0 3
+column 6 2 0 3
+column 6 1 0 3
 # the bedchamber: a balustrade in front
-prop rail 8 6 4 px
-prop rail 8 6 4 py
-prop rail 7 6 4 py
-# a lone column behind the lawn, joined to the court only from view 2: the fragment
-column 1 3 0 3
+prop rail 6 1 4 my
+prop rail 6 1 4 px
+prop rail 6 2 4 px
+# a lone column beside the lawn, joined to the court only in view 3: the fragment
+column 3 8 0 3
 
-start 2 4 1
-exit 8 6 4
-fragment 1 3 4
+start 4 7 1
+exit 6 1 4
+fragment 3 8 4
 outro outro_i_2
 
 intro intro_i_2
-hint 2 4 1 hint_illusion
+hint 4 7 1 hint_illusion
 # the meadow where Zephyr laid her
-lawn 2 4 0
-lawn 3 4 0
-lawn 2 5 0
-lawn 3 5 0
-# small things: vases in the corners, unlit candles on the walls
-prop vase 5 5 2 my
-prop vase 7 4 3 py
-prop sconce 1 3 2 px
-prop sconce 8 4 1 px
-prop sconce 8 6 2 py
+lawn 4 7 0
+lawn 4 6 0
+lawn 5 7 0
+lawn 5 6 0
+# small things: vases in the corners, candles lit on the walls
+prop vase 5 4 2 mx
+prop vase 4 2 3 px
+prop sconce 3 8 2 my
+prop sconce 4 1 1 my
+prop sconce 6 1 2 px
+prop sconce 6 5 1 px
+prop sconce 3 8 2 py

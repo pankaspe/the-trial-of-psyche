@@ -66,6 +66,7 @@ level_I_1_zephyrs_crag :: proc(t: ^testing.T) {
 }
 
 // I.2: three seams, each closed by its own view; the fragment from a fourth.
+// It starts in the view that shows Psyche on the lawn, joined to nothing.
 @(test)
 level_I_2_invisible_palace :: proc(t: ^testing.T) {
 	g: game.Game
@@ -74,34 +75,37 @@ level_I_2_invisible_palace :: proc(t: ^testing.T) {
 		return
 	}
 	testing.expect(t, !g.data.has_lamp, "no lamp in the palace of voices")
-	COURT :: iso.Cell{4, 5, 2}
-	BATHS :: iso.Cell{7, 4, 3}
-	testing.expect(t, palace.is_illusion(&g.palace, g.psyche.cell, COURT), "the first seam, in the first view")
+	COURT :: iso.Cell{5, 5, 2}
+	BATHS :: iso.Cell{4, 2, 3}
+	testing.expect(t, !can_reach(&g, COURT), "the first view joins the lawn to nothing")
 	run(&g, game.start_cues_time(&g))
 	testing.expect(t, g.hud.hint.key == .Hint_Illusion && game.fade_alpha(g.hud.hint) > 0, "after the intro: the lesson of the illusions")
+	game.set_view(&g, 1)
+	testing.expect(t, palace.is_illusion(&g.palace, g.psyche.cell, COURT), "the first seam, one turn away")
 	testing.expect(t, walk(t, &g, COURT), "the lawn leads to the court")
 	testing.expect(t, g.learned[i18n.Key.Hint_Illusion], "crossing a seam ends the lesson")
 	testing.expect(t, !can_reach(&g, BATHS), "the baths are not joined yet")
-	game.set_view(&g, 1)
-	testing.expect(t, walk(t, &g, BATHS), "view 1 joins the court to the baths")
-	testing.expect(t, !can_reach(&g, g.data.exit), "the bedchamber is not joined in view 1")
-	game.set_view(&g, 3)
-	testing.expect(t, walk(t, &g, g.data.exit), "view 3 joins the baths to the bedchamber")
+	game.set_view(&g, 2)
+	testing.expect(t, walk(t, &g, BATHS), "view 2 joins the court to the baths")
+	testing.expect(t, !can_reach(&g, g.data.exit), "the bedchamber is not joined in view 2")
+	game.set_view(&g, 0)
+	testing.expect(t, walk(t, &g, g.data.exit), "the first view joins the baths to the bedchamber")
 	exits(t, &g)
 
-	// the fragment: from the court, in view 2
+	// the fragment: from the court, in view 3
 	h: game.Game
 	defer game.destroy(&h)
 	if !start_level(t, &h, 1) {
 		return
 	}
+	game.set_view(&h, 1)
 	testing.expect(t, walk(t, &h, COURT), "back to the court")
-	for r in ([3]int{0, 1, 3}) {
+	for r in ([3]int{0, 1, 2}) {
 		game.set_view(&h, r)
 		testing.expectf(t, !can_reach(&h, h.data.fragment), "view %d does not join the fragment's column", r)
 	}
-	game.set_view(&h, 2)
-	testing.expect(t, walk(t, &h, h.data.fragment) && h.fragment_taken, "view 2 does")
+	game.set_view(&h, 3)
+	testing.expect(t, walk(t, &h, h.data.fragment) && h.fragment_taken, "view 3 does")
 }
 
 // I.3: hidden stairs. The first flight hides in the first view, the second

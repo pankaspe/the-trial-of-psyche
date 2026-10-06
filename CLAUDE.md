@@ -159,9 +159,11 @@ Full design document (Italian, kept up to date there): https://claude.ai/code/ar
   view (left .075 / right .625 / top .9) re-coloured with the prototype palettes
   (night / warm, per material); procedural masonry courses and marble bevels; lamp
   light, depth cue, mist. Output is not gamma-corrected (matches the prototype's look).
-- Settings per level (`setting night|crag_sunset`, `render/setting.odin` `LOOKS`): sky gradient,
+- Settings per level (`setting night|crag_sunset|dusk`, `render/setting.odin` `LOOKS`): sky gradient,
   orb, stars, layered ranges (`ridges.fs`, panoramas that close over a full turn), clouds,
   mist, and a sunset palette for the stones (`daylight`). I.1 is the crag at sunset (approved).
+  `dusk` (I.2): the palace at twilight, pink clouds, first stars, a pale moon, `daylight` 0.4,
+  and `candles` lit (a flame glow on every `sconce`).
 - Post-processing (`render/post.odin`, `post*.fs`): the world goes to a canvas, then bloom,
   soft scene, light shafts, tilt-shift (focus on Psyche), Kuwahara paint, grade, vignette,
   grain; the UI is drawn after, untouched. Six visual styles (`settings.Look`: off, clean
@@ -323,6 +325,8 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
     card or cutscene. The tour (`--shots --level`) ends with the transition (10a..10d shots).
   - **I.1 polished and approved by the user** ("perfetto"): tutorial card, keys badge, grid on
     grass, stairs, transitions. It is the reference for every level from now on.
+  - I.2 reworked (2026-10-06): the layout turned so the start view shows Psyche on the lawn
+    (seams now in views 1, 2, 0; fragment view 3), setting `dusk`, five lit candles.
   - **Next: I.2 "The Invisible Palace"**: the user plays it and says what to change (setting,
     props); then I.3, I.4, then Act II (II.3's brief below still stands when its turn comes).
 

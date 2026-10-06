@@ -45,11 +45,13 @@ MECHANIC_NAME := [Mechanic]string {
 Setting :: enum u8 {
 	Night, // the palace of voices under the moon (the default)
 	Crag_Sunset, // a mountain crag above a sea of clouds, the sun going down
+	Dusk, // the palace of voices at twilight: the last light, its candles lit
 }
 
 SETTING_NAME := [Setting]string {
 	.Night       = "night",
 	.Crag_Sunset = "crag_sunset",
+	.Dusk        = "dusk",
 }
 
 // How a block behaves (Act II): fixed stone, or one that changes for good.
@@ -104,7 +106,7 @@ Prop_Kind :: enum u8 {
 	Arch,
 	Vase, // small, in one corner of the cell: px (+x,+y), py (-x,+y), mx (-x,-y), my (+x,-y)
 	Reeds, // a clump of reeds in one corner of the cell (as the vase)
-	Sconce, // an unlit candle on the side `dir` of the block at (x,y,z)
+	Sconce, // a candle on the side `dir` of the block at (x,y,z): lit where the setting lights them
 	// the mountain: blocking
 	Pine, // a wind-bent pine
 	Boulder, // a heap of fallen rocks
@@ -397,7 +399,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 			}
 			if !found {
-				return data, fail(line_no, "setting: expected one of night, crag_sunset")
+				return data, fail(line_no, "setting: expected one of night, crag_sunset, dusk")
 			}
 
 		case "water":

@@ -176,7 +176,7 @@ ARCH_PX := [?]Box {
 	{{0.41, 0, 1.32}, {0.59, 1, 1.42}},
 }
 // a candle holder on the +x face of a block, below its top: back plate,
-// arm and cup in bronze; the candle (unlit) is its own piece
+// arm and cup in bronze; the candle is its own piece (lit by the setting: `candle_flame`)
 @(private)
 SCONCE_PX := [?]Box {
 	{{1.0, 0.42, 0.38}, {1.03, 0.58, 0.68}},
@@ -185,6 +185,16 @@ SCONCE_PX := [?]Box {
 }
 @(private)
 CANDLE_PX := [?]Box{{{1.095, 0.465, 0.58}, {1.145, 0.535, 0.8}}}
+// Where a sconce's candle burns, in cell space, on the side d of its block.
+candle_flame :: proc(d: iso.Dir) -> Vec3 {
+	switch d {
+	case .PX: return {1.12, 0.5, 0.86}
+	case .MX: return {-0.12, 0.5, 0.86}
+	case .PY: return {0.5, 1.12, 0.86}
+	case .MY: return {0.5, -0.12, 0.86}
+	}
+	return {}
+}
 // a small vase, turned: it stands in the (+x, +y) corner of the cell
 @(private)
 VASE_PROFILE := [?][2]f32 {
