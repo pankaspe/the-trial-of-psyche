@@ -75,6 +75,9 @@ SHOT_SCRIPT := [?]Shot_Step {
 	{4.0, "02e_act_card", nil},
 	{0.1, "", proc(app: ^App) {dismiss_act_card(app)}},
 	{3.0, "03_view0_dark", nil},
+	{0.1, "", proc(app: ^App) {app.screen = .Pause}},
+	{0.6, "03b_pause", nil},
+	{0.1, "", proc(app: ^App) {app.screen = .Play}},
 	{0.1, "", proc(app: ^App) {game.request_turn(&app.game, -1)}},
 	{0.37, "04_mid_turn", nil},
 	{0.1, "", proc(app: ^App) {game.set_view(&app.game, 0); place(app, {6, 9, 3}); game.walk_to(&app.game, {6, 7, 3})}},
@@ -217,6 +220,7 @@ Shots :: struct {
 	has_post: bool,
 	plan:  bool, // --plan: play the solver's plan of the level, a shot after every decision
 	record: bool, // --record (with --plan): every frame at 30 fps instead, for a video
+	no_ui: bool, // --no-ui: the world only (backdrops for mockups and stills)
 	frame: int,
 	moves: [dynamic]pl.Plan_Step,
 	arena: virtual.Arena,
@@ -235,6 +239,9 @@ shots_from_args :: proc(args: []string) -> (s: Shots, ok: bool) {
 		}
 		if a == "--record" {
 			s.record = true
+		}
+		if a == "--no-ui" {
+			s.no_ui = true
 		}
 	}
 	for a, i in args {

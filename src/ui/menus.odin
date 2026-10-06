@@ -4,7 +4,6 @@ package ui
 
 import "core:fmt"
 import "core:math"
-import "core:strings"
 import rl "vendor:raylib"
 
 import "../audio"
@@ -38,7 +37,14 @@ Choice :: struct {
 
 @(private)
 shade :: proc(u: ^Ui, alpha: f32) {
-	rl.DrawRectangleRec({0, 0, u.width, u.height}, fade({3, 3, 10, 255}, alpha))
+	rl.DrawRectangleRec({0, 0, u.width, u.height}, fade({8, 4, 3, 255}, alpha))
+}
+
+// The lamp's side of the screen: the left half warmed and darkened, for the
+// title and the pause menu.
+@(private)
+lamp_side :: proc(u: ^Ui, alpha: f32) {
+	rl.DrawRectangleGradientH(0, 0, i32(u.width * 0.55), i32(u.height), fade({26, 12, 10, 255}, 0.74 * alpha), {26, 12, 10, 0})
 }
 
 // "I.4", or "Epilogue" for the last level.
@@ -52,97 +58,105 @@ level_name :: proc(index: int) -> string {
 	return fmt.tprintf("%s · %s", level_label(index), i18n.tr(content.LEVELS[index].title))
 }
 
-// A small diamond: the mark of a fragment (filled when found).
-diamond :: proc(u: ^Ui, c: Vec2, radius: f32, col: rl.Color, filled: bool) {
-	pts := [4]Vec2{c + {0, -radius}, c + {radius * 0.7, 0}, c + {0, radius}, c + {-radius * 0.7, 0}}
-	if filled {
-		tri(pts[0], pts[1], pts[2], col)
-		tri(pts[0], pts[2], pts[3], col)
-		return
+// The title in two lines, broken at the space nearest its middle.
+@(private)
+split_title :: proc(t: string) -> (string, string) {
+	best := -1
+	for c, i in t {
+		if c == ' ' && (best < 0 || abs(i - len(t) / 2) < abs(best - len(t) / 2)) {
+			best = i
+		}
 	}
-	for i in 0 ..< 4 {
-		rl.DrawLineEx(pts[i], pts[(i + 1) % 4], max(1.5 * u.scale, 1), col)
+	if best < 0 {
+		return t, ""
 	}
+	return t[:best], t[best + 1:]
 }
 
-// Title screen over the sleeping palace. `alpha` and `lift` animate its exit.
+// Title screen over the sleeping palace, like the cover of a book: on the
+// lamp's side, the source, the title, an ornament and the menu; the oracle's
+// words in the corner. `alpha` and `lift` animate its exit.
 title_menu :: proc(u: ^Ui, alpha: f32 = 1, lift: f32 = 0) -> (act: Menu_Action) {
 	s := u.scale
-	shade(u, 0.55 * alpha)
-	cx := u.width * 0.5
-	y := u.height * 0.5 - 330 * s - lift * s
-	text(u, i18n.tr(.Title), {cx, y}, {size = 104, color = {255, 230, 179, 255}, shadow = true}, .Center, alpha)
-	y += 140 * s
-	text(u, i18n.tr(.Subtitle), {cx, y}, {size = 30, color = DIM, shadow = true}, .Center, alpha)
-	y += 100 * s
-	if button(u, i18n.tr(.Play), {cx, y}, 38, alpha) {
+	lamp_side(u, alpha)
+	x := 144 * s
+	y := u.height * 0.5 - 315 * s - lift * s
+	text(u, caps(i18n.tr(.Footer)), {x, y}, {size = 22, color = GOLD, face = .Semi, track = 0.14, shadow = true}, .Left, alpha)
+	y += 36 * s
+	tst := Style{size = 132, color = TITLE, face = .Display, glow = true, shadow = true}
+	first, second := split_title(i18n.tr(.Title))
+	text(u, first, {x - 4 * s, y}, tst, .Left, alpha)
+	y += 126 * s
+	text(u, second, {x - 4 * s, y}, tst, .Left, alpha)
+	y += 172 * s
+	ornament(u, {x + 100 * s, y}, 100 * s, alpha)
+	y += 62 * s
+	if menu_item(u, i18n.tr(.Play), {x, y}, 38, true, alpha) {
 		act = .Play
 	}
-	y += 68 * s
+	y += 62 * s
 	items := [?]Choice{{.Levels, .Levels}, {.Book, .Book}, {.Settings, .Settings}, {.Quit, .Quit}}
 	for it in items {
-		if button(u, i18n.tr(it.key), {cx, y}, 26, alpha) {
+		if menu_item(u, i18n.tr(it.key), {x, y}, 36, false, alpha) {
 			act = it.act
 		}
-		y += 50 * s
+		y += 58 * s
 	}
-	y += 40 * s
-	paragraph(u, i18n.tr(.Quote), {cx, y}, {size = 24, color = {191, 184, 230, 217}, italic = true, shadow = true}, 1400 * s, alpha)
-	text(u, i18n.tr(.Footer), {cx, u.height - 48 * s}, {size = 18, color = FAINT, shadow = true}, .Center, alpha)
+	qst := Style{size = 28, color = {250, 232, 205, 220}, face = .Italic, shadow = true}
+	quote := i18n.tr(.Quote)
+	qh := block_height(u, quote, qst, 900 * s, 1.35)
+	paragraph(u, quote, {u.width - 84 * s, u.height - 60 * s - qh}, qst, 900 * s, alpha, 1.35, .Right)
 	return
 }
 
 pause_menu :: proc(u: ^Ui, lamp: bool) -> (act: Menu_Action) {
 	s := u.scale
-	shade(u, 0.6)
-	cx := u.width * 0.5
-	y := u.height * 0.5 - 170 * s
-	text(u, i18n.tr(.Pause_Title), {cx, y}, {size = 64, color = {255, 230, 179, 255}, shadow = true})
-	y += 130 * s
-	if button(u, i18n.tr(.Resume), {cx, y}, 34) {
-		act = .Resume
-	}
-	y += 64 * s
-	if button(u, i18n.tr(.Restart), {cx, y}, 26) {
-		act = .Restart
-	}
-	y += 54 * s
-	if button(u, i18n.tr(.Settings), {cx, y}, 26) {
-		act = .Settings
-	}
-	y += 54 * s
-	if button(u, i18n.tr(.Menu), {cx, y}, 26) {
-		act = .Main_Menu
+	shade(u, 0.5)
+	lamp_side(u, 1)
+	x := 144 * s
+	y := u.height * 0.5 - 230 * s
+	text(u, i18n.tr(.Pause_Title), {x - 3 * s, y}, {size = 104, color = TITLE, face = .Display, glow = true, shadow = true}, .Left)
+	y += 150 * s
+	ornament(u, {x + 100 * s, y}, 100 * s)
+	y += 62 * s
+	items := [?]Choice{{.Resume, .Resume}, {.Restart, .Restart}, {.Settings, .Settings}, {.Menu, .Main_Menu}}
+	for it, i in items {
+		if menu_item(u, i18n.tr(it.key), {x, y}, i == 0 ? 38 : 34, i == 0) {
+			act = it.act
+		}
+		y += 60 * s
 	}
 	// the controls live here, out of the way of the story
-	text(u, i18n.tr(lamp ? .Controls : .Controls_Dark), {cx, u.height - 70 * s}, {size = 22, color = DIM, shadow = true})
+	y += 40 * s
+	paragraph(u, i18n.tr(lamp ? .Controls : .Controls_Dark), {x, y}, {size = 26, color = DIM, face = .Italic, shadow = true}, 900 * s, 1, 1.3, .Left)
 	return
 }
 
-// The card before an act: its number, its title and a few lines of the tale.
-// `alpha` fades it in and out; it reports a click once it has been read for a moment.
+// The card before an act: its number between rules, its title and a few
+// lines of the tale. `alpha` fades it in and out; it reports a click once it
+// has been read for a moment.
 act_card :: proc(u: ^Ui, act: content.Act, t: f32, alpha: f32, unbuilt: bool) -> (clicked: bool) {
 	s := u.scale
 	shade(u, 0.8 * alpha)
 	cx := u.width * 0.5
-	body := Style{size = 32, color = {255, 236, 204, 255}, italic = true, shadow = true}
+	body := Style{size = 36, color = {255, 238, 210, 255}, face = .Italic, shadow = true}
 	msg := i18n.tr(content.ACT_CARD[act])
 	bh := block_height(u, msg, body, 1100 * s, 1.35)
-	y := u.height * 0.5 - (bh + 220 * s) * 0.5
+	y := u.height * 0.5 - (bh + 250 * s) * 0.5
 	a := alpha * clamp(t / 1.5, 0, 1)
-	text(u, strings.to_upper(i18n.tr(content.ACT_LABEL[act]), context.temp_allocator), {cx, y}, {size = 24, color = GOLD, shadow = true}, .Center, a)
-	y += 46 * s
-	text(u, i18n.tr(content.ACT_TITLE[act]), {cx, y}, {size = 72, color = TEXT, shadow = true}, .Center, a)
-	y += 130 * s
+	rule_label(u, caps(i18n.tr(content.ACT_LABEL[act])), {cx, y}, 24, 120 * s, a)
+	y += 48 * s
+	text(u, i18n.tr(content.ACT_TITLE[act]), {cx, y}, {size = 104, color = TITLE, face = .Display, glow = true, shadow = true}, .Center, a)
+	y += 160 * s
 	a2 := alpha * clamp((t - 0.8) / 1.5, 0, 1)
 	y += paragraph(u, msg, {cx, y}, body, 1100 * s, a2, 1.35)
 	if unbuilt {
-		text(u, i18n.tr(.Card_Unbuilt), {cx, y + 40 * s}, {size = 24, color = DIM, shadow = true}, .Center, a2)
+		text(u, i18n.tr(.Card_Unbuilt), {cx, y + 40 * s}, {size = 26, color = DIM, face = .Italic, shadow = true}, .Center, a2)
 	}
 	ready := t > 1.2
 	if ready {
 		blink := 0.55 + 0.35 * math.sin(t * 2.4)
-		text(u, i18n.tr(.Card_Continue), {cx, u.height - 80 * s}, {size = 20, color = FAINT, shadow = true}, .Center, alpha * blink * clamp((t - 2.5) / 1, 0, 1))
+		text(u, i18n.tr(.Card_Continue), {cx, u.height - 80 * s}, {size = 24, color = FAINT, face = .Italic, shadow = true}, .Center, alpha * blink * clamp((t - 2.5) / 1, 0, 1))
 	}
 	return ready && u.pressed
 }
@@ -165,16 +179,16 @@ ending_card :: proc(u: ^Ui, info: Ending_Info, t: f32) -> (act: Menu_Action) {
 	shade(u, (veiled ? 0.08 : 0.25) * clamp(t / 1.5, 0, 1))
 	a := clamp(t / 2, 0, 1)
 	cx := u.width * 0.5
-	body := Style{size = 32, color = TEXT, shadow = true}
+	body := Style{size = 36, color = TEXT, face = .Italic, shadow = true}
 
 	title, msg, note: string
-	title_col := GOLD
+	title_col := TITLE
 	switch info.ending {
 	case .Trust:
 		title, msg, note = i18n.tr(.End_Trust_Title), i18n.tr(.End_Trust), i18n.tr(.End_Trust_Note)
 	case .Oil:
 		title, msg = i18n.tr(.End_Oil_Title), i18n.tr(.End_Oil)
-		title_col = {255, 179, 128, 255}
+		title_col = {255, 196, 150, 255}
 	case .Exit, .None:
 		title, msg = i18n.tr(.End_Exit_Title), level_name(info.level)
 		if info.has_outro {
@@ -186,20 +200,19 @@ ending_card :: proc(u: ^Ui, info: Ending_Info, t: f32) -> (act: Menu_Action) {
 	}
 	extra := f32(card(info.unlocked)) * 40 * s
 	bh := block_height(u, msg, body, 1100 * s, 1.3)
-	y := u.height * 0.5 - (bh + 300 * s + extra) * 0.5
-	text(u, title, {cx, y}, {size = 72, color = title_col, shadow = true}, .Center, a)
-	y += 100 * s
-	rl.DrawRectangleRec({cx - 160 * s, y, 320 * s, max(1.5 * s, 1)}, fade(GOLD, 0.5 * a))
-	diamond(u, {cx, y + 0.5 * s}, 5 * s, fade(GOLD, a), true)
-	y += 26 * s
+	y := u.height * 0.5 - (bh + 320 * s + extra) * 0.5
+	text(u, title, {cx, y}, {size = 96, color = title_col, face = .Display, glow = true, shadow = true}, .Center, a)
+	y += 126 * s
+	ornament(u, {cx, y}, 160 * s, a)
+	y += 30 * s
 	y += paragraph(u, msg, {cx, y}, body, 1100 * s, a, 1.3)
 	y += 40 * s
-	text(u, note, {cx, y}, {size = 22, color = DIM, shadow = true}, .Center, a)
+	text(u, note, {cx, y}, {size = 26, color = DIM, face = .Italic, shadow = true}, .Center, a)
 	y += 50 * s
 	a_ach := clamp((t - 1.5) / 1, 0, 1)
 	for ach in info.unlocked {
 		line := fmt.tprintf("%s · %s", i18n.tr(.Achievement), i18n.tr(progress.ACHIEVEMENT_NAME[ach]))
-		text(u, line, {cx, y}, {size = 24, color = GOLD, shadow = true}, .Center, a_ach)
+		text(u, line, {cx, y}, {size = 26, color = GOLD, face = .Semi, shadow = true}, .Center, a_ach)
 		y += 40 * s
 	}
 	y += 40 * s
@@ -208,7 +221,7 @@ ending_card :: proc(u: ^Ui, info: Ending_Info, t: f32) -> (act: Menu_Action) {
 	gap := 300 * s
 	x := cx - gap * f32(len(buttons) - 1) * 0.5
 	for b in buttons {
-		if button(u, i18n.tr(b.key), {x, y}, 30, a) {
+		if button(u, i18n.tr(b.key), {x, y}, 32, a) {
 			act = b.act
 		}
 		x += gap
@@ -225,9 +238,9 @@ level_select :: proc(u: ^Ui, prog: progress.Progress) -> (chosen: int, back: boo
 	s := u.scale
 	shade(u, 0.84)
 	cx := u.width * 0.5
-	text(u, i18n.tr(.Levels_Title), {cx, u.height * 0.5 - 450 * s}, {size = 56, color = {255, 230, 179, 255}, shadow = true})
+	text(u, i18n.tr(.Levels_Title), {cx, u.height * 0.5 - 470 * s}, {size = 84, color = TITLE, face = .Display, glow = true, shadow = true})
 	count := fmt.tprintf("%s  %d / %d", i18n.tr(.Fragments_Label), progress.fragment_count(prog), content.FRAGMENT_COUNT)
-	text(u, count, {cx, u.height * 0.5 - 375 * s}, {size = 22, color = DIM, shadow = true})
+	rule_label(u, caps(count), {cx, u.height * 0.5 - 372 * s}, 20, 80 * s)
 
 	TILE :: Vec2{150, 92}
 	GAP :: 18
@@ -236,8 +249,8 @@ level_select :: proc(u: ^Ui, prog: progress.Progress) -> (chosen: int, back: boo
 	tiles_x := cx - 280 * s
 	hovered := -1
 	for act in content.Act {
-		text(u, strings.to_upper(i18n.tr(content.ACT_LABEL[act]), context.temp_allocator), {left, row_y + 14 * s}, {size = 20, color = GOLD, shadow = true}, .Left, 0.9)
-		text(u, i18n.tr(content.ACT_TITLE[act]), {left, row_y + 44 * s}, {size = 28, color = TEXT, shadow = true}, .Left)
+		text(u, caps(i18n.tr(content.ACT_LABEL[act])), {left, row_y + 10 * s}, {size = 20, color = GOLD, face = .Semi, track = 0.18, shadow = true}, .Left, 0.9)
+		text(u, i18n.tr(content.ACT_TITLE[act]), {left, row_y + 40 * s}, {size = 34, color = TEXT, shadow = true}, .Left)
 		x := tiles_x
 		for info, i in content.LEVELS {
 			if info.act != act {
@@ -254,19 +267,15 @@ level_select :: proc(u: ^Ui, prog: progress.Progress) -> (chosen: int, back: boo
 				hovered = i
 			}
 			alpha: f32 = open ? 1 : (built ? 0.55 : 0.3)
-			bg := rl.Color{20, 20, 52, 120}
-			if hover && open {
-				bg = {34, 34, 80, 170}
-			}
-			rl.DrawRectangleRec(r, fade(bg, alpha))
-			edge := done ? fade(GOLD, 0.7) : fade(DIM, 0.35 * alpha)
-			rl.DrawRectangleLinesEx(r, max(1.5 * s, 1), hover && open ? GOLD : edge)
+			rl.DrawRectangleRounded(r, 0.14, 8, fade(WARM, (hover && open ? 0.8 : 0.55) * alpha))
+			edge := done ? fade(GOLD, 0.65) : fade(GOLD, 0.22 * alpha)
+			rl.DrawRectangleRoundedLinesEx(r, 0.14, 8, max(1.2 * s, 1), hover && open ? BRIGHT : edge)
 			col := done ? TEXT : DIM
 			if hover && open {
-				col = GOLD
+				col = BRIGHT
 			}
 			label := info.act == .Epilogue ? "E" : info.id
-			text(u, label, {r.x + r.width * 0.5, r.y + 12 * s}, {size = 34, color = col, shadow = true}, .Center, alpha)
+			text(u, label, {r.x + r.width * 0.5, r.y + 10 * s}, {size = 34, color = col, face = .Semi, shadow = true}, .Center, alpha)
 			if built {
 				// a mark per fragment hidden in the level
 				first, count := content.level_fragments(i)
@@ -285,14 +294,14 @@ level_select :: proc(u: ^Ui, prog: progress.Progress) -> (chosen: int, back: boo
 
 	if hovered >= 0 {
 		y := u.height * 0.5 + 345 * s
-		text(u, level_name(hovered), {cx, y}, {size = 32, color = TEXT, shadow = true})
+		text(u, level_name(hovered), {cx, y}, {size = 38, color = TEXT, shadow = true})
 		status := ""
 		if !content.is_built(hovered) {
 			status = i18n.tr(.Level_Unbuilt)
 		} else if !progress.is_unlocked(prog, hovered) {
 			status = i18n.tr(.Level_Locked)
 		}
-		text(u, status, {cx, y + 48 * s}, {size = 22, color = DIM, shadow = true})
+		text(u, status, {cx, y + 50 * s}, {size = 26, color = DIM, face = .Italic, shadow = true})
 	}
 	back = button(u, i18n.tr(.Back), {cx, u.height * 0.5 + 460 * s}, 30)
 	return
@@ -310,15 +319,15 @@ book :: proc(u: ^Ui, prog: progress.Progress, page: ^int) -> (back: bool) {
 	shade(u, 0.86)
 	cx := u.width * 0.5
 	top := u.height * 0.5 - 450 * s
-	text(u, i18n.tr(.Book), {cx, top}, {size = 56, color = {255, 230, 179, 255}, shadow = true})
+	text(u, i18n.tr(.Book), {cx, top - 20 * s}, {size = 84, color = TITLE, face = .Display, glow = true, shadow = true})
 	achievements := page^ == BOOK_PAGES - 1
 	sub := achievements ? i18n.tr(.Book_Achievements) : i18n.tr(.Book_Fragments)
-	text(u, sub, {cx, top + 82 * s}, {size = 24, color = GOLD, shadow = true}, .Center, 0.9)
+	rule_label(u, caps(sub), {cx, top + 84 * s}, 20, 80 * s, 0.9)
 	y := top + 160 * s
 
 	if !achievements {
-		cite := Style{size = 20, color = GOLD, shadow = true}
-		body := Style{size = 27, color = TEXT, italic = true, shadow = true}
+		cite := Style{size = 21, color = GOLD, face = .Semi, track = 0.12, shadow = true}
+		body := Style{size = 31, color = TEXT, face = .Italic, shadow = true}
 		first := page^ * FRAGMENTS_PER_PAGE
 		for k in first ..< min(first + FRAGMENTS_PER_PAGE, content.FRAGMENT_COUNT) {
 			i := content.BOOK_ORDER[k]
@@ -328,7 +337,7 @@ book :: proc(u: ^Ui, prog: progress.Progress, page: ^int) -> (back: bool) {
 			if i in prog.fragments {
 				y += paragraph(u, i18n.tr(info.key), {cx, y}, body, 1000 * s, 1, 1.3)
 			} else {
-				text(u, fmt.tprintf("—  %s  —", i18n.tr(.Book_Missing)), {cx, y}, {size = 22, color = FAINT, italic = true, shadow = true})
+				text(u, fmt.tprintf("—  %s  —", i18n.tr(.Book_Missing)), {cx, y}, {size = 26, color = FAINT, face = .Italic, shadow = true})
 				y += 34 * s
 			}
 			y += 34 * s
@@ -340,17 +349,17 @@ book :: proc(u: ^Ui, prog: progress.Progress, page: ^int) -> (back: bool) {
 			name := i18n.tr(secret ? .Book_Hidden : progress.ACHIEVEMENT_NAME[a])
 			desc := i18n.tr(secret ? .Ach_Trust_Secret : progress.ACHIEVEMENT_DESC[a])
 			alpha: f32 = got ? 1 : 0.55
-			nst := Style{size = 28, color = got ? GOLD : DIM, shadow = true}
+			nst := Style{size = 32, color = got ? BRIGHT : DIM, face = .Semi, shadow = true}
 			w := measure(u, name, nst).x
 			text(u, name, {cx, y}, nst, .Center, alpha)
 			diamond(u, {cx - w * 0.5 - 24 * s, y + 18 * s}, 8 * s, fade(GOLD, alpha), got)
-			text(u, desc, {cx, y + 38 * s}, {size = 20, color = DIM, shadow = true}, .Center, alpha)
+			text(u, desc, {cx, y + 40 * s}, {size = 24, color = DIM, face = .Italic, shadow = true}, .Center, alpha)
 			y += 82 * s
 		}
 	}
 
 	ny := u.height * 0.5 + 370 * s
-	text(u, fmt.tprintf("%d / %d", page^ + 1, BOOK_PAGES), {cx, ny}, {size = 22, color = DIM, shadow = true})
+	text(u, fmt.tprintf("%d / %d", page^ + 1, BOOK_PAGES), {cx, ny}, {size = 24, color = DIM, face = .Semi, shadow = true})
 	if page^ > 0 && button(u, "‹", {cx - 110 * s, ny + 14 * s}, 40) {
 		page^ -= 1
 	}
@@ -369,14 +378,15 @@ achievement_toast :: proc(u: ^Ui, a: progress.Achievement, t: f32) {
 	}
 	s := u.scale
 	name := i18n.tr(progress.ACHIEVEMENT_NAME[a])
-	nst := Style{size = 28, color = TEXT, shadow = true}
-	w := max(measure(u, name, nst).x, 220 * s) + 90 * s
-	r := rl.Rectangle{32 * s, 32 * s, w, 92 * s}
-	rl.DrawRectangleRec(r, fade({8, 8, 26, 200}, alpha))
-	rl.DrawRectangleRec({r.x, r.y + r.height - max(s, 1), r.width, max(2 * s, 1)}, fade(GOLD, alpha * 0.6))
-	diamond(u, {r.x + 34 * s, r.y + r.height * 0.5}, 11 * s, fade(GOLD, alpha), true)
-	text(u, i18n.tr(.Achievement), {r.x + 64 * s, r.y + 14 * s}, {size = 19, color = GOLD, shadow = true}, .Left, alpha)
-	text(u, name, {r.x + 64 * s, r.y + 40 * s}, nst, .Left, alpha)
+	nst := Style{size = 32, color = TEXT, face = .Semi}
+	w := max(measure(u, name, nst).x, 220 * s) + 96 * s
+	r := rl.Rectangle{32 * s, 32 * s, w, 96 * s}
+	warm_card(u, r, alpha, 0.2, 0.45)
+	c := Vec2{r.x + 36 * s, r.y + r.height * 0.5}
+	glow_dot(c, 9 * s, {255, 176, 77, 255}, alpha)
+	diamond(u, c, 11 * s, fade(BRIGHT, alpha), true)
+	text(u, caps(i18n.tr(.Achievement)), {r.x + 68 * s, r.y + 16 * s}, {size = 18, color = GOLD, face = .Semi, track = 0.16}, .Left, alpha)
+	text(u, name, {r.x + 68 * s, r.y + 42 * s}, nst, .Left, alpha)
 }
 
 TOAST_TIME :: 5.0
@@ -434,21 +444,21 @@ LOOK_DESC := [settings.Look]i18n.Key {
 settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, native: [2]i32) -> (changes: Setting_Changes, back: bool) {
 	s := u.scale
 	tab := &u.settings_tab
-	// a sheet on the left; the game stays in view on the right (clear on the Graphics tab)
-	sheet := 880 * s
-	rl.DrawRectangleRec({sheet, 0, u.width - sheet, u.height}, fade({3, 3, 10, 255}, tab^ == .Graphics ? 0 : 0.35))
-	rl.DrawRectangleRec({0, 0, sheet, u.height}, {6, 6, 18, 225})
-	rl.DrawRectangleGradientH(i32(sheet), 0, i32(140 * s), i32(u.height), {6, 6, 18, 225}, {6, 6, 18, 0})
-	left := 90 * s
-	right := sheet - 50 * s
-	text(u, i18n.tr(.Set_Title), {left, 70 * s}, {size = 56, color = {255, 230, 179, 255}, shadow = true}, .Left)
+	// a sheet of dark glass on the left; the game stays in view on the right
+	// (clear on the Graphics tab, so the visual style can be judged)
+	sheet := 705 * s
+	rl.DrawRectangleRec({sheet, 0, u.width - sheet, u.height}, fade({3, 3, 10, 255}, tab^ == .Graphics ? 0 : 0.3))
+	glass_panel(u, {0, 0, sheet, u.height})
+	left := 84 * s
+	right := sheet - 72 * s
+	text(u, i18n.tr(.Set_Title), {left, 76 * s}, {size = 80, color = TITLE, face = .Display, shadow = true}, .Left)
 
 	// the tabs
-	ty := 170 * s
+	ty := 196 * s
 	x := left
 	for t in Settings_Tab {
 		label := i18n.tr(TAB_KEY[t])
-		st := Style{size = 30, color = t == tab^ ? GOLD : DIM, shadow = true}
+		st := Style{size = 30, color = t == tab^ ? BRIGHT : fade(TEXT, 0.6)}
 		m := measure(u, label, st)
 		r := rl.Rectangle{x - 12 * s, ty - 6 * s, m.x + 24 * s, m.y + 12 * s}
 		add_hot(u, r)
@@ -458,21 +468,25 @@ settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, na
 		}
 		text(u, label, {x, ty}, st, .Left)
 		if t == tab^ {
-			rl.DrawRectangleRec({x, ty + m.y + 4 * s, m.x, max(2 * s, 1)}, GOLD)
+			rl.DrawRectangleRec({x, ty + 50 * s, m.x, max(3 * s, 1)}, BRIGHT)
 		}
 		if hover && u.pressed && t != tab^ {
 			audio.play(.Tap, -10)
 			tab^ = t
 		}
-		x += m.x + 56 * s
+		x += m.x + 42 * s
 	}
-	rl.DrawRectangleRec({left, ty + 62 * s, right - left, max(s, 1)}, {255, 209, 128, 40})
+	hairline(u, left, ty + 52 * s, right - left, {255, 255, 255, 30})
 
 	y := ty + 92 * s
-	row := 46 * s
+	row := 72 * s
+	// a hairline under each row
+	line :: proc(u: ^Ui, left, right, y: f32) {
+		hairline(u, left, y + 50 * u.scale, right - left)
+	}
 	section :: proc(u: ^Ui, key: i18n.Key, left: f32, y: ^f32) {
-		text(u, i18n.tr(key), {left, y^}, {size = 22, color = GOLD, shadow = true}, .Left, 0.85)
-		y^ += 38 * u.scale
+		text(u, caps(i18n.tr(key)), {left, y^}, {size = 19, color = GOLD, face = .Semi, track = 0.16}, .Left, 0.9)
+		y^ += 40 * u.scale
 	}
 	on_off :: proc(v: bool) -> string {
 		return i18n.tr(v ? .Set_On : .Set_Off)
@@ -485,6 +499,7 @@ settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, na
 			cfg.language = i18n.Language((int(cfg.language) + step + n) % n)
 			changes += {.Language}
 		}
+		line(u, left, right, y)
 		y += row
 		if step := option_row(u, i18n.tr(.Set_Debug), on_off(cfg.debug), y, left, right); step != 0 {
 			cfg.debug = !cfg.debug
@@ -498,21 +513,24 @@ settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, na
 			cfg.look = settings.Look((int(cfg.look) + step + n) % n)
 			changes += {.Look}
 		}
+		line(u, left, right, y)
 		y += row
 		if cfg.look != .Off {
 			if slider(u, i18n.tr(.Set_Look_Amount), &cfg.look_amount, y, left, right) {
 				changes += {.Look}
 			}
 		}
+		line(u, left, right, y)
 		y += row
-		text(u, i18n.tr(LOOK_DESC[cfg.look]), {left, y - 4 * s}, {size = 22, color = DIM, italic = true, shadow = true}, .Left)
-		y += row + 10 * s
+		y += paragraph(u, i18n.tr(LOOK_DESC[cfg.look]), {left, y - 6 * s}, {size = 26, color = DIM, face = .Italic}, right - left, 1, 1.2, .Left)
+		y += 36 * s
 
 		section(u, .Set_Screen, left, &y)
 		if step := option_row(u, i18n.tr(.Set_Display), i18n.tr(cfg.fullscreen ? .Set_Fullscreen : .Set_Windowed), y, left, right); step != 0 {
 			cfg.fullscreen = !cfg.fullscreen
 			changes += {.Fullscreen}
 		}
+		line(u, left, right, y)
 		y += row
 		// fullscreen always uses the monitor's own resolution
 		res_label := cfg.fullscreen ? fmt.tprintf("%d × %d  (%s)", native.x, native.y, i18n.tr(.Set_Native)) : fmt.tprintf("%d × %d", cfg.resolution.x, cfg.resolution.y)
@@ -526,11 +544,13 @@ settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, na
 			cfg.resolution = resolutions[(current + step + len(resolutions)) % len(resolutions)]
 			changes += {.Resolution}
 		}
+		line(u, left, right, y)
 		y += row
 		if step := option_row(u, i18n.tr(.Set_Vsync), on_off(cfg.vsync), y, left, right); step != 0 {
 			cfg.vsync = !cfg.vsync
 			changes += {.Vsync}
 		}
+		line(u, left, right, y)
 		y += row
 		fps_label := cfg.fps_limit == 0 ? i18n.tr(.Set_Unlimited) : fmt.tprintf("%d", cfg.fps_limit)
 		if step := option_row(u, i18n.tr(.Set_Fps), fps_label, y, left, right); step != 0 {
@@ -544,6 +564,7 @@ settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, na
 			cfg.fps_limit = limits[(current + step + len(limits)) % len(limits)]
 			changes += {.Fps}
 		}
+		line(u, left, right, y)
 		y += row
 		msaa_label := fmt.tprintf("%s  %s", on_off(cfg.msaa), i18n.tr(.Set_Restart_Note))
 		if step := option_row(u, i18n.tr(.Set_Msaa), msaa_label, y, left, right); step != 0 {
@@ -555,17 +576,41 @@ settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, na
 		if slider(u, i18n.tr(.Set_Master), &cfg.master, y, left, right) {
 			changes += {.Volumes}
 		}
+		line(u, left, right, y)
 		y += row
 		if slider(u, i18n.tr(.Set_Music), &cfg.music, y, left, right) {
 			changes += {.Volumes}
 		}
+		line(u, left, right, y)
 		y += row
 		if slider(u, i18n.tr(.Set_Sfx), &cfg.sfx, y, left, right) {
 			changes += {.Volumes}
 		}
 	}
-	back = button(u, i18n.tr(.Back), {left + measure(u, i18n.tr(.Back), {size = 30}).x * 0.5, u.height - 90 * s}, 30)
+	back = back_key(u, {left, u.height - 100 * s})
 	return
+}
+
+// "[Esc] Back" at the foot of a panel; true when clicked.
+@(private)
+back_key :: proc(u: ^Ui, pos: Vec2) -> bool {
+	s := u.scale
+	label := i18n.tr(.Back)
+	st := Style{size = 30, color = TEXT}
+	m := measure(u, label, st)
+	r := rl.Rectangle{pos.x - 8 * s, pos.y - 8 * s, m.x + 90 * s, 46 * s}
+	add_hot(u, r)
+	hover := rl.CheckCollisionPointRec(u.mouse, r)
+	cw := key_cap(u, "Esc", pos)
+	if hover {
+		st.color = BRIGHT
+	}
+	text(u, label, {pos.x + cw + 14 * s, pos.y + (30 * s - m.y) * 0.5}, st, .Left)
+	if hover && u.pressed {
+		audio.play(.Tap, -10)
+		return true
+	}
+	return false
 }
 
 Debug_Info :: struct {

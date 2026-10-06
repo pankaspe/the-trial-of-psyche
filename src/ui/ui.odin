@@ -1,5 +1,9 @@
 // Immediate-mode UI: fonts, text, buttons, option rows and sliders.
 //
+// The look is "lamplight": titles in Mystery Quest with a warm halo, text in
+// Cormorant Garamond, warm gold and ivory, small diamonds as ornaments; the
+// settings sheet is dark glass over the game (`glass_panel`).
+//
 // Layout is designed for a 1920 x 1080 screen and scaled by `scale`.
 // Widgets record their rectangles every frame; the game asks `over_ui` (with
 // the previous frame's rectangles) before treating a click as a walk order.
@@ -17,27 +21,47 @@ import "../iso"
 
 Vec2 :: iso.Vec2
 
-TEXT :: rl.Color{230, 230, 255, 255}
-DIM :: rl.Color{158, 168, 217, 255}
-GOLD :: rl.Color{255, 209, 128, 255}
-FAINT :: rl.Color{128, 133, 179, 204}
-SHADOW :: rl.Color{0, 0, 13, 204}
+TEXT :: rl.Color{241, 230, 208, 255} // ivory
+DIM :: rl.Color{204, 189, 163, 255} // parchment
+GOLD :: rl.Color{240, 196, 120, 255}
+BRIGHT :: rl.Color{255, 213, 142, 255} // the gold of what is chosen
+TITLE :: rl.Color{251, 235, 200, 255}
+FAINT :: rl.Color{196, 178, 150, 200}
+SHADOW :: rl.Color{8, 3, 0, 204}
+HALO :: rl.Color{240, 160, 70, 255} // the warm glow around titles
+WARM :: rl.Color{38, 20, 12, 255} // the tint of cards and buttons
+NIGHT :: rl.Color{16, 12, 34, 255} // the tint of the glass sheet
 
-// Font atlases are rebuilt for the UI scale (1080p sizes below): text stays
-// crisp from 720p to 4K. The largest text (the title) is drawn from the atlas
-// with little or no upscaling, everything else is mipmapped down.
-FONT_SIZE :: 112
-ITALIC_SIZE :: 56
+// The faces of the UI. Atlases are rebuilt for the UI scale (sizes at 1080p):
+// text stays crisp from 720p to 4K. Titles are drawn from a large atlas with
+// little upscaling, text is mipmapped down.
+Face :: enum u8 {
+	Body, // Cormorant Garamond Medium
+	Semi, // Cormorant Garamond SemiBold: labels in capitals, values, buttons
+	Italic, // Cormorant Garamond Medium Italic: the tale's voice
+	Display, // Mystery Quest: titles
+}
+
+@(private)
+FACE_BASE := [Face]f32 {
+	.Body    = 64,
+	.Semi    = 48,
+	.Italic  = 64,
+	.Display = 128,
+}
+
 MAX_HOT :: 48
 
 Ui :: struct {
-	font:      rl.Font,
-	italic:    rl.Font,
+	fonts:     [Face]rl.Font,
+	font_px:   [Face]i32, // atlas sizes currently loaded
 	scale:     f32, // screen height / 1080
 	width:     f32,
 	height:    f32,
 	settings_tab: Settings_Tab, // the page of the settings panel on screen
 	toast_visible: bool, // an achievement notice is in the top left corner
+	glass:     rl.Texture2D, // the picture frosted (upside down), when a glass panel is up
+	has_glass: bool,
 	mouse:     Vec2,
 	pressed:   bool, // left button went down this frame
 	down:      bool,
@@ -47,8 +71,6 @@ Ui :: struct {
 	prev_count: int,
 	active_slider: rawptr, // the value being dragged
 	runes:     []rune, // every glyph the fonts must hold
-	font_px:   i32, // atlas sizes currently loaded
-	italic_px: i32,
 }
 
 init :: proc(u: ^Ui) {
@@ -71,6 +93,10 @@ init :: proc(u: ^Ui) {
 		for k in i18n.Key {
 			for r in i18n.tr_in(l, k) {
 				add(&runes, &seen, r)
+				// labels are also drawn in capitals
+				for up in strings.to_upper(utf8.runes_to_string({r}, context.temp_allocator), context.temp_allocator) {
+					add(&runes, &seen, up)
+				}
 			}
 		}
 	}
@@ -85,22 +111,24 @@ init :: proc(u: ^Ui) {
 ensure_fonts :: proc(u: ^Ui) {
 	step :: proc(base: f32, scale: f32) -> i32 {
 		px := i32(base * scale + 15) / 16 * 16 // multiples of 16 px: few rebuilds
-		return clamp(px, 32, 256)
+		return clamp(px, 32, 288)
 	}
-	want, want_italic := step(FONT_SIZE, u.scale), step(ITALIC_SIZE, u.scale)
-	if want != u.font_px {
-		if u.font_px != 0 {
-			rl.UnloadFont(u.font)
-		}
-		u.font = load_font(content.FONT_SERIF, want, u.runes)
-		u.font_px = want
+	DATA := [Face][]u8 {
+		.Body    = content.FONT_BODY,
+		.Semi    = content.FONT_BODY_SEMI,
+		.Italic  = content.FONT_BODY_ITALIC,
+		.Display = content.FONT_DISPLAY,
 	}
-	if want_italic != u.italic_px {
-		if u.italic_px != 0 {
-			rl.UnloadFont(u.italic)
+	for face in Face {
+		want := step(FACE_BASE[face], u.scale)
+		if want == u.font_px[face] {
+			continue
 		}
-		u.italic = load_font(content.FONT_SERIF_ITALIC, want_italic, u.runes)
-		u.italic_px = want_italic
+		if u.font_px[face] != 0 {
+			rl.UnloadFont(u.fonts[face])
+		}
+		u.fonts[face] = load_font(DATA[face], want, u.runes)
+		u.font_px[face] = want
 	}
 }
 
@@ -113,8 +141,9 @@ load_font :: proc(data: []u8, size: i32, runes: []rune) -> rl.Font {
 }
 
 shutdown :: proc(u: ^Ui) {
-	rl.UnloadFont(u.font)
-	rl.UnloadFont(u.italic)
+	for f in u.fonts {
+		rl.UnloadFont(f)
+	}
 	delete(u.runes)
 	u^ = {}
 }
@@ -167,24 +196,21 @@ Align :: enum u8 {
 Style :: struct {
 	size:   f32, // in 1080p units
 	color:  rl.Color,
-	italic: bool,
-	shadow: bool,
+	face:   Face,
+	shadow: bool, // a soft dark halo, for legibility over the sky
+	glow:   bool, // a warm halo (titles)
+	track:  f32, // extra letter spacing, in ems (labels in capitals)
 }
 
 @(private)
-font_of :: proc(u: ^Ui, st: Style) -> rl.Font {
-	return st.italic ? u.italic : u.font
-}
-
-@(private)
-spacing :: proc(size: f32) -> f32 {
-	return size * 0.02
+spacing :: proc(size: f32, st: Style) -> f32 {
+	return size * (0.02 + st.track)
 }
 
 measure :: proc(u: ^Ui, text: string, st: Style) -> Vec2 {
 	size := st.size * u.scale
 	cs := strings.clone_to_cstring(text, context.temp_allocator)
-	return rl.MeasureTextEx(font_of(u, st), cs, size, spacing(size))
+	return rl.MeasureTextEx(u.fonts[st.face], cs, size, spacing(size, st))
 }
 
 fade :: proc(c: rl.Color, alpha: f32) -> rl.Color {
@@ -199,25 +225,41 @@ text :: proc(u: ^Ui, s: string, pos: Vec2, st: Style, align := Align.Center, alp
 		return
 	}
 	size := st.size * u.scale
-	font := font_of(u, st)
+	font := u.fonts[st.face]
+	sp := spacing(size, st)
 	cs := strings.clone_to_cstring(s, context.temp_allocator)
-	w := rl.MeasureTextEx(font, cs, size, spacing(size)).x
+	w := rl.MeasureTextEx(font, cs, size, sp).x
 	p := pos
 	switch align {
 	case .Center: p.x -= w * 0.5
 	case .Left:
 	case .Right: p.x -= w
 	}
+	if st.glow {
+		// a lamp's halo: rings of faint copies around the letters
+		for ring in 1 ..= 3 {
+			r := f32(ring) * size * 0.035
+			col := fade(HALO, alpha * 0.045 / f32(ring))
+			for k in 0 ..< 12 {
+				ang := f32(k) * math.TAU / 12 + f32(ring) * 0.26
+				rl.DrawTextEx(font, cs, p + {math.cos(ang), math.sin(ang)} * r, size, sp, col)
+			}
+		}
+	}
 	if st.shadow {
-		// a soft dark halo under the letters, for legibility over the sky
 		o := max(1.5 * u.scale, 1)
 		sh := fade(SHADOW, alpha * 0.35)
 		for d in ([4]Vec2{{-o, 0}, {o, 0}, {0, -o}, {0, o}}) {
-			rl.DrawTextEx(font, cs, p + d + {0, 2 * u.scale}, size, spacing(size), sh)
+			rl.DrawTextEx(font, cs, p + d + {0, 2 * u.scale}, size, sp, sh)
 		}
-		rl.DrawTextEx(font, cs, p + {0, 2 * u.scale}, size, spacing(size), fade(SHADOW, alpha * 0.6))
+		rl.DrawTextEx(font, cs, p + {0, 2 * u.scale}, size, sp, fade(SHADOW, alpha * 0.6))
 	}
-	rl.DrawTextEx(font, cs, p, size, spacing(size), fade(st.color, alpha))
+	rl.DrawTextEx(font, cs, p, size, sp, fade(st.color, alpha))
+}
+
+// A label in spaced capitals ("ATTO I").
+caps :: proc(s: string) -> string {
+	return strings.to_upper(s, context.temp_allocator)
 }
 
 // Split text into lines no wider than max_width (screen px); '\n' forces a break.
@@ -248,12 +290,13 @@ wrap :: proc(u: ^Ui, s: string, st: Style, max_width: f32) -> []string {
 	return lines[:]
 }
 
-// Wrapped, centred text block; returns its height. `pos` is the top centre.
-paragraph :: proc(u: ^Ui, s: string, pos: Vec2, st: Style, max_width: f32, alpha: f32 = 1, line_gap: f32 = 1.25) -> f32 {
+// Wrapped text block; returns its height. `pos` is the top centre (or the
+// top left / top right corner with another alignment).
+paragraph :: proc(u: ^Ui, s: string, pos: Vec2, st: Style, max_width: f32, alpha: f32 = 1, line_gap: f32 = 1.25, align := Align.Center) -> f32 {
 	lines := wrap(u, s, st, max_width)
 	step := st.size * u.scale * line_gap
 	for line, i in lines {
-		text(u, line, pos + {0, f32(i) * step}, st, .Center, alpha)
+		text(u, line, pos + {0, f32(i) * step}, st, align, alpha)
 	}
 	return f32(len(lines)) * step
 }
@@ -262,11 +305,99 @@ block_height :: proc(u: ^Ui, s: string, st: Style, max_width: f32, line_gap: f32
 	return f32(len(wrap(u, s, st, max_width))) * st.size * u.scale * line_gap
 }
 
+// --- ornaments -----------------------------------------------------------------------
+
+// A small diamond (filled or drawn); also the mark of a fragment.
+diamond :: proc(u: ^Ui, c: Vec2, radius: f32, col: rl.Color, filled: bool) {
+	pts := [4]Vec2{c + {0, -radius}, c + {radius * 0.7, 0}, c + {0, radius}, c + {-radius * 0.7, 0}}
+	if filled {
+		tri(pts[0], pts[1], pts[2], col)
+		tri(pts[0], pts[2], pts[3], col)
+		return
+	}
+	for i in 0 ..< 4 {
+		rl.DrawLineEx(pts[i], pts[(i + 1) % 4], max(1.5 * u.scale, 1), col)
+	}
+}
+
+// A lamp's glow around a point (a diamond lit, a bead of oil).
+glow_dot :: proc(c: Vec2, radius: f32, col: rl.Color, alpha: f32) {
+	inner := fade(col, alpha * 0.35)
+	outer := fade(col, 0)
+	rl.DrawCircleGradient(c, radius * 3, inner, outer)
+}
+
+// ── ◆ ──: a rule with a diamond in the middle, centred on `c`.
+ornament :: proc(u: ^Ui, c: Vec2, half: f32, alpha: f32 = 1) {
+	s := u.scale
+	th := max(1.2 * s, 1)
+	gap := 14 * s
+	rl.DrawRectangleRec({c.x - half, c.y - th * 0.5, half - gap, th}, fade(GOLD, 0.6 * alpha))
+	rl.DrawRectangleRec({c.x + gap, c.y - th * 0.5, half - gap, th}, fade(GOLD, 0.6 * alpha))
+	diamond(u, c, 7 * s, fade(GOLD, alpha), true)
+}
+
+// ─── ATTO I ───: a label in spaced capitals between two rules; `pos` is the top centre.
+rule_label :: proc(u: ^Ui, label: string, pos: Vec2, size: f32, line: f32, alpha: f32 = 1) {
+	s := u.scale
+	st := Style{size = size, color = GOLD, face = .Semi, track = 0.18, shadow = true}
+	m := measure(u, label, st)
+	text(u, label, pos, st, .Center, alpha)
+	y := pos.y + m.y * 0.52
+	th := max(1.2 * s, 1)
+	gap := 18 * s
+	rl.DrawRectangleRec({pos.x - m.x * 0.5 - gap - line, y, line, th}, fade(GOLD, 0.55 * alpha))
+	rl.DrawRectangleRec({pos.x + m.x * 0.5 + gap, y, line, th}, fade(GOLD, 0.55 * alpha))
+}
+
+// A key cap ("Esc") with its top left corner at `pos`; returns its width.
+key_cap :: proc(u: ^Ui, key: string, pos: Vec2, alpha: f32 = 1) -> f32 {
+	s := u.scale
+	st := Style{size = 20, color = BRIGHT, face = .Semi}
+	m := measure(u, key, st)
+	r := rl.Rectangle{pos.x, pos.y, max(m.x + 16 * s, 30 * s), 30 * s}
+	rl.DrawRectangleRounded(r, 0.25, 6, fade(WARM, 0.45 * alpha))
+	rl.DrawRectangleRoundedLinesEx(r, 0.25, 6, max(s, 1), fade(GOLD, 0.55 * alpha))
+	text(u, key, {r.x + r.width * 0.5, r.y + (r.height - m.y) * 0.5}, st, .Center, alpha)
+	return r.width
+}
+
+// Warm glass: a tinted, rounded card with a hairline of gold.
+warm_card :: proc(u: ^Ui, r: rl.Rectangle, alpha: f32, round: f32 = 0.18, edge: f32 = 0.3) {
+	rl.DrawRectangleRounded(r, round, 12, fade(WARM, 0.72 * alpha))
+	rl.DrawRectangleRoundedLinesEx(r, round, 12, max(u.scale, 1), fade(GOLD, edge * alpha))
+}
+
+// Dark glass: the picture under `r` frosted, darkened and tinted night blue,
+// with a hairline on its right edge and a soft shadow beyond it.
+glass_panel :: proc(u: ^Ui, r: rl.Rectangle) {
+	s := u.scale
+	if u.has_glass {
+		tw, th := f32(u.glass.width), f32(u.glass.height)
+		kx, ky := tw / u.width, th / u.height
+		src := rl.Rectangle{r.x * kx, (u.height - r.y - r.height) * ky, r.width * kx, -r.height * ky}
+		rl.DrawTexturePro(u.glass, src, r, {}, 0, rl.WHITE)
+		rl.DrawRectangleRec(r, fade(NIGHT, 0.52))
+	} else {
+		rl.DrawRectangleRec(r, fade(NIGHT, 0.9))
+	}
+	// the light catching the glass at the top, the edge, the shadow it casts
+	rl.DrawRectangleGradientV(i32(r.x), i32(r.y), i32(r.width), i32(220 * s), {255, 255, 255, 10}, {255, 255, 255, 0})
+	right := r.x + r.width
+	rl.DrawRectangleRec({right - max(s, 1), r.y, max(s, 1), r.height}, {255, 255, 255, 34})
+	rl.DrawRectangleGradientH(i32(right), i32(r.y), i32(70 * s), i32(r.height), {0, 0, 0, 90}, {0, 0, 0, 0})
+}
+
+// A hairline across a panel.
+hairline :: proc(u: ^Ui, x, y, w: f32, col: rl.Color = {255, 255, 255, 20}) {
+	rl.DrawRectangleRec({x, y, w, max(u.scale, 1)}, col)
+}
+
 // --- widgets -------------------------------------------------------------------------
 
 // A text button centred on `center`; returns true when clicked.
 button :: proc(u: ^Ui, label: string, center: Vec2, size: f32, alpha: f32 = 1, enabled := true) -> bool {
-	st := Style{size = size, color = DIM, shadow = true}
+	st := Style{size = size, color = TEXT, face = .Semi, shadow = true}
 	m := measure(u, label, st)
 	pad := Vec2{22, 6} * u.scale
 	r := rl.Rectangle{center.x - m.x * 0.5 - pad.x, center.y - m.y * 0.5 - pad.y, m.x + pad.x * 2, m.y + pad.y * 2}
@@ -275,9 +406,9 @@ button :: proc(u: ^Ui, label: string, center: Vec2, size: f32, alpha: f32 = 1, e
 		add_hot(u, r)
 	}
 	if hover {
-		rl.DrawRectangleRec(r, fade({26, 26, 64, 90}, alpha))
-		rl.DrawRectangleRec({r.x, r.y + r.height - max(u.scale, 1), r.width, max(u.scale, 1)}, fade({255, 209, 128, 128}, alpha))
-		st.color = u.down ? rl.Color{255, 242, 204, 255} : GOLD
+		st.color = u.down ? TITLE : BRIGHT
+		diamond(u, {r.x + 4 * u.scale, center.y}, 5 * u.scale, fade(BRIGHT, alpha), true)
+		diamond(u, {r.x + r.width - 4 * u.scale, center.y}, 5 * u.scale, fade(BRIGHT, alpha), true)
 	}
 	if !enabled {
 		st.color = fade(DIM, 0.4)
@@ -290,32 +421,64 @@ button :: proc(u: ^Ui, label: string, center: Vec2, size: f32, alpha: f32 = 1, e
 	return false
 }
 
-// "Label ......  < value >": clicking the value or the arrows steps through
+// An entry of a menu in the lamplight: a diamond, then the label; `pos` is
+// its left end, on the line's middle. The main entry is lit; hovering lights
+// any. Returns true when clicked.
+menu_item :: proc(u: ^Ui, label: string, pos: Vec2, size: f32, main := false, alpha: f32 = 1) -> bool {
+	s := u.scale
+	st := Style{size = size, color = TEXT, face = main ? .Semi : .Body, shadow = true}
+	m := measure(u, label, st)
+	r := rl.Rectangle{pos.x - 12 * s, pos.y - m.y * 0.5 - 6 * s, m.x + 52 * s, m.y + 12 * s}
+	hover := alpha > 0.5 && rl.CheckCollisionPointRec(u.mouse, r)
+	if alpha > 0.5 {
+		add_hot(u, r)
+	}
+	lit := main || hover
+	c := Vec2{pos.x + 6 * s, pos.y}
+	if lit {
+		glow_dot(c, 6 * s, {255, 176, 77, 255}, alpha)
+		diamond(u, c, 7 * s, fade(BRIGHT, alpha), true)
+		st.color = BRIGHT
+	} else {
+		diamond(u, c, 7 * s, fade(GOLD, 0.55 * alpha), false)
+	}
+	text(u, label, {pos.x + 32 * s, pos.y - m.y * 0.5}, st, .Left, alpha)
+	if hover && u.pressed {
+		audio.play(.Tap, -10)
+		return true
+	}
+	return false
+}
+
+ROW_SIZE :: 28
+
+// "Label ......  ‹ value ›": clicking the value or the arrows steps through
 // the options. Returns -1, 0 or +1.
 option_row :: proc(u: ^Ui, label, value: string, y, left, right: f32, enabled := true) -> int {
-	st := Style{size = 26, color = TEXT, shadow = true}
-	text(u, label, {left, y}, st, .Left, enabled ? 1 : 0.45)
-	vst := Style{size = 26, color = GOLD, shadow = true}
+	s := u.scale
+	a: f32 = enabled ? 1 : 0.45
+	text(u, label, {left, y}, {size = ROW_SIZE, color = TEXT}, .Left, a)
+	vst := Style{size = ROW_SIZE - 1, color = BRIGHT, face = .Semi}
 	vw := measure(u, value, vst).x
-	cx := right - 170 * u.scale
-	text(u, value, {cx, y}, vst, .Center, enabled ? 1 : 0.45)
-	h := 26 * u.scale * 1.3
+	cx := right - 150 * s
+	text(u, value, {cx, y}, vst, .Center, a)
+	h := ROW_SIZE * s * 1.3
 	step := 0
 	arrows := [2]struct {
 		label: string,
 		x:     f32,
 		dir:   int,
-	}{{"‹", cx - vw * 0.5 - 40 * u.scale, -1}, {"›", cx + vw * 0.5 + 40 * u.scale, 1}}
-	for a in arrows {
-		r := rl.Rectangle{a.x - 22 * u.scale, y - 4 * u.scale, 44 * u.scale, h}
+	}{{"‹", cx - vw * 0.5 - 34 * s, -1}, {"›", cx + vw * 0.5 + 34 * s, 1}}
+	for ar in arrows {
+		r := rl.Rectangle{ar.x - 22 * s, y - 4 * s, 44 * s, h}
 		add_hot(u, r)
 		hover := enabled && rl.CheckCollisionPointRec(u.mouse, r)
-		text(u, a.label, {a.x, y - 9 * u.scale}, {size = 38, color = hover ? GOLD : DIM, shadow = true}, .Center, enabled ? 1 : 0.3)
+		text(u, ar.label, {ar.x, y - 6 * s}, {size = 34, color = hover ? BRIGHT : fade(GOLD, 0.7), face = .Semi}, .Center, enabled ? 1 : 0.3)
 		if hover && u.pressed {
-			step = a.dir
+			step = ar.dir
 		}
 	}
-	vr := rl.Rectangle{cx - vw * 0.5 - 10 * u.scale, y - 4 * u.scale, vw + 20 * u.scale, h}
+	vr := rl.Rectangle{cx - vw * 0.5 - 10 * s, y - 4 * s, vw + 20 * s, h}
 	add_hot(u, vr)
 	if enabled && u.pressed && rl.CheckCollisionPointRec(u.mouse, vr) {
 		step = 1
@@ -328,12 +491,12 @@ option_row :: proc(u: ^Ui, label, value: string, y, left, right: f32, enabled :=
 
 // A horizontal slider for a 0..1 value; returns true while it changes.
 slider :: proc(u: ^Ui, label: string, value: ^f32, y, left, right: f32) -> bool {
-	st := Style{size = 26, color = TEXT, shadow = true}
-	text(u, label, {left, y}, st, .Left)
-	w := 280 * u.scale
-	cx := right - 170 * u.scale
-	bar := rl.Rectangle{cx - w * 0.5, y + 16 * u.scale, w, 6 * u.scale}
-	hit := rl.Rectangle{bar.x - 10 * u.scale, y - 4 * u.scale, bar.width + 20 * u.scale, 40 * u.scale}
+	s := u.scale
+	text(u, label, {left, y}, {size = ROW_SIZE, color = TEXT}, .Left)
+	w := 250 * s
+	cx := right - 150 * s
+	bar := rl.Rectangle{cx - w * 0.5, y + 19 * s, w, 4 * s}
+	hit := rl.Rectangle{bar.x - 12 * s, y - 4 * s, bar.width + 24 * s, 44 * s}
 	add_hot(u, hit)
 	if u.pressed && rl.CheckCollisionPointRec(u.mouse, hit) {
 		u.active_slider = value
@@ -346,36 +509,36 @@ slider :: proc(u: ^Ui, label: string, value: ^f32, y, left, right: f32) -> bool 
 			changed = true
 		}
 	}
-	rl.DrawRectangleRec(bar, {38, 38, 77, 180})
-	rl.DrawRectangleRec({bar.x, bar.y, bar.width * value^, bar.height}, {255, 179, 77, 230})
-	rl.DrawCircleV({bar.x + bar.width * value^, bar.y + bar.height * 0.5}, 9 * u.scale, GOLD)
+	rl.DrawRectangleRounded(bar, 1, 6, {255, 255, 255, 40})
+	rl.DrawRectangleRounded({bar.x, bar.y, max(bar.width * value^, bar.height), bar.height}, 1, 6, GOLD)
+	knob := Vec2{bar.x + bar.width * value^, bar.y + bar.height * 0.5}
+	glow_dot(knob, 9 * s, GOLD, 1)
+	rl.DrawCircleV(knob, 10 * s, {251, 231, 188, 255})
 	return changed
 }
 
-// A round turn button with a curved arrow (step -1: anticlockwise).
+// A round turn button: warm glass with a curved arrow (step -1: anticlockwise).
 turn_button :: proc(u: ^Ui, center: Vec2, step: int, alpha: f32 = 1) -> bool {
-	radius := 26 * u.scale
-	r := rl.Rectangle{center.x - radius * 1.3, center.y - radius * 1.3, radius * 2.6, radius * 2.6}
+	s := u.scale
+	radius := 40 * s
+	r := rl.Rectangle{center.x - radius, center.y - radius, radius * 2, radius * 2}
 	add_hot(u, r)
 	hover := rl.CheckCollisionPointRec(u.mouse, r)
-	col := fade(hover ? GOLD : DIM, alpha)
-	if hover {
-		rl.DrawCircleV(center, radius * 1.25, fade({26, 26, 64, 90}, alpha))
-	}
-	thick := 3.5 * u.scale
+	rl.DrawCircleV(center, radius, fade(WARM, (hover ? 0.75 : 0.5) * alpha))
+	rl.DrawRing(center, radius - max(s, 1), radius, 0, 360, 48, fade(GOLD, (hover ? 0.7 : 0.35) * alpha))
+	col := fade(hover ? TITLE : BRIGHT, alpha)
+	ar := 17 * s
+	thick := 2.4 * s
 	// an open ring (gap at the top); the head sits at the end the arrow runs
 	// toward: top right for anticlockwise, top left for clockwise
-	rl.DrawRing(center, radius - thick, radius, -60, 240, 32, col)
+	rl.DrawRing(center, ar - thick, ar, -60, 240, 32, col)
 	head: f32 = (step < 0 ? -60 : 240) * math.PI / 180
 	dir: f32 = step < 0 ? -1 : 1
 	normal := Vec2{math.cos(head), math.sin(head)}
-	tip := center + normal * (radius - thick * 0.5)
+	tip := center + normal * (ar - thick * 0.5)
 	tangent := Vec2{-math.sin(head), math.cos(head)} * dir
-	h := 11 * u.scale
-	a := tip + tangent * h
-	b := tip + normal * h * 0.75
-	c := tip - normal * h * 0.75
-	tri(a, b, c, col)
+	h := 8 * s
+	tri(tip + tangent * h, tip + normal * h * 0.75, tip - normal * h * 0.75, col)
 	if hover && u.pressed {
 		audio.play(.Tap, -10)
 		return true

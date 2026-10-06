@@ -22,7 +22,6 @@ LANGUAGE_CODE := [Language]string {
 
 Key :: enum u16 {
 	Title,
-	Subtitle,
 	Play,
 	Levels,
 	Book,
@@ -151,6 +150,7 @@ Key :: enum u16 {
 	// in game
 	Oil,
 	Lamp_Button,
+	Key_Space, // the name of the space bar on a key cap
 	Controls,
 	Controls_Dark,
 
@@ -298,14 +298,13 @@ TABLES := [Language]^[Key]string {
 }
 
 IT := [Key]string {
-	.Title          = "LA PROVA DI PSICHE",
-	.Subtitle       = "Amore e Psiche · un rompicapo sul vedere e sul fidarsi",
+	.Title          = "La prova di Psiche",
 	.Play           = "Entra nel palazzo",
 	.Levels         = "Livelli",
 	.Book           = "Il Libro",
 	.Settings       = "Impostazioni",
 	.Quit           = "Esci",
-	.Footer         = "Da Apuleio, Metamorfosi IV–VI",
+	.Footer         = "Apuleio · Metamorfosi IV–VI",
 	.Quote          = "«Non cercare di vedere il mio volto.»\n— Apuleio, Metamorfosi V",
 	.Lang_Name      = "Italiano",
 
@@ -418,6 +417,7 @@ IT := [Key]string {
 
 	.Oil            = "Olio",
 	.Lamp_Button    = "Lampada",
+	.Key_Space      = "Spazio",
 	.Controls       = "Clic: cammina  ·  Q / E: ruota il palazzo  ·  Spazio / tasto destro: lampada  ·  F: manovella  ·  R: ricomincia  ·  Esc: pausa",
 	.Controls_Dark  = "Clic: cammina  ·  Q / E: ruota il palazzo  ·  R: ricomincia  ·  Esc: pausa",
 
@@ -434,7 +434,7 @@ IT := [Key]string {
 	.Tutorial_Label = "Come si gioca",
 	.Hint_Move      = "Clicca su una casella per muovere Psiche",
 	.Hint_Lamp      = "Un candelabro spento aspetta la tua fiamma: premi Spazio (o il tasto destro) per accendere la lampada e si accenderà. La luce mostra la realtà: qui il portico nasconde una scala",
-	.Hint_Oil       = "La lampada consuma olio finché è accesa (la barra in alto): premi di nuovo Spazio per spegnerla",
+	.Hint_Oil       = "La lampada consuma olio finché è accesa (la linea di luce a destra): premi di nuovo Spazio per spegnerla",
 	.Hint_Illusion  = "Al buio, ciò che sembra unito è unito: cammina dove le pietre sembrano toccarsi",
 	.Hint_Sigil     = "Un altro candelabro spento, sul sigillo: accendi qui la lampada e la luce farà salire il ponte",
 	.Hint_Turn      = "Il monte non si mostra mai tutto da un lato. Premi Q o E per girargli intorno: da un'altra parte le rocce lontane si toccano, e affiorano i frammenti del racconto.",
@@ -515,14 +515,13 @@ IT := [Key]string {
 }
 
 EN := [Key]string {
-	.Title          = "THE TRIAL OF PSYCHE",
-	.Subtitle       = "Cupid and Psyche · a puzzle about seeing and trusting",
+	.Title          = "The Trial of Psyche",
 	.Play           = "Enter the palace",
 	.Levels         = "Levels",
 	.Book           = "The Book",
 	.Settings       = "Settings",
 	.Quit           = "Quit",
-	.Footer         = "After Apuleius, Metamorphoses IV–VI",
+	.Footer         = "Apuleius · Metamorphoses IV–VI",
 	.Quote          = "“Do not seek to see my face.”\n— Apuleius, Metamorphoses V",
 	.Lang_Name      = "English",
 
@@ -635,6 +634,7 @@ EN := [Key]string {
 
 	.Oil            = "Oil",
 	.Lamp_Button    = "Lamp",
+	.Key_Space      = "Space",
 	.Controls       = "Click: walk  ·  Q / E: turn the palace  ·  Space / right click: lamp  ·  F: handle  ·  R: restart  ·  Esc: pause",
 	.Controls_Dark  = "Click: walk  ·  Q / E: turn the palace  ·  R: restart  ·  Esc: pause",
 
@@ -651,7 +651,7 @@ EN := [Key]string {
 	.Tutorial_Label = "How to play",
 	.Hint_Move      = "Click a tile to move Psyche",
 	.Hint_Lamp      = "An unlit candelabrum waits for your flame: press Space (or right click) to light the lamp and it will catch. The light shows what is real: here the portico hides a stair",
-	.Hint_Oil       = "The lamp burns oil while it is lit (the bar at the top): press Space again to put it out",
+	.Hint_Oil       = "The lamp burns oil while it is lit (the line of light on the right): press Space again to put it out",
 	.Hint_Illusion  = "In the dark, what seems joined is joined: walk where the stones seem to touch",
 	.Hint_Sigil     = "Another unlit candelabrum, on the seal: light the lamp here and the light will raise the bridge",
 	.Hint_Turn      = "The mountain never shows itself whole from one side. Press Q or E to walk around it: from elsewhere, distant rocks touch, and fragments of the tale come to light.",

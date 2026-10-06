@@ -188,6 +188,8 @@ Full design document (Italian, kept up to date there): https://claude.ai/code/ar
   breathing through 4 chords, a Karplus-Strong lyre with short pentatonic phrases, rare glass bells,
   a low drone, a stereo FDN hall; no beat. `ACT_KEY` follows the moods' roots. Demo WAVs:
   `tools/sound_board` -> `build/sounds/music_*.wav`.
+- Title screen: mood `Title` (Psyche's theme: written lyre phrases, `Mood.motif`) while the palace
+  sleeps behind the menus (`!game.active`); it crossfades into the act's mood when play begins.
 - `update_sound` (main.odin): music per act (silent while the screen goes black), ambience bed per
   setting (`SETTING_BED`: mountain wind, dusk breeze + crickets, night crickets, deep night), duck
   under cards and menus. Veil: where Psyche carries the lamp, in the dark the music is low-passed;
@@ -263,6 +265,7 @@ Full design document (Italian, kept up to date there): https://claude.ai/code/ar
 ./build/trial-of-psyche-debug --shots DIR   # scripted screenshots (no settings read/written)
 ./build/trial-of-psyche-debug --shots DIR --size 1600x900 --level I.2   # tour of one level
 ./build/trial-of-psyche-debug --shots DIR --level II.3 --plan   # the solver's plan, a shot per decision
+./build/trial-of-psyche-debug --shots DIR --no-ui   # the world only (backdrops for mockups, stills)
 ```
 Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
 
@@ -386,6 +389,20 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   beds per setting, effects rebuilt (recorded footsteps + synthesis), the music veiled in the dark.
   The user's Suno tracks were tried and judged too agitated: the act music is now generative (kept);
   the Suno tracks were then removed. **Next: a restyling the user will explain, then Act II, II.1.**
+
+- **HUD restyle (2026-10-06, chosen by the user on the canvas
+  https://claude.ai/artifact/Ya9pa2yLXkfwybJAycj7AW)**: style 2 "Luce di lampada" (lamplight) for
+  everything, its title screen as drawn (the lamp's side darkened on the left, the source in spaced
+  capitals, the title in two lines, an ornament, menu entries with diamonds, the oracle's words bottom
+  right); the settings are style 1's sheet of **dark glass** at full height on the left
+  (`ui.glass_panel`: `render.post_glass` frosts the soft scene at quarter size; the world goes
+  through the post canvas while the sheet is open, even with the visual style off); the oil gauge is
+  style 4's upright line of light on the right with a bead of flame (`draw_oil`). Acts are named in
+  spaced capitals between two rules, ──── ATTO I ──── (`ui.rule_label`): under the level's title,
+  on act cards, in the prologue. Fonts (OFL, assets/fonts): Mystery Quest for titles (`Face.Display`,
+  with a warm halo `Style.glow`), Cormorant Garamond Medium / SemiBold / Medium Italic for text
+  (`Face.Body/Semi/Italic`); Noto Serif removed. Palette in ui.odin (ivory, parchment, gold, warm
+  tint). `--shots` has a pause shot (03b).
 
 ## Roadmap from now (user, 2026-10-06): level by level
 - Art direction is settled as: settings per level (`render/setting.odin`, add a `Look` per new

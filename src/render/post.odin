@@ -90,6 +90,8 @@ Post :: struct {
 	bloom_b:     rl.RenderTexture2D,
 	soft_a:      rl.RenderTexture2D, // half size
 	soft_b:      rl.RenderTexture2D,
+	glass_a:     rl.RenderTexture2D, // quarter size: the picture frosted, under glass panels
+	glass_b:     rl.RenderTexture2D,
 	bright:      Post_Shader,
 	blur:        Post_Shader,
 	compose:     Post_Shader,
@@ -117,6 +119,8 @@ post_free_targets :: proc(p: ^Post) {
 		rl.UnloadRenderTexture(p.bloom_b)
 		rl.UnloadRenderTexture(p.soft_a)
 		rl.UnloadRenderTexture(p.soft_b)
+		rl.UnloadRenderTexture(p.glass_a)
+		rl.UnloadRenderTexture(p.glass_b)
 		p.loaded = false
 	}
 }
@@ -173,6 +177,8 @@ post_fit :: proc(p: ^Post, w, h: i32) {
 	p.soft_b = target(w / 2, h / 2)
 	p.bloom_a = target(w / 4, h / 4)
 	p.bloom_b = target(w / 4, h / 4)
+	p.glass_a = target(w / 4, h / 4)
+	p.glass_b = target(w / 4, h / 4)
 	p.size = {w, h}
 	p.loaded = true
 }
@@ -235,6 +241,17 @@ post_end :: proc(p: ^Post, k: Post_Params) {
 	pass(p.bright, p.soft_a, p.bloom_a)
 	blur(p, p.bloom_a, p.bloom_b, 1.5)
 	blur(p, p.bloom_a, p.bloom_b, 3)
+}
+
+// The picture frosted for a glass panel (after post_end): the soft scene at
+// quarter size, blurred wide. Drawn upside down, like every render texture.
+post_glass :: proc(p: ^Post) -> rl.Texture2D {
+	pf(p.bright, .Threshold, 0)
+	pv2(p.bright, .Texel, {1 / f32(p.soft_a.texture.width), 1 / f32(p.soft_a.texture.height)})
+	pass(p.bright, p.soft_a, p.glass_a)
+	blur(p, p.glass_a, p.glass_b, 2)
+	blur(p, p.glass_a, p.glass_b, 4)
+	return p.glass_a.texture
 }
 
 // Compose the picture into whatever is being drawn to now (the screen or the

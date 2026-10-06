@@ -246,7 +246,9 @@ update_sound :: proc(app: ^App) {
 	g := &app.game
 	act := content.LEVELS[g.level_index].act
 	going_black := app.black_t >= 0 && app.black_t < BLACK_OUT
-	audio.set_mood(going_black ? .None : ACT_MOOD[act])
+	// the title theme while the palace sleeps behind the menus, the act's music in play
+	mood := g.active ? ACT_MOOD[act] : audio.Mood_Id.Title
+	audio.set_mood(going_black ? .None : mood)
 	audio.set_key(ACT_KEY[act])
 	audio.set_bed(going_black ? .None : SETTING_BED[g.data.setting])
 	duck: f32 = 0
@@ -473,7 +475,10 @@ frame :: proc(app: ^App) {
 	// drawing (widgets also report their clicks here)
 	view := render.scene_view(&app.scene, g, w, h)
 	rl.BeginDrawing()
-	post := app.cfg.look != .Off && app.cfg.look_amount > 0
+	// the settings sheet is glass: the world goes through the canvas to be
+	// frosted under it, even with the visual style off (a neutral look)
+	glass := app.screen == .Settings
+	post := app.cfg.look != .Off && app.cfg.look_amount > 0 || glass
 	look := render.post_params(app.cfg.look, app.cfg.look_amount)
 	if post {
 		render.post_begin(&app.post, w, h)
@@ -485,6 +490,10 @@ frame :: proc(app: ^App) {
 	render.draw_world(&app.renderer, &app.scene, g, view, app.time)
 	if post {
 		render.post_end(&app.post, look)
+		app.ui.has_glass = glass
+		if glass {
+			app.ui.glass = render.post_glass(&app.post)
+		}
 		if app.has_target {
 			rl.BeginTextureMode(app.target)
 		}
@@ -492,7 +501,9 @@ frame :: proc(app: ^App) {
 		render.post_draw(&app.post, look, w, h, render.sun_uv(&app.scene, g, view), render.focus_uv(g, view), app.time)
 	}
 	render.draw_veil(&app.renderer, g, w, h, app.time)
-	draw_screens(app)
+	if !(app.shooting && app.shots.no_ui) {
+		draw_screens(app)
+	}
 	draw_black(app, w, h)
 	if app.cfg.debug {
 		debug(app)

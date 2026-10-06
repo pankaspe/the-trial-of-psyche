@@ -142,8 +142,11 @@ closes_act :: proc(index: int) -> bool {
 	return index == LEVEL_COUNT - 1 || LEVELS[index + 1].act != LEVELS[index].act
 }
 
-FONT_SERIF :: #load("../../assets/fonts/NotoSerif-Regular.ttf")
-FONT_SERIF_ITALIC :: #load("../../assets/fonts/NotoSerif-Italic.ttf")
+// Titles in Mystery Quest, text in Cormorant Garamond (both OFL, assets/fonts).
+FONT_DISPLAY :: #load("../../assets/fonts/MysteryQuest-Regular.ttf")
+FONT_BODY :: #load("../../assets/fonts/CormorantGaramond-Medium.ttf")
+FONT_BODY_SEMI :: #load("../../assets/fonts/CormorantGaramond-SemiBold.ttf")
+FONT_BODY_ITALIC :: #load("../../assets/fonts/CormorantGaramond-MediumItalic.ttf")
 
 SHADER_PALACE_VS :: #load("../../assets/shaders/palace.vs", cstring)
 SHADER_PALACE_FS :: #load("../../assets/shaders/palace.fs", cstring)

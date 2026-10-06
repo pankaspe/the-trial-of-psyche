@@ -14,6 +14,7 @@ import "../fx"
 
 Mood_Id :: enum u8 {
 	None,
+	Title, // the title screen: Psyche's theme on the lyre, tender (A minor)
 	Palace, // Act I: the palace of voices, wonder and quiet (A minor)
 	Abandonment, // Act II: the land without the palace, colder, sparser (G minor)
 	Trials, // Act III: Venus' trials, the helpers busy around her (D minor)
@@ -21,6 +22,12 @@ Mood_Id :: enum u8 {
 }
 
 Chord :: [4]f32 // semitones from the mood's root
+
+// A note of a written phrase: semitones over the lyre's lowest note, and the
+// seconds to the next note.
+Phrase_Note :: struct {
+	semis, wait: f32,
+}
 
 Mood :: struct {
 	root:        f32, // Hz: the pads' root (octave 2)
@@ -36,10 +43,35 @@ Mood :: struct {
 	bell_gap:    [2]f32,
 	bell_level:  f32,
 	bell_octave: f32,
+	motif:       [][]Phrase_Note, // written phrases played in turn (else the lyre wanders)
 }
+
+// Psyche's theme: a question that rises and falls back, and its answer.
+@(private)
+THEME_ASK := []Phrase_Note{{7, 0.55}, {12, 0.55}, {14, 0.55}, {15, 1.1}, {14, 0.55}, {12, 0.55}, {7, 1.6}}
+@(private)
+THEME_ANSWER := []Phrase_Note{{5, 0.55}, {7, 0.55}, {3, 0.8}, {2, 0.55}, {0, 1.8}}
+@(private)
+THEME_HIGH := []Phrase_Note{{19, 0.7}, {17, 0.7}, {15, 0.7}, {14, 1.2}, {12, 2}}
 
 MOODS := [Mood_Id]Mood {
 	.None = {},
+	.Title = {
+		root = 110,
+		chords = {{-4, 3, 7, 12}, {3, 10, 14, 19}, {0, 7, 14, 15}, {-2, 5, 9, 14}}, // Fmaj7 Cadd9 Am9 G6
+		chord_s = {14, 20},
+		scale = {0, 3, 5, 7, 10},
+		pad_level = 0.1,
+		pad_bright = 1700,
+		drone_level = 0.04,
+		lyre_gap = {7, 10},
+		lyre_level = 0.32,
+		lyre_octave = 2,
+		bell_gap = {18, 30},
+		bell_level = 0.05,
+		bell_octave = 8,
+		motif = {THEME_ASK, THEME_ANSWER, THEME_ASK, THEME_HIGH},
+	},
 	.Palace = {
 		root = 110,
 		chords = {{0, 7, 14, 15}, {-4, 3, 7, 12}, {3, 10, 17, 19}, {7, 14, 17, 22}}, // Am9 Fmaj7 Cadd9 Em7
@@ -172,6 +204,9 @@ Generator :: struct {
 	phrase_left: int,
 	next_note:  int,
 	degree:     int,
+	motif_i:    int, // the next written phrase
+	phrase:     []Phrase_Note, // the written phrase playing (nil: wandering)
+	note_i:     int,
 	bells:      [BELL_VOICES]Bell_Voice,
 	next_bell:  int,
 	hall:       Hall,
@@ -216,12 +251,17 @@ set_chord :: proc(g: ^Generator, set, chord: int, target: f32) {
 }
 
 @(private)
-lyre_note :: proc(g: ^Generator) {
-	n := len(g.mood.scale)
-	// a gentle random walk over two octaves of the scale
-	step := [?]int{-2, -1, -1, 1, 1, 2}
-	g.degree = clamp(g.degree + step[int(fx.randf(&g.rng) * len(step)) % len(step)], 0, 2 * n - 1)
-	semis := g.mood.scale[g.degree % n] + 12 * f32(g.degree / n)
+lyre_note :: proc(g: ^Generator, written: Maybe(f32) = nil) {
+	semis: f32
+	if w, ok := written.?; ok {
+		semis = w
+	} else {
+		// a gentle random walk over two octaves of the scale
+		n := len(g.mood.scale)
+		step := [?]int{-2, -1, -1, 1, 1, 2}
+		g.degree = clamp(g.degree + step[int(fx.randf(&g.rng) * len(step)) % len(step)], 0, 2 * n - 1)
+		semis = g.mood.scale[g.degree % n] + 12 * f32(g.degree / n)
+	}
 	freq := g.mood.root * g.mood.lyre_octave * semitones(semis)
 	for &v in g.lyre {
 		if v.life > 0 {
@@ -276,16 +316,32 @@ gen_process :: proc(g: ^Generator, out: []f32) {
 		}
 		g.next_phrase -= 1
 		if g.next_phrase <= 0 {
-			g.phrase_left = 1 + int(fx.randf(&g.rng) * 4)
+			if len(m.motif) > 0 {
+				g.phrase = m.motif[g.motif_i % len(m.motif)]
+				g.motif_i += 1
+				g.note_i = 0
+				g.phrase_left = len(g.phrase)
+			} else {
+				g.phrase = nil
+				g.phrase_left = 1 + int(fx.randf(&g.rng) * 4)
+			}
 			g.next_note = 0
 			g.next_phrase = seconds(g, m.lyre_gap)
 		}
 		if g.phrase_left > 0 {
 			g.next_note -= 1
 			if g.next_note <= 0 {
-				lyre_note(g)
+				if g.phrase != nil {
+					// a written note, played a little freely (rubato)
+					note := g.phrase[g.note_i]
+					lyre_note(g, note.semis)
+					g.note_i += 1
+					g.next_note = int(note.wait * fx.rand_range(&g.rng, 0.92, 1.12) * RATE)
+				} else {
+					lyre_note(g)
+					g.next_note = seconds(g, {0.35, 0.9})
+				}
 				g.phrase_left -= 1
-				g.next_note = seconds(g, {0.35, 0.9})
 			}
 		}
 		g.next_bell -= 1
