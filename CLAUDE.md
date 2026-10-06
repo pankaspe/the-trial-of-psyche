@@ -321,6 +321,8 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
     start). Retry after an exit arrives the same way. At the end of an act (or after a non-exit
     ending) the screen goes to black (`continue_story`, `black_t`) and the next act opens with its
     card or cutscene. The tour (`--shots --level`) ends with the transition (10a..10d shots).
+  - **I.1 polished and approved by the user** ("perfetto"): tutorial card, keys badge, grid on
+    grass, stairs, transitions. It is the reference for every level from now on.
   - **Next: I.2 "The Invisible Palace"**: the user plays it and says what to change (setting,
     props); then I.3, I.4, then Act II (II.3's brief below still stands when its turn comes).
 
