@@ -4,6 +4,7 @@
 package ui
 
 import "core:math"
+import "core:strings"
 import rl "vendor:raylib"
 
 import "../content"
@@ -40,8 +41,20 @@ draw_hud :: proc(u: ^Ui, g: ^game.Game) -> (act: Hud_Action) {
 	if !hud.visible {
 		return
 	}
-	if a := game.fade_alpha(hud.hint); a > 0 {
-		draw_hint(u, g, i18n.tr(hud.hint.key), game.is_tutorial(hud.hint.key), a)
+	teaching := hud.hint.active && game.is_tutorial(hud.hint.key) && hud.hint.hide_t < 0
+	if hud.hint.active && game.is_tutorial(hud.hint.key) {
+		draw_tutorial(u, g)
+	} else if a := game.fade_alpha(hud.hint); a > 0 {
+		draw_hint(u, g, i18n.tr(hud.hint.key), false, a)
+	}
+	// the control a tutorial is about pulses until it is used
+	if teaching {
+		#partial switch hud.hint.key {
+		case .Hint_Turn:
+			point_at(u, g, {38 * s, h - 125 * s, 160 * s, 84 * s})
+		case .Hint_Lamp:
+			point_at(u, g, {w - 230 * s, h - 118 * s, 160 * s, 70 * s})
+		}
 	}
 	if g.data.has_lamp {
 		draw_oil(u, g)
@@ -106,6 +119,127 @@ draw_prologue :: proc(u: ^Ui, g: ^game.Game) {
 		st := Style{size = 26, color = TEXT}
 		text(u, i18n.tr(.Pro_Start), {w * 0.5, bar * 0.5 - measure(u, "A", st).y * 0.5}, st, .Center, blink * clamp(since / 1, 0, 1))
 	}
+}
+
+// A frame breathing around the controls the tutorial points at.
+@(private)
+point_at :: proc(u: ^Ui, g: ^game.Game, r: rl.Rectangle) {
+	k := 0.5 + 0.5 * math.sin(g.time * 4)
+	grow := 4 * u.scale * k
+	box := rl.Rectangle{r.x - grow, r.y - grow, r.width + 2 * grow, r.height + 2 * grow}
+	rl.DrawRectangleRoundedLinesEx(box, 0.6, 12, max(2 * u.scale, 1), fade(GOLD, 0.35 + 0.45 * k))
+}
+
+// A tutorial hint: a card over the game on the left, with a drawn sign of the
+// mechanic. It slides in, stays until Psyche does what it teaches, then shows
+// a tick and slides away. Each is shown only the first time.
+@(private)
+draw_tutorial :: proc(u: ^Ui, g: ^game.Game) {
+	s := u.scale
+	f := g.hud.hint
+	done := f.hide_t >= 0 && g.learned[f.key]
+	a: f32
+	slide: f32
+	if f.hide_t >= 0 {
+		out := clamp((f.hide_t - (done ? 0.3 : 0)) / 0.5, 0, 1)
+		a = 1 - out
+		slide = -out * out * 60 * s
+	} else {
+		in_ := clamp(f.t / 0.6, 0, 1)
+		a = in_
+		slide = -(1 - in_) * (1 - in_) * (1 - in_) * 60 * s
+	}
+	if a <= 0.003 {
+		return
+	}
+	msg := i18n.tr(f.key)
+	st := Style{size = 30, color = TEXT, shadow = true}
+	lst := Style{size = 19, color = GOLD, shadow = true}
+	width := 540 * s
+	text_w := width - 150 * s
+	lines := wrap(u, msg, st, text_w)
+	step := st.size * s * 1.25
+	label_h := measure(u, "A", lst).y
+	height := max(f32(len(lines)) * step + label_h + 54 * s, 128 * s)
+	card := rl.Rectangle{40 * s + slide, u.height * 0.36 - height * 0.5, width, height}
+
+	breath := 0.75 + 0.25 * math.sin(g.time * 3)
+	rl.DrawRectangleRounded(card, 0.14, 10, fade({8, 7, 22, 255}, 0.82 * a))
+	edge := done ? fade({255, 226, 150, 255}, a) : fade(GOLD, a * (0.35 + 0.35 * breath))
+	rl.DrawRectangleRoundedLinesEx(card, 0.14, 10, max(1.5 * s, 1), edge)
+
+	// the sign of the mechanic, in a ring
+	c := Vec2{card.x + 68 * s, card.y + card.height * 0.5}
+	rad := 40 * s
+	rl.DrawCircleV(c, rad, fade({26, 22, 52, 255}, a))
+	rl.DrawRing(c, rad - 2 * s, rad, 0, 360, 48, fade(GOLD, a * (done ? 1 : 0.5 + 0.3 * breath)))
+	if done {
+		tick := fade({255, 226, 150, 255}, a)
+		rl.DrawLineEx(c + Vec2{-15, 1} * s, c + Vec2{-4, 12} * s, 5 * s, tick)
+		rl.DrawLineEx(c + Vec2{-4, 12} * s, c + Vec2{17, -11} * s, 5 * s, tick)
+	} else {
+		tutorial_sign(u, g, f.key, c, fade(GOLD, a))
+	}
+
+	x := card.x + 136 * s
+	y := card.y + (card.height - (label_h + 8 * s + f32(len(lines)) * step)) * 0.5
+	text(u, strings.to_upper(i18n.tr(.Tutorial_Label), context.temp_allocator), {x, y}, lst, .Left, a * 0.9)
+	y += label_h + 8 * s
+	for line, i in lines {
+		text(u, line, {x, y + f32(i) * step}, st, .Left, a)
+	}
+}
+
+// A small drawing of what a tutorial teaches.
+@(private)
+tutorial_sign :: proc(u: ^Ui, g: ^game.Game, key: i18n.Key, c: Vec2, col: rl.Color) {
+	s := u.scale
+	tile :: proc(c: Vec2, r: f32, col: rl.Color, filled: bool) {
+		pts := [4]Vec2{c + {0, -r * 0.5}, c + {r, 0}, c + {0, r * 0.5}, c + {-r, 0}}
+		if filled {
+			tri(pts[0], pts[1], pts[2], col)
+			tri(pts[0], pts[2], pts[3], col)
+		} else {
+			for i in 0 ..< 4 {
+				rl.DrawLineEx(pts[i], pts[(i + 1) % 4], 2 * u_scale_of(r), col)
+			}
+		}
+	}
+	#partial switch key {
+	case .Hint_Move:
+		// a tile and the ripple of a click on it
+		tile(c + {0, 4 * s}, 24 * s, col, false)
+		k := math.mod(g.time, 1.4) / 1.4
+		rl.DrawRing(c + {0, 4 * s}, 4 * s + k * 14 * s, 6 * s + k * 14 * s, 0, 360, 32, fade(col, 1 - k))
+		rl.DrawCircleV(c + {0, 4 * s}, 4 * s, col)
+	case .Hint_Turn:
+		// the turning arrow of the buttons
+		r := 20 * s
+		thick := 3.5 * s
+		rl.DrawRing(c, r - thick, r, -60, 240, 32, col)
+		head: f32 = -60 * math.PI / 180
+		normal := Vec2{math.cos(head), math.sin(head)}
+		tip := c + normal * (r - thick * 0.5)
+		tangent := Vec2{-math.sin(head), math.cos(head)} * -1
+		h := 10 * s
+		tri(tip + tangent * h, tip + normal * h * 0.75, tip - normal * h * 0.75, col)
+	case .Hint_Lamp, .Hint_Oil, .Hint_Sigil:
+		// a flame
+		flick := 1 + 0.08 * math.sin(g.time * 13)
+		rl.DrawCircleV(c + {0, 6 * s}, 10 * s, col)
+		tri(c + {-10 * s, 4 * s}, c + {10 * s, 4 * s}, c + {0, -20 * s * flick}, col)
+	case .Hint_Illusion, .Hint_Stairs:
+		// two tiles that seem to touch
+		tile(c + {-9 * s, 5 * s}, 15 * s, col, true)
+		tile(c + {9 * s, -5 * s}, 15 * s, col, false)
+	case:
+		diamond(u, c, 14 * s, col, true)
+	}
+}
+
+@(private)
+u_scale_of :: proc(r: f32) -> f32 {
+	return max(r / 24, 0.5)
 }
 
 // A hint on a dark band at the bottom; a tutorial hint (what to press) is

@@ -307,6 +307,9 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   - Visual styles (post-processing) shown as five previews (artifact
     https://claude.ai/artifact/8TSirwBuD8xmcCeztNwmJv); the user chose to keep **all of them as a
     player setting** (default Clean) in a tabbed settings panel. 32 tests. Pushed.
+  - Tutorial hints (`game.is_tutorial`) are a card over the game on the left (`ui.draw_tutorial`):
+    "How to play" label, a drawn sign per mechanic, slides in, stays until done, then a tick;
+    the controls it talks about pulse (`point_at`). Other hints keep the bottom band.
   - **Next: I.2 "The Invisible Palace"**: the user plays it and says what to change (setting,
     props); then I.3, I.4, then Act II (II.3's brief below still stands when its turn comes).
 
