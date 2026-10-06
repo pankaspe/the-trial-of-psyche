@@ -1,141 +1,235 @@
-// Playback of the synthesised sounds through raylib.
+// Playback through raylib: effects, the act soundtrack, the ambience.
 //
-// Every effect owns its samples once (raylib copies them at load) plus a few
-// aliases, so the same effect can overlap itself. The two music layers (night,
-// lamp) are looping streams that read from WAV files kept in memory; their
-// mix follows the lamp. Calls are no-ops when there is no audio device
-// (headless tests), so game code never has to check.
+// Effects are recordings (the footsteps, assets/sfx, embedded at compile
+// time) or synthesised at startup (synth.odin) on a thread of their own, so
+// the game starts at once (an effect asked before its samples are ready is
+// skipped), each in a few takes; a play
+// picks a take at random, never the same twice in a row, so repeated sounds
+// stay alive. The soundtrack and the ambience go through the mixer
+// (music.odin). Calls are no-ops when there is no audio device (headless
+// tests), so game code never has to check.
 package audio
 
+import "base:runtime"
 import "core:math"
+import "core:sync"
+import "core:thread"
 import rl "vendor:raylib"
 
 import "../fx"
 
-VOICES :: 4 // simultaneous plays of one effect
-MUSIC_BASE_DB :: -8.0
+SLOTS :: 6 // sounds per effect: its takes, then aliases so they can overlap
+MUSIC_BASE_DB :: -10.0
+BED_BASE_DB :: -6.0
 SFX_BASE_DB :: 0.0
+
+STEPS_GRASS := [?][]u8 {
+	#load("../../assets/sfx/step_grass_0.ogg"),
+	#load("../../assets/sfx/step_grass_1.ogg"),
+	#load("../../assets/sfx/step_grass_2.ogg"),
+	#load("../../assets/sfx/step_grass_3.ogg"),
+	#load("../../assets/sfx/step_grass_4.ogg"),
+}
+STEPS_STONE := [?][]u8 {
+	#load("../../assets/sfx/step_stone_0.ogg"),
+	#load("../../assets/sfx/step_stone_1.ogg"),
+	#load("../../assets/sfx/step_stone_2.ogg"),
+	#load("../../assets/sfx/step_stone_3.ogg"),
+	#load("../../assets/sfx/step_stone_4.ogg"),
+	#load("../../assets/sfx/step_stone_5.ogg"),
+}
 
 @(private)
 State :: struct {
-	ready:         bool,
-	sounds:        [Sound_Id][VOICES]rl.Sound, // [0] owns the samples, the rest are aliases
-	next:          [Sound_Id]int,
-	night, warm:   rl.Music,
-	night_wav:     []u8, // must outlive the streams that read them
-	warm_wav:      []u8,
-	music_started: bool,
-	master:        f32,
-	music:         f32,
-	sfx:           f32,
-	light:         f32,
+	ready:  bool,
+	sounds: [Sound_Id][SLOTS]rl.Sound,
+	owned:  [Sound_Id][SLOTS]bool, // owns its samples (else an alias)
+	count:  [Sound_Id]int, // 0 until its samples are loaded
+	last:   [Sound_Id]int,
+	rng:    fx.Rng,
+	key:    f32, // pitch ratio of the act's key against A
+	master: f32,
+	music:  f32,
+	sfx:    f32,
+	worker: ^thread.Thread,
+	baked:  [Sound_Id][SLOTS][]i16, // the worker's samples, until uploaded
+	done:   bool, // the worker has finished (atomic)
 }
 
 @(private)
 s: State
 
+// The ambience loops, interleaved stereo 16-bit (read by the mixer thread
+// once beds_ready is set).
+@(private)
+beds: [Bed][]i16
+@(private)
+beds_ready: bool
+
 db_to_linear :: proc(db: f32) -> f32 {
 	return math.pow(10, db / 20)
 }
 
-// Open the device and synthesise everything. The WAV buffers of the music are
-// the only lasting allocation (context.allocator), released by shutdown.
+// Open the device, load the recordings, start the mixer and the worker that
+// synthesises the rest. Samples are allocated from the heap (the worker has
+// its own context): effects until update uploads them, the ambience loops
+// until shutdown.
 init :: proc() {
 	s = {}
-	s.master, s.music, s.sfx = 1, 1, 1
+	s.master, s.music, s.sfx, s.key = 1, 1, 1, 1
+	s.rng = fx.rng_init(11)
 	rl.InitAudioDevice()
 	if !rl.IsAudioDeviceReady() {
 		return
 	}
 	s.ready = true
-	rng := fx.rng_init(7)
 
-	for id in Sound_Id {
-		dry := synthesize(id, &rng, context.temp_allocator)
-		wet := reverb(dry, SFX_REVERB, 1.2, false, context.temp_allocator)
-		pcm := make([]i16, len(wet), context.temp_allocator)
-		to_pcm16(wet, pcm)
-		wave := rl.Wave {
-			frameCount = u32(len(pcm)),
-			sampleRate = RATE,
-			sampleSize = 16,
-			channels   = 1,
-			data       = raw_data(pcm),
+	for id in RECORDED {
+		files := id == .Step_Grass ? STEPS_GRASS[:] : STEPS_STONE[:]
+		takes := 0
+		for f in files[:min(len(files), SLOTS)] {
+			wave := rl.LoadWaveFromMemory(".ogg", raw_data(f), i32(len(f)))
+			s.sounds[id][takes] = rl.LoadSoundFromWave(wave)
+			rl.UnloadWave(wave)
+			s.owned[id][takes] = true
+			takes += 1
 		}
-		s.sounds[id][0] = rl.LoadSoundFromWave(wave)
-		for v in 1 ..< VOICES {
-			s.sounds[id][v] = rl.LoadSoundAlias(s.sounds[id][0])
+		finish_slots(id, takes)
+	}
+	mixer_start()
+	apply_volumes()
+	s.worker = thread.create_and_start(bake)
+}
+
+// The worker: every synthesised take, then the ambience loops.
+@(private)
+bake :: proc() {
+	heap := runtime.heap_allocator()
+	for id in Sound_Id {
+		if id in RECORDED {
+			continue
+		}
+		for v in 0 ..< min(VARIANTS[id], SLOTS) {
+			samples := synthesize(id, v, context.temp_allocator)
+			s.baked[id][v] = make([]i16, len(samples), heap)
+			to_pcm16(samples, s.baked[id][v])
+			free_all(context.temp_allocator)
 		}
 	}
+	sync.atomic_store(&s.done, true)
+	for bed in Bed {
+		samples := synthesize_bed(bed, context.temp_allocator)
+		if len(samples) > 0 {
+			beds[bed] = make([]i16, len(samples), heap)
+			to_pcm16(samples, beds[bed])
+		}
+		free_all(context.temp_allocator)
+	}
+	sync.atomic_store(&beds_ready, true)
+}
 
-	night := reverb(music(false, &rng, context.temp_allocator), MUSIC_REVERB, 0, true, context.temp_allocator)
-	warm := reverb(music(true, &rng, context.temp_allocator), MUSIC_REVERB, 0, true, context.temp_allocator)
-	s.night_wav = wav_file(night)
-	s.warm_wav = wav_file(warm)
-	s.night = rl.LoadMusicStreamFromMemory(".wav", raw_data(s.night_wav), i32(len(s.night_wav)))
-	s.warm = rl.LoadMusicStreamFromMemory(".wav", raw_data(s.warm_wav), i32(len(s.warm_wav)))
-	s.night.looping = true
-	s.warm.looping = true
-	apply_volumes()
+// Call once per frame: the effects become playable when the worker is done.
+update :: proc() {
+	if !s.ready || s.worker == nil || !sync.atomic_load(&s.done) {
+		return
+	}
+	for id in Sound_Id {
+		if id in RECORDED {
+			continue
+		}
+		takes := 0
+		for pcm in s.baked[id] {
+			if pcm == nil {
+				continue
+			}
+			wave := rl.Wave {
+				frameCount = u32(len(pcm)),
+				sampleRate = RATE,
+				sampleSize = 16,
+				channels   = 1,
+				data       = raw_data(pcm),
+			}
+			s.sounds[id][takes] = rl.LoadSoundFromWave(wave) // copies the samples
+			s.owned[id][takes] = true
+			takes += 1
+			delete(pcm, runtime.heap_allocator())
+		}
+		s.baked[id] = {}
+		finish_slots(id, takes)
+	}
+	thread.join(s.worker)
+	thread.destroy(s.worker)
+	s.worker = nil
+}
+
+// The slots after the takes replay them, so an effect can overlap itself.
+@(private)
+finish_slots :: proc(id: Sound_Id, takes: int) {
+	for k in takes ..< SLOTS {
+		s.sounds[id][k] = rl.LoadSoundAlias(s.sounds[id][k % takes])
+	}
+	s.count[id] = SLOTS
+	s.last[id] = -1
 }
 
 shutdown :: proc() {
-	if s.ready {
-		rl.StopMusicStream(s.night)
-		rl.StopMusicStream(s.warm)
-		rl.UnloadMusicStream(s.night)
-		rl.UnloadMusicStream(s.warm)
-		for id in Sound_Id {
-			for v in 1 ..< VOICES {
-				rl.UnloadSoundAlias(s.sounds[id][v])
+	if s.worker != nil {
+		thread.join(s.worker)
+		thread.destroy(s.worker)
+		for &takes in s.baked {
+			for pcm in takes {
+				delete(pcm, runtime.heap_allocator())
 			}
-			rl.UnloadSound(s.sounds[id][0])
+		}
+	}
+	if s.ready {
+		mixer_stop()
+		for id in Sound_Id {
+			if s.count[id] == 0 {
+				continue
+			}
+			for k in 0 ..< SLOTS {
+				if !s.owned[id][k] {
+					rl.UnloadSoundAlias(s.sounds[id][k])
+				}
+			}
+			for k in 0 ..< SLOTS {
+				if s.owned[id][k] {
+					rl.UnloadSound(s.sounds[id][k])
+				}
+			}
 		}
 		rl.CloseAudioDevice()
 	}
-	delete(s.night_wav)
-	delete(s.warm_wav)
+	for b in beds {
+		delete(b, runtime.heap_allocator())
+	}
+	beds = {}
+	beds_ready = false
 	s = {}
 }
 
-// Play an effect; volume in dB on top of the effects volume.
-play :: proc(id: Sound_Id, volume_db: f32 = 0, pitch: f32 = 1) {
-	if !s.ready {
+// Play an effect; volume in dB on top of the effects volume, pitch as a
+// ratio (in-key effects follow the act's key), pan -1 (left) .. 1 (right).
+play :: proc(id: Sound_Id, volume_db: f32 = 0, pitch: f32 = 1, pan: f32 = 0) {
+	if !s.ready || s.count[id] == 0 {
 		return
 	}
-	v := s.next[id]
-	s.next[id] = (v + 1) % VOICES
-	snd := s.sounds[id][v]
+	k := int(fx.randf(&s.rng) * f32(s.count[id])) % s.count[id]
+	if k == s.last[id] {
+		k = (k + 1) % s.count[id]
+	}
+	s.last[id] = k
+	snd := s.sounds[id][k]
 	rl.SetSoundVolume(snd, db_to_linear(volume_db + SFX_BASE_DB) * s.sfx)
-	rl.SetSoundPitch(snd, pitch)
+	rl.SetSoundPitch(snd, id in TUNED ? pitch * s.key : pitch)
+	rl.SetSoundPan(snd, clamp(pan, -1, 1))
 	rl.PlaySound(snd)
 }
 
-start_music :: proc() {
-	if !s.ready || s.music_started {
-		return
-	}
-	s.music_started = true
-	rl.PlayMusicStream(s.night)
-	rl.PlayMusicStream(s.warm)
-	apply_volumes()
-}
-
-// Feed the music streams; call once per frame.
-update :: proc() {
-	if !s.ready || !s.music_started {
-		return
-	}
-	rl.UpdateMusicStream(s.night)
-	rl.UpdateMusicStream(s.warm)
-}
-
-// 0 = night drone only, 1 = warm lamp layer on top.
-set_light :: proc(amount: f32) {
-	if s.light != amount {
-		s.light = amount
-		apply_volumes()
-	}
+// The key of the soundtrack, in semitones from A (Act I: 0; G minor: -2).
+set_key :: proc(semis: f32) {
+	s.key = semitones(semis)
 }
 
 // Player-facing volumes, 0..1.
@@ -150,7 +244,5 @@ apply_volumes :: proc() {
 		return
 	}
 	rl.SetMasterVolume(s.master)
-	base := db_to_linear(MUSIC_BASE_DB) * s.music
-	rl.SetMusicVolume(s.night, (1 - s.light * 0.5) * db_to_linear(-2) * base)
-	rl.SetMusicVolume(s.warm, max(s.light, 0.001) * db_to_linear(-4) * base)
+	mixer_gains(db_to_linear(MUSIC_BASE_DB) * s.music, db_to_linear(BED_BASE_DB) * s.sfx)
 }

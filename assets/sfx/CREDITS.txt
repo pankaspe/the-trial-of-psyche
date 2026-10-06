@@ -1,0 +1,3 @@
+Footsteps from Kenney's "Impact Sounds" (grass) and "RPG Audio" (stone),
+www.kenney.nl, CC0 1.0 (public domain). Prepared with tools/sfx_prep.sh.
+Every other effect and the ambience are synthesised in src/audio/synth.odin.

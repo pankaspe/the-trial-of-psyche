@@ -321,7 +321,6 @@ title_key :: proc(g: ^Game) -> Key {
 begin :: proc(g: ^Game, prologue := true, arrival := false) {
 	g.active = true
 	if g.data.has_prologue && prologue {
-		audio.start_music()
 		prologue_start(g)
 		return
 	}
@@ -340,7 +339,6 @@ begin :: proc(g: ^Game, prologue := true, arrival := false) {
 start_play :: proc(g: ^Game, prologue: bool) {
 	g.hud.visible = true
 	show(&g.hud.title, title_key(g), 1.5, 3.5, 2.0)
-	audio.start_music()
 	g.begin_t = 0
 	// a restart (prologue = false) does not present the mechanic again
 	g.teach_pending = prologue && g.data.mechanic != .None
@@ -415,7 +413,7 @@ update :: proc(g: ^Game, dt: f32) {
 		if g.teach_pending && before < TEACH_AT && g.begin_t >= TEACH_AT && g.phase == .Play {
 			g.teach_pending = false
 			g.mechanic_new = true
-			audio.play(.Good, -8, 1.2)
+			audio.play(.Good, -8, audio.semitones(3))
 		}
 		if g.data.has_intro && before < INTRO_AT && g.begin_t >= INTRO_AT && g.phase == .Play {
 			speak(g, g.data.intro)
@@ -431,7 +429,8 @@ update :: proc(g: ^Game, dt: f32) {
 	update_walk(g, dt)
 	update_effects(g, dt)
 	update_hud(g, dt)
-	audio.set_light(g.light)
+	// in the dark the music is veiled; her light opens it
+	audio.set_veil(g.data.has_lamp ? 1 - g.light : 0)
 
 	if g.lamp_on && g.light > 0.25 && g.phase != .Arrival && g.phase != .Prologue {
 		light_candelabra(g)
@@ -469,7 +468,7 @@ update :: proc(g: ^Game, dt: f32) {
 	case .Mechanism:
 		if g.phase_t >= PART_TIME {
 			pl.turn_part(&g.palace, g.part_turning)
-			audio.play(.Drop, -8, 0.5)
+			audio.play(.Thud, -6, 0.8)
 			shake(g, 0.25)
 			set_phase(g, .Play)
 		}
@@ -515,7 +514,7 @@ request_turn :: proc(g: ^Game, step: int) {
 
 @(private)
 start_turn :: proc(g: ^Game, step: int) {
-	audio.play(.Turn, -9)
+	audio.play(.Turn, -11)
 	learn(g, .Hint_Turn)
 	pl.reachable(&g.palace, g.psyche.cell, !g.lamp_on, g.reach_before[:len(g.palace.nodes)])
 	g.turning = true
@@ -543,7 +542,7 @@ update_turn :: proc(g: ^Game, dt: f32) {
 	for ok, i in after {
 		if ok && !g.reach_before[i] {
 			// a new way has opened in this view
-			audio.play(.Seam, -12, 0.9)
+			audio.play(.Seam, -12, audio.semitones(-2))
 			break
 		}
 	}
@@ -788,6 +787,27 @@ face_point :: proc(g: ^Game, p: Vec3) {
 	face_toward(g, p - g.psyche.pos)
 }
 
+// A footfall on what is under her: grass (a lawn, or living rock with a
+// grassy top), bare rock (lower), or masonry.
+@(private)
+footstep :: proc(g: ^Game, cell: Cell) {
+	below := Cell{cell.x, cell.y, cell.z - 1}
+	vary := fx.rand_range(&g.rng, 0.93, 1.07)
+	for c in g.data.lawn {
+		if c == below {
+			audio.play(.Step_Grass, -15, vary)
+			return
+		}
+	}
+	for c in g.data.ground {
+		if c == below || c == cell {
+			audio.play(.Step_Stone, -16, vary * 0.88)
+			return
+		}
+	}
+	audio.play(.Step_Stone, -16, vary)
+}
+
 @(private)
 update_walk :: proc(g: ^Game, dt: f32) {
 	psy := &g.psyche
@@ -808,7 +828,7 @@ update_walk :: proc(g: ^Game, dt: f32) {
 	}
 	psy.cell = psy.step_to
 	psy.pos = pl.stand_world(&g.palace, psy.cell)
-	audio.play(.Step, -18, fx.rand_range(&g.rng, 0.85, 1.15))
+	footstep(g, psy.cell)
 	if fell := pl.leave(&g.palace, psy.step_from); fell >= 0 {
 		// the cracked stone she has just left falls
 		g.flip_t[fell] = 0
@@ -870,7 +890,7 @@ take_fragment :: proc(g: ^Game, i: int) {
 	g.fragment_last = i
 	g.fragment_t[i] = 0
 	sa.clear(&g.path) // she stops to read
-	audio.play(.Good, -8, 1.5)
+	audio.play(.Good, -8, audio.semitones(7))
 }
 
 // Where fragment i lies (a scroll floating over its cell).
@@ -909,10 +929,10 @@ lamp_truth :: proc(g: ^Game) {
 		t = 0
 		#partial switch g.data.blocks[i].trait {
 		case .Phantom:
-			audio.play(.Seam, -10, 0.7)
+			audio.play(.Seam, -10, audio.semitones(-5))
 			learn(g, .Hint_Phantom)
 		case .Veiled:
-			audio.play(.Good, -14, 0.8)
+			audio.play(.Good, -14, audio.semitones(-5))
 			learn(g, .Hint_Veiled)
 		}
 	}
@@ -950,7 +970,7 @@ light_rest :: proc(g: ^Game, i: int, quiet := false) {
 	if !g.rests_lit[i] {
 		g.rests_lit[i] = true
 		if !quiet {
-			audio.play(.Lamp_On, -10, 0.8)
+			audio.play(.Lamp_On, -10, audio.semitones(-5))
 			hint(g, .Hint_Rest, 6)
 		}
 	}
@@ -1140,7 +1160,7 @@ update_ending_oil :: proc(g: ^Game, dt: f32) {
 	g.amore.reveal = fx.clamp01(t / 1.4)
 	g.amore.breath = fx.lerp(f32(1), 2.2, g.amore.reveal)
 	if crossed(t, dt, OIL_DROP_LAND) {
-		audio.play(.Drop, 0, 0.7)
+		audio.play(.Drip, -2, 0.7)
 		shake(g, 0.5)
 		g.amore.fly_t = 0
 	}
@@ -1190,7 +1210,7 @@ update_effects :: proc(g: ^Game, dt: f32) {
 		for i in 0 ..< g.rise_count {
 			at := rise_landing(i)
 			if before < at && g.rise_t >= at {
-				audio.play(.Drop, -7, 0.8 + 0.06 * f32(i))
+				audio.play(.Thud, -5, 0.85 + 0.05 * f32(i))
 				shake(g, 0.3)
 			}
 		}
@@ -1236,7 +1256,7 @@ update_effects :: proc(g: ^Game, dt: f32) {
 		d.t += dt
 		if d.t >= 0.35 {
 			d.active = false
-			audio.play(.Drop, -16, fx.rand_range(&g.rng, 0.9, 1.15))
+			audio.play(.Drip, -18, fx.rand_range(&g.rng, 0.9, 1.15))
 			g.stains[g.stain_next] = {d.to}
 			g.stain_next = (g.stain_next + 1) % MAX_STAINS
 			g.stain_count = min(g.stain_count + 1, MAX_STAINS)
@@ -1389,7 +1409,7 @@ light_candelabra :: proc(g: ^Game) {
 		if d.x * d.x + d.y * d.y <= CANDELABRUM_REACH * CANDELABRUM_REACH && abs(d.z) < 1.2 {
 			g.candelabra_lit += {i}
 			g.candelabrum_t[i] = 0
-			audio.play(.Lamp_On, -5, 1.25)
+			audio.play(.Lamp_On, -9, audio.semitones(3))
 		}
 	}
 }

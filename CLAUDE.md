@@ -9,8 +9,9 @@ CLAUDE.md for the design history).
 - Repository: https://github.com/pankaspe/the-trial-of-psyche (branch `main`, remote `origin`).
 - Read this file, then the design document (link in "Game design") for the current phase.
 - `./build.sh test` must be green before and after any work; commit in English, push when the user asks.
-- Everything visual is generated in code: meshes from box lists, figures, audio, sky. `assets/` holds only
-  what is embedded at compile time (levels, GLSL shaders, the placeholder font); no image assets.
+- Everything visual is generated in code: meshes from box lists, figures, sky. `assets/` holds only
+  what is embedded at compile time (levels, GLSL shaders, the placeholder font, the act soundtracks in
+  `assets/music`, the recorded footsteps in `assets/sfx`); no image assets.
   The Kenney pack is not in the repo: the pieces are modelled after it in `render/shapes.odin`.
 
 ## Rules
@@ -175,6 +176,37 @@ Full design document (Italian, kept up to date there): https://claude.ai/code/ar
   with a strength slider; F4 cycles them; `--shots ... --post NAME`.
 - Figures (Psyche, Cupid) are abstract lathes + additive wings: placeholders until the
   user picks a character style.
+
+## Sound (session 8, 2026-10-06; kept by the user "per ora": generative music, new effects, beds)
+- User's direction: one soundtrack per act (Suno tracks by the user, non-commercial for now; better
+  ones may come), played across the act's levels; when an act outlasts its track it jumps back
+  seamlessly; professional effects; the player's senses first ("esperienza sensoriale").
+- Soundtracks (`audio/music.odin`): OGG embedded, decoded with raylib's own stb_vorbis on the audio
+  thread (`mix_callback`). Loop: at A the track crossfades (1.5 s, equal power) into itself at B;
+  `tools/music_prep.sh SRC NAME` normalises (-16 LUFS, lows trimmed) and runs `tools/music_loop`,
+  which finds (A, B) by chroma + band similarity over ±6 s and aligns the pulse; copy the best pair
+  into `TRACKS`. Act -> track and key in `main.odin` (`ACT_TRACK`, `ACT_KEY`): I Suspended Light (A
+  minor), II Fragile Light, III Midway Through, IV Sombras de Cristal (G minor), Epilogue = I.
+  F6 with the debug overlay (F3) jumps to 6 s before the loop point, to judge the jump.
+- **The Suno tracks did not convince the user** ("troppo agitate"): the act music is now **generative**
+  (`audio/generative.odin`, the user asked for soft, meditative, relaxing): a mood per act
+  (`ACT_MOOD`: Palace A minor, Abandonment G minor, Trials D minor, Underworld E Phrygian), played live
+  in the mixer: additive pads breathing through 4 chords, a Karplus-Strong lyre with short phrases
+  of the pentatonic, rare glass bells, a low drone, a stereo FDN hall; no beat. Demo WAVs:
+  `tools/sound_board` -> `build/sounds/music_*.wav`. The OGG player stays (set_track) in case
+  better recorded tracks come; `ACT_KEY` follows the moods' roots.
+- `update_sound` (main.odin): music per act (silent while the screen goes black), ambience bed per
+  setting (`SETTING_BED`: mountain wind, dusk breeze + crickets, night crickets, deep night), duck
+  under cards and menus. Veil: where Psyche carries the lamp, in the dark the music is low-passed;
+  her light opens it (`audio.set_veil`).
+- Effects: footsteps recorded (Kenney CC0, `tools/sfx_prep.sh`, grass / stone / rock by what is under
+  her: `game.footstep`); the rest synthesised at startup on a worker thread (`synth.odin`: modal
+  glass/wood, Karplus-Strong plucks, SVF noise, FDN reverb), a few takes each, never the same take
+  twice in a row. In-key effects (`TUNED`) are written in A minor pentatonic and follow `ACT_KEY`;
+  pitch arguments at call sites are in semitones (`audio.semitones`). `tools/sound_board` writes
+  every effect and bed as WAV (build/sounds) to listen outside the game.
+- Next, after the user's verdict: per-place one-shots in the beds (birds at sunset, an owl), positional
+  pan of events, crumble/handle sounds for Act II.
 
 ## Window and resolution
 - Always draw on the real framebuffer (`canvas_size` = GetRenderWidth/Height) and reset
@@ -356,6 +388,12 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
     made from `--plan --record` frames of I.2-I.4 with ffmpeg). **Act I is done and approved.**
   - **Next session: Act II, from II.1**, level by level as for Act I (its settings, props, depth;
     II.3's brief above still stands when its turn comes).
+
+- Session 8 (2026-10-06): **sound design** (section "Sound"): mixer on the audio thread, ambience
+  beds per setting, effects rebuilt (recorded footsteps + synthesis), the music veiled in the dark.
+  The user's Suno tracks were tried (OGG player with seamless loop, `tools/music_loop`) and judged too
+  agitated: the act music is now generative; the user keeps it for now. The Suno OGGs are still
+  embedded (17 MB): drop them if the generative music stays for good. **Next: back to Act II, II.1.**
 
 ## Roadmap from now (user, 2026-10-06): level by level
 - Art direction is settled as: settings per level (`render/setting.odin`, add a `Look` per new

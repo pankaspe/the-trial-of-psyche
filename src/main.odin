@@ -164,7 +164,6 @@ startup :: proc(app: ^App) -> bool {
 	app.screen = .Title
 	app.menu_fade = -1
 	app.black_t = -1
-	audio.start_music()
 	return true
 }
 
@@ -213,6 +212,49 @@ new_level :: proc(app: ^App, index: int) -> bool {
 	}
 	render.scene_build(&app.scene, g, game.level_allocator(g))
 	return true
+}
+
+// The music of each act (generative), and its key (in-key effects follow it).
+ACT_MOOD := [content.Act]audio.Mood_Id {
+	.I        = .Palace,
+	.II       = .Abandonment,
+	.III      = .Trials,
+	.IV       = .Underworld,
+	.Epilogue = .Palace,
+}
+ACT_KEY := [content.Act]f32 {
+	.I        = 0, // A minor
+	.II       = -2, // G minor
+	.III      = 5, // D minor
+	.IV       = -5, // E Phrygian
+	.Epilogue = 0,
+}
+// The ambience of each place.
+SETTING_BED := [level.Setting]audio.Bed {
+	.Night         = .Night,
+	.Crag_Sunset   = .Mountain,
+	.Dusk          = .Dusk,
+	.Night_Candles = .Night,
+	.Deep_Night    = .Deep_Night,
+}
+
+// What the mixer plays: the act's music (silent while the screen goes
+// black at the end of an act), the place's ambience, the music ducked under
+// cards and menus.
+update_sound :: proc(app: ^App) {
+	audio.update()
+	g := &app.game
+	act := content.LEVELS[g.level_index].act
+	going_black := app.black_t >= 0 && app.black_t < BLACK_OUT
+	audio.set_mood(going_black ? .None : ACT_MOOD[act])
+	audio.set_key(ACT_KEY[act])
+	audio.set_bed(going_black ? .None : SETTING_BED[g.data.setting])
+	duck: f32 = 0
+	#partial switch app.screen {
+	case .Fragment, .Mechanic, .Pause, .Settings, .Ending, .Card, .Levels, .Book:
+		duck = 1
+	}
+	audio.set_duck(duck)
 }
 
 // BLACK_OUT: the screen goes black at the end of an act; BLACK_IN: it comes back.
@@ -420,7 +462,7 @@ frame :: proc(app: ^App) {
 	}
 	update_toasts(app, dt)
 	update_black(app, dt)
-	audio.update()
+	update_sound(app)
 	shot := ""
 	if app.shooting {
 		done: bool

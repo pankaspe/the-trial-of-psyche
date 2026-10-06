@@ -1,11 +1,11 @@
 // Settings files, synthesised audio and the camera projection.
 package tests
 
+import "core:fmt"
 import "core:math"
 import "core:testing"
 
 import "../src/audio"
-import "../src/fx"
 import "../src/i18n"
 import "../src/iso"
 import "../src/render"
@@ -41,25 +41,44 @@ settings_ignore_bad_values :: proc(t: ^testing.T) {
 
 @(test)
 synthesised_sounds_are_sane :: proc(t: ^testing.T) {
-	rng := fx.rng_init(7)
 	for id in audio.Sound_Id {
-		dry := audio.synthesize(id, &rng, context.temp_allocator)
-		wet := audio.reverb(dry, audio.SFX_REVERB, 1.2, false, context.temp_allocator)
-		testing.expectf(t, len(dry) > 0 && len(wet) > len(dry), "%v has samples and a reverb tail", id)
-		peak: f32 = 0
-		for s in wet {
-			if math.is_nan(s) || math.is_inf(s) {
-				testing.expectf(t, false, "%v has a non-finite sample", id)
-				break
-			}
-			peak = max(peak, abs(s))
+		for v in 0 ..< max(audio.VARIANTS[id], 1) {
+			b := audio.synthesize(id, v, context.temp_allocator)
+			testing.expectf(t, len(b) > 0, "%v has samples", id)
+			check_samples(t, b, fmt.tprint(id))
 		}
-		testing.expectf(t, peak > 0.01 && peak < 4, "%v peak %v is audible and bounded", id, peak)
 	}
-	loop := audio.reverb(audio.music(true, &rng, context.temp_allocator), audio.MUSIC_REVERB, 0, true, context.temp_allocator)
-	testing.expect(t, len(loop) == 8 * audio.RATE, "a looped reverb keeps the loop length")
-	wav := audio.wav_file(loop[:100], context.temp_allocator)
-	testing.expect(t, len(wav) == 44 + 200 && string(wav[:4]) == "RIFF" && string(wav[8:12]) == "WAVE", "WAV header")
+	for bed in audio.Bed {
+		b := audio.synthesize_bed(bed, context.temp_allocator)
+		if bed == .None {
+			testing.expect(t, b == nil, "no bed, no samples")
+			continue
+		}
+		testing.expectf(t, len(b) == 2 * audio.BED_SECONDS * audio.RATE, "%v is a stereo loop of the bed's length", bed)
+		check_samples(t, b, fmt.tprint(bed))
+		// seamless: the wrap is no louder a step than the samples around it
+		jump := abs(b[0] - b[len(b) - 2])
+		testing.expectf(t, jump < 0.05, "%v loops without a click (jump %v)", bed, jump)
+	}
+	for info, track in audio.TRACKS {
+		if track == .None {
+			continue
+		}
+		testing.expectf(t, len(info.data) > 0 && string(info.data[:4]) == "OggS", "%v is an embedded OGG", track)
+		testing.expectf(t, info.loop_to > 0 && info.loop_to < info.loop_from, "%v jumps back from A to an earlier B", track)
+	}
+}
+
+check_samples :: proc(t: ^testing.T, b: []f32, name: string) {
+	peak: f32 = 0
+	for s in b {
+		if math.is_nan(s) || math.is_inf(s) {
+			testing.expectf(t, false, "%s has a non-finite sample", name)
+			return
+		}
+		peak = max(peak, abs(s))
+	}
+	testing.expectf(t, peak > 0.005 && peak < 1.5, "%s peak %v is audible and bounded", name, peak)
 }
 
 // The GPU matrix must put every world point exactly where the 2D formula

@@ -6,3 +6,6 @@
 # editors
 .vscode/
 .idea/
+
+# sources of the soundtracks (prepared copies live in assets/music)
+/assets/musics/
