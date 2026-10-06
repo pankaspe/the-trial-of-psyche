@@ -7,11 +7,13 @@ package main
 
 import "core:fmt"
 import "core:mem/virtual"
+import "core:os"
 import "core:strconv"
 import "core:strings"
 import rl "vendor:raylib"
 import "vendor:raylib/rlgl"
 
+import "audio"
 import "content"
 import "game"
 import "iso"
@@ -219,7 +221,7 @@ Shots :: struct {
 	post:  settings.Look, // --post NAME: a visual style (off, clean, miniature, film, dream, painted)
 	has_post: bool,
 	plan:  bool, // --plan: play the solver's plan of the level, a shot after every decision
-	record: bool, // --record (with --plan): every frame at 30 fps instead, for a video
+	record: bool, // --record (with --plan): every frame at RECORD_FPS instead, for a video
 	no_ui: bool, // --no-ui: the world only (backdrops for mockups and stills)
 	frame: int,
 	moves: [dynamic]pl.Plan_Step,
@@ -283,9 +285,13 @@ shots_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool
 		name, done = plan_update(app, s, dt)
 		if s.record {
 			name = ""
-			if s.step >= 2 && !done {
+			// from the level's start: its prologue, its title, then the plan
+			if s.step >= 1 && !done {
 				name = fmt.tprintf("f%05d", s.frame)
 				s.frame += 1
+			}
+			if done {
+				write_sound_log(app, s)
 			}
 		}
 		return
@@ -343,6 +349,16 @@ plan_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool)
 		return "", false
 	}
 	if s.step == 1 {
+		if g.phase == .Prologue {
+			// the cutscene plays; at its invitation, a key starts the level
+			if game.prologue_ready(g) && s.t > 2 {
+				game.prologue_advance(g)
+			}
+			if !game.prologue_ready(g) {
+				s.t = 0
+			}
+			return "", false
+		}
 		if app.screen == .Card {
 			dismiss_act_card(app)
 			s.t = 0
@@ -419,3 +435,24 @@ plan_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool)
 	s.t = 0
 	return "", false
 }
+
+// --record: the effects played, one per line ("t id volume_db pitch pan",
+// t in seconds from frame 0), after the place's ambience, the act's music
+// and the frame count, for tools/video_audio.
+@(private = "file")
+write_sound_log :: proc(app: ^App, s: ^Shots) {
+	b := strings.builder_make(context.temp_allocator)
+	fmt.sbprintfln(&b, "bed %v", SETTING_BED[app.game.data.setting])
+	fmt.sbprintfln(&b, "mood %v", ACT_MOOD[content.LEVELS[app.game.level_index].act])
+	fmt.sbprintfln(&b, "frames %d %d", s.frame, RECORD_FPS)
+	for e in audio.logged() {
+		fmt.sbprintfln(&b, "%.4f %v %.2f %.4f %.2f", e.t, e.id, e.volume_db, e.pitch, e.pan)
+	}
+	path := fmt.tprintf("%s/sounds.txt", s.dir)
+	if err := os.write_entire_file(path, transmute([]u8)strings.to_string(b)); err != nil {
+		fmt.eprintln("cannot write", path, err)
+	}
+}
+
+// --record: frames per second of the captured video.
+RECORD_FPS :: 60

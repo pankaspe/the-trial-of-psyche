@@ -405,7 +405,12 @@ update_toasts :: proc(app: ^App, dt: f32) {
 frame :: proc(app: ^App) {
 	dt := min(rl.GetFrameTime(), 0.1)
 	if app.shooting && app.shots.record {
-		dt = 1.0 / 30 // a steady clock for a video, however slow the capture
+		dt = 1.0 / RECORD_FPS // a steady clock for a video, however slow the capture
+		// the sounds of this frame, at the video's clock (frame 0 once the plan plays)
+		if app.shots.step >= 1 {
+			audio.start_log()
+		}
+		audio.set_log_time(f32(app.shots.frame) / RECORD_FPS)
 	}
 	app.time += dt
 	g := &app.game

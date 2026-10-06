@@ -251,7 +251,9 @@ Full design document (Italian, kept up to date there): https://claude.ai/code/ar
    by `act2_levels_solve_and_play` (the solver's plan played through the game).
 5. `--shots DIR --level ID` tours it: act card, the four views, lamp, fragment, exit, end card;
    add `--plan` to play the solver's plan with a shot after every decision (`--record`: every
-   frame at a steady 30 fps instead, for a video; I.4's plan ends lighting the lamp beside Cupid).
+   frame at a steady 60 fps instead, for a video, from the level's start (a prologue plays and is
+   started by itself); it also writes `sounds.txt`, every effect at the video's clock; I.4's plan
+   ends lighting the lamp beside Cupid). Record with the release build (10x faster).
 - Occlusion across four views is hard to foresee: a seam from a high near piece goes down only
   from its view-mx/my edges to a farther, lower piece. Reserve the cover cells of a seam's foot
   (view offsets (k,k,k-1), (k,k,k), (1+k,k,k), (k,1+k,k)) and close stray seams with
@@ -266,6 +268,10 @@ Full design document (Italian, kept up to date there): https://claude.ai/code/ar
 ./build/trial-of-psyche-debug --shots DIR --size 1600x900 --level I.2   # tour of one level
 ./build/trial-of-psyche-debug --shots DIR --level II.3 --plan   # the solver's plan, a shot per decision
 ./build/trial-of-psyche-debug --shots DIR --no-ui   # the world only (backdrops for mockups, stills)
+./build/trial-of-psyche --shots build/video/i3 --size 1920x1080 --level I.3 --plan --record  # a video (60 fps + sounds.txt)
+odin build tools/video_audio -out:build/video_audio -o:speed   # then:
+./build/video_audio effects build/video/i3/sounds.txt build/video/i3.wav   # its sound, in sync
+tools/make_short.sh i1 180 300 i3 60 420 i4 1260 357   # a YouTube Short from recorded segments
 ```
 Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
 
@@ -388,7 +394,13 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
 - Session 8 (2026-10-06): **sound design** (section "Sound"): mixer on the audio thread, ambience
   beds per setting, effects rebuilt (recorded footsteps + synthesis), the music veiled in the dark.
   The user's Suno tracks were tried and judged too agitated: the act music is now generative (kept);
-  the Suno tracks were then removed. **Next: a restyling the user will explain, then Act II, II.1.**
+  the Suno tracks were then removed. Then the **HUD restyle** (section "Art direction") and a
+  **YouTube Short** (30 s, 1080x1920 at 60 fps, the game in landscape turned 90 degrees after a
+  "flip your phone" card; I.1 prologue and exit, I.3, I.4 lamp and ending; the user liked it):
+  `--record` at 60 fps with a sound log, `tools/video_audio` rebuilds the sound in sync (ambience,
+  effects; the generative music apart), `tools/make_short.sh` cuts, turns, titles and mixes
+  (-14 LUFS). Videos live in build/video (not in git).
+  **Next session: Act II, from II.1**, level by level as for Act I.
 
 - **HUD restyle (2026-10-06, chosen by the user on the canvas
   https://claude.ai/artifact/Ya9pa2yLXkfwybJAycj7AW)**: style 2 "Luce di lampada" (lamplight) for

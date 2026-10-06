@@ -173,6 +173,8 @@ finish_slots :: proc(id: Sound_Id, takes: int) {
 }
 
 shutdown :: proc() {
+	delete(log.events)
+	log = {}
 	if s.worker != nil {
 		thread.join(s.worker)
 		thread.destroy(s.worker)
@@ -209,9 +211,44 @@ shutdown :: proc() {
 	s = {}
 }
 
+// An effect played, as written to the log of a recorded video.
+Event :: struct {
+	t:         f32, // seconds into the video
+	id:        Sound_Id,
+	volume_db: f32,
+	pitch:     f32, // with the act's key applied
+	pan:       f32,
+}
+
+// The log of a recorded video (--shots --record): every effect played, at
+// the video's clock, so tools/video_audio can rebuild the sound in sync.
+@(private)
+log: struct {
+	on:     bool,
+	t:      f32,
+	events: [dynamic]Event,
+}
+
+start_log :: proc() {
+	log.on = true
+}
+
+// The video's clock (set every frame while recording).
+set_log_time :: proc(t: f32) {
+	log.t = t
+}
+
+// The effects played so far; the log stays until shutdown.
+logged :: proc() -> []Event {
+	return log.events[:]
+}
+
 // Play an effect; volume in dB on top of the effects volume, pitch as a
 // ratio (in-key effects follow the act's key), pan -1 (left) .. 1 (right).
 play :: proc(id: Sound_Id, volume_db: f32 = 0, pitch: f32 = 1, pan: f32 = 0) {
+	if log.on {
+		append(&log.events, Event{log.t, id, volume_db, id in TUNED ? pitch * s.key : pitch, pan})
+	}
 	if !s.ready || s.count[id] == 0 {
 		return
 	}
