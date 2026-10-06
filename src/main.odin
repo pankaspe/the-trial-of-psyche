@@ -84,6 +84,8 @@ App :: struct {
 	target:          rl.RenderTexture2D, // offscreen canvas (--shots DIR --size WxH)
 	has_target:      bool,
 	post:            render.Post,
+	black_t:         f32, // < 0, or time since the screen began to fade to black (end of an act)
+	black_next:      int, // the level that follows the black
 }
 
 main :: proc() {
@@ -161,6 +163,7 @@ startup :: proc(app: ^App) -> bool {
 	}
 	app.screen = .Title
 	app.menu_fade = -1
+	app.black_t = -1
 	audio.start_music()
 	return true
 }
@@ -206,6 +209,51 @@ new_level :: proc(app: ^App, index: int) -> bool {
 	g.fragment_known = index in app.prog.fragments
 	render.scene_build(&app.scene, g, game.level_allocator(g))
 	return true
+}
+
+// BLACK_OUT: the screen goes black at the end of an act; BLACK_IN: it comes back.
+BLACK_OUT :: 1.0
+BLACK_IN :: 0.8
+
+// On to the next level. Within an act Psyche flies on through the veil and
+// arrives in the next level; at the end of an act the screen goes black and
+// the next act opens with its own card or cutscene.
+continue_story :: proc(app: ^App) {
+	next := app.ending.level + 1
+	if app.ending.ending != .Exit || content.closes_act(app.ending.level) || !content.is_built(next) {
+		app.black_t = 0
+		app.black_next = next
+		return
+	}
+	if new_level(app, next) {
+		game.begin(&app.game, arrival = true)
+		app.screen = .Play
+	}
+}
+
+@(private)
+update_black :: proc(app: ^App, dt: f32) {
+	if app.black_t < 0 {
+		return
+	}
+	before := app.black_t
+	app.black_t += dt
+	if before < BLACK_OUT && app.black_t >= BLACK_OUT {
+		start_level(app, app.black_next)
+	}
+	if app.black_t >= BLACK_OUT + BLACK_IN {
+		app.black_t = -1
+	}
+}
+
+@(private)
+draw_black :: proc(app: ^App, w, h: f32) {
+	if app.black_t < 0 {
+		return
+	}
+	t := app.black_t
+	a := t < BLACK_OUT ? t / BLACK_OUT : 1 - (t - BLACK_OUT) / BLACK_IN
+	rl.DrawRectangleRec({0, 0, w, h}, {0, 0, 0, u8(clamp(a, 0, 1) * 255)})
 }
 
 // Restart the current level at once (no act card, no prologue).
@@ -364,6 +412,7 @@ frame :: proc(app: ^App) {
 		update_act_card(app, dt)
 	}
 	update_toasts(app, dt)
+	update_black(app, dt)
 	audio.update()
 	shot := ""
 	if app.shooting {
@@ -393,7 +442,9 @@ frame :: proc(app: ^App) {
 		reset_canvas(w, h)
 		render.post_draw(&app.post, look, w, h, render.sun_uv(&app.scene, g, view), render.focus_uv(g, view), app.time)
 	}
+	render.draw_veil(&app.renderer, g, w, h, app.time)
 	draw_screens(app)
+	draw_black(app, w, h)
 	if app.cfg.debug {
 		debug(app)
 	}
@@ -702,9 +753,19 @@ draw_screens :: proc(app: ^App) {
 	case .Ending:
 		switch ui.ending_card(u, app.ending, app.card_t) {
 		case .Next:
-			start_level(app, app.ending.level + 1)
+			if app.black_t < 0 {
+				continue_story(app)
+			}
 		case .Retry:
-			play_level(app)
+			if app.ending.ending == .Exit {
+				// back through the veil into the same level
+				if new_level(app, app.ending.level) {
+					game.begin(g, prologue = false, arrival = true)
+					app.screen = .Play
+				}
+			} else {
+				play_level(app)
+			}
 		case .Main_Menu:
 			to_title(app)
 		case .None, .Play, .Levels, .Book, .Settings, .Quit, .Resume, .Restart, .Back:

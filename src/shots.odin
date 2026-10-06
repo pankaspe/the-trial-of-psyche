@@ -146,9 +146,23 @@ LEVEL_TOUR := [?]Shot_Step {
 	{5.0, "06_fragment", nil},
 	{0.1, "", proc(app: ^App) {if app.screen == .Fragment {close_fragment(app)}}},
 	{0.1, "", proc(app: ^App) {tour_walk(app, app.game.data.exit)}},
-	{6.0, "07_exit", nil},
-	{1.2, "08_exit_wind", nil},
-	{3.0, "09_end_card", nil},
+	{0.8, "07_exit", nil},
+	{1.0, "08_exit_wind", nil},
+	{1.2, "08b_flight", nil},
+	{3.5, "09_end_card", nil},
+	// on through the veil into the next level (or to black at the end of an act)
+	{0.1, "", proc(app: ^App) {
+			if app.screen != .Ending {
+				// a level the tour cannot finish (an ending, a puzzle): end it here
+				app.game.ending = app.game.data.has_amore ? .Oil : .Exit
+				finish_level(app)
+			}
+			continue_story(app)
+		}},
+	{0.8, "10a_arrival", nil},
+	{0.5, "10b_arrival", nil},
+	{0.6, "10c_arrival", nil},
+	{2.0, "10d_arrived", nil},
 }
 
 // Walk to c from wherever Psyche is, trying every view (no animation).

@@ -159,8 +159,10 @@ Ending_Info :: struct {
 // The card after an ending; `t` is the time since it appeared.
 ending_card :: proc(u: ^Ui, info: Ending_Info, t: f32) -> (act: Menu_Action) {
 	s := u.scale
-	focus_shade(u, clamp(t / 1.2, 0, 1))
-	shade(u, 0.25 * clamp(t / 1.5, 0, 1))
+	// after an exit the card floats on the veil between the levels: a lighter shade
+	veiled := info.ending == .Exit
+	focus_shade(u, clamp(t / 1.2, 0, 1) * (veiled ? 0.4 : 1))
+	shade(u, (veiled ? 0.08 : 0.25) * clamp(t / 1.5, 0, 1))
 	a := clamp(t / 2, 0, 1)
 	cx := u.width * 0.5
 	body := Style{size = 32, color = TEXT, shadow = true}

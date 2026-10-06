@@ -133,8 +133,10 @@ Renderer :: struct {
 	sky:        Backdrop,
 	ridges:     Backdrop,
 	clouds:     Backdrop,
+	veil:       Backdrop, // between the levels (uses time, aspect and its own alpha)
 	radial:     rl.Texture2D, // soft round gradient for glows and particles
 	white:      rl.Texture2D, // 1x1, for full-rect shader passes
+	veil_alpha: i32,
 }
 
 init :: proc(r: ^Renderer) {
@@ -154,6 +156,8 @@ init :: proc(r: ^Renderer) {
 	r.sky = load_backdrop(content.SHADER_SKY_FS)
 	r.ridges = load_backdrop(content.SHADER_RIDGES_FS)
 	r.clouds = load_backdrop(content.SHADER_CLOUDS_FS)
+	r.veil = load_backdrop(content.SHADER_VEIL_FS)
+	r.veil_alpha = rl.GetShaderLocation(r.veil.shader, "alpha")
 	build_meshes(&r.meshes)
 
 	// radial gradient: white centre, 0.45 alpha at 35%, transparent edge
@@ -180,6 +184,7 @@ shutdown :: proc(r: ^Renderer) {
 	rl.UnloadShader(r.sky.shader)
 	rl.UnloadShader(r.ridges.shader)
 	rl.UnloadShader(r.clouds.shader)
+	rl.UnloadShader(r.veil.shader)
 	rl.UnloadTexture(r.radial)
 	rl.UnloadTexture(r.white)
 	r^ = {}
@@ -313,6 +318,10 @@ CINE_LOOK_UP :: 520 // proto px the prologue's camera starts above the level
 
 scene_view :: proc(s: ^Scene, g: ^game.Game, width, height: f32) -> View {
 	v := make_view(s.fit, width, height, g.angle, g.data.size, g.data.height, shake_offset(g))
+	if lift := game.exit_lift(g); lift > 0 {
+		// the camera follows her a little way up as the wind takes her
+		v.center.y -= lift * 64 * 0.55
+	}
 	if g.phase == .Prologue {
 		cam := game.cine(g)
 		her := world_to_proto(v, g.psyche.pos + {0, 0, 0.3})
@@ -674,6 +683,14 @@ piece_state :: proc(g: ^game.Game, p: Piece, i: int) -> (lift, alpha: f32, visib
 				lift -= 0.3 * (1 - fx.cubic_out(fx.clamp01(t / game.DISSOLVE_TIME)))
 			}
 		}
+	}
+	if g.arrive_t >= 0 && g.phase == .Arrival {
+		// the palace rises into place, the stones nearest the start first
+		c := p.cell - g.data.start
+		d := math.sqrt(f32(c.x * c.x + c.y * c.y)) + f32(abs(c.z)) * 0.3
+		k := game.arrival_rise(g, d, fx.hash01(u32(i) * 31 + 7))
+		lift -= 9 * (1 - k)
+		alpha *= fx.clamp01(k * 1.6)
 	}
 	if g.collapse_t >= 0 {
 		keep := g.collapse_keep
@@ -1305,6 +1322,22 @@ set_sky_uniforms :: proc(b: Backdrop, s: ^Scene, g: ^game.Game, v: View) {
 	set_bv3(b, .Halo_Color, lk.halo_color)
 	set_bf(b, .Halo_Width, lk.halo_width)
 	set_bv3(b, .Haze, lk.haze)
+}
+
+// The veil between the levels, over the world (not over the interface).
+draw_veil :: proc(r: ^Renderer, g: ^game.Game, width, height, time: f32) {
+	a := game.veil(g)
+	if a <= 0.003 {
+		return
+	}
+	b := r.veil
+	set_bf(b, .Time, time)
+	set_bf(b, .Aspect, width / height)
+	v := a
+	rl.SetShaderValue(b.shader, r.veil_alpha, &v, .FLOAT)
+	rl.BeginShaderMode(b.shader)
+	full_rect(r, {0, 0, width, height})
+	rl.EndShaderMode()
 }
 
 @(private)

@@ -313,6 +313,14 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   - A keys badge top left (Esc pause and controls, R restart: `ui.keys_badge`) replaces the old
     Hint_Keys; it comes once the turning tutorial is done (at once in levels that do not teach it).
     The turning tutorial now speaks in the tale's voice (the mountain never shows itself whole...).
+  - Figures climb stairs tread by tread (`pl.stair_ground`, `pl.stand_world`), in play and prologue.
+  - Transitions between levels: at an exit the wind lifts Psyche higher, the camera follows and
+    the **veil between the levels** closes (`veil.fs`, `game.veil`); the ending card floats on it;
+    Continue loads the next level behind the veil and plays the **arrival** (phase `Arrival`: the
+    veil opens, the blocks rise into place from the start outward, Psyche comes down onto the
+    start). Retry after an exit arrives the same way. At the end of an act (or after a non-exit
+    ending) the screen goes to black (`continue_story`, `black_t`) and the next act opens with its
+    card or cutscene. The tour (`--shots --level`) ends with the transition (10a..10d shots).
   - **Next: I.2 "The Invisible Palace"**: the user plays it and says what to change (setting,
     props); then I.3, I.4, then Act II (II.3's brief below still stands when its turn comes).
 

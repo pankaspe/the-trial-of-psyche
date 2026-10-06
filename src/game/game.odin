@@ -70,6 +70,7 @@ Phase :: enum u8 {
 	Sigil, // the seal is lit: blocks rise, input waits
 	Mechanism, // a handle turns a part of the palace: input waits
 	Prologue, // the opening cutscene (prologue.odin): input only skips or starts
+	Arrival, // coming from the last level: the palace rises, Psyche comes down; input waits
 	Ending_Oil,
 	Ending_Trust,
 	Ending_Exit,
@@ -195,6 +196,7 @@ Game :: struct {
 	learned:        [Key]bool, // tutorial hints whose action has been done
 	begin_t:        f32, // time since begin(), < 0 before
 	cine_out:       f32, // time since the prologue gave way to play, < 0 before (the bars withdraw)
+	arrive_t:       f32, // time since the arrival from the last level began, < 0 without one
 	rise_t:         f32, // < 0 until the seal is lit
 	rise_count:     int,
 	collapse_t:     f32, // < 0 until the palace falls
@@ -265,6 +267,7 @@ load_text :: proc(g: ^Game, index: int, text: string) -> (err: Maybe(Load_Error)
 	g.flicker = 1
 	g.begin_t = -1
 	g.cine_out = -1
+	g.arrive_t = -1
 	g.rise_t = -1
 	g.collapse_t = -1
 	g.fragment_t = -1
@@ -300,13 +303,28 @@ title_key :: proc(g: ^Game) -> Key {
 
 // Leave attract mode and start playing: after the prologue, if the level
 // has one and `prologue` is set (a restart does not show it again).
-begin :: proc(g: ^Game, prologue := true) {
+// `arrival`: coming from the last level through the veil, the palace rises
+// into place and Psyche comes down onto the start.
+begin :: proc(g: ^Game, prologue := true, arrival := false) {
 	g.active = true
 	if g.data.has_prologue && prologue {
 		audio.start_music()
 		prologue_start(g)
 		return
 	}
+	if arrival {
+		set_phase(g, .Arrival)
+		g.arrive_t = 0
+		g.teach_pending = prologue && g.data.mechanic != .None
+		audio.play(.Wind, -10, 0.8)
+		return
+	}
+	start_play(g, prologue)
+}
+
+// The level is on: the title, the timeline of the first texts, music.
+@(private)
+start_play :: proc(g: ^Game, prologue: bool) {
 	g.hud.visible = true
 	show(&g.hud.title, title_key(g), 1.5, 3.5, 2.0)
 	audio.start_music()
@@ -409,6 +427,15 @@ update :: proc(g: ^Game, dt: f32) {
 		}
 	case .Prologue:
 		update_prologue(g, dt)
+	case .Arrival:
+		g.arrive_t += dt
+		g.psyche.pos = pl.stand_world(&g.palace, g.psyche.cell) + {0, 0, arrival_drop(g)}
+		if g.arrive_t >= ARRIVE_END {
+			pending := g.teach_pending
+			set_phase(g, .Play)
+			start_play(g, true)
+			g.teach_pending = pending
+		}
 	case .Sigil:
 		if g.phase_t >= rise_duration(g) {
 			set_phase(g, .Play)
@@ -506,7 +533,7 @@ set_view :: proc(g: ^Game, r: int) {
 // --- lamp --------------------------------------------------------------------------
 
 toggle_lamp :: proc(g: ^Game) {
-	if !g.active || is_over(g) || !g.data.has_lamp {
+	if !g.active || is_over(g) || !g.data.has_lamp || g.phase == .Arrival {
 		return
 	}
 	if g.lamp_on {
@@ -1010,13 +1037,55 @@ start_ending :: proc(g: ^Game, p: Phase) {
 		audio.play(.Good, -2)
 	case .Ending_Exit:
 		audio.play(.Wind, -4)
-	case .Play, .Sigil, .Mechanism, .Prologue, .Finished:
+	case .Play, .Sigil, .Mechanism, .Prologue, .Arrival, .Finished:
 	}
 }
 
-// Timeline of an exit: the wind gathers, lifts Psyche and takes her away.
+// Timeline of an exit: the wind gathers, lifts Psyche and takes her away,
+// up through the veil between the levels.
 EXIT_LIFT :: 0.5
-EXIT_END :: 2.6
+EXIT_END :: 3.6
+EXIT_HEIGHT :: 5.0 // cells she rises before the veil closes
+VEIL_IN :: 1.4 // the veil starts to close...
+VEIL_IN_TIME :: 1.8 // ...and is closed after this long
+
+// Timeline of an arrival: the veil opens, the palace rises into place from
+// the start outward, Psyche comes down onto the start.
+ARRIVE_END :: 3.2
+ARRIVE_DROP :: 3.0 // cells above the start she comes down from
+VEIL_OUT :: 0.15
+VEIL_OUT_TIME :: 1.3
+
+// How far above the start Psyche still is while she arrives.
+arrival_drop :: proc(g: ^Game) -> f32 {
+	if g.arrive_t < 0 || g.phase != .Arrival {
+		return 0
+	}
+	return ARRIVE_DROP * (1 - fx.cubic_out(fx.progress(g.arrive_t, 1.0, ARRIVE_END - 1.0)))
+}
+
+// How much a block has risen into place during the arrival (0 below, 1 there):
+// the stones nearest the start come first. `d` is its distance from the start.
+arrival_rise :: proc(g: ^Game, d: f32, jitter: f32) -> f32 {
+	if g.arrive_t < 0 || g.phase != .Arrival {
+		return 1
+	}
+	return fx.cubic_out(fx.progress(g.arrive_t, 0.45 + d * 0.08 + jitter * 0.15, 1.0))
+}
+
+// The veil between the levels over the world: closing as Psyche flies away
+// through an exit, opening as she arrives. 0: no veil, 1: closed.
+veil :: proc(g: ^Game) -> f32 {
+	switch {
+	case g.phase == .Ending_Exit:
+		return fx.sine_in_out(fx.progress(g.phase_t, VEIL_IN, VEIL_IN_TIME))
+	case g.phase == .Finished && g.ending == .Exit:
+		return 1
+	case g.phase == .Arrival:
+		return 1 - fx.sine_in_out(fx.progress(g.arrive_t, VEIL_OUT, VEIL_OUT_TIME))
+	}
+	return 0
+}
 
 // How high the wind has lifted Psyche (cells) at the exit.
 exit_lift :: proc(g: ^Game) -> f32 {
@@ -1024,7 +1093,7 @@ exit_lift :: proc(g: ^Game) -> f32 {
 		return 0
 	}
 	t := g.phase == .Finished ? EXIT_END : g.phase_t
-	return 1.6 * fx.quad_in(fx.clamp01((t - EXIT_LIFT) / (EXIT_END - EXIT_LIFT)))
+	return EXIT_HEIGHT * fx.quad_in(fx.clamp01((t - EXIT_LIFT) / (EXIT_END - EXIT_LIFT)))
 }
 
 // Timeline of "the drop of oil".
