@@ -160,6 +160,12 @@ vec2 plates(vec2 p) {
     return vec2(sqrt(d2) - sqrt(d1), hash(id));
 }
 
+// Distance from a point of a cell's top to the nearest edge of the cell.
+float tile_edge(vec2 p) {
+    vec2 q = min(p, 1.0 - p);
+    return min(q.x, q.y);
+}
+
 // Mountain stone, in world space so the faces of a column read as one rock:
 // plates stretched along the bedding, dark cracks between them, fine grain.
 float stone(vec3 n) {
@@ -221,6 +227,12 @@ void main() {
         float u = abs(n.x) > 0.5 ? L.y : L.x;
         if (daylight > 0.5) {
             tone *= n.z > 0.5 ? mix(1.0, stone(n), 0.6) : stone(n);
+            if (n.z > 0.5) {
+                // a bare top: a joint around each tile, as the paving of the palace
+                float e = tile_edge(L.xy);
+                tone *= mix(0.6, 1.0, smoothstep(0.015, 0.05, e));
+                tone *= mix(1.0, 1.1, line(e, 0.065, 0.01));
+            }
         } else {
             // living rock: earth in rough, slanted strata with a few dark seams
             float z = L.z + 0.06 * sin(u * 9.0 + floor(fragWorld.z) * 2.3) + 0.03 * sin(u * 23.0);
@@ -244,6 +256,15 @@ void main() {
         }
         if (n.z > 0.5) {
             tone *= 0.88 + 0.2 * hash(floor(L.xy * 16.0));
+            // each tile of grass sits in a frame of bare earth, so the grid reads
+            float e = tile_edge(L.xy);
+            float w = 0.055 + 0.012 * sin((L.x + L.y) * 31.0 + floor(fragWorld.x) * 3.1 + floor(fragWorld.y) * 1.7);
+            if (e < w) {
+                m = 8.0;
+                tone = (0.84 + 0.1 * hash(floor(L.xy * 40.0))) * mix(0.72, 1.0, smoothstep(0.0, 0.02, e));
+            } else {
+                tone *= mix(0.86, 1.0, smoothstep(w, w + 0.03, e)); // the grass's edge in shade
+            }
         }
     }
     float lum = (t * 0.40 + 0.16) * tone;
