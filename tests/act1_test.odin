@@ -102,14 +102,15 @@ level_I_2_invisible_palace :: proc(t: ^testing.T) {
 	testing.expect(t, walk(t, &h, COURT), "back to the court")
 	for r in ([3]int{0, 1, 2}) {
 		game.set_view(&h, r)
-		testing.expectf(t, !can_reach(&h, h.data.fragment), "view %d does not join the fragment's column", r)
+		testing.expectf(t, !can_reach(&h, h.data.fragments[0]), "view %d does not join the fragment's column", r)
 	}
 	game.set_view(&h, 3)
-	testing.expect(t, walk(t, &h, h.data.fragment) && h.fragment_taken, "view 3 does")
+	testing.expect(t, walk(t, &h, h.data.fragments[0]) && 0 in h.fragments_taken, "view 3 does")
 }
 
-// I.3: hidden stairs. The first flight hides in the first view, the second
-// in the view that joins the terrace to the crag.
+// I.3: a longer climb with no lesson: three flights of hidden stairs and
+// three seams, each in its own view; a candle tower as a decoy; two
+// fragments on the sisters' statues.
 @(test)
 level_I_3_sisters :: proc(t: ^testing.T) {
 	g: game.Game
@@ -117,31 +118,49 @@ level_I_3_sisters :: proc(t: ^testing.T) {
 	if !start_level(t, &g, 2) {
 		return
 	}
-	TERRACE :: iso.Cell{4, 4, 2}
-	LEDGE :: iso.Cell{5, 3, 3}
-	STAIRS_TOP :: iso.Cell{7, 5, 4}
-	DECOY :: iso.Cell{5, 6, 4}
-	testing.expect(t, !can_reach(&g, TERRACE), "view 0: the first stairs are hidden")
-	testing.expect(t, walk(t, &g, DECOY), "the decoy tower is joined to the garden")
-	for r in 0 ..< 4 {
-		game.set_view(&g, r)
-		testing.expectf(t, !can_reach(&g, g.data.exit), "view %d: the tower leads nowhere", r)
-	}
+	GALLERY :: iso.Cell{5, 7, 2}
+	TOWER :: iso.Cell{6, 10, 3}
+	BASTION :: iso.Cell{3, 4, 4}
+	TERRACE :: iso.Cell{6, 4, 5}
+	WALK :: iso.Cell{8, 2, 6}
+	testing.expect(t, len(g.data.hints) == 0, "no lesson: the stairs are found by turning")
+	testing.expect(t, len(g.data.fragments) == 2, "two fragments, on the sisters' statues")
+	testing.expect(t, !can_reach(&g, GALLERY), "view 0: the first stairs hide behind the candle tower")
+	game.set_view(&g, 1)
+	testing.expect(t, !can_reach(&g, GALLERY), "view 1: still hidden")
+	game.set_view(&g, 3)
+	testing.expect(t, walk(t, &g, GALLERY), "view 3: up the stairs to the gallery")
 	game.set_view(&g, 0)
-	testing.expect(t, walk(t, &g, g.data.start), "back down to the garden")
+	testing.expect(t, walk(t, &g, TOWER), "view 0 joins the gallery to the candle tower")
+	for r in ([3]int{0, 2, 3}) {
+		game.set_view(&g, r)
+		testing.expectf(t, !can_reach(&g, BASTION) && !can_reach(&g, g.data.fragments[0]), "view %d: the tower is a dead end", r)
+	}
 	game.set_view(&g, 1)
-	testing.expect(t, walk(t, &g, TERRACE) && walk(t, &g, LEDGE), "view 1: up the stairs and across to the crag")
-	testing.expect(t, g.learned[i18n.Key.Hint_Stairs], "climbing in the dark ends the lesson of the stairs")
-	testing.expect(t, !can_reach(&g, STAIRS_TOP), "view 1: the second stairs are hidden")
-	game.toggle_lamp(&g)
-	testing.expect(t, !g.lamp_on, "no lamp to cheat with")
+	testing.expect(t, walk(t, &g, g.data.fragments[0]) && 0 in g.fragments_taken, "view 1 joins the tower to the elder sister")
+	testing.expect(t, walk(t, &g, TOWER), "and back")
+	game.set_view(&g, 0)
+	testing.expect(t, walk(t, &g, GALLERY), "back to the gallery")
+	for r in ([3]int{0, 1, 3}) {
+		game.set_view(&g, r)
+		testing.expectf(t, !can_reach(&g, BASTION), "view %d does not join the gallery to the bastion", r)
+	}
 	game.set_view(&g, 2)
-	testing.expect(t, walk(t, &g, STAIRS_TOP), "another view shows the stairs")
+	testing.expect(t, walk(t, &g, BASTION), "view 2 does")
+	testing.expect(t, !can_reach(&g, TERRACE), "view 2: the second stairs hide behind the urn's pillar")
 	game.set_view(&g, 1)
-	testing.expect(t, walk(t, &g, g.data.fragment) && g.fragment_taken, "view 1 joins the stairs' top to the second tower")
-	testing.expect(t, walk(t, &g, STAIRS_TOP), "and back")
-	game.set_view(&g, 2)
-	testing.expect(t, walk(t, &g, g.data.exit), "the top of the crag")
+	testing.expect(t, !can_reach(&g, TERRACE), "view 1: behind the younger sister's pillar")
+	game.set_view(&g, 3)
+	testing.expect(t, walk(t, &g, TERRACE), "view 3: up to the terrace")
+	testing.expect(t, !can_reach(&g, WALK), "view 3 does not join the terrace to the crag walk")
+	game.set_view(&g, 1)
+	testing.expect(t, walk(t, &g, WALK), "view 1 does")
+	testing.expect(t, !can_reach(&g, g.data.exit), "view 1: the last stairs hide behind the beacon")
+	game.set_view(&g, 3)
+	testing.expect(t, walk(t, &g, g.data.fragments[1]) && 1 in g.fragments_taken, "view 3 joins the crag walk to the younger sister")
+	testing.expect(t, walk(t, &g, WALK), "and back")
+	game.set_view(&g, 0)
+	testing.expect(t, walk(t, &g, g.data.exit), "the summit")
 	exits(t, &g)
 }
 

@@ -7,20 +7,26 @@
 #   rise x y z [stairs_dir] block (or stairs) raised when the sigil is lit
 #   prop name x y z [dir]   decoration in cell (x,y,z); oriented props take a dir.
 #                           pillar/bed/plinth/cypress/urn/brazier block the cell;
+#                           statue dir (a sister in marble on a plinth, her arm
+#                           raised toward dir) blocks it too;
 #                           rail/wall/wallHalf/wallBattlement/fence close side `dir`;
 #                           decoration only: arch [dir], vase dir (a small vase in a
 #                           corner: px (+x,+y), py (-x,+y), mx (-x,-y), my (+x,-y)),
-#                           sconce dir (an unlit candle on side `dir` of the block
-#                           at x y z), reeds dir (a clump of reeds in a corner, as the vase)
+#                           sconce dir (a candle on side `dir` of the block
+#                           at x y z; lit where the setting lights them), reeds dir (a clump of reeds in a corner, as the vase)
 #                           mountain: pine [dir] (bent toward dir) and boulder [dir]
 #                           block the cell; shrub dir and cairn dir sit in a corner
 #   setting name            night (the default: the palace under the moon) |
+#                           night_candles (the same, its candles lit) |
+#                           dusk (the palace at twilight, candles lit) |
 #                           crag_sunset (a crag over a sea of clouds, mountains, sunset)
 #   start|sigil x y h       (h = surface height = block z + 1)
 #   amore x y h             the cell of the bed where Cupid sleeps
 #   exit x y h              reaching it completes the level
-#   fragment x y h          the fragment of the tale: optional, on a spot reached
-#                           by a harder, optional puzzle (level_check verifies it)
+#   fragment x y h          a fragment of the tale: optional, on a spot reached
+#                           by a harder, optional puzzle (level_check verifies it);
+#                           one line per fragment, as many as content.FRAGMENTS
+#                           gives the level, in that order
 #   lamp [n]                Psyche carries the lamp; n = lightings that are enough
 #                           to finish (the "no wasted light" achievement)
 #   voice x y h key         line spoken when Psyche first stands there; on the

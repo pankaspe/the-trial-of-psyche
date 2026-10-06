@@ -206,7 +206,11 @@ new_level :: proc(app: ^App, index: int) -> bool {
 		return false
 	}
 	g.trust_allowed = progress.game_finished(app.prog)
-	g.fragment_known = index in app.prog.fragments
+	for _, i in g.data.fragments {
+		if game.fragment_index(g, i) in app.prog.fragments {
+			g.fragments_known += {i}
+		}
+	}
 	render.scene_build(&app.scene, g, game.level_allocator(g))
 	return true
 }
@@ -381,7 +385,7 @@ frame :: proc(app: ^App) {
 	}
 	if g.fragment_new {
 		g.fragment_new = false
-		announce(app, progress.collect_fragment(&app.prog, g.level_index))
+		announce(app, progress.collect_fragment(&app.prog, game.fragment_index(g, g.fragment_last)))
 		save_progress(app)
 		if app.screen == .Play {
 			app.screen = .Fragment
@@ -718,7 +722,7 @@ draw_screens :: proc(app: ^App) {
 		}
 	case .Fragment:
 		ui.draw_hud(u, g)
-		if ui.fragment_card(u, game.fragment_key(g), app.fragment_t) {
+		if ui.fragment_card(u, game.fragment_key(g, g.fragment_last), app.fragment_t) {
 			close_fragment(app)
 		}
 	case .Mechanic:

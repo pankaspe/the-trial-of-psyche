@@ -89,15 +89,19 @@ main :: proc() {
 		solve_report(&p, &data, alloc)
 		return
 	}
-	if data.has_fragment {
-		reachable, optional := pl.check_fragment(&p)
-		fmt.printfln("\nfragment %v: reachable %v, optional %v", data.fragment, reachable, optional)
+	for c, i in data.fragments {
+		reachable, optional := pl.check_fragment(&p, i)
+		fmt.printfln("\nfragment %v: reachable %v, optional %v", c, reachable, optional)
 		if !reachable || !optional {
 			fmt.eprintln("error: the fragment must be reachable and never required")
 			os.exit(1)
 		}
-	} else {
+	}
+	if len(data.fragments) == 0 {
 		fmt.println("\nwarning: no fragment of the tale in this level")
+	}
+	if data.has_exit && !print_plan(&p, &data, alloc) {
+		os.exit(1)
 	}
 }
 
@@ -124,8 +128,8 @@ report :: proc(p: ^pl.Palace, data: ^level.Level_Data, label: string, reached: [
 		i := pl.node_index(p, data.exit)
 		fmt.printf("  exit:%v", i >= 0 && reached[i])
 	}
-	if data.has_fragment {
-		i := pl.node_index(p, data.fragment)
+	for c in data.fragments {
+		i := pl.node_index(p, c)
 		fmt.printf("  fragment:%v", i >= 0 && reached[i])
 	}
 	fmt.println()
@@ -157,11 +161,36 @@ solve_report :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Allo
 		fmt.eprintln("error: a level whose palace changes needs an exit")
 		os.exit(1)
 	}
+	if !print_plan(p, data, alloc) {
+		os.exit(1)
+	}
+	for c in data.fragments {
+		reach := pl.solve(p, c, data.exit, alloc)
+		optional := pl.solve(p, data.exit, c, alloc)
+		fmt.printfln("\nfragment %v: reachable %v, optional %v", c, reach.solved, optional.solved)
+		if reach.solved {
+			fmt.printfln("  fragment plan: %d steps, %d turns, %d lightings, %d handles", reach.steps, reach.turns, reach.lightings, reach.handles)
+		}
+		if !reach.solved || !optional.solved {
+			fmt.eprintln("error: the fragment must be reachable and never required")
+			failed = true
+		}
+	}
+	if len(data.fragments) == 0 {
+		fmt.println("\nwarning: no fragment of the tale in this level")
+	}
+	if failed {
+		os.exit(1)
+	}
+}
+
+// The plan to the exit with the fewest decisions, step by step.
+print_plan :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Allocator) -> bool {
 	sol := pl.solve(p, data.exit, nil, alloc)
 	fmt.printfln("\nsolver: %d states reached, %d dead ends", sol.states, sol.dead)
 	if !sol.solved {
 		fmt.eprintln("error: the exit cannot be reached")
-		os.exit(1)
+		return false
 	}
 	fmt.printfln("plan: %d steps (%d in the light), %d turns, %d lightings, %d handles", sol.steps, sol.light_steps, sol.turns, sol.lightings, sol.handles)
 	walk := 0
@@ -195,22 +224,5 @@ solve_report :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Allo
 		_ = i
 	}
 	flush(&walk, &illusions, last)
-
-	if data.has_fragment {
-		reach := pl.solve(p, data.fragment, data.exit, alloc)
-		optional := pl.solve(p, data.exit, data.fragment, alloc)
-		fmt.printfln("\nfragment %v: reachable %v, optional %v", data.fragment, reach.solved, optional.solved)
-		if reach.solved {
-			fmt.printfln("  fragment plan: %d steps, %d turns, %d lightings, %d handles", reach.steps, reach.turns, reach.lightings, reach.handles)
-		}
-		if !reach.solved || !optional.solved {
-			fmt.eprintln("error: the fragment must be reachable and never required")
-			failed = true
-		}
-	} else {
-		fmt.println("\nwarning: no fragment of the tale in this level")
-	}
-	if failed {
-		os.exit(1)
-	}
+	return true
 }

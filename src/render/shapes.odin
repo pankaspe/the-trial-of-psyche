@@ -27,6 +27,7 @@ Mesh_Id :: enum u8 {
 	Boulder_PX, Boulder_MX, Boulder_PY, Boulder_MY,
 	Shrub_PX, Shrub_MX, Shrub_PY, Shrub_MY,
 	Cairn_PX, Cairn_MX, Cairn_PY, Cairn_MY,
+	Statue_PX, Statue_MX, Statue_PY, Statue_MY,
 	Pillar,
 	Plinth,
 	Cypress,
@@ -80,6 +81,7 @@ PROP_MESH := [level.Prop_Kind]Mesh_Id {
 	.Urn             = .Urn,
 	.Brazier         = .Brazier,
 	.Bed             = .Bed_PX,
+	.Statue          = .Statue_PX,
 	.Arch            = .Arch_PX,
 	.Vase            = .Vase_PX,
 	.Reeds           = .Reeds_PX,
@@ -102,6 +104,7 @@ PROP_MATERIAL := [level.Prop_Kind]Material {
 	.Urn             = .Bronze,
 	.Brazier         = .Bronze,
 	.Bed             = .Bronze,
+	.Statue          = .Marble,
 	.Arch            = .Masonry,
 	.Vase            = .Bronze,
 	.Reeds           = .Foliage,
@@ -297,6 +300,26 @@ CAIRN_PX := [?]Box {
 
 // --- figures -------------------------------------------------------------------------
 
+// A sister of Psyche in marble: Psyche's robed figure, larger, on a plinth,
+// one arm raised toward d as if calling from the crag.
+@(private)
+statue :: proc(d: iso.Dir) -> rl.Mesh {
+	S :: 1.45 // larger than life
+	BASE :: 0.26
+	b := builder_make()
+	boxes(&b, oriented({{{0.22, 0.22, 0}, {0.78, 0.78, 0.07}}, {{0.27, 0.27, 0.07}, {0.73, 0.73, BASE}}}, d))
+	robe: [len(ROBE_PROFILE)][2]f32
+	for p, i in ROBE_PROFILE {
+		robe[i] = p * S
+	}
+	lathe(&b, robe[:], 14, {0.5, 0.5, BASE})
+	sphere(&b, {0.5, 0.5, BASE + 0.548 * S}, 0.048 * S, 7, 12)
+	// the arm: out from the shoulder, then the forearm raised
+	sh: f32 = BASE + 0.42 * S
+	boxes(&b, oriented({{{0.55, 0.47, sh - 0.03}, {0.74, 0.53, sh + 0.02}}, {{0.7, 0.47, sh + 0.02}, {0.75, 0.53, sh + 0.2}}}, d))
+	return upload(&b)
+}
+
 // Psyche: a slender robed figure about 0.6 cells tall, abstract on purpose.
 @(private)
 ROBE_PROFILE := [?][2]f32 {
@@ -403,6 +426,7 @@ build_meshes :: proc(meshes: ^[Mesh_Id]rl.Mesh) {
 		vb := builder_make()
 		lathe(&vb, VASE_PROFILE[:], 12, {c.x, c.y, 0})
 		meshes[oriented_mesh(.Vase_PX, d)] = upload(&vb)
+		meshes[oriented_mesh(.Statue_PX, d)] = statue(d)
 	}
 	b := builder_make()
 	sphere(&b, {}, 1, 7, 12)

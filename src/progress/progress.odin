@@ -1,8 +1,8 @@
 // The player's progress: levels finished, fragments of the tale collected,
 // achievements. Saved as `key = value` lines next to the settings
-// (~/.config/the-trial-of-psyche/progress.cfg on Linux). Levels are stored by
-// their stable id ("I.4"), so adding levels never breaks a save; unknown ids
-// and lines are ignored.
+// (~/.config/the-trial-of-psyche/progress.cfg on Linux). Levels and fragments
+// are stored by their stable id ("I.4", "I.3b"), so adding levels never breaks
+// a save; unknown ids and lines are ignored.
 //
 // The rules here are pure (no IO, no game state): the app reports what
 // happened, this package answers with the achievements it unlocked. If the
@@ -21,13 +21,15 @@ FILE_NAME :: "progress.cfg"
 
 #assert(content.LEVEL_COUNT <= 32)
 Level_Set :: bit_set[0 ..< 32] // indices into content.LEVELS
+#assert(content.FRAGMENT_COUNT <= 32)
+Fragment_Set :: bit_set[0 ..< 32] // indices into content.FRAGMENTS
 
 Achievement :: enum u8 {
 	Tale_1, // every fragment of an act
 	Tale_2,
 	Tale_3,
 	Tale_4,
-	Old_Woman, // all twenty fragments: the frame of the tale
+	Old_Woman, // every fragment: the frame of the tale
 	Trust, // the secret ending
 	No_Wasted_Light, // a level finished with the lamp lit only where needed
 	Wedding, // the game finished
@@ -82,7 +84,7 @@ TALE := [content.Act]Maybe(Achievement) {
 
 Progress :: struct {
 	completed:    Level_Set,
-	fragments:    Level_Set,
+	fragments:    Fragment_Set,
 	achievements: Achievements,
 }
 
@@ -103,9 +105,10 @@ fragment_count :: proc(p: Progress) -> int {
 	return card(p.fragments)
 }
 
-// A fragment was picked up; returns the achievements it unlocked.
-collect_fragment :: proc(p: ^Progress, level: int) -> (unlocked: Achievements) {
-	p.fragments += {level}
+// A fragment (index into content.FRAGMENTS) was picked up; returns the
+// achievements it unlocked.
+collect_fragment :: proc(p: ^Progress, fragment: int) -> (unlocked: Achievements) {
+	p.fragments += {fragment}
 	return award(p, {})
 }
 
@@ -135,8 +138,8 @@ award :: proc(p: ^Progress, earned: Achievements) -> (unlocked: Achievements) {
 			continue
 		}
 		complete := true
-		for info, i in content.LEVELS {
-			if info.act == act && i not_in p.fragments {
+		for f, i in content.FRAGMENTS {
+			if content.LEVELS[f.level].act == act && i not_in p.fragments {
 				complete = false
 			}
 		}
@@ -144,7 +147,7 @@ award :: proc(p: ^Progress, earned: Achievements) -> (unlocked: Achievements) {
 			all += {a}
 		}
 	}
-	if card(p.fragments) == content.LEVEL_COUNT {
+	if card(p.fragments) == content.FRAGMENT_COUNT {
 		all += {.Old_Woman}
 	}
 	unlocked = all - p.achievements
@@ -215,7 +218,13 @@ serialize :: proc(p: Progress, allocator := context.allocator) -> string {
 		fmt.sbprintln(b)
 	}
 	levels(&b, "completed", p.completed)
-	levels(&b, "fragments", p.fragments)
+	fmt.sbprint(&b, "fragments =")
+	for f, i in content.FRAGMENTS {
+		if i in p.fragments {
+			fmt.sbprintf(&b, " %s", f.id)
+		}
+	}
+	fmt.sbprintln(&b)
 	fmt.sbprint(&b, "achievements =")
 	for a in p.achievements {
 		fmt.sbprintf(&b, " %s", ACHIEVEMENT_ID[a])
@@ -240,14 +249,16 @@ parse :: proc(text: string, p: ^Progress) {
 		values := line[eq + 1:]
 		for word in strings.fields_iterator(&values) {
 			switch key {
-			case "completed", "fragments":
+			case "completed":
 				for info, i in content.LEVELS {
 					if info.id == word {
-						if key == "completed" {
-							p.completed += {i}
-						} else {
-							p.fragments += {i}
-						}
+						p.completed += {i}
+					}
+				}
+			case "fragments":
+				for f, i in content.FRAGMENTS {
+					if f.id == word {
+						p.fragments += {i}
 					}
 				}
 			case "achievements":

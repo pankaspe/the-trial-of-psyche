@@ -39,7 +39,7 @@ reach :: proc(p: ^palace.Palace, from, to: iso.Cell, dark: bool) -> bool {
 every_level_parses :: proc(t: ^testing.T) {
 	arena: virtual.Arena
 	defer virtual.arena_destroy(&arena)
-	for info in content.LEVELS {
+	for info, i in content.LEVELS {
 		if info.source == "" {
 			continue // not built yet
 		}
@@ -51,9 +51,12 @@ every_level_parses :: proc(t: ^testing.T) {
 		// the fragment of the tale: reachable, never required
 		p: palace.Palace
 		palace.init(&p, &data, virtual.arena_allocator(&arena))
-		reachable, optional := palace.check_fragment(&p)
-		testing.expectf(t, data.has_fragment, "level %s hides a fragment of the tale", info.id)
-		testing.expectf(t, reachable && optional, "level %s: the fragment is reachable (%v) and optional (%v)", info.id, reachable, optional)
+		_, count := content.level_fragments(i)
+		testing.expectf(t, len(data.fragments) == count && count > 0, "level %s hides its %d fragments of the tale (%d)", info.id, count, len(data.fragments))
+		for _, f in data.fragments {
+			reachable, optional := palace.check_fragment(&p, f)
+			testing.expectf(t, reachable && optional, "level %s: fragment %d is reachable (%v) and optional (%v)", info.id, f, reachable, optional)
+		}
 	}
 }
 

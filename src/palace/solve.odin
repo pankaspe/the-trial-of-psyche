@@ -431,20 +431,20 @@ seal :: proc(p: ^Palace, cfg: Config, feet: Cell, changed: int) -> (Config, int)
 	return out, changed + len(p.data.rise)
 }
 
-// Is the level's goal reachable, and the fragment reachable and optional?
-// For levels whose palace changes; `goal` is the exit.
-check_dynamic :: proc(p: ^Palace, allocator := context.allocator) -> (solvable, fragment_reachable, fragment_optional: bool) {
+// Is the level's goal (the exit) reachable? For levels whose palace changes.
+check_dynamic :: proc(p: ^Palace, allocator := context.allocator) -> (solvable: bool) {
+	d := p.data
+	return d.has_exit && solve(p, d.exit, nil, allocator).solved
+}
+
+// Is fragment i reachable, and the exit reachable without it?
+check_dynamic_fragment :: proc(p: ^Palace, i: int, allocator := context.allocator) -> (reachable, optional: bool) {
 	d := p.data
 	if !d.has_exit {
 		return
 	}
-	solvable = solve(p, d.exit, nil, allocator).solved
-	if !d.has_fragment {
-		return solvable, false, true
-	}
-	fragment_reachable = solve(p, d.fragment, d.exit, allocator).solved
-	fragment_optional = solve(p, d.exit, d.fragment, allocator).solved
-	return
+	c := d.fragments[i]
+	return solve(p, c, d.exit, allocator).solved, solve(p, d.exit, c, allocator).solved
 }
 
 // Does the level have blocks that change or parts that turn?

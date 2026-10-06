@@ -46,12 +46,14 @@ Setting :: enum u8 {
 	Night, // the palace of voices under the moon (the default)
 	Crag_Sunset, // a mountain crag above a sea of clouds, the sun going down
 	Dusk, // the palace of voices at twilight: the last light, its candles lit
+	Night_Candles, // the palace of voices by night, its candles lit
 }
 
 SETTING_NAME := [Setting]string {
 	.Night       = "night",
 	.Crag_Sunset = "crag_sunset",
 	.Dusk        = "dusk",
+	.Night_Candles = "night_candles",
 }
 
 // How a block behaves (Act II): fixed stone, or one that changes for good.
@@ -102,6 +104,7 @@ Prop_Kind :: enum u8 {
 	Urn,
 	Brazier,
 	Bed,
+	Statue, // a marble woman on a plinth, calling with her arm raised toward `dir`
 	// decoration only
 	Arch,
 	Vase, // small, in one corner of the cell: px (+x,+y), py (-x,+y), mx (-x,-y), my (+x,-y)
@@ -116,9 +119,9 @@ Prop_Kind :: enum u8 {
 }
 
 EDGE_PROPS :: bit_set[Prop_Kind]{.Rail, .Wall, .Wall_Half, .Wall_Battlement, .Fence}
-BLOCKING_PROPS :: bit_set[Prop_Kind]{.Pillar, .Plinth, .Cypress, .Urn, .Brazier, .Bed, .Pine, .Boulder}
-ORIENTED_PROPS :: EDGE_PROPS + bit_set[Prop_Kind]{.Bed, .Arch, .Vase, .Reeds, .Sconce, .Pine, .Boulder, .Shrub, .Cairn}
-NEEDS_DIR :: EDGE_PROPS + bit_set[Prop_Kind]{.Vase, .Reeds, .Sconce, .Shrub, .Cairn}
+BLOCKING_PROPS :: bit_set[Prop_Kind]{.Pillar, .Plinth, .Cypress, .Urn, .Brazier, .Bed, .Statue, .Pine, .Boulder}
+ORIENTED_PROPS :: EDGE_PROPS + bit_set[Prop_Kind]{.Bed, .Statue, .Arch, .Vase, .Reeds, .Sconce, .Pine, .Boulder, .Shrub, .Cairn}
+NEEDS_DIR :: EDGE_PROPS + bit_set[Prop_Kind]{.Statue, .Vase, .Reeds, .Sconce, .Shrub, .Cairn}
 
 PROP_NAME := [Prop_Kind]string {
 	.Rail            = "rail",
@@ -132,6 +135,7 @@ PROP_NAME := [Prop_Kind]string {
 	.Urn             = "urn",
 	.Brazier         = "brazier",
 	.Bed             = "bed",
+	.Statue          = "statue",
 	.Arch            = "arch",
 	.Vase            = "vase",
 	.Reeds           = "reeds",
@@ -168,11 +172,10 @@ Level_Data :: struct {
 	start:        Cell,
 	sigil:        Cell,
 	amore:        Cell,
-	fragment:     Cell, // the fragment of the tale (optional, never required)
+	fragments:    [dynamic]Cell, // the fragments of the tale (optional, never required), in content order
 	exit:         Cell, // reaching it completes the level
 	has_sigil:    bool,
 	has_amore:    bool,
-	has_fragment: bool,
 	has_exit:     bool,
 	prologue:     Cell, // where the prologue's procession comes up onto the level
 	has_prologue: bool, // the level opens with the prologue cutscene (I.1)
@@ -194,6 +197,7 @@ Level_Data :: struct {
 }
 
 MAX_PARTS :: 8
+MAX_FRAGMENTS :: 4
 MAX_DYNAMIC :: 64 // crumbling, phantom and veiled blocks in one level
 
 // The cell of a part's block after `r` quarter turns.
@@ -220,6 +224,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	data.props = make([dynamic]Prop, 0, 32)
 	data.voices = make([dynamic]Cue, 0, 16)
 	data.hints = make([dynamic]Cue, 0, 8)
+	data.fragments = make([dynamic]Cell, 0, MAX_FRAGMENTS)
 	data.lawn = make([dynamic]Cell, 0, 8)
 	data.ground = make([dynamic]Cell, 0, 16)
 	data.water = make([dynamic][4]i32, 0, 2)
@@ -399,7 +404,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 			}
 			if !found {
-				return data, fail(line_no, "setting: expected one of night, crag_sunset, dusk")
+				return data, fail(line_no, "setting: expected one of night, crag_sunset, dusk, night_candles")
 			}
 
 		case "water":
@@ -480,7 +485,11 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			case "start": data.start, has_start = v, true
 			case "sigil": data.sigil, data.has_sigil = v, true
 			case "amore": data.amore, data.has_amore = v, true
-			case "fragment": data.fragment, data.has_fragment = v, true
+			case "fragment":
+				if len(data.fragments) == MAX_FRAGMENTS {
+					return data, fail(line_no, "fragment: at most %d per level", MAX_FRAGMENTS)
+				}
+				append(&data.fragments, v)
 			case "exit": data.exit, data.has_exit = v, true
 			case "prologue": data.prologue, data.has_prologue = v, true
 			}

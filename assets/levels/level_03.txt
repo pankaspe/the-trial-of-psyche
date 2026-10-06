@@ -1,57 +1,98 @@
 # The Trial of Psyche - level I.3: "The Sisters on the Crag"
-# Hidden stairs. Psyche climbs back to the crag where her sisters call.
-# In the dark, stairs she cannot see lead nowhere: the first flight hides
-# behind a tower in the first view, the second behind another tower in the
-# view that joins the terrace to the crag. The first tower, joined to the
-# garden from the start, is a decoy that leads nowhere.
+# By night, candles lit. Psyche climbs from the lawn to the summit of the
+# palace's crag, where her sisters call from the cliff. Three flights of
+# stairs she cannot see while something stands before them, and three seams,
+# each closed by one view only:
+#   lawn -> (stairs, hidden in views 0, 1) -> gallery
+#   gallery -> (seam, view 2) -> bastion
+#   bastion -> (stairs, hidden in views 1, 2) -> terrace
+#   terrace -> (seam, view 1) -> crag walk
+#   crag walk -> (stairs, hidden in view 1) -> summit (exit)
+# The candle tower beside the lawn hides the first stairs and is a dead end
+# (joined to the gallery in view 0)... unless the palace turns once more:
+# from its top, view 1 joins the elder sister's statue (fragment 1).
+# From the crag walk, view 3 joins the younger sister's pillar (fragment 2).
 # Format: see level_04.txt.
-size 10
+size 13
+setting night_candles
 
-# the garden terrace (h1)
-column 1 3 0 0
-column 2 3 0 0
-column 1 4 0 0
-column 2 4 0 0
-prop cypress 1 4 1
-# first stairs, hidden behind the tower in the first view
-stairs 3 4 1 px
-# the upper terrace (h2)
-column 4 4 0 1
-column 4 5 0 1
-column 5 5 0 1
-prop urn 5 5 2
-prop rail 2 4 1 py
-prop rail 4 5 2 mx
-# the decoy tower (h4): the start joins it in the first view, and it leads nowhere
-column 5 6 0 3
-# the crag ledge (h3): joined to the upper terrace from view 1
-column 5 3 0 2
-column 6 3 0 2
-column 7 3 0 2
-# the crag's battlements, at the back of the ledge
-prop wallBattlement 5 3 3 my
-prop wallBattlement 6 3 3 my
-prop wallBattlement 7 3 3 my
-prop wallBattlement 5 3 3 mx
-# second stairs, hidden from view 1 behind the second tower
-stairs 7 4 3 py
-# the top of the crag (h4), where the sisters call
-column 7 5 0 3
-column 8 5 0 3
-prop wallBattlement 8 5 4 px
-prop wallBattlement 8 5 4 py
-prop wallBattlement 7 5 4 py
-# the second tower (h5): joined to the top of the stairs from view 1; the fragment
-column 8 3 0 4
+# the lawn (h1), where she starts
+column 4 10 0 0
+column 5 10 0 0
+column 4 11 0 0
+column 5 11 0 0
+prop cypress 4 10 1
+# the first stairs, hidden behind the candle tower in views 0 and 1
+stairs 5 9 1 my
+# the candle tower (h3): joined to the gallery in view 0
+column 6 10 0 2
+# the gallery (h2)
+column 5 8 0 1
+column 5 7 0 1
+prop arch 5 7 2 px
+# the bastion (h4): joined to the gallery in view 2
+column 2 5 0 3
+column 2 4 0 3
+column 3 4 0 3
+prop wallBattlement 2 5 4 mx
+prop wallBattlement 2 5 4 py
+prop wallBattlement 2 4 4 mx
+# the second stairs, hidden in views 1 and 2
+stairs 4 4 4 px
+# a pillar crowned with an urn: it hides the stairs in view 2
+column 3 3 0 5
+prop urn 3 3 6
+# the terrace (h5)
+column 5 4 0 4
+column 6 4 0 4
+prop rail 6 4 5 py
+# the younger sister's pillar (h7): it hides the stairs in view 1;
+# joined to the crag walk in view 3
+column 5 3 0 6
+column 5 2 0 6
+prop statue 5 2 7 py
+# the crag walk (h6): joined to the terrace in view 1
+column 7 2 0 5
+column 8 2 0 5
+prop wallBattlement 7 2 6 my
+prop wallBattlement 8 2 6 my
+# the last stairs, hidden in view 1 behind the beacon
+stairs 9 2 6 px
+# the summit (h7), where the sisters call; the beacon tower beside it (h8)
+column 10 2 0 6
+column 10 1 0 7
+prop brazier 10 1 8
+prop wallBattlement 10 2 7 px
+prop wallBattlement 10 2 7 py
+# the elder sister's statue (h4): joined to the candle tower in view 1
+column 7 8 0 3
+column 8 8 0 3
+prop statue 8 8 4 mx
 
-start 1 3 1
-exit 8 5 4
-fragment 8 3 5
+start 4 11 1
+exit 10 2 7
+fragment 7 8 4
+fragment 5 3 7
 outro outro_i_3
 
 intro intro_i_3
-hint 1 3 1 hint_stairs
-# small things: a vase in a corner, unlit candles on the towers
-prop vase 2 3 1 my
-prop sconce 5 6 2 py
-prop sconce 8 3 3 px
+# the meadow
+lawn 4 10 0
+lawn 5 10 0
+lawn 4 11 0
+lawn 5 11 0
+# small things: vases, and candles lit on every wall
+prop vase 5 8 2 py
+prop vase 6 4 5 my
+prop sconce 6 10 2 px
+prop sconce 6 10 2 py
+prop sconce 5 7 1 px
+prop sconce 3 4 3 py
+prop sconce 3 3 5 px
+prop sconce 6 4 4 px
+prop sconce 5 3 6 px
+prop sconce 8 2 5 py
+prop sconce 10 2 6 py
+prop sconce 10 1 7 px
+prop sconce 8 8 3 py
+prop sconce 7 8 3 py

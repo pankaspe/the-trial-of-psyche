@@ -660,7 +660,8 @@ reachable_turning :: proc(p: ^Palace, from: Cell, out: []bool, avoid: Maybe(Cell
 
 // What can be reached from the start, in the light or in the dark turning freely.
 Goals :: struct {
-	sigil, amore, exit, fragment: bool,
+	sigil, amore, exit: bool,
+	fragment:           [level.MAX_FRAGMENTS]bool,
 }
 
 reach_goals :: proc(p: ^Palace, avoid: Maybe(Cell) = nil) -> (goals: Goals) {
@@ -685,7 +686,9 @@ reach_goals :: proc(p: ^Palace, avoid: Maybe(Cell) = nil) -> (goals: Goals) {
 	}
 	goals.sigil = d.has_sigil && at(p, dark, light, d.sigil)
 	goals.exit = d.has_exit && at(p, dark, light, d.exit)
-	goals.fragment = d.has_fragment && at(p, dark, light, d.fragment)
+	for c, i in d.fragments {
+		goals.fragment[i] = at(p, dark, light, c)
+	}
 	if d.has_amore {
 		for v in iso.DIR_VEC {
 			goals.amore ||= at(p, dark, light, d.amore + {v.x, v.y, 0})
@@ -694,18 +697,14 @@ reach_goals :: proc(p: ^Palace, avoid: Maybe(Cell) = nil) -> (goals: Goals) {
 	return
 }
 
-// The fragment of the tale must be reachable and never required: blocking its
+// Fragment i of the tale must be reachable and never required: blocking its
 // cell must not cut the way to any goal, before or after the seal (for a
 // palace that changes, the solver checks it).
 // The palace is left with its blocks lowered.
-check_fragment :: proc(p: ^Palace) -> (reachable, optional: bool) {
-	if !p.data.has_fragment {
-		return false, true
-	}
+check_fragment :: proc(p: ^Palace, i: int) -> (reachable, optional: bool) {
 	if is_dynamic(p.data) {
 		// the palace changes as she goes: only a full search can tell
-		_, reachable, optional = check_dynamic(p, context.temp_allocator)
-		return
+		return check_dynamic_fragment(p, i, context.temp_allocator)
 	}
 	optional = true
 	for risen in ([2]bool{false, true}) {
@@ -715,8 +714,8 @@ check_fragment :: proc(p: ^Palace) -> (reachable, optional: bool) {
 		p.risen = risen
 		rebuild_graph(p)
 		all := reach_goals(p)
-		without := reach_goals(p, p.data.fragment)
-		reachable ||= all.fragment
+		without := reach_goals(p, p.data.fragments[i])
+		reachable ||= all.fragment[i]
 		lost := (all.sigil && !without.sigil) || (all.amore && !without.amore) || (all.exit && !without.exit)
 		optional &&= !lost
 	}

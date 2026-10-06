@@ -194,9 +194,11 @@ act2_levels_solve_and_play :: proc(t: ^testing.T) {
 		defer virtual.arena_destroy(&arena)
 		alloc := virtual.arena_allocator(&arena)
 
-		solvable, reachable, optional := palace.check_dynamic(&g.palace, alloc)
-		testing.expectf(t, solvable, "%s can be solved", info.id)
-		testing.expectf(t, reachable && optional, "%s: the fragment is reachable (%v) and optional (%v)", info.id, reachable, optional)
+		testing.expectf(t, palace.check_dynamic(&g.palace, alloc), "%s can be solved", info.id)
+		for _, f in g.data.fragments {
+			reachable, optional := palace.check_dynamic_fragment(&g.palace, f, alloc)
+			testing.expectf(t, reachable && optional, "%s: fragment %d is reachable (%v) and optional (%v)", info.id, f, reachable, optional)
+		}
 		sol := palace.solve(&g.palace, g.data.exit, nil, alloc)
 
 		game.begin(&g, prologue = false)

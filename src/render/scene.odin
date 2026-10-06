@@ -43,6 +43,8 @@ Uniform :: enum u8 {
 	Glow,
 	Mist_Color,
 	Daylight,
+	Candles,
+	Candle_Count,
 }
 
 @(private)
@@ -66,6 +68,8 @@ UNIFORM_NAME := [Uniform]cstring {
 	.Glow          = "glow",
 	.Mist_Color    = "mist_color",
 	.Daylight      = "daylight",
+	.Candles       = "candles",
+	.Candle_Count  = "candle_count",
 }
 
 // Uniforms of the backdrop shaders (sky, ridges, clouds); each uses some of them.
@@ -578,6 +582,39 @@ set_frame_uniforms :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	lk := look(g.data.setting)
 	set_v3(r, .Mist_Color, lk.mist)
 	set_f(r, .Daylight, lk.daylight)
+	list, n := candle_lights(g)
+	rl.SetShaderValueV(r.material.shader, r.loc[.Candles], &list, .VEC4, i32(max(n, 1)))
+	count := i32(n)
+	rl.SetShaderValue(r.material.shader, r.loc[.Candle_Count], &count, .INT)
+}
+
+MAX_CANDLES :: 16 // as in palace.fs
+
+// The candles lit on the walls (where the setting lights them): their flames
+// in the world and how bright each burns now (flickering; during the arrival,
+// once its wall has risen into place).
+candle_lights :: proc(g: ^game.Game) -> (list: [MAX_CANDLES][4]f32, n: int) {
+	if !look(g.data.setting).candles {
+		return
+	}
+	t := g.time
+	for prop, i in g.data.props {
+		if prop.kind != .Sconce || prop.part > 0 || n == MAX_CANDLES {
+			continue
+		}
+		fp := Vec3{f32(prop.cell.x), f32(prop.cell.y), f32(prop.cell.z)} + candle_flame(prop.dir)
+		a := f32(1)
+		if g.phase == .Arrival {
+			c := prop.cell - g.data.start
+			k := game.arrival_rise(g, math.sqrt(f32(c.x * c.x + c.y * c.y)) + f32(abs(c.z)) * 0.3, 1)
+			fp.z -= 9 * (1 - k)
+			a = k * k
+		}
+		fl := 0.85 + 0.1 * math.sin(t * 13 + f32(i) * 1.7) + 0.05 * math.sin(t * 31 + f32(i))
+		list[n] = {fp.x, fp.y, fp.z, fl * a}
+		n += 1
+	}
+	return
 }
 
 @(private)
@@ -771,7 +808,7 @@ draw_figures :: proc(r: ^Renderer, g: ^game.Game) {
 		rl.DrawMesh(r.meshes[.Lamp], r.material, rl.MatrixTranslate(lamp.x, lamp.y, lamp.z - 0.05))
 	}
 
-	draw_fragment(r, g)
+	draw_fragments(r, g)
 
 	// the prologue's procession: veiled mourners, a little taller than Psyche
 	if g.phase == .Prologue {
@@ -803,34 +840,36 @@ draw_figures :: proc(r: ^Renderer, g: ^game.Game) {
 	}
 }
 
-// How visible the fragment's scroll is: faint when collected in an earlier
+// How visible fragment i's scroll is: faint when collected in an earlier
 // play, rising and fading when picked up now.
 @(private)
-fragment_alpha :: proc(g: ^game.Game) -> (alpha, lift: f32) {
-	if !g.data.has_fragment || g.phase == .Prologue {
+fragment_alpha :: proc(g: ^game.Game, i: int) -> (alpha, lift: f32) {
+	if g.phase == .Prologue {
 		return 0, 0
 	}
-	if g.fragment_known {
+	if i in g.fragments_known {
 		return 0.28, 0
 	}
-	if g.fragment_taken {
-		u := fx.clamp01(g.fragment_t / 1.4)
+	if i in g.fragments_taken {
+		u := fx.clamp01(g.fragment_t[i] / 1.4)
 		return 1 - u, fx.cubic_out(u) * 0.6
 	}
 	return 1, 0
 }
 
 @(private)
-draw_fragment :: proc(r: ^Renderer, g: ^game.Game) {
-	alpha, lift := fragment_alpha(g)
-	if alpha <= 0.003 {
-		return
+draw_fragments :: proc(r: ^Renderer, g: ^game.Game) {
+	for _, i in g.data.fragments {
+		alpha, lift := fragment_alpha(g, i)
+		if alpha <= 0.003 {
+			continue
+		}
+		p := game.fragment_world(g, i) + {0, 0, lift}
+		set_piece_uniforms(r, .Psyche, 0, 0, alpha, 0.9, i in g.fragments_known ? 0 : 0.1)
+		// laid on its side, turning slowly
+		m := rl.MatrixTranslate(p.x, p.y, p.z) * rl.MatrixRotateZ(g.time * 0.5 + f32(i)) * rl.MatrixRotateX(math.PI / 2) * rl.MatrixTranslate(0, 0, -0.14)
+		rl.DrawMesh(r.meshes[.Scroll], r.material, m)
 	}
-	p := game.fragment_world(g) + {0, 0, lift}
-	set_piece_uniforms(r, .Psyche, 0, 0, alpha, 0.9, g.fragment_known ? 0 : 0.1)
-	// laid on its side, turning slowly
-	m := rl.MatrixTranslate(p.x, p.y, p.z) * rl.MatrixRotateZ(g.time * 0.5) * rl.MatrixRotateX(math.PI / 2) * rl.MatrixTranslate(0, 0, -0.14)
-	rl.DrawMesh(r.meshes[.Scroll], r.material, m)
 }
 
 @(private)
@@ -1140,11 +1179,13 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	glow(v, lamp, 150, {1.0, 0.68, 0.32, g.light * 0.32 * f})
 	glow(v, lamp + {0, 0, 0.02}, 9 * (0.85 + 0.15 * f), {1.0, 0.75, 0.4, g.light * f}, 1.7)
 	glow(v, lamp + {0, 0, 0.02}, 4 * (0.85 + 0.15 * f), {1.0, 0.95, 0.8, g.light * f}, 1.6)
-	// the fragment's faint glow
-	if a, lift := fragment_alpha(g); a > 0.003 && !g.fragment_known {
-		c := game.fragment_world(g) + {0, 0, lift}
-		glow(v, c, 58, {1.0, 0.86, 0.55, a * (0.3 + 0.08 * math.sin(t * 2.1))})
-		glow(v, c, 16, {1.0, 0.95, 0.8, a * 0.45})
+	// the fragments' faint glow
+	for _, i in g.data.fragments {
+		if a, lift := fragment_alpha(g, i); a > 0.003 && i not_in g.fragments_known {
+			c := game.fragment_world(g, i) + {0, 0, lift}
+			glow(v, c, 58, {1.0, 0.86, 0.55, a * (0.3 + 0.08 * math.sin(t * 2.1 + f32(i)))})
+			glow(v, c, 16, {1.0, 0.95, 0.8, a * 0.45})
+		}
 	}
 	// the exit: a pale breath of wind on the stone
 	if ea := exit_alpha(g); g.data.has_exit && g.phase != .Finished && ea > 0 {
@@ -1162,21 +1203,10 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 		glow(v, p.pos, p.size * 0.5, col)
 	}
 	// the candles on the walls, where the setting has them lit
-	if look(g.data.setting).candles {
-		for prop, i in g.data.props {
-			if prop.kind != .Sconce || prop.part > 0 {
-				continue
-			}
-			fp := Vec3{f32(prop.cell.x), f32(prop.cell.y), f32(prop.cell.z)} + candle_flame(prop.dir)
-			a := f32(1)
-			if g.phase == .Arrival {
-				// the flame comes once its wall has risen into place
-				c := prop.cell - g.data.start
-				k := game.arrival_rise(g, math.sqrt(f32(c.x * c.x + c.y * c.y)) + f32(abs(c.z)) * 0.3, 1)
-				fp.z -= 9 * (1 - k)
-				a = k * k
-			}
-			fl := (0.85 + 0.1 * math.sin(t * 13 + f32(i) * 1.7) + 0.05 * math.sin(t * 31 + f32(i))) * a
+	{
+		list, n := candle_lights(g)
+		for c in list[:n] {
+			fp, fl := Vec3{c.x, c.y, c.z}, c.w
 			glow(v, fp, 64, {1.0, 0.6, 0.26, 0.26 * fl})
 			glow(v, fp, 18, {1.0, 0.7, 0.35, 0.35 * fl})
 			glow(v, fp + {0, 0, 0.02}, 6, {1.0, 0.78, 0.42, fl}, 1.8)

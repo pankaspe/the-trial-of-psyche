@@ -50,6 +50,26 @@ LOOKS := [level.Setting]Look {
 		daylight = 0,
 		mote = {0.6, 0.7, 1.0, 0.5},
 	},
+	// the palace of voices by night, its candles lit for her
+	.Night_Candles = {
+		sky_top = {0.012, 0.015, 0.05},
+		sky_mid = {0.046, 0.042, 0.115},
+		sky_horizon = {0.08, 0.07, 0.18},
+		orb_pos = {0.80, 0.2},
+		orb_radius = 0.049,
+		orb_color = {0.86, 0.88, 1.0},
+		halo_color = {0.105, 0.115, 0.19},
+		halo_width = 9,
+		stars = 1,
+		haze = {0.088, 0.088, 0.176},
+		islands = true,
+		cloud_back = {0.13, 0.13, 0.29},
+		cloud_front = {0.19, 0.19, 0.38},
+		mist = {0.07, 0.07, 0.17},
+		daylight = 0,
+		candles = true,
+		mote = {0.9, 0.75, 0.6, 0.45},
+	},
 	// Zephyr's crag: the sun sets behind far ranges, the crag stands over the clouds
 	.Crag_Sunset = {
 		sky_top = {0.10, 0.11, 0.30},

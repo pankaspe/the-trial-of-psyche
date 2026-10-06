@@ -7,8 +7,8 @@
 // Lighting the lamp in Cupid's chamber ends the level (the myth's drop of oil,
 // the canonical ending); reaching him in the dark ends it with trust, a secret
 // ending open only once the game has been finished (`trust_allowed`).
-// Other levels end at their exit. A fragment of the tale may wait on an
-// optional spot: picking it up is reported to the app (`fragment_new`), which
+// Other levels end at their exit. Fragments of the tale (one or more) wait on
+// optional spots: picking one up is reported to the app (`fragment_new`), which
 // shows its text and waits for the player.
 // Cupid's lines never cut each other off: a line said while another is on
 // screen waits its turn.
@@ -173,10 +173,11 @@ Game :: struct {
 	teach_card:     bool, // set by the app while the mechanic's card is on screen
 	teach_after:    f32, // time since that card was closed, < 0 before
 	trust_allowed:  bool, // set by the app: the game has been finished once
-	fragment_known: bool, // set by the app: collected in an earlier play
-	fragment_taken: bool, // picked up in this play
-	fragment_new:   bool, // event for the app: just picked up (it clears it)
-	fragment_t:     f32, // time since it was picked up
+	fragments_known: Fragment_Set, // set by the app: collected in an earlier play
+	fragments_taken: Fragment_Set, // picked up in this play
+	fragment_new:   bool, // event for the app: `fragment_last` just picked up (it clears it)
+	fragment_last:  int, // index into data.fragments
+	fragment_t:     [level.MAX_FRAGMENTS]f32, // time since each was picked up, < 0 before
 
 	angle:          f32, // continuous view angle in quarter turns (unbounded)
 	turning:        bool,
@@ -270,7 +271,9 @@ load_text :: proc(g: ^Game, index: int, text: string) -> (err: Maybe(Load_Error)
 	g.arrive_t = -1
 	g.rise_t = -1
 	g.collapse_t = -1
-	g.fragment_t = -1
+	for &t in g.fragment_t {
+		t = -1
+	}
 	g.teach_after = -1
 	g.amore = {fly_t = -1, breath = 1}
 	g.psyche.cell = g.data.start
@@ -353,9 +356,18 @@ is_over :: proc(g: ^Game) -> bool {
 	return g.phase >= .Ending_Oil
 }
 
-// The fragment of the tale hidden in this level.
-fragment_key :: proc(g: ^Game) -> Key {
-	return content.LEVELS[g.level_index].fragment
+// The level's fragments, by their index in data.fragments.
+Fragment_Set :: bit_set[0 ..< level.MAX_FRAGMENTS]
+
+// Fragment i of this level, as an index into content.FRAGMENTS.
+fragment_index :: proc(g: ^Game, i: int) -> int {
+	first, _ := content.level_fragments(g.level_index)
+	return first + i
+}
+
+// The text of fragment i of this level.
+fragment_key :: proc(g: ^Game, i: int) -> Key {
+	return content.FRAGMENTS[fragment_index(g, i)].key
 }
 
 // --- per frame -------------------------------------------------------------------
@@ -820,8 +832,10 @@ arrive :: proc(g: ^Game, n: Cell) {
 			light_rest(g, i)
 		}
 	}
-	if g.data.has_fragment && n == g.data.fragment && !g.fragment_taken && !g.fragment_known {
-		take_fragment(g)
+	for c, i in g.data.fragments {
+		if n == c && i not_in g.fragments_taken && i not_in g.fragments_known {
+			take_fragment(g, i)
+		}
 	}
 	if g.phase != .Play {
 		return
@@ -839,17 +853,18 @@ arrive :: proc(g: ^Game, n: Cell) {
 }
 
 @(private)
-take_fragment :: proc(g: ^Game) {
-	g.fragment_taken = true
+take_fragment :: proc(g: ^Game, i: int) {
+	g.fragments_taken += {i}
 	g.fragment_new = true
-	g.fragment_t = 0
+	g.fragment_last = i
+	g.fragment_t[i] = 0
 	sa.clear(&g.path) // she stops to read
 	audio.play(.Good, -8, 1.5)
 }
 
-// Where the fragment lies (a scroll floating over its cell).
-fragment_world :: proc(g: ^Game) -> Vec3 {
-	return pl.node_world(&g.palace, g.data.fragment) + {0, 0, 0.22 + 0.04 * math.sin(g.time * 1.6)}
+// Where fragment i lies (a scroll floating over its cell).
+fragment_world :: proc(g: ^Game, i: int) -> Vec3 {
+	return pl.node_world(&g.palace, g.data.fragments[i]) + {0, 0, 0.22 + 0.04 * math.sin(g.time * 1.6 + f32(i) * 2.1)}
 }
 
 @(private)
@@ -1167,8 +1182,10 @@ update_effects :: proc(g: ^Game, dt: f32) {
 	if g.amore.fly_t >= 0 {
 		g.amore.fly_t += dt
 	}
-	if g.fragment_t >= 0 {
-		g.fragment_t += dt
+	for &t in g.fragment_t {
+		if t >= 0 {
+			t += dt
+		}
 	}
 	if g.teach_after >= 0 {
 		g.teach_after += dt

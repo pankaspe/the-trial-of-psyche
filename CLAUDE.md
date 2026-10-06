@@ -139,7 +139,8 @@ Full design document (Italian, kept up to date there): https://claude.ai/code/ar
   becomes I.4) · II abandonment (false/crumbling structures, the lamp unmasks them, handles rotating part of
   the palace) · III Venus' trials (helpers that move pieces: ants, eagle; day/night cycle) · IV Proserpina's
   box (talking tower, renunciations, counted coins, upside-down palace, absolute darkness) · Epilogue: all.
-- **Frammenti del racconto** (EN: Fragments of the Tale): 20 collectibles, one per level, on isolated spots
+- **Frammenti del racconto** (EN: Fragments of the Tale): collectibles, one or more per level
+  (`content.FRAGMENTS`, saved by fragment id: I.3 has two, "I.3" and "I.3b"; 21 today), on isolated spots
   reached by an optional harder puzzle; never required (level_check must verify it). They tell what the
   levels do not show; the last reveals the frame: an old woman telling the tale to Charite (Met. IV.27, VI.25).
 - The Book (menu): fragments in the text's order + achievements. Progress saved next to the settings.
@@ -159,11 +160,12 @@ Full design document (Italian, kept up to date there): https://claude.ai/code/ar
   view (left .075 / right .625 / top .9) re-coloured with the prototype palettes
   (night / warm, per material); procedural masonry courses and marble bevels; lamp
   light, depth cue, mist. Output is not gamma-corrected (matches the prototype's look).
-- Settings per level (`setting night|crag_sunset|dusk`, `render/setting.odin` `LOOKS`): sky gradient,
+- Settings per level (`setting night|night_candles|crag_sunset|dusk`, `render/setting.odin` `LOOKS`): sky gradient,
   orb, stars, layered ranges (`ridges.fs`, panoramas that close over a full turn), clouds,
   mist, and a sunset palette for the stones (`daylight`). I.1 is the crag at sunset (approved).
   `dusk` (I.2): the palace at twilight, pink clouds, first stars, a pale moon, `daylight` 0.4,
-  and `candles` lit (a flame glow on every `sconce`).
+  and `candles` lit (a flame glow on every `sconce`, and warm light on the stones around it:
+  `candle_lights` -> `candles[]` in palace.fs). `night_candles` (I.3): the night with candles lit.
 - Post-processing (`render/post.odin`, `post*.fs`): the world goes to a canvas, then bloom,
   soft scene, light shafts, tilt-shift (focus on Psyche), Kuwahara paint, grade, vignette,
   grain; the UI is drawn after, untouched. Six visual styles (`settings.Look`: off, clean
@@ -327,7 +329,13 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
     grass, stairs, transitions. It is the reference for every level from now on.
   - I.2 reworked (2026-10-06): the layout turned so the start view shows Psyche on the lawn
     (seams now in views 1, 2, 0; fragment view 3), setting `dusk`, five lit candles.
-  - **Next: I.2 "The Invisible Palace"**: the user plays it and says what to change (setting,
+  - **I.2 approved** (dusk, start view). **I.3 rebuilt (2026-10-06), waiting for the user's playtest**:
+    night with candles lit (`night_candles`), bigger (13x13), no tutorial hint; three hidden
+    stairs and three seams, each in its own view (solver: 6 turns, 15 steps); a candle tower as
+    a decoy; two fragments on the sisters' statues (`prop statue`), texts from Met. V.9-10 (the
+    elder's and the younger's complaints; the old Venus fragment IV.30-31 was dropped).
+    `./build.sh check` now prints the solver's plan for static levels too.
+  - **Next: I.2 "The Invisible Palace"** (done): the user plays it and says what to change (setting,
     props); then I.3, I.4, then Act II (II.3's brief below still stands when its turn comes).
 
 ## Roadmap from now (user, 2026-10-06): level by level

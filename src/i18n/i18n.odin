@@ -86,10 +86,11 @@ Key :: enum u16 {
 	Level_Locked,
 	Fragments_Label,
 
-	// fragments of the tale, one per level (in level order)
+	// fragments of the tale, one or more per level (in level order)
 	Fragment_01,
 	Fragment_02,
 	Fragment_03,
+	Fragment_03b, // I.3 hides two: the sisters' statues
 	Fragment_04,
 	Fragment_05,
 	Fragment_06,
@@ -362,7 +363,8 @@ IT := [Key]string {
 
 	.Fragment_01    = "C'erano in una città un re e una regina, con tre figlie. Le due maggiori erano belle; la più giovane, così bella che le parole non bastavano.",
 	.Fragment_02    = "Da ogni parte venivano a vederla, e la adoravano come una nuova Venere. I templi della dea restavano vuoti, gli altari freddi.",
-	.Fragment_03    = "Venere chiama il figlio alato: «Fa' che la fanciulla arda d'amore per l'ultimo degli uomini, il più misero di tutti.»",
+	.Fragment_03    = "La sorella maggiore si lamenta: a lei è toccato un marito più vecchio di suo padre, più calvo di una zucca, che tiene la casa chiusa con sbarre e catene.",
+	.Fragment_03b   = "«E io» dice l'altra «ho un marito piegato in due dai dolori alle ossa. Gli massaggio le dita storte con impiastri puzzolenti: non una moglie, un'infermiera.»",
 	.Fragment_04    = "Il padre, temendo l'ira degli dèi, interroga l'antico oracolo di Apollo a Mileto. Il dio risponde in versi: lo sposo è un male alato, che fa tremare anche Giove.",
 	.Fragment_05    = "Mentre guarda le armi del dio, Psiche si punge con una delle sue frecce. Così, senza saperlo, si innamora di Amore.",
 	.Fragment_06    = "Le fiaccole nuziali fanno fumo nero, il flauto suona un lamento. Tutta la città accompagna la sposa come a un funerale.",
@@ -407,7 +409,7 @@ IT := [Key]string {
 	.Ach_Tale_3_Desc = "Tutti i frammenti dell'Atto III",
 	.Ach_Tale_4_Desc = "Tutti i frammenti dell'Atto IV",
 	.Ach_Old_Woman  = "La vecchia e la ragazza",
-	.Ach_Old_Woman_Desc = "Tutti i venti frammenti del racconto",
+	.Ach_Old_Woman_Desc = "Tutti i frammenti del racconto",
 	.Ach_Trust      = "Fiducia",
 	.Ach_Trust_Desc = "Raggiungere Amore al buio, senza guardarlo",
 	.Ach_Trust_Secret = "Un finale segreto, dopo la fine del gioco",
@@ -580,7 +582,8 @@ EN := [Key]string {
 
 	.Fragment_01    = "In a certain city there were a king and a queen, with three daughters. The two elder were beautiful; the youngest so beautiful that words fell short.",
 	.Fragment_02    = "People came from everywhere to see her, and worshipped her as a new Venus. The goddess's temples stood empty, her altars cold.",
-	.Fragment_03    = "Venus calls her winged son: “Make the girl burn with love for the lowest of men, the most wretched of all.”",
+	.Fragment_03    = "The elder sister complains: she got a husband older than her father, balder than a gourd, who keeps the house shut with bars and chains.",
+	.Fragment_03b   = "“And I,” says the other, “have a husband bent double by aching joints. I rub his crooked fingers with stinking poultices: not a wife, a nurse.”",
 	.Fragment_04    = "Her father, fearing the anger of the gods, consults the ancient oracle of Apollo at Miletus. The god answers in verse: the bridegroom is a winged evil that makes even Jupiter tremble.",
 	.Fragment_05    = "Looking at the god's weapons, Psyche pricks herself on one of his arrows. So, without knowing it, she falls in love with Love.",
 	.Fragment_06    = "The wedding torches burn with black smoke, the flute plays a lament. The whole city follows the bride as if to a funeral.",
@@ -625,7 +628,7 @@ EN := [Key]string {
 	.Ach_Tale_3_Desc = "Every fragment of Act III",
 	.Ach_Tale_4_Desc = "Every fragment of Act IV",
 	.Ach_Old_Woman  = "The Old Woman and the Girl",
-	.Ach_Old_Woman_Desc = "All twenty fragments of the tale",
+	.Ach_Old_Woman_Desc = "Every fragment of the tale",
 	.Ach_Trust      = "Trust",
 	.Ach_Trust_Desc = "Reach Cupid in the dark, without looking at him",
 	.Ach_Trust_Secret = "A secret ending, after the end of the game",

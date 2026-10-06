@@ -24,8 +24,18 @@ acts_and_levels :: proc(t: ^testing.T) {
 		for other, j in content.LEVELS {
 			testing.expectf(t, i == j || info.id != other.id, "level id %s is unique", info.id)
 		}
-		testing.expectf(t, !seen_fragment[info.fragment], "%s has its own fragment", info.id)
-		seen_fragment[info.fragment] = true
+		_, count := content.level_fragments(i)
+		testing.expectf(t, count >= 1, "%s hides a fragment", info.id)
+	}
+	for f, i in content.FRAGMENTS {
+		testing.expectf(t, !seen_fragment[f.key], "fragment %s has its own text", f.id)
+		seen_fragment[f.key] = true
+		if i > 0 {
+			testing.expectf(t, f.level >= content.FRAGMENTS[i - 1].level, "fragment %s: in level order", f.id)
+		}
+		for other, j in content.FRAGMENTS {
+			testing.expectf(t, i == j || f.id != other.id, "fragment id %s is unique", f.id)
+		}
 	}
 	testing.expect(t, per_act == {.I = 4, .II = 5, .III = 5, .IV = 5, .Epilogue = 1}, "4 + 5 + 5 + 5 levels and an epilogue")
 	for i in ([?]int{0, 4, 9, 14, 19}) {
@@ -34,12 +44,12 @@ acts_and_levels :: proc(t: ^testing.T) {
 	testing.expect(t, !content.opens_act(3) && content.closes_act(3), "I.4 closes Act I")
 
 	// the Book: every fragment exactly once
-	in_book: [content.LEVEL_COUNT]int
+	in_book: [content.FRAGMENT_COUNT]int
 	for i in content.BOOK_ORDER {
 		in_book[i] += 1
 	}
 	for n, i in in_book {
-		testing.expectf(t, n == 1, "fragment of %s appears once in the Book (%d)", content.LEVELS[i].id, n)
+		testing.expectf(t, n == 1, "fragment %s appears once in the Book (%d)", content.FRAGMENTS[i].id, n)
 	}
 }
 
@@ -47,7 +57,7 @@ acts_and_levels :: proc(t: ^testing.T) {
 progress_round_trip :: proc(t: ^testing.T) {
 	p: progress.Progress
 	p.completed = {0, 3}
-	p.fragments = {3, 19}
+	p.fragments = {3, 4, 20}
 	p.achievements = {.Trust, .No_Wasted_Light}
 	text := progress.serialize(p, context.temp_allocator)
 	back: progress.Progress
@@ -63,19 +73,24 @@ progress_round_trip :: proc(t: ^testing.T) {
 achievements :: proc(t: ^testing.T) {
 	p: progress.Progress
 	got: progress.Achievements
-	for i in 0 ..< 3 {
+	ACT_1 :: 5 // I.3 hides two
+	for i in 0 ..< ACT_1 - 1 {
 		got += progress.collect_fragment(&p, i)
 	}
-	testing.expect(t, got == {}, "three fragments of Act I are not the whole act")
-	got = progress.collect_fragment(&p, 3)
-	testing.expect(t, got == {.Tale_1}, "the four fragments of Act I")
-	testing.expect(t, progress.collect_fragment(&p, 3) == {}, "an achievement is unlocked only once")
-	for i in 4 ..< content.LEVEL_COUNT - 1 {
+	testing.expect(t, got == {}, "four fragments of Act I are not the whole act")
+	got = progress.collect_fragment(&p, ACT_1 - 1)
+	testing.expect(t, got == {.Tale_1}, "the five fragments of Act I")
+	testing.expect(t, progress.collect_fragment(&p, ACT_1 - 1) == {}, "an achievement is unlocked only once")
+	for i in ACT_1 ..< content.FRAGMENT_COUNT - 1 {
 		got = progress.collect_fragment(&p, i)
 	}
 	testing.expect(t, .Tale_4 in p.achievements && .Old_Woman not_in p.achievements, "every act, but not yet the epilogue")
-	got = progress.collect_fragment(&p, content.LEVEL_COUNT - 1)
-	testing.expect(t, got == {.Old_Woman}, "the twentieth fragment reveals the frame")
+	got = progress.collect_fragment(&p, content.FRAGMENT_COUNT - 1)
+	testing.expect(t, got == {.Old_Woman}, "the last fragment reveals the frame")
+
+	old: progress.Progress
+	progress.parse("fragments = I.3 I.4\n", &old)
+	testing.expect(t, old.fragments == {2, 4}, "a save from before the second fragment of I.3 keeps its fragments")
 
 	q: progress.Progress
 	testing.expect(t, progress.complete_level(&q, {level = 3, lightings = 3, lamp_par = 2}) == {}, "a wasted light")
@@ -119,7 +134,7 @@ fragment_of_the_tale :: proc(t: ^testing.T) {
 	if !start(t, &g) {
 		return
 	}
-	testing.expect(t, g.data.has_fragment && g.data.fragment == FRAGMENT, "I.4 hides its fragment on a pillar")
+	testing.expect(t, len(g.data.fragments) == 1 && g.data.fragments[0] == FRAGMENT, "I.4 hides its fragment on a pillar")
 	g.psyche.cell = BALCONY
 	found := false
 	for r in 0 ..< 4 {
@@ -131,8 +146,8 @@ fragment_of_the_tale :: proc(t: ^testing.T) {
 		}
 	}
 	testing.expect(t, found, "one view joins the pillar to the balcony")
-	testing.expect(t, g.fragment_taken && g.fragment_new, "Psyche picks up the fragment")
-	testing.expect(t, game.fragment_key(&g) == i18n.Key.Fragment_04, "the fragment of I.4")
+	testing.expect(t, 0 in g.fragments_taken && g.fragment_new, "Psyche picks up the fragment")
+	testing.expect(t, game.fragment_key(&g, 0) == i18n.Key.Fragment_04, "the fragment of I.4")
 
 	// collected in an earlier play: it stays collected
 	h: game.Game
@@ -140,7 +155,7 @@ fragment_of_the_tale :: proc(t: ^testing.T) {
 	if !start(t, &h) {
 		return
 	}
-	h.fragment_known = true
+	h.fragments_known = {0}
 	h.psyche.cell = BALCONY
 	for r in 0 ..< 4 {
 		game.set_view(&h, r)
@@ -229,7 +244,7 @@ dark_level_with_an_exit :: proc(t: ^testing.T) {
 	game.begin(&g)
 	game.toggle_lamp(&g)
 	testing.expect(t, !g.lamp_on && g.lightings == 0, "no lamp in this level")
-	testing.expect(t, walk(t, &g, {2, 0, 1}) && g.fragment_taken, "Psyche picks up the fragment on the way")
+	testing.expect(t, walk(t, &g, {2, 0, 1}) && 0 in g.fragments_taken, "Psyche picks up the fragment on the way")
 	testing.expect(t, walk(t, &g, {2, 1, 1}), "then walks on to the exit")
 	run(&g, game.EXIT_END + 0.5)
 	testing.expect(t, g.phase == .Finished && g.ending == .Exit, "the exit ends the level")

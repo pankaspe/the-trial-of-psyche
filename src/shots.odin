@@ -39,7 +39,7 @@ walk_to_fragment :: proc(app: ^App) {
 	place(app, BALCONY)
 	for r in 0 ..< 4 {
 		game.set_view(g, r)
-		if game.walk_to(g, g.data.fragment) {
+		if game.walk_to(g, g.data.fragments[0]) {
 			return
 		}
 	}
@@ -62,7 +62,7 @@ SHOT_SCRIPT := [?]Shot_Step {
 	{0.6, "02_settings_audio", nil},
 	{0.1, "", proc(app: ^App) {app.ui.settings_tab = .General}},
 	{0.1, "", proc(app: ^App) {close_settings(app)}},
-	{0.1, "", proc(app: ^App) {app.prog.completed = {3}; app.prog.fragments = {3}; app.screen = .Levels}},
+	{0.1, "", proc(app: ^App) {app.prog.completed = {3}; app.prog.fragments = {2, 3, 4}; app.screen = .Levels}},
 	{0.6, "02b_levels", nil},
 	{0.1, "", proc(app: ^App) {app.prog.achievements = {.No_Wasted_Light}; app.book_page = 0; app.screen = .Book}},
 	{0.6, "02c_book", nil},
@@ -142,7 +142,7 @@ LEVEL_TOUR := [?]Shot_Step {
 	{1.5, "04_view3", nil},
 	{0.1, "", proc(app: ^App) {game.request_turn(&app.game, 1); game.toggle_lamp(&app.game)}},
 	{1.5, "05_view0_lamp", nil},
-	{0.1, "", proc(app: ^App) {if app.game.lamp_on {game.toggle_lamp(&app.game)}; tour_walk(app, app.game.data.fragment)}},
+	{0.1, "", proc(app: ^App) {if app.game.lamp_on {game.toggle_lamp(&app.game)}; tour_walk(app, app.game.data.fragments[0])}},
 	{5.0, "06_fragment", nil},
 	{0.1, "", proc(app: ^App) {if app.screen == .Fragment {close_fragment(app)}}},
 	{0.1, "", proc(app: ^App) {tour_walk(app, app.game.data.exit)}},

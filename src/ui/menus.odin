@@ -226,7 +226,7 @@ level_select :: proc(u: ^Ui, prog: progress.Progress) -> (chosen: int, back: boo
 	shade(u, 0.84)
 	cx := u.width * 0.5
 	text(u, i18n.tr(.Levels_Title), {cx, u.height * 0.5 - 450 * s}, {size = 56, color = {255, 230, 179, 255}, shadow = true})
-	count := fmt.tprintf("%s  %d / %d", i18n.tr(.Fragments_Label), progress.fragment_count(prog), content.LEVEL_COUNT)
+	count := fmt.tprintf("%s  %d / %d", i18n.tr(.Fragments_Label), progress.fragment_count(prog), content.FRAGMENT_COUNT)
 	text(u, count, {cx, u.height * 0.5 - 375 * s}, {size = 22, color = DIM, shadow = true})
 
 	TILE :: Vec2{150, 92}
@@ -268,7 +268,12 @@ level_select :: proc(u: ^Ui, prog: progress.Progress) -> (chosen: int, back: boo
 			label := info.act == .Epilogue ? "E" : info.id
 			text(u, label, {r.x + r.width * 0.5, r.y + 12 * s}, {size = 34, color = col, shadow = true}, .Center, alpha)
 			if built {
-				diamond(u, {r.x + r.width * 0.5, r.y + r.height - 18 * s}, 8 * s, fade(GOLD, alpha * 0.9), i in prog.fragments)
+				// a mark per fragment hidden in the level
+				first, count := content.level_fragments(i)
+				for k in 0 ..< count {
+					dx := (f32(k) - f32(count - 1) * 0.5) * 22 * s
+					diamond(u, {r.x + r.width * 0.5 + dx, r.y + r.height - 18 * s}, 8 * s, fade(GOLD, alpha * 0.9), first + k in prog.fragments)
+				}
 			}
 			if hover && open && u.pressed {
 				audio.play(.Tap, -10)
@@ -296,7 +301,7 @@ level_select :: proc(u: ^Ui, prog: progress.Progress) -> (chosen: int, back: boo
 // --- the Book -------------------------------------------------------------------------
 
 FRAGMENTS_PER_PAGE :: 4
-BOOK_PAGES :: (content.LEVEL_COUNT + FRAGMENTS_PER_PAGE - 1) / FRAGMENTS_PER_PAGE + 1 // + achievements
+BOOK_PAGES :: (content.FRAGMENT_COUNT + FRAGMENTS_PER_PAGE - 1) / FRAGMENTS_PER_PAGE + 1 // + achievements
 
 // The fragments in Apuleius' order, a few per page, then the achievements.
 // `page` is changed by the arrows.
@@ -315,13 +320,13 @@ book :: proc(u: ^Ui, prog: progress.Progress, page: ^int) -> (back: bool) {
 		cite := Style{size = 20, color = GOLD, shadow = true}
 		body := Style{size = 27, color = TEXT, italic = true, shadow = true}
 		first := page^ * FRAGMENTS_PER_PAGE
-		for k in first ..< min(first + FRAGMENTS_PER_PAGE, content.LEVEL_COUNT) {
+		for k in first ..< min(first + FRAGMENTS_PER_PAGE, content.FRAGMENT_COUNT) {
 			i := content.BOOK_ORDER[k]
-			info := content.LEVELS[i]
+			info := content.FRAGMENTS[i]
 			text(u, fmt.tprintf("%d  ·  %s", k + 1, info.cite), {cx, y}, cite, .Center, 0.8)
 			y += 34 * s
 			if i in prog.fragments {
-				y += paragraph(u, i18n.tr(info.fragment), {cx, y}, body, 1000 * s, 1, 1.3)
+				y += paragraph(u, i18n.tr(info.key), {cx, y}, body, 1000 * s, 1, 1.3)
 			} else {
 				text(u, fmt.tprintf("—  %s  —", i18n.tr(.Book_Missing)), {cx, y}, {size = 22, color = FAINT, italic = true, shadow = true})
 				y += 34 * s
