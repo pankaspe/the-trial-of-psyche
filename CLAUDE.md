@@ -105,7 +105,8 @@ CLAUDE.md for the design history).
   material. Material (grass, rock, marble, wood) lives on the sides and in details, never on
   the top: walking from a meadow onto stone must always read as possible. Stones that do not
   hold (phantom, veiled, cracked) change the top in a recognisable way in every style.
-- **Settings**: each act has its own setting, always at night (the lamp needs the dark); each
+- **Settings**: each act has its own setting, at night where the lamp is needed (I.1 is a sunset:
+  no lamp yet; user, 2026-10-06); each
   level a sub-setting of it, with props coherent with the place (add/remove elements per level).
   Act I the palace of voices · Act II the land without the palace (II.1 the palace crumbling onto
   living rock, II.2 river and reeds of Pan, II.3 sea crag, II.4 mountain sanctuary of Ceres with
@@ -295,17 +296,28 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   direction: art direction first (settings per act, platform language, art style, total graphics
   overhaul), then **level by level, not act by act**.
 
-## Roadmap from now (user, 2026-10-05): level by level
-- **A0 art direction (next session)**: the user names 2-3 styles that intrigue him; build them
-  as playable in-engine prototypes on one level (II.2, the river), switchable with a key, with
-  the layered parallax backdrop of that setting and the platform rim, so the choice is made on
-  real screenshots with the lamp and rotation, not on the flat mockups. (Claude's hint: the
-  engraving and the mosaic have the most identity; moonlit marble is the safe choice.)
-- **A1 the new look**: the chosen style, platform language, materials and backdrops per setting,
-  renderer overhaul; I.1 is the pilot level, then the rest of Act I is restyled.
-- **Then one level at a time**, in order I.1 … E: its setting and props, puzzle depth (aim
-  15-18 minutes), texts, level_check + tests, the user's playtest closes each level before the
-  next. Act II levels already built (mechanics, solver) are reworked in turn, not thrown away.
+- Session 7 (2026-10-06): the user replays every level from I.1, adapting the **settings level by
+  level** and building a reusable prop set; one level at a time, only at the user's ok.
+  - **I.1 approved** ("perfetto"): a mountain crag at sunset over a sea of clouds (`setting
+    crag_sunset`): structure unchanged, `ground`/`rock`/`steps`, mountain props (pine, boulder,
+    shrub, cairn), two decorative spurs out of reach. Daylight/sunset fits Act I's early levels
+    because the lamp is not needed yet (Act I settings need not all be at night).
+  - Filmed prologue: letterbox (`game.cine`, `ui.cinema_bars`), tilt down from the sky,
+    close-up on Psyche, bars withdraw when play begins.
+  - Visual styles (post-processing) shown as five previews (artifact
+    https://claude.ai/artifact/8TSirwBuD8xmcCeztNwmJv); the user chose to keep **all of them as a
+    player setting** (default Clean) in a tabbed settings panel. 32 tests. Pushed.
+  - **Next: I.2 "The Invisible Palace"**: the user plays it and says what to change (setting,
+    props); then I.3, I.4, then Act II (II.3's brief below still stands when its turn comes).
+
+## Roadmap from now (user, 2026-10-06): level by level
+- Art direction is settled as: settings per level (`render/setting.odin`, add a `Look` per new
+  place) + the player's visual style (post-processing). The A0 "art style" mockups (engraving,
+  mosaic...) are superseded by the post styles unless the user brings them back.
+- **One level at a time**, in order I.1 … E: its setting and props (grow the reusable prop set),
+  puzzle depth (aim 15-18 minutes), texts, level_check + tests; the user's playtest and ok close
+  each level before the next. Act II levels already built (mechanics, solver) are reworked in
+  turn, not thrown away.
 - Mechanics of Acts III-IV are designed when their first level comes.
 - Open: character style; a dedicated font (Noto Serif is a placeholder); the user's review of the
   texts (M1 drafts: fragments, act cards, titles, achievements; Act I lines: table in the design
