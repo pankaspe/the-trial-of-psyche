@@ -383,20 +383,85 @@ Setting_Field :: enum u8 {
 	Msaa,
 	Volumes,
 	Debug,
+	Look,
 }
 
 Setting_Changes :: bit_set[Setting_Field]
 
-// The settings panel: edits `cfg` in place and reports what changed.
+// The pages of the settings panel.
+Settings_Tab :: enum u8 {
+	General,
+	Graphics,
+	Audio,
+}
+
+@(private)
+TAB_KEY := [Settings_Tab]i18n.Key {
+	.General  = .Set_General,
+	.Graphics = .Set_Graphics,
+	.Audio    = .Set_Audio,
+}
+
+LOOK_NAME := [settings.Look]i18n.Key {
+	.Off       = .Look_Off,
+	.Clean     = .Look_Clean,
+	.Miniature = .Look_Miniature,
+	.Film      = .Look_Film,
+	.Dream     = .Look_Dream,
+	.Painted   = .Look_Painted,
+}
+
+@(private)
+LOOK_DESC := [settings.Look]i18n.Key {
+	.Off       = .Look_Off_Desc,
+	.Clean     = .Look_Clean_Desc,
+	.Miniature = .Look_Miniature_Desc,
+	.Film      = .Look_Film_Desc,
+	.Dream     = .Look_Dream_Desc,
+	.Painted   = .Look_Painted_Desc,
+}
+
+// The settings panel, in tabs: edits `cfg` in place and reports what changed.
+// On the Graphics tab the game behind shows through, so the visual style can
+// be judged while it is changed.
 settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, native: [2]i32) -> (changes: Setting_Changes, back: bool) {
 	s := u.scale
-	shade(u, 0.7)
-	cx := u.width * 0.5
-	left := cx - 420 * s
-	right := cx + 420 * s
-	y := u.height * 0.5 - 430 * s
-	text(u, i18n.tr(.Set_Title), {cx, y}, {size = 56, color = {255, 230, 179, 255}, shadow = true})
-	y += 100 * s
+	tab := &u.settings_tab
+	// a sheet on the left; the game stays in view on the right (clear on the Graphics tab)
+	sheet := 880 * s
+	rl.DrawRectangleRec({sheet, 0, u.width - sheet, u.height}, fade({3, 3, 10, 255}, tab^ == .Graphics ? 0 : 0.35))
+	rl.DrawRectangleRec({0, 0, sheet, u.height}, {6, 6, 18, 225})
+	rl.DrawRectangleGradientH(i32(sheet), 0, i32(140 * s), i32(u.height), {6, 6, 18, 225}, {6, 6, 18, 0})
+	left := 90 * s
+	right := sheet - 50 * s
+	text(u, i18n.tr(.Set_Title), {left, 70 * s}, {size = 56, color = {255, 230, 179, 255}, shadow = true}, .Left)
+
+	// the tabs
+	ty := 170 * s
+	x := left
+	for t in Settings_Tab {
+		label := i18n.tr(TAB_KEY[t])
+		st := Style{size = 30, color = t == tab^ ? GOLD : DIM, shadow = true}
+		m := measure(u, label, st)
+		r := rl.Rectangle{x - 12 * s, ty - 6 * s, m.x + 24 * s, m.y + 12 * s}
+		add_hot(u, r)
+		hover := rl.CheckCollisionPointRec(u.mouse, r)
+		if hover && t != tab^ {
+			st.color = TEXT
+		}
+		text(u, label, {x, ty}, st, .Left)
+		if t == tab^ {
+			rl.DrawRectangleRec({x, ty + m.y + 4 * s, m.x, max(2 * s, 1)}, GOLD)
+		}
+		if hover && u.pressed && t != tab^ {
+			audio.play(.Tap, -10)
+			tab^ = t
+		}
+		x += m.x + 56 * s
+	}
+	rl.DrawRectangleRec({left, ty + 62 * s, right - left, max(s, 1)}, {255, 209, 128, 40})
+
+	y := ty + 92 * s
 	row := 46 * s
 	section :: proc(u: ^Ui, key: i18n.Key, left: f32, y: ^f32) {
 		text(u, i18n.tr(key), {left, y^}, {size = 22, color = GOLD, shadow = true}, .Left, 0.85)
@@ -406,77 +471,93 @@ settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, na
 		return i18n.tr(v ? .Set_On : .Set_Off)
 	}
 
-	section(u, .Set_General, left, &y)
-	if step := option_row(u, i18n.tr(.Set_Language), i18n.tr(.Lang_Name), y, left, right); step != 0 {
-		n := len(i18n.Language)
-		cfg.language = i18n.Language((int(cfg.language) + step + n) % n)
-		changes += {.Language}
-	}
-	y += row + 14 * s
+	switch tab^ {
+	case .General:
+		if step := option_row(u, i18n.tr(.Set_Language), i18n.tr(.Lang_Name), y, left, right); step != 0 {
+			n := len(i18n.Language)
+			cfg.language = i18n.Language((int(cfg.language) + step + n) % n)
+			changes += {.Language}
+		}
+		y += row
+		if step := option_row(u, i18n.tr(.Set_Debug), on_off(cfg.debug), y, left, right); step != 0 {
+			cfg.debug = !cfg.debug
+			changes += {.Debug}
+		}
 
-	section(u, .Set_Video, left, &y)
-	if step := option_row(u, i18n.tr(.Set_Display), i18n.tr(cfg.fullscreen ? .Set_Fullscreen : .Set_Windowed), y, left, right); step != 0 {
-		cfg.fullscreen = !cfg.fullscreen
-		changes += {.Fullscreen}
-	}
-	y += row
-	// fullscreen always uses the monitor's own resolution
-	res_label := cfg.fullscreen ? fmt.tprintf("%d × %d  (%s)", native.x, native.y, i18n.tr(.Set_Native)) : fmt.tprintf("%d × %d", cfg.resolution.x, cfg.resolution.y)
-	if step := option_row(u, i18n.tr(.Set_Resolution), res_label, y, left, right, !cfg.fullscreen && len(resolutions) > 0); step != 0 {
-		current := 0
-		for r, i in resolutions {
-			if r == cfg.resolution {
-				current = i
+	case .Graphics:
+		section(u, .Set_Effects, left, &y)
+		if step := option_row(u, i18n.tr(.Set_Look), i18n.tr(LOOK_NAME[cfg.look]), y, left, right); step != 0 {
+			n := len(settings.Look)
+			cfg.look = settings.Look((int(cfg.look) + step + n) % n)
+			changes += {.Look}
+		}
+		y += row
+		if cfg.look != .Off {
+			if slider(u, i18n.tr(.Set_Look_Amount), &cfg.look_amount, y, left, right) {
+				changes += {.Look}
 			}
 		}
-		cfg.resolution = resolutions[(current + step + len(resolutions)) % len(resolutions)]
-		changes += {.Resolution}
-	}
-	y += row
-	if step := option_row(u, i18n.tr(.Set_Vsync), on_off(cfg.vsync), y, left, right); step != 0 {
-		cfg.vsync = !cfg.vsync
-		changes += {.Vsync}
-	}
-	y += row
-	fps_label := cfg.fps_limit == 0 ? i18n.tr(.Set_Unlimited) : fmt.tprintf("%d", cfg.fps_limit)
-	if step := option_row(u, i18n.tr(.Set_Fps), fps_label, y, left, right); step != 0 {
-		limits := settings.FPS_LIMITS[:]
-		current := 0
-		for l, i in limits {
-			if l == cfg.fps_limit {
-				current = i
-			}
-		}
-		cfg.fps_limit = limits[(current + step + len(limits)) % len(limits)]
-		changes += {.Fps}
-	}
-	y += row
-	msaa_label := fmt.tprintf("%s  %s", on_off(cfg.msaa), i18n.tr(.Set_Restart_Note))
-	if step := option_row(u, i18n.tr(.Set_Msaa), msaa_label, y, left, right); step != 0 {
-		cfg.msaa = !cfg.msaa
-		changes += {.Msaa}
-	}
-	y += row + 14 * s
+		y += row
+		text(u, i18n.tr(LOOK_DESC[cfg.look]), {left, y - 4 * s}, {size = 22, color = DIM, italic = true, shadow = true}, .Left)
+		y += row + 10 * s
 
-	section(u, .Set_Audio, left, &y)
-	if slider(u, i18n.tr(.Set_Master), &cfg.master, y, left, right) {
-		changes += {.Volumes}
+		section(u, .Set_Screen, left, &y)
+		if step := option_row(u, i18n.tr(.Set_Display), i18n.tr(cfg.fullscreen ? .Set_Fullscreen : .Set_Windowed), y, left, right); step != 0 {
+			cfg.fullscreen = !cfg.fullscreen
+			changes += {.Fullscreen}
+		}
+		y += row
+		// fullscreen always uses the monitor's own resolution
+		res_label := cfg.fullscreen ? fmt.tprintf("%d × %d  (%s)", native.x, native.y, i18n.tr(.Set_Native)) : fmt.tprintf("%d × %d", cfg.resolution.x, cfg.resolution.y)
+		if step := option_row(u, i18n.tr(.Set_Resolution), res_label, y, left, right, !cfg.fullscreen && len(resolutions) > 0); step != 0 {
+			current := 0
+			for r, i in resolutions {
+				if r == cfg.resolution {
+					current = i
+				}
+			}
+			cfg.resolution = resolutions[(current + step + len(resolutions)) % len(resolutions)]
+			changes += {.Resolution}
+		}
+		y += row
+		if step := option_row(u, i18n.tr(.Set_Vsync), on_off(cfg.vsync), y, left, right); step != 0 {
+			cfg.vsync = !cfg.vsync
+			changes += {.Vsync}
+		}
+		y += row
+		fps_label := cfg.fps_limit == 0 ? i18n.tr(.Set_Unlimited) : fmt.tprintf("%d", cfg.fps_limit)
+		if step := option_row(u, i18n.tr(.Set_Fps), fps_label, y, left, right); step != 0 {
+			limits := settings.FPS_LIMITS[:]
+			current := 0
+			for l, i in limits {
+				if l == cfg.fps_limit {
+					current = i
+				}
+			}
+			cfg.fps_limit = limits[(current + step + len(limits)) % len(limits)]
+			changes += {.Fps}
+		}
+		y += row
+		msaa_label := fmt.tprintf("%s  %s", on_off(cfg.msaa), i18n.tr(.Set_Restart_Note))
+		if step := option_row(u, i18n.tr(.Set_Msaa), msaa_label, y, left, right); step != 0 {
+			cfg.msaa = !cfg.msaa
+			changes += {.Msaa}
+		}
+
+	case .Audio:
+		if slider(u, i18n.tr(.Set_Master), &cfg.master, y, left, right) {
+			changes += {.Volumes}
+		}
+		y += row
+		if slider(u, i18n.tr(.Set_Music), &cfg.music, y, left, right) {
+			changes += {.Volumes}
+		}
+		y += row
+		if slider(u, i18n.tr(.Set_Sfx), &cfg.sfx, y, left, right) {
+			changes += {.Volumes}
+		}
 	}
-	y += row
-	if slider(u, i18n.tr(.Set_Music), &cfg.music, y, left, right) {
-		changes += {.Volumes}
-	}
-	y += row
-	if slider(u, i18n.tr(.Set_Sfx), &cfg.sfx, y, left, right) {
-		changes += {.Volumes}
-	}
-	y += row + 14 * s
-	if step := option_row(u, i18n.tr(.Set_Debug), on_off(cfg.debug), y, left, right); step != 0 {
-		cfg.debug = !cfg.debug
-		changes += {.Debug}
-	}
-	y += row + 40 * s
-	back = button(u, i18n.tr(.Back), {cx, y}, 30)
+	back = button(u, i18n.tr(.Back), {left + measure(u, i18n.tr(.Back), {size = 30}).x * 0.5, u.height - 90 * s}, 30)
 	return
 }
 

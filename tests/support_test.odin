@@ -19,6 +19,8 @@ settings_round_trip :: proc(t: ^testing.T) {
 	s.resolution = {1920, 1080}
 	s.fps_limit = 144
 	s.music = 0.25
+	s.look = .Painted
+	s.look_amount = 0.5
 	text := settings.serialize(s, context.temp_allocator)
 	back := settings.defaults()
 	back.language = .Italian
@@ -30,7 +32,7 @@ settings_round_trip :: proc(t: ^testing.T) {
 settings_ignore_bad_values :: proc(t: ^testing.T) {
 	s := settings.defaults()
 	before := s
-	settings.parse("resolution = 12x5\nmusic = loud\nfps_limit = -3\nnonsense\nlanguage = xx\nmaster = 7\n", &s)
+	settings.parse("resolution = 12x5\nmusic = loud\nfps_limit = -3\nnonsense\nlanguage = xx\nmaster = 7\nlook = sepia\n", &s)
 	before.master = 1 // clamped to 0..1
 	testing.expect(t, s == before, "malformed lines keep the previous values")
 	testing.expect(t, i18n.language_from_locale("it_IT.UTF-8") == .Italian, "Italian locale")

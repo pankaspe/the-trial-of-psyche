@@ -16,6 +16,7 @@ import "content"
 import "game"
 import "iso"
 import pl "palace"
+import "settings"
 import "ui"
 
 Shot_Step :: struct {
@@ -55,6 +56,11 @@ SHOT_SCRIPT := [?]Shot_Step {
 	{1.5, "01_menu", nil},
 	{0.1, "", proc(app: ^App) {open_settings(app)}},
 	{0.6, "02_settings", nil},
+	{0.1, "", proc(app: ^App) {app.ui.settings_tab = .Graphics}},
+	{0.6, "02_settings_graphics", nil},
+	{0.1, "", proc(app: ^App) {app.ui.settings_tab = .Audio}},
+	{0.6, "02_settings_audio", nil},
+	{0.1, "", proc(app: ^App) {app.ui.settings_tab = .General}},
 	{0.1, "", proc(app: ^App) {close_settings(app)}},
 	{0.1, "", proc(app: ^App) {app.prog.completed = {3}; app.prog.fragments = {3}; app.screen = .Levels}},
 	{0.6, "02b_levels", nil},
@@ -187,6 +193,8 @@ Shots :: struct {
 	dir:  string,
 	size: [2]i32, // offscreen canvas size (--size WxH), 0 = the window
 	level: int, // --level ID: the slot to tour, -1 = the full script
+	post:  settings.Look, // --post NAME: a visual style (off, clean, miniature, film, dream, painted)
+	has_post: bool,
 	plan:  bool, // --plan: play the solver's plan of the level, a shot after every decision
 	moves: [dynamic]pl.Plan_Step,
 	arena: virtual.Arena,
@@ -219,6 +227,12 @@ shots_from_args :: proc(args: []string) -> (s: Shots, ok: bool) {
 			}
 		case "--plan":
 			s.plan = true
+		case "--post":
+			for name, st in settings.LOOK_CODE {
+				if name == args[i + 1] {
+					s.post, s.has_post = st, true
+				}
+			}
 		case "--size":
 			v := args[i + 1]
 			if x := strings.index_byte(v, 'x'); x > 0 {

@@ -36,6 +36,7 @@ Ui :: struct {
 	scale:     f32, // screen height / 1080
 	width:     f32,
 	height:    f32,
+	settings_tab: Settings_Tab, // the page of the settings panel on screen
 	mouse:     Vec2,
 	pressed:   bool, // left button went down this frame
 	down:      bool,

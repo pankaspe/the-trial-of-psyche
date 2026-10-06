@@ -83,6 +83,7 @@ App :: struct {
 	resize_tries:    int,
 	target:          rl.RenderTexture2D, // offscreen canvas (--shots DIR --size WxH)
 	has_target:      bool,
+	post:            render.Post,
 }
 
 main :: proc() {
@@ -150,6 +151,10 @@ startup :: proc(app: ^App) -> bool {
 	audio.init()
 	audio.set_volumes(app.cfg.master, app.cfg.music, app.cfg.sfx)
 	render.init(&app.renderer)
+	render.post_init(&app.post)
+	if app.shots.has_post {
+		app.cfg.look = app.shots.post
+	}
 	ui.init(&app.ui)
 	if !new_level(app, progress.current_level(app.prog)) {
 		return false
@@ -167,6 +172,7 @@ shutdown :: proc(app: ^App) {
 		rl.UnloadRenderTexture(app.target)
 	}
 	ui.shutdown(&app.ui)
+	render.post_shutdown(&app.post)
 	render.shutdown(&app.renderer)
 	audio.shutdown()
 	rl.CloseWindow()
@@ -369,12 +375,24 @@ frame :: proc(app: ^App) {
 	// drawing (widgets also report their clicks here)
 	view := render.scene_view(&app.scene, g, w, h)
 	rl.BeginDrawing()
-	if app.has_target {
+	post := app.cfg.look != .Off && app.cfg.look_amount > 0
+	look := render.post_params(app.cfg.look, app.cfg.look_amount)
+	if post {
+		render.post_begin(&app.post, w, h)
+	} else if app.has_target {
 		rl.BeginTextureMode(app.target)
 	}
 	reset_canvas(w, h)
 	rl.ClearBackground({5, 5, 15, 255})
 	render.draw_world(&app.renderer, &app.scene, g, view, app.time)
+	if post {
+		render.post_end(&app.post, look)
+		if app.has_target {
+			rl.BeginTextureMode(app.target)
+		}
+		reset_canvas(w, h)
+		render.post_draw(&app.post, look, w, h, render.sun_uv(&app.scene, g, view), render.focus_uv(g, view), app.time)
+	}
 	draw_screens(app)
 	if app.cfg.debug {
 		debug(app)
@@ -469,6 +487,11 @@ global_keys :: proc(app: ^App) {
 	if rl.IsKeyPressed(.F11) {
 		app.cfg.fullscreen = !app.cfg.fullscreen
 		apply(app, {.Fullscreen})
+	}
+	if rl.IsKeyPressed(.F4) {
+		// the next visual style (as in the settings)
+		app.cfg.look = settings.Look((int(app.cfg.look) + 1) % len(settings.Look))
+		save_settings(app)
 	}
 	if rl.IsKeyPressed(.F3) {
 		app.cfg.debug = !app.cfg.debug
@@ -738,7 +761,8 @@ apply :: proc(app: ^App, changes: ui.Setting_Changes) {
 	if .Volumes in changes {
 		audio.set_volumes(c.master, c.music, c.sfx)
 	}
-	if changes - {.Volumes} != {} {
+	// sliders are saved when the panel closes, not on every step of a drag
+	if changes - {.Volumes, .Look} != {} {
 		save_settings(app)
 	}
 }

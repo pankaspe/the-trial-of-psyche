@@ -158,12 +158,22 @@ Full design document (Italian, kept up to date there): https://claude.ai/code/ar
   view (left .075 / right .625 / top .9) re-coloured with the prototype palettes
   (night / warm, per material); procedural masonry courses and marble bevels; lamp
   light, depth cue, mist. Output is not gamma-corrected (matches the prototype's look).
+- Settings per level (`setting night|crag_sunset`, `render/setting.odin` `LOOKS`): sky gradient,
+  orb, stars, layered ranges (`ridges.fs`, panoramas that close over a full turn), clouds,
+  mist, and a sunset palette for the stones (`daylight`). I.1 is the crag at sunset (approved).
+- Post-processing (`render/post.odin`, `post*.fs`): the world goes to a canvas, then bloom,
+  soft scene, light shafts, tilt-shift (focus on Psyche), Kuwahara paint, grade, vignette,
+  grain; the UI is drawn after, untouched. Six visual styles (`settings.Look`: off, clean
+  (default), miniature, film, dream, painted) chosen by the player in Settings > Graphics
+  with a strength slider; F4 cycles them; `--shots ... --post NAME`.
 - Figures (Psyche, Cupid) are abstract lathes + additive wings: placeholders until the
   user picks a character style.
 
 ## Window and resolution
 - Always draw on the real framebuffer (`canvas_size` = GetRenderWidth/Height) and reset
   viewport + 2D projection every frame (`reset_canvas`): raylib's screen size can be stale.
+- Settings panel: a sheet on the left with tabs (General, Graphics, Audio); the game stays
+  visible on the right, unshaded on the Graphics tab, so the style is judged live.
 - Fullscreen = true fullscreen at the monitor's native size (`set_fullscreen`). raylib's
   borderless mode cannot be left on GNOME/XWayland (window stays monitor-sized and ignores
   resizes). Window sizes are applied a few frames later and retried (`update_window_size`).
