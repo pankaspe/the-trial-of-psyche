@@ -171,6 +171,30 @@ LOOKS := [level.Setting]Look {
 		daylight = 1,
 		mote = {1.0, 0.8, 0.5, 0.45},
 	},
+	// the sisters' crag by day: a high clear sky, the sun to one side, blue
+	// ranges far off, white clouds below; bare rock lit warm
+	.Crag_Day = {
+		sky_top = {0.16, 0.32, 0.62},
+		sky_mid = {0.40, 0.58, 0.82},
+		sky_horizon = {0.80, 0.86, 0.90},
+		orb_pos = {0.22, 0.16},
+		orb_radius = 0.03,
+		orb_color = {1.0, 0.98, 0.9},
+		halo_color = {0.55, 0.6, 0.62},
+		halo_width = 4,
+		stars = 0,
+		haze = {0.70, 0.78, 0.86},
+		islands = false,
+		ridges = 1,
+		ridge_color = {{0.56, 0.66, 0.80}, {0.42, 0.52, 0.66}, {0.30, 0.38, 0.48}},
+		ridge_rim = {1.0, 0.94, 0.80},
+		cloud_back = {0.80, 0.85, 0.92},
+		cloud_front = {0.90, 0.92, 0.96},
+		cloud_crest = {0.20, 0.18, 0.12},
+		mist = {0.68, 0.75, 0.84},
+		daylight = 1,
+		mote = {1.0, 1.0, 0.95, 0.3},
+	},
 	// the palace of voices at twilight: the sun is gone, its last light low on
 	// the clouds, the first stars, the moon rising; the candles are lit
 	.Dusk = {

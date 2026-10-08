@@ -231,7 +231,16 @@ Scene :: struct {
 	rng:        fx.Rng,
 	mote:       Color4, // the colour of the drifting motes (from the setting)
 	moon_cover: f32, // how much the night clouds hide the moon now (0..1)
+	// a tall level (`tier` lines): the camera frames one band of heights at a
+	// time and pans up or down when Psyche changes band
+	frames:     [level.MAX_TIERS]Rect, // proto pixels that hold each band from every view
+	frame_h:    f32, // the tallest band: the zoom is the same for all of them
+	tier:       int, // the band the camera frames (or pans to)
+	pan_from:   f32, // the centre's proto y where the pan began
+	pan_t:      f32, // seconds since it began
 }
+
+PAN_TIME :: 1.8 // the camera moving from one band of a tall level to the next
 
 scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 	s^ = {}
@@ -327,6 +336,32 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 			}
 		}
 	}
+	// a tall level: each band of heights framed from every view (the pieces of
+	// the band, a little of the rock under it and the figure over it)
+	for t, i in g.data.tiers {
+		first = true
+		for p in s.pieces {
+			if p.cell.z < t[0] - 3 || p.cell.z > t[1] {
+				continue
+			}
+			for turn in 0 ..< (p.part > 0 ? 4 : 1) {
+				cell := p.cell
+				if p.part > 0 {
+					cell = level.part_cell(cell, g.data.parts[p.part - 1].pivot, turn)
+				}
+				for r in 0 ..< 4 {
+					c := iso.floor_center(iso.to_view(cell, r, g.data.size))
+					rect := Rect{c.x - 64, c.y - 120, 128, 152}
+					s.frames[i] = first ? rect : rect_merge(s.frames[i], rect)
+					first = false
+				}
+			}
+		}
+		s.frame_h = max(s.frame_h, s.frames[i].h)
+	}
+	s.tier = camera_tier(g)
+	s.pan_t = PAN_TIME
+
 	// ambient motes start mid-life, as if they had always been there
 	for _ in 0 ..< 40 {
 		emit_mote(s, true)
@@ -353,8 +388,36 @@ shake_offset :: proc(g: ^game.Game) -> Vec2 {
 
 CINE_LOOK_UP :: 520 // proto px the prologue's camera starts above the level
 
+// The band of a tall level that holds Psyche (where she is going, while she
+// walks: through a cave the camera pans while she is inside the rock).
+camera_tier :: proc(g: ^game.Game) -> int {
+	h := g.psyche.walking ? g.psyche.step_to.z : g.psyche.cell.z
+	best, gap := 0, i32(1 << 30)
+	for t, i in g.data.tiers {
+		d := max(t[0] - h, h - t[1], 0)
+		if d < gap {
+			best, gap = i, d
+		}
+	}
+	return best
+}
+
+// The proto y the camera centres on for band i.
+@(private)
+tier_center :: proc(s: ^Scene, i: int) -> f32 {
+	return s.frames[i].y + s.frames[i].h * 0.5 + 40
+}
+
 scene_view :: proc(s: ^Scene, g: ^game.Game, width, height: f32) -> View {
-	v := make_view(s.fit, width, height, g.angle, g.data.size, g.data.height, shake_offset(g))
+	fit := s.fit
+	if len(g.data.tiers) > 0 {
+		// zoom for the tallest band, the width of the whole crag
+		fit.y, fit.h = 0, s.frame_h
+	}
+	v := make_view(fit, width, height, g.angle, g.data.size, g.data.height, shake_offset(g))
+	if len(g.data.tiers) > 0 {
+		v.center.y = fx.lerp(s.pan_from, tier_center(s, s.tier), fx.sine_in_out(fx.clamp01(s.pan_t / PAN_TIME)))
+	}
 	if lift := game.exit_lift(g); lift > 0 {
 		// the camera follows her a little way up as the wind takes her
 		v.center.y -= lift * 64 * 0.55
@@ -391,6 +454,13 @@ emit_mote :: proc(s: ^Scene, aged: bool) {
 }
 
 scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
+	if len(g.data.tiers) > 0 {
+		s.pan_t += dt
+		if t := camera_tier(g); t != s.tier {
+			s.pan_from = fx.lerp(s.pan_from, tier_center(s, s.tier), fx.sine_in_out(fx.clamp01(s.pan_t / PAN_TIME)))
+			s.tier, s.pan_t = t, 0
+		}
+	}
 	if s.motes.count < 40 && fx.randf(&s.rng) < dt * 40 / 7 * 2 {
 		emit_mote(s, false)
 	}
@@ -1496,10 +1566,11 @@ set_bv3 :: proc(b: Backdrop, u: Backdrop_Uniform, value: Vec3) {
 // Where the sky meets the sea of clouds, in screen uv (the bottom of the
 // screen when the setting has no ranges: the night sky as it always was).
 @(private)
-horizon_uv :: proc(s: ^Scene, g: ^game.Game, v: View) -> f32 {
+horizon_uv :: proc(s: ^Scene, g: ^game.Game, view: View) -> f32 {
 	if look(g.data.setting).ridges == 0 {
 		return 1
 	}
+	v := backdrop_view(s, g, view, 0.25)
 	return proto_to_screen(v, {0, s.fit.y + s.fit.h - 430}).y / v.height
 }
 
@@ -1568,8 +1639,22 @@ draw_ridges :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	rl.EndShaderMode()
 }
 
+// The far backdrop of a tall level follows the camera's pan only by `k`
+// (0: not at all, 1: as the level): the horizon sinks slowly as she climbs.
 @(private)
-draw_clouds :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32, front: bool) {
+backdrop_view :: proc(s: ^Scene, g: ^game.Game, v: View, k: f32) -> View {
+	if len(g.data.tiers) == 0 {
+		return v
+	}
+	out := v
+	base := tier_center(s, 0)
+	out.center.y = base + (v.center.y - base) * k
+	return out
+}
+
+@(private)
+draw_clouds :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, view: View, time: f32, front: bool) {
+	v := backdrop_view(s, g, view, 0.5)
 	b := r.clouds
 	lk := look(g.data.setting)
 	top := s.fit.y + s.fit.h - (front ? 330 : 520)

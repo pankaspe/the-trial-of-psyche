@@ -50,6 +50,7 @@ Setting :: enum u8 {
 	Deep_Night, // the dead of night: candles out, clouds drifting across the moon
 	Forest_Night, // the dead of night in a forest of rock pillars, far from the palace
 	River_Dawn, // the first light over a wide river, mist on the water, the morning star
+	Crag_Day, // a crag of bare rock by day, the wind, the plain far below
 }
 
 SETTING_NAME := [Setting]string {
@@ -60,6 +61,7 @@ SETTING_NAME := [Setting]string {
 	.Deep_Night  = "deep_night",
 	.Forest_Night = "forest_night",
 	.River_Dawn   = "river_dawn",
+	.Crag_Day     = "crag_day",
 }
 
 // How a block behaves (Act II): fixed stone, or one that changes for good.
@@ -105,6 +107,7 @@ Prop_Kind :: enum u8 {
 	Fence,
 	Rope, // the hand ropes of a rope bridge, along one side
 	Log, // a fallen trunk lying along one side
+	Lip, // a low lip of rock along one side: the parapet of a crag's ledge
 	// blocking props: nobody can stand in their cell
 	Pillar,
 	Plinth,
@@ -127,7 +130,7 @@ Prop_Kind :: enum u8 {
 	Cairn, // a few stones piled up by passers-by
 }
 
-EDGE_PROPS :: bit_set[Prop_Kind]{.Rail, .Wall, .Wall_Half, .Wall_Battlement, .Fence, .Rope, .Log}
+EDGE_PROPS :: bit_set[Prop_Kind]{.Rail, .Wall, .Wall_Half, .Wall_Battlement, .Fence, .Rope, .Log, .Lip}
 BLOCKING_PROPS :: bit_set[Prop_Kind]{.Pillar, .Plinth, .Cypress, .Urn, .Brazier, .Bed, .Statue, .Spruce, .Pine, .Boulder}
 ORIENTED_PROPS :: EDGE_PROPS + bit_set[Prop_Kind]{.Bed, .Statue, .Arch, .Vase, .Reeds, .Sconce, .Pine, .Boulder, .Shrub, .Cairn}
 NEEDS_DIR :: EDGE_PROPS + bit_set[Prop_Kind]{.Statue, .Vase, .Reeds, .Sconce, .Shrub, .Cairn}
@@ -140,6 +143,7 @@ PROP_NAME := [Prop_Kind]string {
 	.Fence           = "fence",
 	.Rope            = "rope",
 	.Log             = "log",
+	.Lip             = "lip",
 	.Pillar          = "pillar",
 	.Plinth          = "plinth",
 	.Cypress         = "cypress",
@@ -222,6 +226,7 @@ Level_Data :: struct {
 	planks:       [dynamic]Plank, // blocks that are the wooden deck of a rope bridge
 	water:        [dynamic][4]i32, // rectangles of water (x0 y0 x1 y1), just under the h1 surfaces
 	caves:        [dynamic]Cave, // in pairs: each leads to the other of its pair
+	tiers:        [dynamic][2]i32, // a tall level: the camera frames one band of heights (h0 h1) at a time
 	outro:        i18n.Key, // the text of the ending card at the exit
 	has_outro:    bool,
 	has_lamp:     bool, // Psyche carries the lamp (from the end of Act I)
@@ -238,6 +243,7 @@ MAX_PARTS :: 8
 MAX_FRAGMENTS :: 4
 MAX_CANDELABRA :: 12
 MAX_DYNAMIC :: 64 // crumbling, phantom and veiled blocks in one level
+MAX_TIERS :: 6
 
 // The cell of a part's block after `r` quarter turns.
 part_cell :: proc(c: Cell, pivot: [2]i32, r: int) -> Cell {
@@ -270,6 +276,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	data.planks = make([dynamic]Plank, 0, 8)
 	data.water = make([dynamic][4]i32, 0, 2)
 	data.caves = make([dynamic]Cave, 0, 4)
+	data.tiers = make([dynamic][2]i32, 0, MAX_TIERS)
 	data.parts = make([dynamic]Part, 0, 2)
 	data.handles = make([dynamic]Handle, 0, 2)
 	data.rests = make([dynamic]Cell, 0, 4)
@@ -458,8 +465,18 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 			}
 			if !found {
-				return data, fail(line_no, "setting: expected one of night, crag_sunset, dusk, night_candles, deep_night, forest_night, river_dawn")
+				return data, fail(line_no, "setting: expected one of night, crag_sunset, dusk, night_candles, deep_night, forest_night, river_dawn, crag_day")
 			}
+
+		case "tier":
+			v: [2]i32
+			if !ints(args, v[:]) || v[1] < v[0] {
+				return data, fail(line_no, "tier: expected h0 h1 with h0 <= h1")
+			}
+			if len(data.tiers) == MAX_TIERS {
+				return data, fail(line_no, "too many tiers (max %d)", MAX_TIERS)
+			}
+			append(&data.tiers, v)
 
 		case "water":
 			v: [4]i32

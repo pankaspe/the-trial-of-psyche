@@ -73,6 +73,11 @@ parse_errors_are_reported :: proc(t: ^testing.T) {
 	testing.expect(t, err != nil, "an unknown voice key is an error")
 	_, err = level.parse("size 4\nblock 0 0 0\n", alloc)
 	testing.expect(t, err != nil, "a level without start is an error")
+	_, err = level.parse("size 4\ntier 5 2\nblock 0 0 0\nstart 0 0 1\n", alloc)
+	testing.expect(t, err != nil, "a tier upside down is an error")
+	d: level.Level_Data
+	d, err = level.parse("size 4\ntier 1 3\ntier 6 9\nblock 0 0 0\nstart 0 0 1\n", alloc)
+	testing.expect(t, err == nil && len(d.tiers) == 2 && d.tiers[1] == {6, 9}, "a tall level's bands of heights")
 }
 
 @(test)

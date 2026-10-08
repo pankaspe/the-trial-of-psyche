@@ -95,6 +95,7 @@ Key :: enum u16 {
 	Fragment_05b, // II.1 hides two: the god seen by the lamp, the arrow
 	Fragment_06,
 	Fragment_07,
+	Fragment_07b, // II.3 hides two: Psyche's lie to her sister, the gull
 	Fragment_08,
 	Fragment_09,
 	Fragment_10,
@@ -159,6 +160,7 @@ Key :: enum u16 {
 	Skill_Oil,
 	Skill_No_Oil,
 	Skill_Handle_Away,
+	Skill_Lamp_Absent, // the lamp is known but not carried in this level
 	Skill_Handle_Here,
 	Skill_Handle_Turning,
 	Skill_Locked,
@@ -395,6 +397,7 @@ IT := [Key]string {
 	.Fragment_05    = "Mentre guarda le armi del Dio, Psiche si punge con una delle sue frecce. Così, senza saperlo, si innamora di Amore.",
 	.Fragment_06    = "Le fiaccole nuziali fanno fumo nero, il flauto suona un lamento. Tutta la città accompagna la sposa come a un funerale.",
 	.Fragment_07    = "Un gabbiano bianco si tuffa in fondo al mare e racconta tutto a Venere. «Suo figlio è ferito, e ama una mortale!».",
+	.Fragment_07b   = "Psiche racconta alla sorella: «Alla luce della lampada ho visto il mio sposo: era Amore in persona. Svegliato dall'olio, mi ha cacciata: “Vattene. Sposerò tua sorella.” E ha ordinato a Zefiro di portarmi via.»",
 	.Fragment_08    = "Venere rimprovera il figlio con parole dure e lo chiude in una stanza della sua casa, perché non riveda la fanciulla.",
 	.Fragment_09    = "Cerere e Giunone cercano di calmarla: «è giovane, è innamorato, perché punirlo?» Ma parlano così per paura delle sue frecce.",
 	.Fragment_10    = "Mercurio grida il bando per tutte le strade: «a chi riporta la fuggitiva, Venere darà sette baci.»",
@@ -418,7 +421,7 @@ IT := [Key]string {
 	.Mech_Veiled_Title = "Le pietre velate",
 	.Mech_Veiled    = "Al buio le pietre e le assi velate non ci sono. La lampada le mostra in oro\ne, da vicino, le rende vere per sempre.",
 	.Mech_Handle_Title = "Le manovelle",
-	.Mech_Handle    = "Una manovella muove la parte del palazzo segnata dall'intarsio di bronzo.\nStando sulla manovella, premi 2 (o clicca su Psiche): la parte ruota di un quarto.",
+	.Mech_Handle    = "Una manovella muove la parte segnata dall'intarsio di bronzo.\nStando sulla manovella, premi 2 (o clicca su Psiche): la parte ruota di un quarto.",
 
 	.Book_Fragments = "Frammenti del racconto",
 	.Book_Missing   = "frammento non ancora trovato",
@@ -454,6 +457,7 @@ IT := [Key]string {
 	.Skill_Oil = "Spenta · olio %d s",
 	.Skill_No_Oil = "Niente olio",
 	.Skill_Handle_Away = "Cerca una manovella",
+	.Skill_Lamp_Absent = "Non serve qui",
 	.Skill_Handle_Here = "Sei su una manovella",
 	.Skill_Handle_Turning = "La parte gira…",
 	.Skill_Locked = "Da scoprire",
@@ -502,7 +506,7 @@ IT := [Key]string {
 	.Hint_Crumble   = "Le pietre incrinate reggono un passaggio solo: quando le lasci, crollano",
 	.Hint_Phantom   = "Le pietre pallide esistono solo al buio: la luce della lampada, da vicino, le dissolve per sempre",
 	.Hint_Veiled    = "La lampada mostra in oro ciò che il buio nasconde: avvicinati con la luce, e diventa vero per sempre",
-	.Hint_Handle    = "Sei su una manovella: premi 2 (o clicca su Psiche) per ruotare la parte del palazzo che muove",
+	.Hint_Handle    = "Sei su una manovella: premi 2 (o clicca su Psiche) per ruotare la parte che muove",
 	.Hint_Phantom_Under = "Non qui: alla luce, la pietra sotto i tuoi piedi svanirebbe",
 	.Hint_Rest      = "Un braciere acceso: se ti perdi, R ti riporta qui (tenuto premuto, ricomincia il livello)",
 
@@ -640,6 +644,7 @@ EN := [Key]string {
 	.Fragment_05    = "Looking at the god's weapons, Psyche pricks herself on one of his arrows. So, without knowing it, she falls in love with Love.",
 	.Fragment_06    = "The wedding torches burn with black smoke, the flute plays a lament. The whole city follows the bride as if to a funeral.",
 	.Fragment_07    = "A white gull dives to the bottom of the sea and tells Venus everything: her son is wounded, and he loves a mortal.",
+	.Fragment_07b   = "Psyche tells her sister: “By the lamplight I saw my husband: it was Love himself. Woken by the oil, he drove me out: ‘Go. I will marry your sister.’ And he bade Zephyr carry me away.”",
 	.Fragment_08    = "Venus scolds her son with harsh words and locks him in a room of her house, so that he will not see the girl again.",
 	.Fragment_09    = "Ceres and Juno try to calm her: he is young, he is in love, why punish him? But they speak so for fear of his arrows.",
 	.Fragment_10    = "Mercury cries the proclamation through every street: whoever brings back the runaway will have seven kisses from Venus.",
@@ -663,7 +668,7 @@ EN := [Key]string {
 	.Mech_Veiled_Title = "Veiled stones",
 	.Mech_Veiled    = "In the dark, veiled stones and planks are not there. The lamp shows them in gold\nand, close by, makes them real for good.",
 	.Mech_Handle_Title = "Handles",
-	.Mech_Handle    = "A handle moves the part of the palace marked by the bronze inlay.\nStanding on the handle, press 2 (or click Psyche): the part turns a quarter.",
+	.Mech_Handle    = "A handle moves the part marked by the bronze inlay.\nStanding on the handle, press 2 (or click Psyche): the part turns a quarter.",
 
 	.Book_Fragments = "Fragments of the Tale",
 	.Book_Missing   = "fragment not found yet",
@@ -699,6 +704,7 @@ EN := [Key]string {
 	.Skill_Oil = "Unlit · oil %d s",
 	.Skill_No_Oil = "No oil left",
 	.Skill_Handle_Away = "Find a handle",
+	.Skill_Lamp_Absent = "Not needed here",
 	.Skill_Handle_Here = "You stand on a handle",
 	.Skill_Handle_Turning = "The part turns…",
 	.Skill_Locked = "Still to discover",
@@ -747,7 +753,7 @@ EN := [Key]string {
 	.Hint_Crumble   = "Cracked stones bear one crossing: once you leave them, they fall",
 	.Hint_Phantom   = "Pale stones exist only in the dark: the lamp's light, close by, dissolves them for good",
 	.Hint_Veiled    = "The lamp shows in gold what the dark hides: come near with the light, and it becomes real for good",
-	.Hint_Handle    = "You stand on a handle: press 2 (or click Psyche) to turn the part of the palace it moves",
+	.Hint_Handle    = "You stand on a handle: press 2 (or click Psyche) to turn the part it moves",
 	.Hint_Phantom_Under = "Not here: in the light, the stone under your feet would vanish",
 	.Hint_Rest      = "A lit brazier: if you lose your way, R brings you back here (held down, it restarts the level)",
 

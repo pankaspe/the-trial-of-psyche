@@ -18,6 +18,7 @@ Mesh_Id :: enum u8 {
 	Fence_PX, Fence_MX, Fence_PY, Fence_MY,
 	Rope_PX, Rope_MX, Rope_PY, Rope_MY,
 	Log_PX, Log_MX, Log_PY, Log_MY,
+	Lip_PX, Lip_MX, Lip_PY, Lip_MY,
 	Bed_PX, Bed_MX, Bed_PY, Bed_MY,
 	Arch_PX, Arch_MX, Arch_PY, Arch_MY,
 	Vase_PX, Vase_MX, Vase_PY, Vase_MY,
@@ -88,6 +89,7 @@ PROP_MESH := [level.Prop_Kind]Mesh_Id {
 	.Fence           = .Fence_PX,
 	.Rope            = .Rope_PX,
 	.Log             = .Log_PX,
+	.Lip             = .Lip_PX,
 	.Pillar          = .Pillar,
 	.Plinth          = .Plinth,
 	.Cypress         = .Cypress,
@@ -114,6 +116,7 @@ PROP_MATERIAL := [level.Prop_Kind]Material {
 	.Fence           = .Bronze,
 	.Rope            = .Wood,
 	.Log             = .Wood,
+	.Lip             = .Rock,
 	.Pillar          = .Marble,
 	.Plinth          = .Marble,
 	.Cypress         = .Foliage,
@@ -333,6 +336,14 @@ LOG_PX := [?]Box {
 	{{0.58, 0.3, 0.07}, {0.7, 0.36, 0.13}},
 	{{0.76, 0.62, 0.2}, {0.84, 0.7, 0.26}},
 }
+// the crag's pieces: a low lip of broken rock along the +x side
+@(private)
+LIP_PX := [?]Box {
+	{{0.74, 0.0, 0}, {0.97, 0.36, 0.22}},
+	{{0.77, 0.32, 0}, {0.98, 0.7, 0.15}},
+	{{0.72, 0.66, 0}, {0.96, 1.0, 0.25}},
+	{{0.8, 0.42, 0.15}, {0.95, 0.6, 0.23}},
+}
 // a fir: a straight trunk, the crown in tiers narrowing to the tip
 @(private)
 SPRUCE_TRUNK := [?]Box{{{0.44, 0.44, 0}, {0.56, 0.56, 0.42}}}
@@ -480,6 +491,7 @@ build_meshes :: proc(meshes: ^[Mesh_Id]rl.Mesh) {
 	four(meshes, .Fence_PX, FENCE_PX[:])
 	four(meshes, .Rope_PX, ROPE_PX[:])
 	four(meshes, .Log_PX, LOG_PX[:])
+	four(meshes, .Lip_PX, LIP_PX[:])
 	four(meshes, .Bed_PX, bed_px())
 	four(meshes, .Arch_PX, ARCH_PX[:])
 	four(meshes, .Sconce_PX, SCONCE_PX[:])

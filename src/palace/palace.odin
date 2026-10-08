@@ -452,12 +452,22 @@ stairs_visible :: proc(p: ^Palace, node: Node) -> bool {
 	for i in 0 ..< 4 {
 		f := (f32(i) + 0.5) / 4 - 0.5
 		w := iso.Vec3{f32(node.cell.x) + 0.5 + f32(d.x) * f, f32(node.cell.y) + 0.5 + f32(d.y) * f, f32(node.cell.z) + f32(i + 1) / 4 + 0.001}
-		v := iso.view_point(w, f32(p.rot), p.size)
-		for t: f32 = 0.02; t < f32(p.size + p.height) * 2; t += 0.02 {
-			q := v + t
-			c := Cell{i32(q.x), i32(q.y), i32(q.z)} // q is never negative here
+		// walk the cells the ray crosses, one boundary at a time (the
+		// direction is the same on every axis: the next boundary is that of
+		// the axis with the largest fraction)
+		q := iso.view_point(w, f32(p.rot), p.size) + 0.02
+		c := Cell{i32(q.x), i32(q.y), i32(q.z)} // q is never negative here
+		frac := q - {f32(c.x), f32(c.y), f32(c.z)}
+		for in_grid(p, c) {
 			if c != own && view_solid_at(p, c) {
 				return false
+			}
+			frac += 1 - max(frac.x, frac.y, frac.z)
+			for k in 0 ..< 3 {
+				if frac[k] >= 1 - 1e-5 {
+					frac[k] = 0
+					c[k] += 1
+				}
 			}
 		}
 	}

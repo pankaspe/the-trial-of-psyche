@@ -1,69 +1,229 @@
 # The Trial of Psyche - level II.3: "The Sisters' Crag"
-# Veiled stones. The sister runs to the crag; Psyche follows. A veiled stone
-# is not there in the dark; the lamp shows it in gold, and close by (about two
-# cells) makes it real for good. The sisters' road is made of phantom stones:
-# it holds in the dark and leads to the precipice.
-#   1. a veiled bridge from the start to the foot of the crag (tutorial: walk
-#      it in the light);
-#   2. the ledge: the seam of view 0 climbs from the foot of the crag to the
-#      ledge, but the veiled stone beyond the ledge, once real, hides the foot
-#      of the seam: climb in the dark first, then light the lamp up there;
-#   3. the sisters' road: from the veiled stone, view 1 joins the upper crag;
-#      cross the phantom stone in the dark, then light at the junction: the
-#      true road appears, the false one (and the way to the precipice) is gone;
-#   4. the same light shows a stone over the precipice: from the summit,
-#      view 3 joins it, view 0 joins it to the rock where Zephyr does not come.
-# Fragment: on the precipice, at the end of the sisters' road: go there in
-# the dark before lighting at the junction.
+# Handles. The elder sister runs to the crag where Zephyr once came; Psyche
+# climbs it after her, by day. The crag is too tall for the screen: three
+# bands, each joined to the next by a cave through the rock (the camera pans
+# up while she is inside). Standing on a handle, a click on her (or 2) turns
+# a part of the rock a quarter, counter-clockwise seen from above; parts
+# carry a bronze inlay.
+#   below (h1-h7): a slab turns across the gap at the foot (one turn, the
+#     tutorial); the steps up the west face show only from the west; a flight
+#     of steps turns at the end of the north ledge (two turns);
+#   the middle (h11-h13): the collar, an L of rock round the core, joins two
+#     of the four doors at a time (handles at the west and north doors). The
+#     steps up from the east door turn from the south door: west, south,
+#     west again, north, east, up;
+#   above (h19-h22): two arms turn round the crag, the lower (h19) and the
+#     upper (h22), each from a handle on its own level and one on the other:
+#     up by the east stairs, the lower arm set to the west from above, the
+#     upper arm across to the south-east, down the west stairs, the upper arm
+#     to the west from below, up again and out to the precipice.
+# Fragments: II.3 (the gull) on the north needle of the summit, where the
+# upper arm points north (the hard one: the arms must be set twice over);
+# II.3b (the lie) on a spur the middle's steps reach when turned once more.
 # Format: see level_04.txt.
-size 12
+size 11
+setting crag_day
+tier 1 7
+tier 11 13
+tier 19 26
 
-# A: where Psyche comes to the crag (h2)
-column 1 4 0 1
-column 1 5 0 1
-# the veiled bridge
-veiled 2 5 1
-veiled 3 5 1
-veiled 4 5 1
-# B: the foot of the crag (h2)
-column 5 5 0 1
-column 6 5 0 1
-column 6 4 0 1
-column 7 5 0 1
-# D: the ledge (h4), joined to B (6,4) in view 0
-column 9 6 0 3
-# V: the veiled stone beyond the ledge; once real it hides B (6,4) in view 0
-veiled 8 6 3
-# E: the upper crag (h5), joined to V in view 1
-column 10 5 0 4
-column 10 4 0 4
-# the sisters' road (phantom)
-phantom 11 4 4
-# J: the junction (h5)
-column 11 3 0 4
-# the true road (veiled) to the summit (h5)
-veiled 11 2 4
-veiled 11 1 4
-column 11 0 0 4
-column 10 0 0 4
-# the sisters' road on to the precipice (h5)
-phantom 10 3 4
-column 9 3 0 4
-fragment 9 3 5
-# Y: a veiled stone over the precipice; R: the rock where the wind does not come
-veiled 9 3 6
-column 7 0 0 4
+# the crag: a core of rock, 3 x 3, through the whole level, narrowing to a peak
+rock 4 4 0 23
+rock 4 5 0 24
+rock 4 6 0 23
+rock 5 4 0 24
+rock 5 5 0 26
+rock 5 6 0 24
+rock 6 4 0 23
+rock 6 5 0 24
+rock 6 6 0 23
+prop cairn 5 5 27 px
 
-start 1 4 2
-exit 7 0 5
-rest 6 4 2
-rest 11 3 5
-lamp
-mechanic veiled
+# --- below: the foot of the crag (h1-h7) -------------------------------------
+# the foot (h1): grass, two pines
+ground 7 8 0 0
+ground 8 8 0 0
+ground 9 8 0 0
+ground 7 9 0 0
+ground 8 9 0 0
+ground 9 9 0 0
+ground 8 7 0 0
+ground 9 7 0 0
+ground 8 6 0 0
+ground 9 6 0 0
+prop pine 9 9 1 mx
+prop pine 9 6 1 px
+prop shrub 8 6 1 my
+prop shrub 9 8 1 px
+# the first handle turns a slab of rock across the gap
+part 5 8
+rock 5 7 0 0
+rock 5 8 0 0
+rock 5 9 0 0
+end
+handle 7 8 1
+# the west ledge (h1), steps up the west face: seen only from the west
+ground 3 8 0 0
+ground 2 8 0 0
+ground 3 7 0 0
+ground 2 7 0 0
+prop shrub 2 8 1 py
+prop pine 2 7 1 mx
+steps 3 6 1 my
+rock 3 6 0 0
+rock 3 5 0 1
+steps 3 4 2 my
+rock 3 4 0 1
+rock 3 3 0 2
+# the north ledge (h3); a handle turns the steps at its end
+rock 4 3 0 2
+rock 5 3 0 2
+rock 6 3 0 2
+part 6 3
+steps 6 3 3 mx
+end
+handle 4 3 3
+prop cairn 3 3 3 mx
+# the east ledge (h4), up to the south face (h6) and the first cave
+rock 7 3 0 3
+rock 7 4 0 3
+steps 7 5 4 py
+rock 7 5 0 3
+rock 7 6 0 4
+rock 7 7 0 4
+steps 6 7 5 mx
+rock 6 7 0 4
+rock 5 7 1 5
+rock 4 7 0 5
+prop shrub 5 7 6 py
+cave 4 7 6 my
+
+# --- the middle: the collar (h11-h13) -----------------------------------------
+# the collar: an L of rock round the core, joining two doors at a time
+part 5 5
+rock 5 3 10 10
+rock 6 3 10 10
+rock 7 3 10 10
+rock 7 4 10 10
+rock 7 5 10 10
+end
+# the west door (h11): the cave comes out here; the collar's first handle
+rock 2 4 8 10
+rock 2 5 8 10
+rock 2 6 8 10
+rock 2 5 7 7
+rock 1 4 8 12
+rock 1 5 9 11
+prop boulder 1 4 13
+cave 2 4 11 mx
+handle 2 6 11 2
+rest 2 5 11
+# the north door (h11): the collar's second handle
+rock 4 2 8 10
+rock 5 2 7 10
+handle 4 2 11 2
+# the east door (h11): steps that turn, up to the north-east corner (h12)
+rock 8 4 8 10
+rock 8 5 8 10
+rock 8 6 8 10
+rock 8 5 7 7
+part 8 3
+steps 8 3 11 py
+end
+rock 8 2 9 11
+steps 7 2 12 mx
+rock 7 2 11 11
+rock 6 2 8 12
+# the second cave, in a buttress of the core
+rock 6 3 13 16
+cave 6 2 13 py
+# the south door (h11): the handle of the turning steps
+rock 4 8 8 10
+rock 5 8 8 10
+rock 6 8 8 10
+rock 5 8 7 7
+handle 4 8 11 3
+prop cairn 6 8 11 px
+prop shrub 8 6 11 px
+# a spur the turning steps reach from the collar's north-east corner: II.3b
+rock 9 3 10 11
+prop lip 9 3 12 py
+
+# --- above: the summit (h19-h22) ---------------------------------------------
+# the lower ledges (h19), one in each corner of the crag; the third cave
+rock 3 3 16 18
+rock 4 3 16 18
+rock 3 4 16 18
+rock 7 3 16 18
+rock 6 3 17 18
+rock 7 4 16 18
+rock 7 7 16 18
+rock 6 7 16 18
+rock 7 6 16 18
+rock 3 7 16 18
+rock 4 7 16 18
+rock 3 6 16 18
+cave 6 7 19 my
+rest 7 6 19
+# the lower arm (h19), out to the east and west landings
+part 5 5
+rock 5 3 18 18
+rock 5 2 18 18
+end
+rock 9 5 17 18
+rock 1 5 17 18
+# the upper ledges (h22)
+rock 3 3 21 21
+rock 4 3 21 21
+rock 3 4 21 21
+rock 7 3 21 21
+rock 6 3 21 21
+rock 7 4 21 21
+rock 7 7 21 21
+rock 6 7 21 21
+rock 7 6 21 21
+rock 3 7 21 21
+rock 4 7 21 21
+rock 3 6 21 21
+# the upper arm (h22): to the north needle (II.3) and the precipice (the exit)
+part 5 5
+rock 7 5 21 21
+rock 8 5 21 21
+end
+rock 5 1 20 21
+rock 1 5 21 21
+prop lip 1 5 22 mx
+prop lip 5 1 22 my
+prop cairn 9 5 19 px
+prop shrub 3 3 19 mx
+# each arm turns from a handle on its own level and one on the other
+handle 7 7 19 4
+handle 7 3 22 4
+handle 7 7 22 5
+handle 3 7 19 5
+# the east stairs: from the east landing round the corner up to the north-east ledge
+steps 9 4 19 my
+rock 9 3 18 19
+steps 9 2 20 my
+rock 9 1 19 20
+steps 8 1 21 mx
+rock 7 1 20 21
+rock 7 2 21 21
+# the west stairs: from the west landing round the corner up to the south-west ledge
+steps 1 6 19 py
+rock 1 7 18 19
+steps 1 8 20 py
+rock 1 9 19 20
+steps 2 9 21 px
+rock 3 9 20 21
+rock 3 8 21 21
+
+start 8 8 1
+rest 8 8 1
+exit 1 5 22
+fragment 5 1 22
+fragment 9 3 12
+mechanic handle
 intro intro_ii_3
 outro outro_ii_3
-hint 1 4 2 hint_veiled
-# small things
-prop vase 1 4 2 my
-prop sconce 9 6 2 px
-prop sconce 10 4 3 px
+hint 7 8 1 hint_handle

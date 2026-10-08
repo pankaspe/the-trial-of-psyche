@@ -21,13 +21,18 @@
 #                           forest: spruce (a fir) blocks the cell; rope dir (the
 #                           hand ropes of a rope bridge) and log dir (a fallen
 #                           trunk) close side `dir`
+#                           crag: lip dir (a low lip of broken rock) closes side `dir`
 #   setting name            night (the default: the palace under the moon) |
 #                           night_candles (the same, its candles lit) |
 #                           deep_night (darker, candles out, clouds across the moon) |
 #                           dusk (the palace at twilight, candles lit) |
 #                           crag_sunset (a crag over a sea of clouds, mountains, sunset) |
 #                           forest_night (the dead of night in a forest of rock pillars) |
-#                           river_dawn (first light over a wide river, mist, the morning star)
+#                           river_dawn (first light over a wide river, mist, the morning star) |
+#                           crag_day (a crag of bare rock by day, the ranges far below)
+#   tier h0 h1              a level too tall for the screen: the camera frames one
+#                           band of heights at a time (Psyche's), panning to the next
+#                           when she changes band (through a cave, while she is inside)
 #   start|sigil x y h       (h = surface height = block z + 1)
 #   amore x y h             the cell of the bed where Cupid sleeps
 #   exit x y h              reaching it completes the level
