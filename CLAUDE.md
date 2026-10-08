@@ -123,7 +123,7 @@ CLAUDE.md for the design history).
   gallery, lost for good once the second corridor rises (the hard passage: go before lighting the second
   seal); II.4b (new text, VI.2, Psyche's prayer to Ceres, to review) on a needle, view 0 from the first
   seal's pillar. Solver: 53 steps, 1 turn, 3 lightings, 3 handles, 0 dead ends.
-- **II.5 "The Temple of Juno" rebuilt (2026-10-08), waiting for the user's playtest**: the user's brief: the
+- **II.5 "The Temple of Juno" rebuilt (2026-10-08), pushed, waiting for the user's playtest**: the user's brief: the
   last of Act II, a real puzzle with everything learned (light, handles, veiled stones, caves, hidden seals,
   dead ends, dark corridors), two fragments; vertical at first, then horizontal to the right, then down;
   dusk going into night, candelabra lit in the temple. Size 32, `follow 13`, `setting valley_dusk` (new:
@@ -528,6 +528,8 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   endless oil. The pause hides the HUD.
 
 ## Roadmap from now (user, 2026-10-06): level by level
+- **Next session (user, 2026-10-08)**: review II.4 and II.5 together, carefully, with the user (play,
+  judge, adjust); then the II.5b text; only after their ok, Act III.
 - Art direction is settled as: settings per level (`render/setting.odin`, add a `Look` per new
   place) + the player's visual style (post-processing). The A0 "art style" mockups (engraving,
   mosaic...) are superseded by the post styles unless the user brings them back.
