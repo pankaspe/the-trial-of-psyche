@@ -95,6 +95,31 @@ LOOKS := [level.Setting]Look {
 		moon_clouds = 1,
 		mote = {0.55, 0.6, 0.9, 0.35},
 	},
+	// the dead of night in a forest of rock pillars: no palace in the sky, dark
+	// wooded ranges, mist between the pillars, clouds across the moon, fireflies
+	.Forest_Night = {
+		sky_top = {0.004, 0.007, 0.022},
+		sky_mid = {0.018, 0.026, 0.06},
+		sky_horizon = {0.035, 0.05, 0.09},
+		orb_pos = {0.78, 0.18},
+		orb_radius = 0.04,
+		orb_color = {0.82, 0.86, 0.95},
+		halo_color = {0.06, 0.08, 0.13},
+		halo_width = 10,
+		stars = 0.8,
+		haze = {0.04, 0.055, 0.09},
+		islands = false,
+		ridges = 1,
+		ridge_color = {{0.05, 0.075, 0.11}, {0.035, 0.055, 0.075}, {0.02, 0.035, 0.045}},
+		ridge_rim = {0.16, 0.2, 0.3},
+		cloud_back = {0.06, 0.08, 0.13},
+		cloud_front = {0.09, 0.115, 0.17},
+		mist = {0.035, 0.05, 0.08},
+		daylight = 0,
+		gloom = 0.3,
+		moon_clouds = 0.8,
+		mote = {0.75, 0.95, 0.45, 0.6},
+	},
 	// Zephyr's crag: the sun sets behind far ranges, the crag stands over the clouds
 	.Crag_Sunset = {
 		sky_top = {0.10, 0.11, 0.30},

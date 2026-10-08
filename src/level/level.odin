@@ -48,6 +48,7 @@ Setting :: enum u8 {
 	Dusk, // the palace of voices at twilight: the last light, its candles lit
 	Night_Candles, // the palace of voices by night, its candles lit
 	Deep_Night, // the dead of night: candles out, clouds drifting across the moon
+	Forest_Night, // the dead of night in a forest of rock pillars, far from the palace
 }
 
 SETTING_NAME := [Setting]string {
@@ -56,6 +57,7 @@ SETTING_NAME := [Setting]string {
 	.Dusk        = "dusk",
 	.Night_Candles = "night_candles",
 	.Deep_Night  = "deep_night",
+	.Forest_Night = "forest_night",
 }
 
 // How a block behaves (Act II): fixed stone, or one that changes for good.
@@ -99,6 +101,8 @@ Prop_Kind :: enum u8 {
 	Wall_Half,
 	Wall_Battlement,
 	Fence,
+	Rope, // the hand ropes of a rope bridge, along one side
+	Log, // a fallen trunk lying along one side
 	// blocking props: nobody can stand in their cell
 	Pillar,
 	Plinth,
@@ -107,6 +111,7 @@ Prop_Kind :: enum u8 {
 	Brazier,
 	Bed,
 	Statue, // a marble woman on a plinth, calling with her arm raised toward `dir`
+	Spruce, // a tall fir of the forest
 	// decoration only
 	Arch,
 	Vase, // small, in one corner of the cell: px (+x,+y), py (-x,+y), mx (-x,-y), my (+x,-y)
@@ -120,8 +125,8 @@ Prop_Kind :: enum u8 {
 	Cairn, // a few stones piled up by passers-by
 }
 
-EDGE_PROPS :: bit_set[Prop_Kind]{.Rail, .Wall, .Wall_Half, .Wall_Battlement, .Fence}
-BLOCKING_PROPS :: bit_set[Prop_Kind]{.Pillar, .Plinth, .Cypress, .Urn, .Brazier, .Bed, .Statue, .Pine, .Boulder}
+EDGE_PROPS :: bit_set[Prop_Kind]{.Rail, .Wall, .Wall_Half, .Wall_Battlement, .Fence, .Rope, .Log}
+BLOCKING_PROPS :: bit_set[Prop_Kind]{.Pillar, .Plinth, .Cypress, .Urn, .Brazier, .Bed, .Statue, .Spruce, .Pine, .Boulder}
 ORIENTED_PROPS :: EDGE_PROPS + bit_set[Prop_Kind]{.Bed, .Statue, .Arch, .Vase, .Reeds, .Sconce, .Pine, .Boulder, .Shrub, .Cairn}
 NEEDS_DIR :: EDGE_PROPS + bit_set[Prop_Kind]{.Statue, .Vase, .Reeds, .Sconce, .Shrub, .Cairn}
 
@@ -131,6 +136,8 @@ PROP_NAME := [Prop_Kind]string {
 	.Wall_Half       = "wallHalf",
 	.Wall_Battlement = "wallBattlement",
 	.Fence           = "fence",
+	.Rope            = "rope",
+	.Log             = "log",
 	.Pillar          = "pillar",
 	.Plinth          = "plinth",
 	.Cypress         = "cypress",
@@ -138,6 +145,7 @@ PROP_NAME := [Prop_Kind]string {
 	.Brazier         = "brazier",
 	.Bed             = "bed",
 	.Statue          = "statue",
+	.Spruce          = "spruce",
 	.Arch            = "arch",
 	.Vase            = "vase",
 	.Reeds           = "reeds",
@@ -154,6 +162,12 @@ Candelabrum :: struct {
 	cell: Cell, // the surface it stands on (x, y, h)
 	dir:  Dir, // its corner, as the vase's
 	lit:  bool,
+}
+
+// A block drawn as the deck of a rope bridge (it holds like any block).
+Plank :: struct {
+	cell:    Cell,
+	along_y: bool, // the bridge runs along y (default: along x)
 }
 
 Prop :: struct {
@@ -194,6 +208,7 @@ Level_Data :: struct {
 	lawn:         [dynamic]Cell, // blocks with a grassy top
 	candelabra:   [dynamic]Candelabrum,
 	ground:       [dynamic]Cell, // blocks and stairs of living rock (earth, not masonry)
+	planks:       [dynamic]Plank, // blocks that are the wooden deck of a rope bridge
 	water:        [dynamic][4]i32, // rectangles of water (x0 y0 x1 y1), just under the h1 surfaces
 	outro:        i18n.Key, // the text of the ending card at the exit
 	has_outro:    bool,
@@ -240,6 +255,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	data.lawn = make([dynamic]Cell, 0, 8)
 	data.candelabra = make([dynamic]Candelabrum, 0, MAX_CANDELABRA)
 	data.ground = make([dynamic]Cell, 0, 16)
+	data.planks = make([dynamic]Plank, 0, 8)
 	data.water = make([dynamic][4]i32, 0, 2)
 	data.parts = make([dynamic]Part, 0, 2)
 	data.handles = make([dynamic]Handle, 0, 2)
@@ -316,8 +332,20 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 			}
 			append(&data.blocks, Solid_Entry{v, {kind = .Block}, trait, part})
-			if len(args) > 3 && args[3] == "rock" {
-				append(&data.ground, v) // a stone of living rock, bare: no grass
+			if len(args) > 3 {
+				switch args[3] {
+				case "rock":
+					append(&data.ground, v) // a stone of living rock, bare: no grass
+				case "ground":
+					append(&data.ground, v) // living rock, its top grassy
+					append(&data.lawn, v)
+				case "plank":
+					append(&data.planks, Plank{v, false})
+				case "plank_y":
+					append(&data.planks, Plank{v, true})
+				case:
+					return data, fail(line_no, "%s: expected rock, ground, plank or plank_y after x y z", fields[0])
+				}
 			}
 			max_z = max(max_z, v.z)
 
@@ -417,7 +445,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 			}
 			if !found {
-				return data, fail(line_no, "setting: expected one of night, crag_sunset, dusk, night_candles, deep_night")
+				return data, fail(line_no, "setting: expected one of night, crag_sunset, dusk, night_candles, deep_night, forest_night")
 			}
 
 		case "water":
@@ -445,13 +473,21 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 		case "rise":
 			v: [3]i32
 			if !ints(args, v[:]) {
-				return data, fail(line_no, "rise: expected x y z [stairs_dir]")
+				return data, fail(line_no, "rise: expected x y z [stairs_dir] [rock|ground]")
 			}
 			s := Solid{kind = .Block}
-			if len(args) > 3 {
-				d, ok := iso.dir_from_name(args[3])
+			opts := args[3:]
+			if len(opts) > 0 && (opts[len(opts) - 1] == "rock" || opts[len(opts) - 1] == "ground") {
+				append(&data.ground, v) // living rock rising from the earth (ground: its top grassy)
+				if opts[len(opts) - 1] == "ground" {
+					append(&data.lawn, v)
+				}
+				opts = opts[:len(opts) - 1]
+			}
+			if len(opts) > 0 {
+				d, ok := iso.dir_from_name(opts[0])
 				if !ok {
-					return data, fail(line_no, "rise: unknown direction '%s'", args[3])
+					return data, fail(line_no, "rise: unknown direction '%s'", opts[0])
 				}
 				s = {.Stairs, d}
 			}

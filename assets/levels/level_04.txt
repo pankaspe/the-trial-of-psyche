@@ -4,7 +4,9 @@
 #   column x y z0 z1        stack of blocks (covered blocks are drawn as masonry)
 #   block x y z             single block (floating is fine)
 #   stairs x y z dir        stairs rising toward dir (px/mx/py/my)
-#   rise x y z [stairs_dir] block (or stairs) raised when the sigil is lit
+#   rise x y z [stairs_dir] [rock|ground]
+#                           block (or stairs) raised when the sigil is lit
+#                           (rock: living rock; ground: the same, its top grassy)
 #   prop name x y z [dir]   decoration in cell (x,y,z); oriented props take a dir.
 #                           pillar/bed/plinth/cypress/urn/brazier block the cell;
 #                           statue dir (a sister in marble on a plinth, her arm
@@ -16,11 +18,15 @@
 #                           at x y z; lit where the setting lights them), reeds dir (a clump of reeds in a corner, as the vase)
 #                           mountain: pine [dir] (bent toward dir) and boulder [dir]
 #                           block the cell; shrub dir and cairn dir sit in a corner
+#                           forest: spruce (a fir) blocks the cell; rope dir (the
+#                           hand ropes of a rope bridge) and log dir (a fallen
+#                           trunk) close side `dir`
 #   setting name            night (the default: the palace under the moon) |
 #                           night_candles (the same, its candles lit) |
 #                           deep_night (darker, candles out, clouds across the moon) |
 #                           dusk (the palace at twilight, candles lit) |
-#                           crag_sunset (a crag over a sea of clouds, mountains, sunset)
+#                           crag_sunset (a crag over a sea of clouds, mountains, sunset) |
+#                           forest_night (the dead of night in a forest of rock pillars)
 #   start|sigil x y h       (h = surface height = block z + 1)
 #   amore x y h             the cell of the bed where Cupid sleeps
 #   exit x y h              reaching it completes the level
@@ -51,8 +57,11 @@
 #   prologue x y h          the level opens with the prologue cutscene; the
 #                           procession comes up at this cell and walks to start
 # Act II (palaces that change; ./build.sh check solves them move by move):
-#   crumble x y z [rock]    a cracked block: it falls once Psyche steps off it
-#                           (rock: bare living rock instead of palace stone)
+#   crumble x y z [opt]     a cracked block: it falls once Psyche steps off it
+#                           opt (also for block, phantom, veiled): rock (bare
+#                           living rock instead of palace stone), ground (living
+#                           rock, its top grassy), plank / plank_y (the wooden
+#                           deck of a rope bridge running along x / y)
 #   phantom x y z           a pale block, real only in the dark: the lamp's
 #                           light (about 2.5 cells from her) dissolves it for good;
 #                           the lamp cannot be lit over one
@@ -69,8 +78,9 @@
 #                           card presents it at the start and its pieces glow
 # Illusions: in the dark two surfaces are joined when they look joined in the
 # current view: (x',y',h) touches (x'+dx+k, y'+dy+k, h+k) in view coordinates,
-# provided both tops are visible (no nearer cube covers them) and no rail closes
-# the side. A seamless illusion runs toward the camera onto nearer pieces.
+# provided the edge where they touch is visible on both tops (a top half
+# covered by a nearer cube still shows the edges of its other half) and no
+# rail closes the side. A seamless illusion runs toward the camera onto nearer pieces.
 # Check every design with: ./build.sh check assets/levels/<file>
 #
 # The level: the dead of night, the candles out, clouds over the moon. Psyche
@@ -162,6 +172,7 @@ column 2 13 0 2
 column 0 12 0 3
 column 1 10 0 4
 column 3 11 0 5
+prop rail 3 11 6 my
 
 start 10 13 1
 sigil 11 3 5

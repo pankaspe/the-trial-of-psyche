@@ -251,6 +251,12 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 		if p.ground && !p.cube {
 			p.material = .Lawn // steps cut in the rock: grassy treads, earth risers
 		}
+		for pk in g.data.planks {
+			if pk.cell == e.cell {
+				p.mesh = pk.along_y ? .Plank_Y : .Plank_X
+				p.material, p.cube, p.lawn, p.ground = .Wood, false, false, false
+			}
+		}
 		if e.trait == .Phantom {
 			p.material = .Phantom
 		}
@@ -268,6 +274,8 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 			append(&s.pieces, Piece{cell = prop.cell, mesh = oriented_mesh(.Candle_PX, prop.dir), material = .Psyche, rise_index = -1, block = -1, handle = -1, part = prop.part})
 		case .Pine:
 			append(&s.pieces, Piece{cell = prop.cell, mesh = oriented_mesh(.Trunk_PX, prop.dir), material = .Wood, rise_index = -1, block = -1, handle = -1, part = prop.part})
+		case .Spruce:
+			append(&s.pieces, Piece{cell = prop.cell, mesh = .Spruce_Trunk, material = .Wood, rise_index = -1, block = -1, handle = -1, part = prop.part})
 		}
 	}
 	for c in g.data.candelabra {
@@ -281,7 +289,17 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 		append(&s.pieces, Piece{cell = c, mesh = .Altar, material = .Bronze, rise_index = -1, block = -1, handle = -1})
 	}
 	for e, i in g.data.rise {
-		append(&s.pieces, solid_piece(e.cell, e.solid, i32(i)))
+		p := solid_piece(e.cell, e.solid, i32(i))
+		for c in g.data.ground {
+			p.ground ||= c == e.cell
+		}
+		for c in g.data.lawn {
+			p.lawn ||= c == e.cell && p.cube
+		}
+		if p.ground && !p.cube {
+			p.material = .Lawn
+		}
+		append(&s.pieces, p)
 	}
 	if g.data.has_sigil {
 		append(&s.pieces, Piece{cell = g.data.sigil, mesh = .Sigil_Off, material = .Bronze, rise_index = -1, block = -1, handle = -1, sigil = .Off})

@@ -16,6 +16,8 @@ Mesh_Id :: enum u8 {
 	Wall_Half_PX, Wall_Half_MX, Wall_Half_PY, Wall_Half_MY,
 	Battlement_PX, Battlement_MX, Battlement_PY, Battlement_MY,
 	Fence_PX, Fence_MX, Fence_PY, Fence_MY,
+	Rope_PX, Rope_MX, Rope_PY, Rope_MY,
+	Log_PX, Log_MX, Log_PY, Log_MY,
 	Bed_PX, Bed_MX, Bed_PY, Bed_MY,
 	Arch_PX, Arch_MX, Arch_PY, Arch_MY,
 	Vase_PX, Vase_MX, Vase_PY, Vase_MY,
@@ -33,6 +35,10 @@ Mesh_Id :: enum u8 {
 	Pillar,
 	Plinth,
 	Cypress,
+	Spruce, // the crown in tiers...
+	Spruce_Trunk, // ...on its straight trunk
+	Plank_X, // the deck of a rope bridge running along x...
+	Plank_Y, // ...or along y
 	Urn,
 	Brazier,
 	Sigil_Off,
@@ -77,6 +83,8 @@ PROP_MESH := [level.Prop_Kind]Mesh_Id {
 	.Wall_Half       = .Wall_Half_PX,
 	.Wall_Battlement = .Battlement_PX,
 	.Fence           = .Fence_PX,
+	.Rope            = .Rope_PX,
+	.Log             = .Log_PX,
 	.Pillar          = .Pillar,
 	.Plinth          = .Plinth,
 	.Cypress         = .Cypress,
@@ -84,6 +92,7 @@ PROP_MESH := [level.Prop_Kind]Mesh_Id {
 	.Brazier         = .Brazier,
 	.Bed             = .Bed_PX,
 	.Statue          = .Statue_PX,
+	.Spruce          = .Spruce,
 	.Arch            = .Arch_PX,
 	.Vase            = .Vase_PX,
 	.Reeds           = .Reeds_PX,
@@ -100,6 +109,8 @@ PROP_MATERIAL := [level.Prop_Kind]Material {
 	.Wall_Half       = .Masonry,
 	.Wall_Battlement = .Masonry,
 	.Fence           = .Bronze,
+	.Rope            = .Wood,
+	.Log             = .Wood,
 	.Pillar          = .Marble,
 	.Plinth          = .Marble,
 	.Cypress         = .Foliage,
@@ -107,6 +118,7 @@ PROP_MATERIAL := [level.Prop_Kind]Material {
 	.Brazier         = .Bronze,
 	.Bed             = .Bronze,
 	.Statue          = .Marble,
+	.Spruce          = .Foliage,
 	.Arch            = .Masonry,
 	.Vase            = .Bronze,
 	.Reeds           = .Foliage,
@@ -300,6 +312,55 @@ CAIRN_PX := [?]Box {
 	{{0.77, 0.78, 0.19}, {0.84, 0.84, 0.27}},
 }
 
+// The forest's pieces.
+// The hand ropes of a rope bridge along the +x side of the cell: a hand rope,
+// a foot rope along the deck, two hangers between them.
+@(private)
+ROPE_PX := [?]Box {
+	{{0.92, 0, 0.6}, {0.96, 1, 0.64}},
+	{{0.93, 0, 0.0}, {0.96, 1, 0.035}},
+	{{0.935, 0.24, 0.0}, {0.95, 0.26, 0.6}},
+	{{0.935, 0.74, 0.0}, {0.95, 0.76, 0.6}},
+}
+// a fallen trunk lying along the +x side, a broken branch toward the cell
+@(private)
+LOG_PX := [?]Box {
+	{{0.7, 0.02, 0}, {0.94, 0.98, 0.2}},
+	{{0.73, 0.0, 0.02}, {0.91, 0.04, 0.18}},
+	{{0.58, 0.3, 0.07}, {0.7, 0.36, 0.13}},
+	{{0.76, 0.62, 0.2}, {0.84, 0.7, 0.26}},
+}
+// a fir: a straight trunk, the crown in tiers narrowing to the tip
+@(private)
+SPRUCE_TRUNK := [?]Box{{{0.44, 0.44, 0}, {0.56, 0.56, 0.42}}}
+@(private)
+spruce :: proc() -> []Box {
+	out := make([dynamic]Box, 0, 16, context.temp_allocator)
+	z: f32 = 0.3
+	for k in 0 ..< 6 {
+		w := 0.4 - f32(k) * 0.058
+		append(&out, Box{{0.5 - w, 0.5 - w, z}, {0.5 + w, 0.5 + w, z + 0.13}})
+		v := w * 0.62
+		append(&out, Box{{0.5 - v, 0.5 - v, z + 0.13}, {0.5 + v, 0.5 + v, z + 0.25}})
+		z += 0.25
+	}
+	append(&out, Box{{0.47, 0.47, z}, {0.53, 0.53, z + 0.14}})
+	return out[:]
+}
+// the deck of a rope bridge running along x: four slats across it on two
+// stringers, the top flush with the surface
+@(private)
+plank_x :: proc() -> []Box {
+	out := make([dynamic]Box, 0, 8, context.temp_allocator)
+	append(&out, Box{{0, 0.1, 0.8}, {1, 0.18, 0.88}})
+	append(&out, Box{{0, 0.82, 0.8}, {1, 0.9, 0.88}})
+	for i in 0 ..< 4 {
+		a := f32(i) * 0.25 + 0.02
+		append(&out, Box{{a, 0.04, 0.88}, {a + 0.21, 0.96, 1.0}})
+	}
+	return out[:]
+}
+
 // A standing candelabrum about its own foot (0, 0): a round foot, a slender
 // shaft with a knot, a bar with three cups; the candles are their own piece.
 @(private)
@@ -393,6 +454,8 @@ build_meshes :: proc(meshes: ^[Mesh_Id]rl.Mesh) {
 	four(meshes, .Wall_Half_PX, WALL_HALF_PX[:])
 	four(meshes, .Battlement_PX, BATTLEMENT_PX[:])
 	four(meshes, .Fence_PX, FENCE_PX[:])
+	four(meshes, .Rope_PX, ROPE_PX[:])
+	four(meshes, .Log_PX, LOG_PX[:])
 	four(meshes, .Bed_PX, bed_px())
 	four(meshes, .Arch_PX, ARCH_PX[:])
 	four(meshes, .Sconce_PX, SCONCE_PX[:])
@@ -406,6 +469,10 @@ build_meshes :: proc(meshes: ^[Mesh_Id]rl.Mesh) {
 	meshes[.Pillar] = one(PILLAR[:])
 	meshes[.Plinth] = one(PLINTH[:])
 	meshes[.Cypress] = one(cypress())
+	meshes[.Spruce] = one(spruce())
+	meshes[.Spruce_Trunk] = one(SPRUCE_TRUNK[:])
+	meshes[.Plank_X] = one(plank_x())
+	meshes[.Plank_Y] = one(oriented(plank_x(), .PY))
 	meshes[.Urn] = one(URN[:])
 	meshes[.Brazier] = one(BRAZIER[:])
 	meshes[.Sigil_Off] = one(SIGIL_OFF[:])

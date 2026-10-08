@@ -62,6 +62,7 @@ Bed :: enum u8 {
 	Dusk, // a breeze, the first crickets
 	Night, // a still night full of crickets
 	Deep_Night, // low wind, a few far crickets
+	Forest, // the night wind in the trees, crickets in the grass
 }
 
 BED_SECONDS :: 24
@@ -447,6 +448,9 @@ synthesize_bed :: proc(bed: Bed, allocator := context.allocator) -> []f32 {
 	case .Deep_Night:
 		wind = {0.25, 120, 420, 0.6}
 		crickets, cricket_level = 2, 0.018
+	case .Forest:
+		wind = {0.2, 260, 1100, 0.7}
+		crickets, cricket_level = 4, 0.026
 	}
 	for ch in 0 ..< 2 {
 		pk: Pink

@@ -154,14 +154,14 @@ new_mechanic_is_presented :: proc(t: ^testing.T) {
 		testing.expect(t, false, "II.1 does not load")
 		return
 	}
-	testing.expect(t, g.data.mechanic == .Crumble, "II.1 introduces the cracked stones")
+	testing.expect(t, g.data.mechanic == .Veiled, "II.1 introduces the veiled stones")
 	game.begin(&g)
 	run(&g, game.TEACH_AT + 0.1)
 	testing.expect(t, g.mechanic_new, "its card comes at the start")
 	testing.expect(t, game.fade_alpha(g.hud.voice) == 0, "before the intro line")
 	g.mechanic_new = false
 	g.teach_card = true
-	testing.expect(t, game.teach_glow(&g) == 1, "the cracked stones glow while the card is read")
+	testing.expect(t, game.teach_glow(&g) == 1, "the veiled stones glow while the card is read")
 	g.teach_card = false
 	g.teach_after = 0
 	run(&g, 6)

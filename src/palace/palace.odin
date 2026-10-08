@@ -358,12 +358,9 @@ rebuild_illusions :: proc(p: ^Palace) {
 			continue
 		}
 		v := iso.to_view(node.cell, p.rot, p.size)
-		if !visible(p, v) {
-			continue
-		}
 		for d in Dir {
 			wd := iso.rot_dir(d, back) // the side of `a` in world terms
-			if !open(p, node.cell, wd) {
+			if !open(p, node.cell, wd) || !edge_visible(p, v, d) {
 				continue
 			}
 			dv := iso.DIR_VEC[d]
@@ -376,7 +373,7 @@ rebuild_illusions :: proc(p: ^Palace) {
 					continue
 				}
 				b := p.view_node[cell_index(p, bv)]
-				if b >= 0 && open(p, p.nodes[b].cell, iso.opposite(wd)) && visible(p, bv) {
+				if b >= 0 && open(p, p.nodes[b].cell, iso.opposite(wd)) && edge_visible(p, bv, iso.opposite(d)) {
 					add_pair(&p.illusion, i32(a), b)
 				}
 			}
@@ -399,13 +396,22 @@ view_solid_at :: proc(p: ^Palace, v: Cell) -> bool {
 	return in_grid(p, v) && p.view_solid[cell_index(p, v)]
 }
 
-// The top of the surface at view cell v is visible when no nearer cube covers it.
-visible :: proc(p: ^Palace, v: Cell) -> bool {
+// The edge on side d (view terms) of the top of the surface at view cell v
+// can be seen: no nearer cube covers the whole top, and none covers the half
+// of it that holds this edge. A cube beside the diagonal, (1+k, k, k), hides
+// the right half of the top (its +x and -y edges); (k, 1+k, k) the left half
+// (+y and -x). Two surfaces look joined where their touching edges show, so
+// an illusion needs that edge seen on both, not the whole top.
+edge_visible :: proc(p: ^Palace, v: Cell, d: Dir) -> bool {
+	right := d == .PX || d == .MY
 	for k in i32(0) ..< p.size + 4 {
 		if k >= 1 && view_solid_at(p, v + {k, k, k - 1}) {
 			return false
 		}
-		if view_solid_at(p, v + {k, k, k}) || view_solid_at(p, v + {1 + k, k, k}) || view_solid_at(p, v + {k, 1 + k, k}) {
+		if view_solid_at(p, v + {k, k, k}) {
+			return false
+		}
+		if view_solid_at(p, right ? v + {1 + k, k, k} : v + {k, 1 + k, k}) {
 			return false
 		}
 	}

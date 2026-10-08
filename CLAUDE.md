@@ -25,8 +25,12 @@ CLAUDE.md for the design history).
 
 ## The mechanic (approved, do not change)
 - **Dark** (default): two surfaces that *look* joined in the current view are joined:
-  view coordinates `(x',y',h)` touch `(x'+dx+k, y'+dy+k, h+k)`, both tops visible,
-  no rail closing the side (`palace.rebuild_illusions`, `palace.visible`).
+  view coordinates `(x',y',h)` touch `(x'+dx+k, y'+dy+k, h+k)`, the touching edge of both
+  tops visible, no rail closing the side (`palace.rebuild_illusions`, `palace.edge_visible`).
+  Refined 2026-10-08 (the user got stuck on tiles that looked joined): a top half covered by a
+  cube beside the diagonal still joins across the edges of its uncovered half. Checked on
+  every level: I.3 lands one tile further on the same terrace; I.4 got a rail on the fragment
+  pillar (3 11 6 my) against a jump past the four-pillar chain; II.1 a log on the ledge.
 - **Hidden stairs** (added 2026-10-04 with the user): in the dark, stairs work only when
   every tread is visible in the current view (`palace.stairs_visible`, `step_allowed`);
   in the light they always work. What you see is what you walk, both ways.
@@ -47,14 +51,28 @@ CLAUDE.md for the design history).
 - **Two new mechanics per act, eight in all**, every one used in the final level. A level is
   never a tutorial of its own: after an act's two introductions its other levels only deepen.
   Act I: rotation (with the hidden stairs, found by intuition) and the lamp (light on/off).
-  Act II: crumbling and handles. Acts III, IV: two each, designed when their first level comes.
+  Act II: veiled stones and handles (crumbling dropped, 2026-10-08). Acts III, IV: two each,
+  designed when their first level comes.
 - The game may be deliberately hard (not as relaxed as Monument Valley): the last levels of an
   act are true puzzles.
-- **Act II plan**: II.1 discover crumbling (done, approved 2026-10-06) · II.2 crumbling without
-  tutorial, a bigger, better designed level · II.3 handles (today's II.4 handle level) · II.4 and
-  II.5 two real puzzles using all four: rotation, light, crumbling, handles.
-- Phantom and veiled stones are **out of Act II** (code kept for now, no level uses them after
-  the rework; decide later whether a later act reuses them or they are removed).
+- **Act II plan** (revised 2026-10-08): II.1 veiled stones with the lamp, already a real puzzle ·
+  II.2 (to rework: today built on crumbling) · II.3 handles (today's II.4 handle level) · II.4 and
+  II.5 two real puzzles using all four: rotation, light, veiled stones, handles.
+- Phantom stones are **out of Act II** (code kept for now; decide later whether a later act
+  reuses them or they are removed).
+- **2026-10-08, the user: "togliamo le pietre che cadono, non mi piacciono"**: crumbling leaves
+  II.1; veiled stones move into II.1 (they belong with the lamp, found at the end of Act I).
+  "Dall'atto II inizia il vero puzzle game." II.2 (approved, built on crumbling) still uses it:
+  ask the user whether crumbling goes from II.2 and the whole game (code kept until then).
+- **II.1 rebuilt (2026-10-08), waiting for the user's playtest**: deep night in a forest of rock
+  pillars (`setting forest_night`, bed `Forest`), 16x16; a rope bridge whose planks are veiled
+  (`veiled x y z plank`, `prop rope`), veiled grassy caps on rock spires (`veiled ... ground`),
+  a trap (lit from the wrong hilltop cell, a second cap rises and covers the seam's foot), the
+  seal hidden on a needle raises a corridor of rock (`rise ... ground`) to the cypress clearing.
+  Two fragments: II.1b (V.22, the god seen by the lamp: light on the spur, then view 1) and
+  II.1 (V.23, the arrow: a needle off the corridor). Solver: 25 steps, 6 turns, 3 lightings,
+  404 dead ends. New pieces: `spruce` (fir), `log` (fallen trunk, an edge prop for closing stray
+  seams in nature), `rope`.
 - Settings follow the slot titles (each level reflects its title): II.2 river and Pan, II.3 the
   sisters' crag, II.4 Ceres, II.5 Juno; level content is rebuilt to fit.
 - Work strictly step by step: one level, the user plays and judges, then the next.
@@ -62,7 +80,7 @@ CLAUDE.md for the design history).
   `steps x y z dir` (stairs cut in the rock), `crumble x y z rock` (a cracked stone of bare rock),
   `water x0 y0 x1 y1` (a river just under h1, decoration), `prop reeds x y z dir`. The solver also
   handles the seal (`rise` blocks raised by the lamp on `sigil`), so a seal can open an Act II exit.
-- II.1 rebuilt at the bottom: a meadow on living rock, steps up to the exit, the fragment on a rock
+- (old, replaced 2026-10-08) II.1 rebuilt at the bottom: a meadow on living rock, steps up to the exit, the fragment on a rock
   spur behind a cracked stone (way back: the view-0 seam it hid). II.2 rebuilt (proposal B, "Pan's
   crag"): ford of cracked rocks, a spiral of ledges round the crag, the broken east ledge bridged
   by view 1 from its cracked end, the seal on the summit raises the bridge to Pan's meadow;
