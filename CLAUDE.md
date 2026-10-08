@@ -64,7 +64,7 @@ CLAUDE.md for the design history).
   II.1; veiled stones move into II.1 (they belong with the lamp, found at the end of Act I).
   "Dall'atto II inizia il vero puzzle game." II.2 (approved, built on crumbling) still uses it:
   ask the user whether crumbling goes from II.2 and the whole game (code kept until then).
-- **II.1 rebuilt (2026-10-08), waiting for the user's playtest**: deep night in a forest of rock
+- **II.1 rebuilt (2026-10-08), approved by the user and pushed**: deep night in a forest of rock
   pillars (`setting forest_night`, bed `Forest`), 16x16; a rope bridge whose planks are veiled
   (`veiled x y z plank`, `prop rope`), veiled grassy caps on rock spires (`veiled ... ground`),
   a trap (lit from the wrong hilltop cell, a second cap rises and covers the seam's foot), the
