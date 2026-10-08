@@ -222,6 +222,33 @@ LOOKS := [level.Setting]Look {
 		wind = 1,
 		mote = {1.0, 0.8, 0.5, 0.45},
 	},
+	// the last of the twilight in Juno's valley, almost night: a thin glow
+	// behind the far ranges, the stars out, a young moon low; mist fills the
+	// valley floor; the temple's candles are lit
+	.Valley_Dusk = {
+		sky_top = {0.012, 0.018, 0.07},
+		sky_mid = {0.07, 0.07, 0.19},
+		sky_horizon = {0.36, 0.21, 0.30},
+		orb_pos = {0.22, 0.34},
+		orb_radius = 0.026,
+		orb_color = {0.95, 0.9, 0.78},
+		halo_color = {0.12, 0.10, 0.18},
+		halo_width = 9,
+		stars = 0.8,
+		haze = {0.16, 0.11, 0.22},
+		islands = false,
+		ridges = 1,
+		ridge_color = {{0.15, 0.12, 0.25}, {0.09, 0.08, 0.17}, {0.05, 0.05, 0.10}},
+		ridge_rim = {0.55, 0.32, 0.36},
+		cloud_back = {0.16, 0.13, 0.26},
+		cloud_front = {0.21, 0.17, 0.31},
+		cloud_crest = {0.20, 0.10, 0.08},
+		mist = {0.09, 0.08, 0.17},
+		daylight = 0.18,
+		candles = true,
+		gloom = 0.1,
+		mote = {1.0, 0.85, 0.55, 0.45},
+	},
 	// the palace of voices at twilight: the sun is gone, its last light low on
 	// the clouds, the first stars, the moon rising; the candles are lit
 	.Dusk = {

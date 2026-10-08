@@ -30,7 +30,11 @@
 #                           crag_sunset (a crag over a sea of clouds, mountains, sunset) |
 #                           forest_night (the dead of night in a forest of rock pillars) |
 #                           river_dawn (first light over a wide river, mist, the morning star) |
-#                           crag_day (a crag of bare rock by day, the ranges far below)
+#                           crag_day (a crag of bare rock by day, the ranges far below) |
+#                           windy_sunset (the crag's sunset, gusts streaking across, candles lit) |
+#                           valley_dusk (a deep valley at the end of twilight, almost night, candles lit)
+#   follow n                a long level: the camera frames about n cells and
+#                           follows Psyche (kept inside the level)
 #   tier h0 h1              a level too tall for the screen: the camera frames one
 #                           band of heights at a time (Psyche's), panning to the next
 #                           when she changes band (through a cave, while she is inside)

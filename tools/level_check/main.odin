@@ -17,11 +17,14 @@ package level_check
 import "core:fmt"
 import "core:mem/virtual"
 import "core:os"
+import "core:strings"
 import "base:runtime"
 
+import "../../src/game"
 import "../../src/iso"
 import "../../src/level"
 import pl "../../src/palace"
+import "../../src/render"
 
 main :: proc() {
 	if len(os.args) < 2 {
@@ -84,8 +87,11 @@ main :: proc() {
 		}
 		fmt.println()
 	}
+	if pl.is_dynamic(&data) {
+		whole_illusions(&p, &data, alloc)
+	}
 
-	if !check_screen(&p, &data) {
+	if !check_screen(&p, &data) || !check_props(&p, &data) {
 		os.exit(1)
 	}
 
@@ -109,7 +115,7 @@ main :: proc() {
 	}
 }
 
-// What the player sees and clicks: every cave has rock where its opening is
+// What the player sees and clicks: every cave has rock turned its opening is
 // (an error otherwise), and a click on a fragment's scroll picks the
 // fragment's own cell in every view (a warning otherwise: the click would
 // send Psyche somewhere else, in the worst case to a cave's mouth). The
@@ -147,6 +153,192 @@ check_screen :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 		f = false
 	}
 	p.risen = {}
+	pl.set_view(p, 0)
+	pl.rebuild_graph(p)
+	return
+}
+
+// The illusions of the palace changed for good (veiled stones shown, every
+// seal's blocks raised), parts as loaded: those not in the base listing.
+whole_illusions :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Allocator) {
+	Pair :: [2]iso.Cell
+	base := make(map[Pair]bool, 64, alloc)
+	for r in 0 ..< 4 {
+		pl.set_view(p, r)
+		for e in p.illusion.pairs {
+			base[{p.nodes[e[0]].cell, p.nodes[e[1]].cell}] = true
+		}
+	}
+	for &f, i in p.flipped {
+		f = data.blocks[i].trait == .Veiled
+	}
+	p.risen = pl.all_seals(data)
+	pl.rebuild_graph(p)
+	for r in 0 ..< 4 {
+		pl.set_view(p, r)
+		fmt.printf("whole view %d, new illusions:", r)
+		for e in p.illusion.pairs {
+			pair := Pair{p.nodes[e[0]].cell, p.nodes[e[1]].cell}
+			if !base[pair] {
+				fmt.printf(" %v-%v", pair[0], pair[1])
+			}
+		}
+		fmt.println()
+	}
+	for &f in p.flipped {
+		f = false
+	}
+	p.risen = {}
+	pl.set_view(p, 0)
+	pl.rebuild_graph(p)
+}
+
+// What would look wrong (an error) or odd (a warning), with the palace whole
+// (veiled stones shown, the seals' blocks raised) and every part in each of
+// its positions: a prop inside a block or hanging in the air, a candle with no
+// wall, a candelabrum off a floor, a blocking prop on a cell the level needs,
+// a handle on a part, a block given twice, more flames than the stones show.
+check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
+	ok = true
+	said := make(map[string]bool, 16, context.temp_allocator)
+	say :: proc(said: ^map[string]bool, ok: ^bool, fatal: bool, format: string, args: ..any) {
+		text := fmt.tprintf(format, ..args)
+		if i := strings.index(text, " (parts turned"); i >= 0 && said[text[:i]] {
+			return // the same in every position: said once
+		}
+		if !said[text] {
+			said[text] = true
+			if fatal {
+				fmt.eprintln("error:", text)
+			} else {
+				fmt.println("warning:", text)
+			}
+		}
+		ok^ &&= !fatal
+	}
+	seen := make(map[iso.Cell]bool, len(data.blocks), context.temp_allocator)
+	for e in data.blocks {
+		if e.part == 0 && seen[e.cell] {
+			say(&said, &ok, false, "two blocks at %v", e.cell)
+		}
+		seen[e.cell] = e.part == 0
+	}
+	for e in data.rise {
+		if seen[e.cell] {
+			say(&said, &ok, true, "a rising block at %v, turned a block stands already", e.cell)
+		}
+	}
+	needed := make([dynamic]iso.Cell, 0, 32, context.temp_allocator)
+	append(&needed, data.start)
+	if data.has_exit {
+		append(&needed, data.exit)
+	}
+	append(&needed, ..data.fragments[:])
+	append(&needed, ..data.sigils[:])
+	append(&needed, ..data.rests[:])
+	for h in data.handles {
+		append(&needed, h.cell)
+	}
+	for c in data.caves {
+		append(&needed, c.cell)
+	}
+	for prop in data.props {
+		if prop.kind not_in level.BLOCKING_PROPS {
+			continue
+		}
+		for c in needed {
+			if c == prop.cell {
+				say(&said, &ok, true, "%v at %v stands on a cell the level needs", prop.kind, prop.cell)
+			}
+		}
+	}
+	lights := len(data.candelabra)
+	if render.look(data.setting).candles {
+		for prop in data.props {
+			lights += int(prop.kind == .Sconce && prop.part == 0)
+		}
+	}
+	if lights > level.MAX_LIGHTS {
+		say(&said, &ok, false, "%d flames (candles, candelabra), the stones show the light of %d", lights, level.MAX_LIGHTS)
+	}
+
+	combos := 1
+	for _ in data.parts {
+		combos *= 4
+	}
+	for &f, i in p.flipped {
+		f = data.blocks[i].trait == .Veiled
+	}
+	p.risen = pl.all_seals(data)
+	for k in 0 ..< combos {
+		n := k
+		for i in 0 ..< len(data.parts) {
+			p.part_rot[i] = n % 4
+			n /= 4
+		}
+		pl.rebuild_graph(p)
+		parts := p.part_rot[:len(data.parts)]
+		turned := k > 0 ? fmt.tprintf(" (parts turned %v)", parts) : ""
+		for prop in data.props {
+			c, d := pl.prop_place(p, prop)
+			v := iso.DIR_VEC[d]
+			in_cell := pl.solid_at(p, c).kind
+			below := pl.solid_at(p, c - {0, 0, 1}).kind
+			switch {
+			case prop.kind == .Sconce:
+				if in_cell != .Block {
+					say(&said, &ok, true, "the candle at %v has no wall%s", c, turned)
+				} else if pl.solid_at(p, c + {v.x, v.y, 0}).kind != .None {
+					say(&said, &ok, true, "the candle at %v %v is inside a wall%s", c, d, turned)
+				}
+			case prop.kind in level.EDGE_PROPS:
+				// a rail beside a stair is its handrail; inside a block it is lost
+				if in_cell == .Block {
+					say(&said, &ok, false, "%v at %v is hidden in a block%s", prop.kind, c, turned)
+				} else if below == .None && in_cell == .None {
+					say(&said, &ok, true, "%v at %v hangs in the air%s", prop.kind, c, turned)
+				}
+			case in_cell != .None:
+				say(&said, &ok, true, "%v at %v is inside a block%s", prop.kind, c, turned)
+			case below != .Block:
+				say(&said, &ok, true, "%v at %v hangs in the air%s", prop.kind, c, turned)
+			}
+		}
+		for h in data.handles {
+			if !pl.is_surface(p, h.cell) {
+				say(&said, &ok, true, "the handle at %v is not on a floor%s", h.cell, turned)
+			}
+		}
+		for cd in data.candelabra {
+			if pl.solid_at(p, cd.cell).kind != .None || pl.solid_at(p, cd.cell - {0, 0, 1}).kind != .Block {
+				say(&said, &ok, true, "the candelabrum at %v does not stand on a floor%s", cd.cell, turned)
+			}
+		}
+	}
+	for h in data.handles {
+		for e in data.blocks {
+			if e.cell == h.cell - {0, 0, 1} && e.part != 0 {
+				say(&said, &ok, true, "the handle at %v stands on a part", h.cell)
+			}
+		}
+	}
+	// what stands on a veiled stone floats while it is hidden (the hand
+	// ropes of a bridge do not: they hang between the posts)
+	for prop in data.props {
+		if prop.part != 0 || prop.kind == .Sconce || prop.kind == .Rope {
+			continue
+		}
+		for e in data.blocks {
+			if e.trait == .Veiled && e.cell == prop.cell - {0, 0, 1} {
+				say(&said, &ok, false, "%v at %v floats until the stone under it is shown", prop.kind, prop.cell)
+			}
+		}
+	}
+	for &f in p.flipped {
+		f = false
+	}
+	p.risen = {}
+	p.part_rot = {}
 	pl.set_view(p, 0)
 	pl.rebuild_graph(p)
 	return
@@ -241,6 +433,15 @@ print_plan :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Alloca
 		return false
 	}
 	fmt.printfln("plan: %d steps (%d in the light), %d turns, %d lightings, %d handles", sol.steps, sol.light_steps, sol.turns, sol.lightings, sol.handles)
+	if data.has_lamp {
+		rules := game.oil_rules(data)
+		least := pl.oil_left(p, sol.plan[:], rules)
+		fmt.printfln("oil: %.1f s in the lamp, at least %.1f s left along the plan", rules.oil, least)
+		if least < 0 {
+			fmt.eprintln("error: the lamp runs dry before the plan is done")
+			return false
+		}
+	}
 	walk := 0
 	illusions := 0
 	flush :: proc(walk, illusions: ^int, cell: iso.Cell) {

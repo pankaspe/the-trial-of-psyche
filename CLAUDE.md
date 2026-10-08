@@ -123,6 +123,33 @@ CLAUDE.md for the design history).
   gallery, lost for good once the second corridor rises (the hard passage: go before lighting the second
   seal); II.4b (new text, VI.2, Psyche's prayer to Ceres, to review) on a needle, view 0 from the first
   seal's pillar. Solver: 53 steps, 1 turn, 3 lightings, 3 handles, 0 dead ends.
+- **II.5 "The Temple of Juno" rebuilt (2026-10-08), waiting for the user's playtest**: the user's brief: the
+  last of Act II, a real puzzle with everything learned (light, handles, veiled stones, caves, hidden seals,
+  dead ends, dark corridors), two fragments; vertical at first, then horizontal to the right, then down;
+  dusk going into night, candelabra lit in the temple. Size 32, `follow 13`, `setting valley_dusk` (new:
+  the end of twilight in a deep valley, bed Dusk), `oil 24`, `lamp 4`. The rock: steps in its west face
+  (hidden from views 0-1), a cave from the north ledge up to a shoulder (blind until the seal), the first
+  hidden seal at the north ledge's blind end raises the steps to the summit. The ridge: a veiled grassy cap
+  on a needle off the ridge's line, reached in the dark by view 0, left by view 3. The gate: an L bridge
+  (part, handles at the gate and on the north balcony) joining two of its doors (gate, north balcony, east
+  terrace), one stone veiled (it turns with the arm); its south arm's tip joins the temple's north gallery
+  by view 2. The temple: view 0 from the gallery to Juno's column (the turning stair's first handle); the
+  dark stair between four pillars (light only, unlit candelabra) to the east ledge, the second hidden seal
+  raising a stair to a landing over the nave; the turning stair has two tasks: toward the landing to go
+  down (set from the column), then toward the altar (the second handle, in the nave). Wrong from the column,
+  the landing is a dead end until she goes back up (view 2 from the risen stair to the bridge's tip).
+  Fragments: II.5 (V.31) on a needle, view 1 from the cap; II.5b (new text, VI.4, Psyche's prayer to Juno,
+  to review) in the grove before the temple, through the east terrace's cave (bridge to the north balcony,
+  its handle to the east terrace). Solver: 67 steps, 7 turns, 4 lightings, 6 handles, 0 dead ends; every
+  key piece checked as required (removed, the level cannot be solved). The layout was written by a scratch
+  generator; edit the level file directly from now on.
+- Level tools (2026-10-08, with II.5): the solver costs whatever is done in the light a little more (the
+  oil it burns), so its plans put the lamp out when they can; `palace.oil_left` replays a plan counting the
+  oil (`game.oil_rules`), checked by level_check and `act2_levels_solve_and_play`; level_check lists the
+  illusions that appear once the palace is whole (veiled shown, seals raised) and `check_props` reports
+  visual errors in every position of the parts: props inside blocks or hanging in the air, candles with no
+  wall, candelabra off a floor, blocking props on needed cells, handles on parts, blocks given twice, more
+  flames than the shader shows (`level.MAX_LIGHTS`). It found a floating urn by II.4's altar (now a vase).
 - Settings follow the slot titles (each level reflects its title): II.2 river and Pan, II.3 the
   sisters' crag, II.4 Ceres, II.5 Juno; level content is rebuilt to fit.
 - Work strictly step by step: one level, the user plays and judges, then the next.
@@ -209,7 +236,7 @@ Full design document (Italian, kept up to date there): https://claude.ai/code/ar
   the palace) · III Venus' trials (helpers that move pieces: ants, eagle; day/night cycle) · IV Proserpina's
   box (talking tower, renunciations, counted coins, upside-down palace, absolute darkness) · Epilogue: all.
 - **Frammenti del racconto** (EN: Fragments of the Tale): collectibles, one or more per level
-  (`content.FRAGMENTS`, saved by fragment id: I.3 has two, "I.3" and "I.3b"; 21 today), on isolated spots
+  (`content.FRAGMENTS`, saved by fragment id: I.3 has two, "I.3" and "I.3b"; 25 today), on isolated spots
   reached by an optional harder puzzle; never required (level_check must verify it). They tell what the
   levels do not show; the last reveals the frame: an old woman telling the tale to Charite (Met. IV.27, VI.25).
 - The Book (menu): fragments in the text's order + achievements. Progress saved next to the settings.
@@ -233,7 +260,7 @@ Full design document (Italian, kept up to date there): https://claude.ai/code/ar
   inside the level's fit); `--survey` shoots four stretches along x.
 - Tall levels (`tier h0 h1` lines): the camera frames one band of heights at a time, with the zoom of the
   tallest band; `--survey` (with `--level`) shoots each band from the four views, no walking.
-- Settings per level (`setting night|night_candles|deep_night|crag_sunset|dusk|forest_night|river_dawn|crag_day`, `render/setting.odin` `LOOKS`): sky gradient,
+- Settings per level (`setting night|night_candles|deep_night|crag_sunset|dusk|forest_night|river_dawn|crag_day|windy_sunset|valley_dusk`, `render/setting.odin` `LOOKS`): sky gradient,
   orb, stars, layered ranges (`ridges.fs`, panoramas that close over a full turn), clouds,
   mist, and a sunset palette for the stones (`daylight`). I.1 is the crag at sunset (approved).
   `dusk` (I.2): the palace at twilight, pink clouds, first stars, a pale moon, `daylight` 0.4,

@@ -783,7 +783,7 @@ set_frame_uniforms :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	rl.SetShaderValue(r.material.shader, r.loc[.Candle_Count], &count, .INT)
 }
 
-MAX_CANDLES :: 16 // as in palace.fs
+MAX_CANDLES :: level.MAX_LIGHTS // as in palace.fs
 
 // Where candelabrum i's foot is drawn now (it rises with the palace on arrival).
 candelabrum_world :: proc(g: ^game.Game, i: int) -> Vec3 {

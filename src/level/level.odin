@@ -52,6 +52,7 @@ Setting :: enum u8 {
 	River_Dawn, // the first light over a wide river, mist on the water, the morning star
 	Crag_Day, // a crag of bare rock by day, the wind, the plain far below
 	Windy_Sunset, // the sunset of the crag, windswept, a temple's candles lit
+	Valley_Dusk, // the last of the twilight in a deep valley, almost night: a temple's candles lit
 }
 
 SETTING_NAME := [Setting]string {
@@ -64,6 +65,7 @@ SETTING_NAME := [Setting]string {
 	.River_Dawn   = "river_dawn",
 	.Crag_Day     = "crag_day",
 	.Windy_Sunset = "windy_sunset",
+	.Valley_Dusk  = "valley_dusk",
 }
 
 // How a block behaves (Act II): fixed stone, or one that changes for good.
@@ -247,6 +249,7 @@ Level_Data :: struct {
 MAX_PARTS :: 8
 MAX_FRAGMENTS :: 4
 MAX_CANDELABRA :: 12
+MAX_LIGHTS :: 16 // flames the stone shader takes at once: wall candles first, then candelabra
 MAX_DYNAMIC :: 64 // crumbling, phantom and veiled blocks in one level
 MAX_TIERS :: 6
 MAX_SEALS :: 4
@@ -473,7 +476,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 			}
 			if !found {
-				return data, fail(line_no, "setting: expected one of night, crag_sunset, dusk, night_candles, deep_night, forest_night, river_dawn, crag_day, windy_sunset")
+				return data, fail(line_no, "setting: expected one of night, crag_sunset, dusk, night_candles, deep_night, forest_night, river_dawn, crag_day, windy_sunset, valley_dusk")
 			}
 
 		case "tier":

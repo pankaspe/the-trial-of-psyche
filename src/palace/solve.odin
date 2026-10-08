@@ -7,9 +7,10 @@
 // lit on the seal raises the `rise` blocks.
 // A state is her cell, the view, the lamp and the palace's configuration
 // (which blocks changed, how each part is turned). The search is a cheapest
-// path (steps cost 1; turns, lightings and handles more, so the plan it
-// prints is the one with the fewest decisions). Oil is not counted: the plan
-// reports how many steps it walks in the light.
+// path (steps cost least; turns, lightings and handles more, so the plan it
+// prints is the one with the fewest decisions; whatever is done in the light
+// costs a little more, as the oil it burns, so the plan puts the lamp out when
+// it can). Oil is not counted in the state: `oil_left` replays a plan.
 //
 // Memory: everything comes from the allocator given to `solve` (an arena).
 package palace
@@ -45,13 +46,26 @@ Move :: enum u8 {
 
 COST := [Move]int {
 	.Start      = 0,
+	.Step       = 2,
+	.Turn_Left  = 4,
+	.Turn_Right = 4,
+	.Light      = 8,
+	.Douse      = 2,
+	.Handle     = 6,
+}
+
+// What a move costs more when the lamp burns through it (about a unit per
+// 0.3 s of oil): a step, a passage through a cave, a turn, a handle.
+LIT_COST := [Move]int {
+	.Start      = 0,
 	.Step       = 1,
 	.Turn_Left  = 2,
 	.Turn_Right = 2,
-	.Light      = 4,
-	.Douse      = 1,
+	.Light      = 0,
+	.Douse      = 0,
 	.Handle     = 3,
 }
+LIT_PASSAGE_COST :: 8
 
 Plan_Step :: struct {
 	move:     Move,
@@ -229,9 +243,12 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 			if !ok {
 				continue
 			}
-			next :: proc(entries: ^[dynamic]Entry, seen: ^map[Search_State]i32, buckets: ^[dynamic][dynamic]i32, edges: ^[dynamic]Edge, from: i32, st: Search_State, move: Move, illusion := false, changed := 0) {
+			next :: proc(entries: ^[dynamic]Entry, seen: ^map[Search_State]i32, buckets: ^[dynamic][dynamic]i32, edges: ^[dynamic]Edge, from: i32, st: Search_State, move: Move, illusion := false, changed := 0, lit_extra := -1) {
 				e := Entry{state = st, parent = from, move = move, illusion = illusion, changed = changed}
 				e.cost = entries[from].cost + COST[move]
+				if entries[from].state.lamp && st.lamp {
+					e.cost += lit_extra >= 0 ? lit_extra : LIT_COST[move]
+				}
 				push(entries, seen, buckets, edges, e)
 			}
 
@@ -306,7 +323,8 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 						moved.cfg, changed = seal(p, moved.cfg, to, changed + n)
 					}
 					if _, still := graph_of(&s, moved.cfg).index[to]; still {
-						next(&entries, &seen, &buckets, &edges, id, moved, .Step, pass == 1, changed)
+						extra := is_passage(p, g.nodes[a].cell, to) ? LIT_PASSAGE_COST : -1
+						next(&entries, &seen, &buckets, &edges, id, moved, .Step, pass == 1, changed, extra)
 					}
 				}
 			}
@@ -468,4 +486,61 @@ is_dynamic :: proc(d: ^level.Level_Data) -> bool {
 		}
 	}
 	return false
+}
+
+// How long things take in the game, for `oil_left` (the game's constants).
+Oil_Rules :: struct {
+	oil:        f32, // the lamp full (seconds)
+	light_cost: f32, // lighting it
+	step:       f32, // a step
+	passage:    f32, // a step through a cave
+	turn:       f32, // a turn of the view
+	handle:     f32, // a part turning
+	rise_delay: f32, // a seal's stones come up one after the other...
+	rise_time:  f32, // ...each taking this long
+}
+
+// Replay a plan counting the oil: the least left at any time (below zero: the
+// lamp would go out before the plan is done).
+oil_left :: proc(p: ^Palace, plan: []Plan_Step, rules: Oil_Rules) -> (least: f32) {
+	d := p.data
+	oil := rules.oil
+	least = oil
+	lamp := false
+	risen: level.Seals
+	at := d.start
+	for st in plan {
+		spent: f32
+		switch st.move {
+		case .Start:
+		case .Light:
+			lamp = true
+			oil -= rules.light_cost
+		case .Douse:
+			lamp = false
+		case .Turn_Left, .Turn_Right:
+			spent = rules.turn
+		case .Handle:
+			spent = rules.handle
+		case .Step:
+			spent = is_passage(p, at, st.cell) ? rules.passage : rules.step
+		}
+		at = st.cell
+		if lamp {
+			oil -= spent
+			for c, k in d.sigils {
+				if c == at && k not_in risen {
+					// the stones rise while she waits, the lamp burning
+					risen += {k}
+					n := 0
+					for e in d.rise {
+						n += int(int(e.seal) == k)
+					}
+					oil -= f32(max(n - 1, 0)) * rules.rise_delay + rules.rise_time
+				}
+			}
+		}
+		least = min(least, oil)
+	}
+	return
 }

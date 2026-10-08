@@ -1,71 +1,353 @@
 # The Trial of Psyche - level II.5: "The Temple of Juno"
-# Every mechanic of the act together. Psyche comes down into the valley of
-# Juno's temple and crosses it to the altar.
-#   1. the way down from the hillside: a cracked stone stands in front of the
-#      porch in view 2; step on it and back, it falls, the seam appears;
-#   2. the porch: the high stone over it is veiled. Light the lamp here, but
-#      first: once the floor is turned south-west, its north arm (a phantom
-#      stone) lies at the porch's feet, and the light would dissolve it;
-#   3. the floor of offerings (an L about (8,6), as in the temple of Ceres):
-#      its handle on the porch turns it to join west and south (three turns);
-#      from the south door, view 2 joins the high stone, view 3 the north door;
-#   4. the north handle stands on a cracked stone: one visit only. Turn the
-#      floor to join south and east (three turns), then step off;
-#   5. over the high stone back to the south door, across the phantom arm and
-#      the floor to the east door; the lamp shows the last stone to the altar.
-# Fragment: on the column of the goddess by the north door, joined to the
-# high stone in view 1.
+# The last of Act II, a real puzzle with everything learned: turning, hidden
+# stairs, the lamp, veiled stones, hidden seals, handles, caves. Dusk going
+# into night. The level climbs a rock (vertical), runs right along a ridge
+# (horizontal), then goes down into the valley to Juno's temple, where the
+# candelabra are lit. The camera follows Psyche (follow).
+#   1. the rock: steps cut in its west face, seen only from the west; a cave
+#      takes her up from the north ledge to a shoulder over the meadow (a
+#      dead end, for now); the north ledge also ends blind, and there, in the
+#      lamp's light, a hidden seal: it raises the steps from the shoulder to
+#      the summit;
+#   2. the ridge: a chasm; the lamp shows a grassy cap on a needle beside it,
+#      off the line of the ridge: real once lit near, it is reached in the
+#      dark, view 0 from the ridge, and left by view 3 to the far ridge;
+#   3. the gate of Juno: an L-shaped bridge turns about its pillar (handles at
+#      the gate and on the north balcony) joining two of its doors at a time:
+#      the gate, the north balcony, the east terrace; one stone of it is
+#      veiled. Its south arm points at nothing: from its tip, view 2 joins the
+#      temple's north gallery far below;
+#   4. the temple: from the gallery, view 0 joins the top of Juno's column,
+#      the handle of the turning stair in the nave; the dark stair between
+#      four pillars works only in the light, down to the east ledge, where the
+#      second hidden seal raises a stair to a landing over the nave;
+#   5. the turning stair has two tasks: turned toward the landing it takes
+#      her down to the nave; there a second handle turns it toward the altar
+#      (the exit). Turned the wrong way from the column, the landing is a dead
+#      end until she goes back up (by view 2 from the risen stair to the
+#      bridge's tip, then the gallery and the column).
+# Fragments: II.5 on a needle north of the veiled cap (view 1 from the cap);
+# II.5b in the grove before the temple, through the east terrace's cave:
+# turn the bridge to the north balcony, its handle to the east terrace.
 # Format: see level_04.txt.
-size 12
+size 32
+setting valley_dusk
+follow 13
+oil 24
+lamp 4
 
-# the hillside where Psyche comes down (h4); K, the cracked stone
-column 1 7 0 3
-column 2 7 0 3
-column 1 8 0 3
-crumble 3 7 3
-# the porch (h2) to the west door
-column 5 9 0 1
-column 5 8 0 1
-column 5 7 0 1
-column 5 6 0 1
-# the floor of offerings (h2): an L about (8,6), its north arm ends in a phantom stone
-part 8 6
-column 8 6 0 1
-column 7 6 0 1
-column 6 6 0 1
-column 8 5 0 1
-column 8 4 0 0
-phantom 8 4 1
+# === 1. the rock (west): Psyche climbs from the meadow at its foot ===
+# the meadow (h1)
+ground 1 19 0 0
+ground 1 20 0 0
+ground 1 21 0 0
+ground 2 19 0 0
+ground 2 20 0 0
+ground 2 21 0 0
+ground 3 19 0 0
+ground 3 20 0 0
+ground 3 21 0 0
+ground 4 19 0 0
+ground 4 20 0 0
+ground 4 21 0 0
+ground 5 19 0 0
+ground 5 20 0 0
+ground 5 21 0 0
+ground 6 19 0 0
+ground 6 20 0 0
+ground 6 21 0 0
+# steps cut in the west face, hidden by the rock from the east (views 0, 1)
+rock 2 18 0 0
+steps 2 18 1 my
+rock 2 17 0 1
+rock 2 16 0 1
+steps 2 16 2 my
+rock 2 15 0 2
+rock 2 14 0 2
+steps 2 14 3 my
+# the north ledge (h4): the cave at its middle, the seal at its blind end
+rock 2 12 0 3
+rock 3 12 0 3
+rock 4 12 0 3
+rock 5 12 0 3
+rock 6 12 0 3
+rock 7 12 0 3
+rock 8 12 0 3
+rock 2 13 0 3
+cave 4 12 4 py
+# the summit (h10)
+rock 3 13 0 9
+rock 3 14 0 9
+rock 3 15 0 9
+rock 4 13 0 9
+rock 4 14 0 9
+rock 4 15 0 9
+rock 5 13 0 9
+rock 5 14 0 9
+rock 5 15 0 9
+rock 6 13 0 9
+rock 6 14 0 9
+rock 6 15 0 9
+rock 7 13 0 9
+rock 7 14 0 9
+rock 7 15 0 9
+rock 3 16 0 9
+rock 4 16 0 9
+rock 5 16 0 9
+rock 6 16 0 9
+# the shoulder over the meadow (h8): the cave's other mouth
+rock 3 17 0 7
+rock 4 17 0 7
+rock 5 17 0 7
+rock 6 17 0 7
+rock 7 17 0 7
+rock 7 16 0 8
+cave 4 17 8 my
+# the first seal raises steps from the shoulder to the summit
+rise 6 17 8 px rock 1
+rise 7 17 8 rock 1
+rise 7 16 9 my rock 1
+
+# === 2. the ridge (h10), east ===
+rock 8 14 0 9
+rock 9 14 0 9
+rock 10 14 0 9
+# a needle beside the chasm, its veiled grassy cap (h11)
+rock 12 15 0 9
+veiled 12 15 10 ground
+# the far ridge
+rock 14 14 0 9
+rock 15 14 0 9
+rock 16 14 0 9
+# a needle to the north: II.5 (view 1 from the cap)
+rock 13 13 0 11
+
+# === 3. the gate of Juno and the turning bridge (h10) ===
+column 17 14 0 9
+column 18 14 0 9
+# the bridge's pillar; the L turns about it: arms east and south as loaded
+column 21 14 0 8
+part 21 14
+block 21 14 9
+block 22 14 9
+block 23 14 9
+block 21 15 9
+veiled 21 16 9
 end
-handle 5 6 2 0
-# the south door (h2)
-column 8 9 0 1
-column 8 10 0 1
-column 9 10 0 1
-# the north door (h3); its handle on a cracked stone
-column 8 3 0 2
-column 8 2 0 1
-crumble 8 2 2
-handle 8 2 3 0
-# the east door (h2), the veiled stone and Juno's altar (the exit)
-column 11 6 0 1
-veiled 11 5 1
-column 11 4 0 1
-# the high stone over the porch (h5), veiled
-veiled 5 5 4
-# the column of the goddess, with the fragment
-column 7 2 0 6
-fragment 7 2 7
+handle 18 14 10 0
+# the north balcony and its handle
+column 21 11 0 9
+column 21 10 0 9
+handle 21 11 10 0
+# the east terrace, the cliff of the valley behind it, a cave down to the grove
+column 24 14 0 9
+rock 25 14 0 9
+rock 25 13 0 9
+rock 26 12 0 11
+rock 26 13 0 11
+rock 26 14 0 11
+rock 26 15 0 11
+rock 26 16 0 11
+cave 25 14 10 px
+# the grove before the temple (h1): the cave's other mouth, II.5b
+ground 17 27 0 0
+ground 17 28 0 0
+ground 17 29 0 0
+ground 17 30 0 0
+ground 18 27 0 0
+ground 18 28 0 0
+ground 18 29 0 0
+ground 18 30 0 0
+ground 19 27 0 0
+ground 19 28 0 0
+ground 19 29 0 0
+ground 19 30 0 0
+ground 20 27 0 0
+ground 20 28 0 0
+ground 20 29 0 0
+ground 20 30 0 0
+ground 21 27 0 0
+ground 21 28 0 0
+ground 21 29 0 0
+ground 21 30 0 0
+ground 22 27 0 0
+ground 22 28 0 0
+ground 22 29 0 0
+ground 22 30 0 0
+rock 16 28 0 2
+rock 16 29 0 2
+cave 17 28 1 mx
 
-start 1 8 4
-exit 11 4 2
-rest 5 9 2
-rest 8 10 2
-lamp
+# === 4. the temple of Juno ===
+# the north gallery (h6), a balustrade along it
+column 23 20 0 5
+prop rail 23 20 6 my
+prop rail 23 20 6 py
+column 24 20 0 5
+prop rail 24 20 6 my
+prop rail 24 20 6 py
+column 25 20 0 5
+prop rail 25 20 6 my
+prop rail 25 20 6 py
+column 26 20 0 5
+prop rail 26 20 6 my
+prop rail 26 20 6 py
+column 27 20 0 5
+prop rail 27 20 6 my
+prop rail 27 20 6 py
+column 28 20 0 5
+prop rail 28 20 6 my
+prop rail 28 20 6 py
+column 29 20 0 5
+prop rail 29 20 6 my
+prop rail 29 20 6 py
+column 30 20 0 5
+prop rail 30 20 6 my
+prop rail 23 20 6 mx
+prop rail 30 20 6 px
+# Juno's column (h10): the handle of the turning stair (view 0 from the gallery)
+column 31 24 0 9
+# the dark stair down from the gallery, hidden by four pillars from every view
+column 30 21 0 4
+stairs 30 21 5 my
+column 30 22 0 4
+column 30 23 0 3
+stairs 30 23 4 my
+column 29 21 0 5
+prop pillar 29 21 6
+column 29 22 0 5
+prop pillar 29 22 6
+column 31 21 0 5
+prop pillar 31 21 6
+column 31 22 0 5
+prop pillar 31 22 6
+# the east ledge (h4): the second hidden seal
+column 30 24 0 3
+column 30 25 0 3
+prop rail 30 25 4 mx
+prop rail 30 25 4 px
+prop rail 30 25 4 py
+# the nave (h1) and the altar's podium (h2), its balustrade open to the stair
+column 23 23 0 0
+column 23 24 0 0
+column 23 25 0 0
+column 23 26 0 0
+column 24 23 0 0
+column 24 24 0 0
+column 24 25 0 0
+column 24 26 0 0
+column 25 22 0 0
+column 25 23 0 0
+column 25 24 0 0
+column 25 25 0 0
+column 25 26 0 0
+column 26 22 0 0
+column 26 23 0 0
+column 26 24 0 0
+column 26 26 0 0
+column 27 22 0 0
+column 27 23 0 0
+column 27 24 0 0
+column 27 25 0 0
+column 27 26 0 0
+column 28 22 0 0
+column 28 23 0 0
+column 28 24 0 0
+column 28 25 0 0
+column 28 26 0 0
+column 29 23 0 0
+column 29 24 0 0
+column 29 25 0 0
+column 29 26 0 0
+column 23 22 0 1
+column 24 22 0 1
+prop rail 23 22 2 mx
+prop rail 23 22 2 my
+prop rail 24 22 2 my
+prop rail 24 22 2 px
+prop rail 23 22 2 py
+# a statue on a pedestal beside the landing
+column 26 25 0 2
+prop statue 26 25 3 my
+# the second seal raises a stair from the east ledge to the landing (26 24 2)
+rise 29 24 1 2
+rise 29 24 2 2
+rise 29 24 3 px 2
+rise 28 24 1 2
+rise 28 24 2 2
+rise 27 24 1 2
+rise 27 24 2 px 2
+rise 26 24 1 2
+prop rail 26 24 2 my
+# the turning stair about (24 24): up to the landing (px) or to the altar (my)
+part 24 24
+stairs 23 24 1 mx
+end
+handle 31 24 10 1
+handle 23 26 1 1
+
+# === decoration ===
+# the meadow, the rock, the ridge
+prop pine 6 21 1 px
+prop boulder 1 21 1
+prop shrub 4 19 1 my
+prop shrub 1 19 1 mx
+prop pine 3 13 10 my
+prop pine 5 16 10 py
+prop boulder 3 15 10
+prop shrub 6 13 10 my
+prop shrub 3 17 8 py
+prop cairn 2 12 4 mx
+prop shrub 6 12 4 my
+prop cairn 9 14 10 my
+prop shrub 16 14 10 my
+# an unlit candelabrum where the first seal hides
+candelabrum 8 12 4 px
+# the gate: an arch, a candelabrum, a candle
+prop arch 18 14 10 px
+candelabrum 17 14 10 my lit
+prop sconce 18 14 8 py
+# pines on the cliff (nobody stands there), boulders on the grove's rock
+prop pine 26 12 12 my
+prop pine 26 13 12 px
+prop pine 26 14 12 my
+prop pine 26 15 12 px
+prop pine 26 16 12 my
+prop boulder 16 28 3
+prop boulder 16 29 3 py
+# the grove: cypresses, offerings
+prop cypress 18 27 1
+prop cypress 22 30 1
+prop cypress 17 30 1
+prop urn 21 27 1
+prop vase 19 29 1 py
+# the temple: Juno on the gallery, offerings, candelabra lit (the dark stair's put out)
+prop statue 23 20 6 py
+prop urn 24 20 6
+prop vase 27 20 6 my
+candelabrum 28 20 6 py lit
+candelabrum 30 22 5 my
+candelabrum 30 24 4 px
+candelabrum 24 22 2 px lit
+candelabrum 23 22 2 my lit
+candelabrum 28 26 1 py lit
+candelabrum 23 23 1 mx lit
+prop urn 29 26 1
+prop vase 27 26 1 py
+prop urn 25 26 1
+prop sconce 27 20 5 py
+prop sconce 24 20 4 py
+prop sconce 29 22 4 mx
+prop sconce 31 24 7 mx
+
+start 2 20 1
+rest 2 20 1
+rest 15 14 10
+rest 25 20 6
+sigil 8 12 4
+sigil 30 25 4
+exit 23 22 2
+fragment 13 13 12
+fragment 20 30 1
 intro intro_ii_5
 outro outro_ii_5
-# offerings in the temple
-prop urn 9 10 2
-prop vase 5 8 2 py
-prop vase 11 6 2 mx
-prop sconce 11 4 1 px

@@ -99,6 +99,7 @@ Key :: enum u16 {
 	Fragment_08,
 	Fragment_08b, // II.4 hides two: Venus and her son, Psyche's prayer to Ceres
 	Fragment_09,
+	Fragment_09b, // II.5 hides two: Ceres and Juno before Venus, Psyche's prayer to Juno
 	Fragment_10,
 	Fragment_11,
 	Fragment_12,
@@ -402,6 +403,7 @@ IT := [Key]string {
 	.Fragment_08    = "Venere rimprovera il figlio con parole dure e lo chiude in una stanza della sua casa, perché non riveda la fanciulla.",
 	.Fragment_08b   = "Psiche si prostra davanti all'altare di Cerere: «Per la tua mano che dona le messi, per le liete feste del raccolto, per i segreti custoditi nelle ceste, lasciami nascondere qui tra le spighe, pochi giorni soltanto, finché l'ira della dea si plachi.»",
 	.Fragment_09    = "Cerere e Giunone cercano di calmarla: «è giovane, è innamorato, perché punirlo?» Ma parlano così per paura delle sue frecce.",
+	.Fragment_09b   = "Psiche prega davanti all'altare di Giunone: «Sorella e sposa del grande Giove, che tu abiti gli antichi santuari di Samo, o le sedi beate dell'alta Cartagine, o vegli sulle mura di Argo lungo l'Inaco: l'Oriente ti onora come Zigia, l'Occidente ti chiama Lucina. Sii per me, nella mia ultima sventura, Giunone che salva, e liberami da questa paura. So che soccorri le donne che aspettano un figlio.»",
 	.Fragment_10    = "Mercurio grida il bando per tutte le strade: «a chi riporta la fuggitiva, Venere darà sette baci.»",
 	.Fragment_11    = "Amore è chiuso in una stanza in fondo alla casa, lontano da tutti. La ferita della lampada guarisce piano.",
 	.Fragment_12    = "Venere va a un banchetto di nozze, profumata e coronata di rose. Lascia Psiche sola, davanti al lavoro impossibile.",
@@ -650,6 +652,7 @@ EN := [Key]string {
 	.Fragment_08    = "Venus scolds her son with harsh words and locks him in a room of her house, so that he will not see the girl again.",
 	.Fragment_08b   = "Psyche kneels before the altar of Ceres: “By your hand that gives the harvest, by the glad feasts of reaping, by the secrets kept in the baskets, let me hide here among the ears of wheat, a few days only, until the goddess's anger is soothed.”",
 	.Fragment_09    = "Ceres and Juno try to calm her: he is young, he is in love, why punish him? But they speak so for fear of his arrows.",
+	.Fragment_09b   = "Psyche prays before the altar of Juno: “Sister and wife of great Jupiter, whether you dwell in your ancient shrines at Samos, or in the blessed seats of lofty Carthage, or guard the walls of Argos by the Inachus: the East honours you as Zygia, the West calls you Lucina. Be Juno the Saviour to me in my last distress, and free me from this fear. I know you help the women who are waiting for a child.”",
 	.Fragment_10    = "Mercury cries the proclamation through every street: whoever brings back the runaway will have seven kisses from Venus.",
 	.Fragment_11    = "Cupid is shut in a room at the back of the house, far from everyone. The wound of the lamp heals slowly.",
 	.Fragment_12    = "Venus goes off to a wedding feast, perfumed and crowned with roses. She leaves Psyche alone with the impossible task.",

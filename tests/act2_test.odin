@@ -248,6 +248,10 @@ act2_levels_solve_and_play :: proc(t: ^testing.T) {
 			testing.expectf(t, reachable && optional, "%s: fragment %d is reachable (%v) and optional (%v)", info.id, f, reachable, optional)
 		}
 		sol := palace.solve(&g.palace, g.data.exit, nil, alloc)
+		if g.data.has_lamp {
+			left := palace.oil_left(&g.palace, sol.plan[:], game.oil_rules(&g.data))
+			testing.expectf(t, left >= 0, "%s: the lamp's oil lasts the plan (%.1f s left)", info.id, left)
+		}
 
 		game.begin(&g, prologue = false)
 		run(&g, game.start_cues_time(&g) + 0.5)

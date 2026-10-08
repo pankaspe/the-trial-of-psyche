@@ -316,6 +316,20 @@ load_text :: proc(g: ^Game, index: int, text: string) -> (err: Maybe(Load_Error)
 	return nil
 }
 
+// The game's timings, for counting the oil a solver plan burns (palace.oil_left).
+oil_rules :: proc(d: ^level.Level_Data) -> pl.Oil_Rules {
+	return {
+		oil = d.oil > 0 ? d.oil : OIL_MAX,
+		light_cost = LIGHT_COST,
+		step = STEP_TIME,
+		passage = PASSAGE_TIME,
+		turn = ROTATE_TIME,
+		handle = PART_TIME,
+		rise_delay = RISE_DELAY,
+		rise_time = RISE_TIME,
+	}
+}
+
 // Allocator of the level arena: for anything that must live exactly as long as the level.
 level_allocator :: proc(g: ^Game) -> mem.Allocator {
 	return virtual.arena_allocator(&g.arena)

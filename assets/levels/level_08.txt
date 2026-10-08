@@ -186,7 +186,7 @@ prop pillar 22 15 5
 prop arch 22 13 5 mx
 column 28 12 0 6
 prop statue 28 12 7 my
-prop urn 27 14 7
+prop vase 28 14 7 mx
 prop vase 26 10 6 mx
 prop vase 24 16 6 py
 prop vase 23 14 5 py
