@@ -73,6 +73,22 @@ CLAUDE.md for the design history).
   II.1 (V.23, the arrow: a needle off the corridor). Solver: 25 steps, 6 turns, 3 lightings,
   404 dead ends. New pieces: `spruce` (fir), `log` (fallen trunk, an edge prop for closing stray
   seams in nature), `rope`.
+- **II.2 rebuilt (2026-10-08), waiting for the user's playtest**: the user's brief: a breather after
+  II.1 (long corridors, nothing new: rotation, the lamp's veiled stones, candelabra), dawn over Pan's
+  river (`setting river_dawn`, bed `River`: water, bubbles, first birds; water colour per setting:
+  `Look.water/glint`), lots of water, the diorama in **two sections joined only by a cave**
+  (`cave x y h dir`, pairs in file order; a real edge between the mouths, `palace.is_passage`; the
+  step is a 2.4 s passage, she fades into one mouth and out of the other: `game.passage_alpha`).
+  Entered only on purpose: Space (or F) at the mouth (`game.enter_cave`; a hint says so; a lit
+  candelabrum marks each mouth); `find_path` never goes through a cave (user's playtest: a click on
+  the scroll picked her own cell at the mouth and sent her back down). Low: bank, boardwalk with two veiled planks, islet,
+  view 3 joins the high bank, long bank north to the cave. High (h11+, beyond ILLUSION_REACH from
+  the river so no illusion joins the sections): ridge arch, view 0 to the second tower, veiled rope
+  bridge, seal raising a rock bridge, steps to the summit (h13, exit: it recalls the Crag of II.3).
+  Fragment on a rock in the middle of the river: stepping stones from the start bank, two veiled
+  (light), then view 3 from the last one. `level_check` now errors on a cave without rock on its
+  side and warns when a click on a scroll would pick another cell (veiled hidden or shown). Solver: 36 steps,
+  2 turns, 2 lightings. Outro: Pan sits on the river's *high brow* (Met. V.25 "supercilium fluminis").
 - Settings follow the slot titles (each level reflects its title): II.2 river and Pan, II.3 the
   sisters' crag, II.4 Ceres, II.5 Juno; level content is rebuilt to fit.
 - Work strictly step by step: one level, the user plays and judges, then the next.

@@ -49,6 +49,7 @@ Setting :: enum u8 {
 	Night_Candles, // the palace of voices by night, its candles lit
 	Deep_Night, // the dead of night: candles out, clouds drifting across the moon
 	Forest_Night, // the dead of night in a forest of rock pillars, far from the palace
+	River_Dawn, // the first light over a wide river, mist on the water, the morning star
 }
 
 SETTING_NAME := [Setting]string {
@@ -58,6 +59,7 @@ SETTING_NAME := [Setting]string {
 	.Night_Candles = "night_candles",
 	.Deep_Night  = "deep_night",
 	.Forest_Night = "forest_night",
+	.River_Dawn   = "river_dawn",
 }
 
 // How a block behaves (Act II): fixed stone, or one that changes for good.
@@ -164,6 +166,15 @@ Candelabrum :: struct {
 	lit:  bool,
 }
 
+// The mouth of a cave: a dark opening in the rock on side `dir` of the
+// surface `cell` (x, y, h). Caves come in pairs, in the order of the file
+// (the first with the second, the third with the fourth...): walking into
+// one, Psyche comes out of the other, wherever it is.
+Cave :: struct {
+	cell: Cell,
+	dir:  Dir,
+}
+
 // A block drawn as the deck of a rope bridge (it holds like any block).
 Plank :: struct {
 	cell:    Cell,
@@ -210,6 +221,7 @@ Level_Data :: struct {
 	ground:       [dynamic]Cell, // blocks and stairs of living rock (earth, not masonry)
 	planks:       [dynamic]Plank, // blocks that are the wooden deck of a rope bridge
 	water:        [dynamic][4]i32, // rectangles of water (x0 y0 x1 y1), just under the h1 surfaces
+	caves:        [dynamic]Cave, // in pairs: each leads to the other of its pair
 	outro:        i18n.Key, // the text of the ending card at the exit
 	has_outro:    bool,
 	has_lamp:     bool, // Psyche carries the lamp (from the end of Act I)
@@ -257,6 +269,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	data.ground = make([dynamic]Cell, 0, 16)
 	data.planks = make([dynamic]Plank, 0, 8)
 	data.water = make([dynamic][4]i32, 0, 2)
+	data.caves = make([dynamic]Cave, 0, 4)
 	data.parts = make([dynamic]Part, 0, 2)
 	data.handles = make([dynamic]Handle, 0, 2)
 	data.rests = make([dynamic]Cell, 0, 4)
@@ -445,7 +458,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 			}
 			if !found {
-				return data, fail(line_no, "setting: expected one of night, crag_sunset, dusk, night_candles, deep_night, forest_night")
+				return data, fail(line_no, "setting: expected one of night, crag_sunset, dusk, night_candles, deep_night, forest_night, river_dawn")
 			}
 
 		case "water":
@@ -454,6 +467,18 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				return data, fail(line_no, "water: expected x0 y0 x1 y1 with x0 <= x1, y0 <= y1")
 			}
 			append(&data.water, v)
+
+		case "cave":
+			v: [3]i32
+			if !ints(args, v[:]) || len(args) < 4 {
+				return data, fail(line_no, "cave: expected x y h dir")
+			}
+			d, ok := iso.dir_from_name(args[3])
+			if !ok {
+				return data, fail(line_no, "cave: unknown direction '%s'", args[3])
+			}
+			append(&data.caves, Cave{v, d})
+			max_z = max(max_z, v.z + 1)
 
 		case "stairs", "steps":
 			v: [3]i32
@@ -616,6 +641,9 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	if part != 0 {
 		return data, fail(line_no, "the last part has no 'end'")
 	}
+	if len(data.caves) % 2 != 0 {
+		return data, fail(line_no, "cave: caves come in pairs (the last one has no other end)")
+	}
 	data.height = max_z + 4
 	if data.height > MAX_HEIGHT {
 		return data, fail(line_no, "level too tall (max z %d)", MAX_HEIGHT - 4)
@@ -632,6 +660,11 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	for e in data.rise {
 		if !check(e.cell, data.size, data.height) {
 			return data, fail(0, "rise %v outside the grid", e.cell)
+		}
+	}
+	for c in data.caves {
+		if !check(c.cell, data.size, data.height) {
+			return data, fail(0, "cave %v outside the grid", c.cell)
 		}
 	}
 	for p in data.props {

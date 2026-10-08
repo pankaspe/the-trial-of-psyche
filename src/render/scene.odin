@@ -235,7 +235,7 @@ Scene :: struct {
 
 scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 	s^ = {}
-	s.pieces = make([dynamic]Piece, 0, len(g.data.blocks) + 2 * len(g.data.props) + 2 * len(g.data.candelabra) + len(g.data.rise) + len(g.data.handles) + 2, allocator)
+	s.pieces = make([dynamic]Piece, 0, len(g.data.blocks) + 2 * len(g.data.props) + 2 * len(g.data.candelabra) + 2 * len(g.data.caves) + len(g.data.rise) + len(g.data.handles) + 2, allocator)
 	s.rng = fx.rng_init(1234)
 	s.mote = look(g.data.setting).mote
 	for e, i in g.data.blocks {
@@ -281,6 +281,10 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 	for c in g.data.candelabra {
 		append(&s.pieces, Piece{cell = c.cell, mesh = oriented_mesh(.Candelabrum_PX, c.dir), material = .Bronze, rise_index = -1, block = -1, handle = -1})
 		append(&s.pieces, Piece{cell = c.cell, mesh = oriented_mesh(.Candelabrum_Wax_PX, c.dir), material = .Psyche, rise_index = -1, block = -1, handle = -1})
+	}
+	for c in g.data.caves {
+		append(&s.pieces, Piece{cell = c.cell, mesh = oriented_mesh(.Cave_PX, c.dir), material = .Rock, rise_index = -1, block = -1, handle = -1})
+		append(&s.pieces, Piece{cell = c.cell, mesh = oriented_mesh(.Cave_Dark_PX, c.dir), material = .Void, rise_index = -1, block = -1, handle = -1})
 	}
 	for h, i in g.data.handles {
 		append(&s.pieces, Piece{cell = h.cell, mesh = .Crank_Post, material = .Bronze, rise_index = -1, block = -1, handle = i32(i)})
@@ -894,7 +898,7 @@ draw_figures :: proc(r: ^Renderer, g: ^game.Game) {
 	rl.DrawMesh(r.meshes[.Head], r.material, rl.MatrixTranslate(base.x, base.y, base.z + 0.548) * rl.MatrixScale(0.046, 0.046, 0.05))
 	if g.data.has_lamp {
 		lamp := game.lamp_world(g)
-		set_piece_uniforms(r, .Bronze, 0, 0, 1, 0.9, 0)
+		set_piece_uniforms(r, .Bronze, 0, 0, game.psyche_alpha(g), 0.9, 0)
 		rl.DrawMesh(r.meshes[.Lamp], r.material, rl.MatrixTranslate(lamp.x, lamp.y, lamp.z - 0.05))
 	}
 
@@ -1056,18 +1060,21 @@ draw_water :: proc(g: ^game.Game, time: f32) {
 	rlgl.SetTexture(rlgl.GetTextureIdDefault())
 	lamp := game.lamp_world(g)
 	warm := g.data.has_lamp ? g.light : 0
+	lk := look(g.data.setting)
+	surface := lk.water.a > 0 ? lk.water : Color4{0.08, 0.12, 0.27, 0.8}
+	glint := lk.glint.a > 0 ? lk.glint : Color4{0.65, 0.75, 1.0, 0.4}
 	for w in g.data.water {
 		x0, y0 := f32(w[0]), f32(w[1])
 		x1, y1 := f32(w[2] + 1), f32(w[3] + 1)
 		edge :: proc(v, lo, hi: f32) -> f32 {
 			return fx.clamp01(min(v - lo, hi - v) / 1.2)
 		}
-		point :: proc(x, y, x0, y0, x1, y1: f32, lamp: Vec3, warm: f32) {
+		point :: proc(x, y, x0, y0, x1, y1: f32, lamp: Vec3, warm: f32, surface: Color4) {
 			a := edge(x, x0, x1) * edge(y, y0, y1)
 			a = a * a * (3 - 2 * a)
 			d := Vec2{x - lamp.x, y - lamp.y}
 			lit := warm * fx.clamp01(1 - math.sqrt(d.x * d.x + d.y * d.y) / 3)
-			c := fx.lerp(Color4{0.08, 0.12, 0.27, 0.8}, Color4{0.4, 0.25, 0.1, 0.85}, lit)
+			c := fx.lerp(surface, Color4{0.4, 0.25, 0.1, 0.85}, lit)
 			c.a *= a
 			color(c)
 			vtx({x, y, WATER_Z})
@@ -1076,12 +1083,12 @@ draw_water :: proc(g: ^game.Game, time: f32) {
 		rlgl.Begin(rlgl.TRIANGLES)
 		for y := y0; y < y1 - 0.001; y += STEP {
 			for x := x0; x < x1 - 0.001; x += STEP {
-				point(x, y, x0, y0, x1, y1, lamp, warm)
-				point(x + STEP, y, x0, y0, x1, y1, lamp, warm)
-				point(x + STEP, y + STEP, x0, y0, x1, y1, lamp, warm)
-				point(x, y, x0, y0, x1, y1, lamp, warm)
-				point(x + STEP, y + STEP, x0, y0, x1, y1, lamp, warm)
-				point(x, y + STEP, x0, y0, x1, y1, lamp, warm)
+				point(x, y, x0, y0, x1, y1, lamp, warm, surface)
+				point(x + STEP, y, x0, y0, x1, y1, lamp, warm, surface)
+				point(x + STEP, y + STEP, x0, y0, x1, y1, lamp, warm, surface)
+				point(x, y, x0, y0, x1, y1, lamp, warm, surface)
+				point(x + STEP, y + STEP, x0, y0, x1, y1, lamp, warm, surface)
+				point(x, y + STEP, x0, y0, x1, y1, lamp, warm, surface)
 			}
 		}
 		rlgl.End()
@@ -1095,7 +1102,7 @@ draw_water :: proc(g: ^game.Game, time: f32) {
 					py := f32(cy) + 0.15 + 0.7 * fx.hash01(h + 2)
 					a := edge(px, x0, x1) * edge(py, y0, y1) * math.sin(u * math.PI)
 					len := 0.12 + 0.18 * fx.hash01(h + 3)
-					floor_strip({px, py, WATER_Z + 0.003}, {px + len, py, WATER_Z + 0.003}, {0, 1, 0}, 0.022, {0.65, 0.75, 1.0, 0.4 * a})
+					floor_strip({px, py, WATER_Z + 0.003}, {px + len, py, WATER_Z + 0.003}, {0, 1, 0}, 0.022, {glint.r, glint.g, glint.b, glint.a * a})
 				}
 			}
 		}
@@ -1275,9 +1282,10 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	// the lamp
 	lamp := game.lamp_world(g)
 	f := g.flicker
-	glow(v, lamp, 150, {1.0, 0.68, 0.32, g.light * 0.32 * f})
-	glow(v, lamp + {0, 0, 0.02}, 9 * (0.85 + 0.15 * f), {1.0, 0.75, 0.4, g.light * f}, 1.7)
-	glow(v, lamp + {0, 0, 0.02}, 4 * (0.85 + 0.15 * f), {1.0, 0.95, 0.8, g.light * f}, 1.6)
+	seen := game.psyche_alpha(g)
+	glow(v, lamp, 150, {1.0, 0.68, 0.32, g.light * 0.32 * f * (0.4 + 0.6 * seen)})
+	glow(v, lamp + {0, 0, 0.02}, 9 * (0.85 + 0.15 * f), {1.0, 0.75, 0.4, g.light * f * seen}, 1.7)
+	glow(v, lamp + {0, 0, 0.02}, 4 * (0.85 + 0.15 * f), {1.0, 0.95, 0.8, g.light * f * seen}, 1.6)
 	// the fragments' faint glow
 	for _, i in g.data.fragments {
 		if a, lift := fragment_alpha(g, i); a > 0.003 && i not_in g.fragments_known {

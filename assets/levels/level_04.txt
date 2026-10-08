@@ -26,7 +26,8 @@
 #                           deep_night (darker, candles out, clouds across the moon) |
 #                           dusk (the palace at twilight, candles lit) |
 #                           crag_sunset (a crag over a sea of clouds, mountains, sunset) |
-#                           forest_night (the dead of night in a forest of rock pillars)
+#                           forest_night (the dead of night in a forest of rock pillars) |
+#                           river_dawn (first light over a wide river, mist, the morning star)
 #   start|sigil x y h       (h = surface height = block z + 1)
 #   amore x y h             the cell of the bed where Cupid sleeps
 #   exit x y h              reaching it completes the level
@@ -54,6 +55,10 @@
 #   steps x y z dir         stairs cut in the rock (as stairs, earth and grass)
 #   water x0 y0 x1 y1       a river over these cells, just under the h1 surfaces
 #                           (decoration: it holds nobody)
+#   cave x y h dir          the mouth of a cave in the rock on side dir of surface
+#                           x y h (the rock there must rise above it); caves pair
+#                           up in file order (1st with 2nd, 3rd with 4th...):
+#                           walking into one, Psyche comes out of the other
 #   prologue x y h          the level opens with the prologue cutscene; the
 #                           procession comes up at this cell and walks to start
 # Act II (palaces that change; ./build.sh check solves them move by move):

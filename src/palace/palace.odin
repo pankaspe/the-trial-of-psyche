@@ -13,6 +13,10 @@
 // behind the palace leads nowhere. Stairs work in the dark only when every
 // tread is visible in the current view; in the lamp light they always work.
 //
+// Caves come in pairs: walking into the mouth of one, Psyche comes out of the
+// other. A passage is a real edge between the two mouths (it works in the
+// dark and in the light, whatever the view).
+//
 // Act II: some blocks change for good (`flipped`): a crumbling block falls once
 // Psyche steps off it, a phantom block (real only in the dark) dissolves when
 // the lamp's light reaches it, a veiled block (hidden in the dark) becomes
@@ -321,8 +325,30 @@ rebuild_graph :: proc(p: ^Palace) {
 			}
 		}
 	}
+	for k := 0; k + 1 < len(p.data.caves); k += 2 {
+		a, b := node_index(p, p.data.caves[k].cell), node_index(p, p.data.caves[k + 1].cell)
+		if a >= 0 && b >= 0 && !p.nodes[a].stair && !p.nodes[b].stair {
+			add_pair(&p.real, a, b)
+		}
+	}
 	graph_build(&p.real, len(p.nodes))
 	rebuild_illusions(p)
+}
+
+// The cave whose mouth is at surface c, or -1.
+cave_at :: proc(p: ^Palace, c: Cell) -> int {
+	for cave, i in p.data.caves {
+		if cave.cell == c {
+			return i
+		}
+	}
+	return -1
+}
+
+// Is the step a-b a passage through the rock, from one cave's mouth to the other's?
+is_passage :: proc(p: ^Palace, a, b: Cell) -> bool {
+	i, j := cave_at(p, a), cave_at(p, b)
+	return i >= 0 && j >= 0 && i / 2 == j / 2 && i != j
 }
 
 @(private)
@@ -530,7 +556,8 @@ is_illusion :: proc(p: ^Palace, a, b: Cell) -> bool {
 
 // --- search --------------------------------------------------------------------
 
-// Breadth-first path from `from` to `to` (excluding `from`) into `out`.
+// Breadth-first path from `from` to `to` (excluding `from`) into `out`; it
+// never goes through a cave (that is entered on purpose).
 // Returns false (and an empty path) when unreachable. A path that crosses no
 // crumbling block on the way is preferred: those fall behind her, so she
 // crosses them only when there is no other way.
@@ -564,6 +591,9 @@ search_path :: proc(p: ^Palace, from, to: Cell, dark: bool, out: ^Path, careful:
 				if parent[nb] < 0 && step_allowed(p, cur, nb, dark) {
 					if careful && nb != goal && on_crumble(p, nb) {
 						continue
+					}
+					if is_passage(p, p.nodes[cur].cell, p.nodes[nb].cell) {
+						continue // only on purpose: game.enter_cave
 					}
 					parent[nb] = cur
 					if nb == goal {

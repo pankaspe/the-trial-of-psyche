@@ -85,6 +85,10 @@ main :: proc() {
 		fmt.println()
 	}
 
+	if !check_screen(&p, &data) {
+		os.exit(1)
+	}
+
 	if pl.is_dynamic(&data) {
 		solve_report(&p, &data, alloc)
 		return
@@ -103,6 +107,49 @@ main :: proc() {
 	if (data.has_exit || data.has_amore) && !print_plan(&p, &data, alloc) {
 		os.exit(1)
 	}
+}
+
+// What the player sees and clicks: every cave has rock where its opening is
+// (an error otherwise), and a click on a fragment's scroll picks the
+// fragment's own cell in every view (a warning otherwise: the click would
+// send Psyche somewhere else, in the worst case to a cave's mouth). The
+// palace is checked as loaded and whole (veiled blocks shown, the seal's
+// blocks raised).
+check_screen :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
+	ok = true
+	for cave in data.caves {
+		d := iso.DIR_VEC[cave.dir]
+		if pl.solid_at(p, cave.cell + {d.x, d.y, 0}).kind != .Block {
+			fmt.eprintfln("error: the cave at %v has no rock on its side %v", cave.cell, cave.dir)
+			ok = false
+		}
+	}
+	for whole in ([2]bool{false, true}) {
+		// as loaded (veiled stones hidden), then whole
+		for &f, i in p.flipped {
+			f = whole && data.blocks[i].trait == .Veiled
+		}
+		p.risen = whole && len(data.rise) > 0
+		pl.rebuild_graph(p)
+		for c in data.fragments {
+			for r in 0 ..< 4 {
+				pl.set_view(p, r)
+				w := pl.node_world(p, c) + {0, 0, 0.22}
+				got, found := pl.pick(p, iso.project(iso.view_point(w, f32(r), p.size)), f32(r))
+				if found && got != c {
+					note := pl.cave_at(p, got) >= 0 ? " (a cave's mouth!)" : ""
+					fmt.printfln("warning: view %d%s: a click on the scroll at %v picks %v%s", r, whole ? "" : " (veiled hidden)", c, got, note)
+				}
+			}
+		}
+	}
+	for &f in p.flipped {
+		f = false
+	}
+	p.risen = false
+	pl.set_view(p, 0)
+	pl.rebuild_graph(p)
+	return
 }
 
 report :: proc(p: ^pl.Palace, data: ^level.Level_Data, label: string, reached: []bool) {

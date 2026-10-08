@@ -63,6 +63,7 @@ Bed :: enum u8 {
 	Night, // a still night full of crickets
 	Deep_Night, // low wind, a few far crickets
 	Forest, // the night wind in the trees, crickets in the grass
+	River, // a wide river flowing, a breeze, the first birds of the morning
 }
 
 BED_SECONDS :: 24
@@ -451,6 +452,9 @@ synthesize_bed :: proc(bed: Bed, allocator := context.allocator) -> []f32 {
 	case .Forest:
 		wind = {0.2, 260, 1100, 0.7}
 		crickets, cricket_level = 4, 0.026
+	case .River:
+		wind = {0.1, 220, 700, 0.5}
+		crickets, cricket_level = 1, 0.01
 	}
 	for ch in 0 ..< 2 {
 		pk: Pink
@@ -498,6 +502,9 @@ synthesize_bed :: proc(bed: Bed, allocator := context.allocator) -> []f32 {
 		}
 		_ = c
 	}
+	if bed == .River {
+		river(raw, m, &rng)
+	}
 	// the wrap: the last XF seconds fade into the first, equal power
 	out := make([]f32, n * 2, allocator)
 	xf := m - n
@@ -512,6 +519,74 @@ synthesize_bed :: proc(bed: Bed, allocator := context.allocator) -> []f32 {
 		}
 	}
 	return out
+}
+
+// The river: a broad wash of water (pink noise through a slow, wandering
+// band), the babble of the current over stones (many small bubbles, each a
+// short rising tone), and now and then a bird of the first light.
+@(private)
+river :: proc(raw: []f32, m: int, rng: ^fx.Rng) {
+	for ch in 0 ..< 2 {
+		pk: Pink
+		f: Svf
+		ph := fx.rand_range(rng, 0, 10)
+		for i in 0 ..< m {
+			t := time_of(i)
+			sway := 0.5 + 0.5 * math.sin(0.31 * t + ph) * math.sin(0.13 * t + 2 * ph)
+			_, bp, _ := svf(&f, pink(&pk, rng), 520 + 380 * sway, 0.9)
+			raw[2 * i + ch] += bp * 0.22
+		}
+	}
+	// bubbles: a few hundred per second would be a torrent; this is a calm river
+	for b := 0; b < int(f32(m) / RATE * 26); b += 1 {
+		start := int(fx.randf(rng) * f32(m))
+		hz := fx.rand_range(rng, 380, 1300)
+		dur := fx.rand_range(rng, 0.012, 0.035)
+		level := fx.rand_range(rng, 0.004, 0.018)
+		pan := fx.rand_range(rng, -0.9, 0.9)
+		left, right := math.sqrt(0.5 * (1 - pan)), math.sqrt(0.5 * (1 + pan))
+		length := int(dur * RATE)
+		phase: f32 = 0
+		for k in 0 ..< length {
+			i := start + k
+			if i >= m {
+				break
+			}
+			u := f32(k) / f32(length)
+			phase += math.TAU * hz * (1 + 0.8 * u) / RATE // the pitch rises as the bubble bursts
+			v := math.sin(phase) * math.sin(math.PI * u) * (1 - u) * level
+			raw[2 * i] += v * left
+			raw[2 * i + 1] += v * right
+		}
+	}
+	// the first birds: short whistled phrases, far off
+	for start := fx.rand_range(rng, 1, 4); start < f32(m) / RATE - 2; start += fx.rand_range(rng, 3.5, 8) {
+		pan := fx.rand_range(rng, -0.85, 0.85)
+		left, right := math.sqrt(0.5 * (1 - pan)), math.sqrt(0.5 * (1 + pan))
+		base := fx.rand_range(rng, 2600, 3800)
+		notes := 2 + int(fx.randf(rng) * 4)
+		at := start
+		phase: f32 = 0
+		for _ in 0 ..< notes {
+			dur := fx.rand_range(rng, 0.06, 0.16)
+			from := base * fx.rand_range(rng, 0.85, 1.15)
+			to := from * fx.rand_range(rng, 0.8, 1.3)
+			s0 := int(at * RATE)
+			length := int(dur * RATE)
+			for k in 0 ..< length {
+				i := s0 + k
+				if i >= m {
+					break
+				}
+				u := f32(k) / f32(length)
+				phase += math.TAU * (from + (to - from) * u) / RATE
+				v := math.sin(phase) * math.sin(math.PI * u) * 0.012
+				raw[2 * i] += v * left
+				raw[2 * i + 1] += v * right
+			}
+			at += dur + fx.rand_range(rng, 0.03, 0.12)
+		}
+	}
 }
 
 // Feedback delay network reverb: 8 lines, Householder feedback, damping per

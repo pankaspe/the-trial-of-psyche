@@ -1,87 +1,186 @@
 # The Trial of Psyche - level II.2: "The River and Pan"
-# Crumbling stones, no tutorial: a bigger climb. The river has set Psyche on
-# its south bank; across the water stands the crag where Pan sits, and the
-# way up spirals around it on ledges, some of them cracked.
-#   1. the ford: two cracked stepping stones, crossed once;
-#   2. the south ledge and the steps cut in the rock (seen only from some
-#      views in the dark);
-#   3. the east ledge is broken: from its cracked end, view 1 joins it to a
-#      cracked outcrop on the north-east corner. Turn before stepping off it,
-#      or it falls behind her for nothing (the brazier brings her back);
-#   4. the north ledge, steps up (other views), the west ledge and a last
-#      cracked stone onto the summit;
-#   5. the seal on the summit: the lamp lit there raises the bridge to Pan's
-#      meadow, where the river's journey ends.
-# Fragment: on a rock in the river, joined (view 2) only to the first stone
-# of the ford; from the rock, view 3 joins the south ledge.
+# A breath after II.1: long walks, nothing new, everything Psyche knows
+# (turning, the lamp's veiled stones, the candelabra it lights). Dawn over
+# the river that set her on its bank. The diorama has two parts that no path
+# joins: the river below, the crag of Pan above; a cave at the crag's foot
+# leads up through the rock and out near its top.
 # Format: see level_04.txt.
-size 12
+size 16
+setting river_dawn
 
-# the south bank, where the river set her (h1)
-ground 5 10 0 0
-ground 6 10 0 0
-ground 6 11 0 0
-# the ford
-crumble 5 9 0 rock
-crumble 5 8 0 rock
-# the rock in the river, with the fragment (h2)
-ground 3 8 0 1
-fragment 3 8 2
+# --- below: the river -----------------------------------------------------------
+water 0 0 15 15
 
-# the crag: its core, the summit (h4)
-ground 5 5 0 3
-ground 6 5 0 3
-ground 5 6 0 3
-ground 6 6 0 3
-prop fence 6 5 4 px
-# south ledge (h1) and steps up east
-ground 4 7 0 0
-ground 5 7 0 0
-ground 6 7 0 0
-steps 6 7 1 px
-# east ledge (h2), broken: its last stone is cracked
-ground 7 7 0 1
-ground 7 6 0 0
-crumble 7 6 1 rock
-# the cracked outcrop on the north-east corner (h3)
-ground 8 4 0 1
-crumble 8 4 2 rock
-# north ledge (h3), steps up west
-ground 7 4 0 2
-ground 6 4 0 2
-ground 5 4 0 2
-steps 5 4 3 mx
-# west ledge (h4): a cracked stone onto the summit
-ground 4 4 0 3
-ground 4 5 0 2
-crumble 4 5 3 rock
+# the bank where the river set her (h1)
+ground 12 13 0 0
+ground 13 13 0 0
+ground 14 13 0 0
+ground 12 14 0 0
+ground 13 14 0 0
+ground 14 14 0 0
+# the boardwalk west over the water; two planks veiled
+block 11 13 0 plank
+block 10 13 0 plank
+block 9 13 0 plank
+veiled 8 13 0 plank
+veiled 7 13 0 plank
+block 6 13 0 plank
+block 5 13 0 plank
+# stepping stones from the bank out into the river, two of them veiled (out
+# of the lamp's reach from the boardwalk); from the last one, view 3 joins
+# the rock of the fragment in the middle of the river (h2)
+rock 12 12 0 0
+veiled 12 11 0 rock
+veiled 12 10 0 rock
+rock 11 10 0 0
+rock 10 10 0 0
+rock 10 9 0 0
+rock 10 8 0 0
+rock 9 8 0 0
+rock 7 9 0 1
+prop reeds 7 9 2 my
+# the islet of reeds (h1)
+ground 3 12 0 0
+ground 4 12 0 0
+ground 3 13 0 0
+ground 4 13 0 0
+ground 3 14 0 0
+ground 4 14 0 0
+# the high bank (h2), joined to the islet in view 3, a long way north to the cave
+ground 1 14 0 1
+ground 1 13 0 1
+ground 1 12 0 1
+ground 1 11 0 1
+ground 1 10 0 1
+ground 1 9 0 1
+ground 1 8 0 1
+ground 2 8 0 1
+rock 1 7 0 4
+rock 2 7 0 5
+prop spruce 2 7 6
+cave 1 8 2 my
 
-# Pan's meadow (h4), across the gap the seal bridges
-ground 6 1 0 3
-ground 7 1 0 3
-ground 7 0 0 3
-prop cypress 7 0 4
-rise 6 4 3
-rise 6 3 3
-rise 6 2 3
+# --- above: the crag of Pan -------------------------------------------------------
+# High enough (h11 and up) that no illusion can join it to the river.
+# where the cave comes out (h11), an outcrop of rock around its mouth
+ground 2 3 0 10
+ground 3 3 0 10
+ground 2 2 0 10
+ground 3 2 0 10
+rock 4 3 0 11
+prop spruce 4 3 12
+cave 3 3 11 px
+ground 1 2 0 9
+prop spruce 1 2 10
+# the crag's flank down to the cave: pillars of rock, firs on them
+ground 1 6 0 6
+prop spruce 1 6 7
+ground 2 6 0 5
+prop spruce 2 6 6
+ground 2 5 0 7
+prop spruce 2 5 8
+ground 3 5 0 6
+prop spruce 3 5 7
+ground 2 4 0 9
+prop spruce 2 4 10
+ground 3 4 0 8
+prop spruce 3 4 9
+# the ridge east (h11), an arch of rock over the water; in view 0 it joins
+# the second tower
+rock 4 2 8 10
+rock 5 2 8 10
+ground 6 2 0 10
+# a needle of rock beside the ridge
+ground 5 4 0 9
+prop spruce 5 4 10
+# the second tower (h12)
+ground 8 2 0 11
+ground 8 3 0 11
+ground 9 2 0 11
+ground 9 3 0 11
+# the rope bridge to the third tower: veiled planks
+veiled 10 2 11 plank
+veiled 11 2 11 plank
+prop rope 10 2 12 py
+prop rope 10 2 12 my
+prop rope 11 2 12 py
+prop rope 11 2 12 my
+# the third tower (h12): the seal
+ground 12 2 0 11
+ground 13 2 0 11
+ground 12 3 0 11
+ground 13 3 0 11
+# the crag's shoulders: lower spurs of rock under firs
+ground 1 3 0 9
+prop spruce 1 3 10
+ground 2 1 0 8
+prop spruce 2 1 9
+ground 3 1 0 6
+prop spruce 3 1 7
+ground 0 3 0 5
+prop spruce 0 3 6
+ground 6 3 0 6
+prop spruce 6 3 7
+ground 8 4 0 7
+prop spruce 8 4 8
+ground 9 4 0 4
+prop spruce 9 4 5
+ground 7 1 0 5
+prop spruce 7 1 6
+ground 10 3 0 6
+prop spruce 10 3 7
+ground 14 2 0 9
+prop spruce 14 2 10
+ground 14 3 0 6
+prop spruce 14 3 7
+ground 12 4 0 5
+prop spruce 12 4 6
+ground 12 1 0 8
+prop spruce 12 1 9
+# the seal raises a bridge of rock south; steps up to the summit (h13):
+# Pan's high bank over the river
+rise 13 4 11 ground
+rise 13 5 11 ground
+steps 13 6 12 py
+ground 13 6 0 11
+ground 13 7 0 12
+ground 14 7 0 12
+ground 13 8 0 12
+ground 14 8 0 12
+# the summit's shoulders
+ground 15 8 0 8
+prop spruce 15 8 9
+ground 14 9 0 10
+prop spruce 14 9 11
+ground 12 7 0 6
+prop spruce 12 7 7
+ground 13 9 0 3
+prop boulder 13 9 4
+ground 15 7 0 5
+prop spruce 15 7 6
 
-# the river, all around the crag
-water 0 0 11 11
-# reeds on the banks
-prop reeds 5 10 1 mx
-prop reeds 6 10 1 px
-prop reeds 4 7 1 mx
-prop reeds 3 8 2 my
-prop reeds 7 7 2 px
-
-start 5 10 1
-sigil 6 6 4
-exit 7 1 4
-rest 5 10 1
-rest 7 7 2
-rest 6 4 3
+start 13 13 1
+exit 14 8 13
+sigil 12 3 12
+fragment 7 9 2
+rest 13 13 1
+rest 2 3 11
 lamp
-oil 6
 intro intro_ii_2
 outro outro_ii_2
-hint 6 6 4 hint_sigil
+
+# candelabra waiting for the lamp along the way
+candelabrum 9 13 1 py
+candelabrum 4 13 1 px
+candelabrum 9 2 12 my
+candelabrum 12 3 12 mx
+# a candelabrum burns at each cave's mouth
+candelabrum 1 8 2 mx lit
+candelabrum 3 3 11 px lit
+
+# reeds and the river's banks
+prop reeds 14 14 1 px
+prop reeds 12 14 1 py
+prop reeds 3 14 1 py
+prop reeds 4 14 1 px
+prop shrub 1 11 2 px

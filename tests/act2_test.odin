@@ -144,6 +144,54 @@ rest 0 3 1
 	testing.expect(t, !palace.find_path(&g.palace, g.psyche.cell, g.data.exit, true, &path), "and the bridge points the wrong way again")
 }
 
+// Two caves: walking into one, Psyche comes out of the other, far above, on
+// a platform no path reaches; the dark of the rock hides her on the way.
+@(test)
+cave_leads_to_its_pair :: proc(t: ^testing.T) {
+	g: game.Game
+	defer game.destroy(&g)
+	LEVEL :: `size 8
+block 0 0 0
+block 1 0 0
+block 2 0 0
+column 3 0 0 2
+cave 2 0 1 px
+column 0 5 0 4
+column 1 5 0 4
+column 0 4 0 5
+cave 1 5 5 mx
+column 2 5 0 4
+start 0 0 1
+exit 2 5 5
+`
+	if !load_text(t, &g, LEVEL) {
+		return
+	}
+	testing.expect(t, palace.is_passage(&g.palace, {2, 0, 1}, {1, 5, 5}), "the two mouths are joined")
+	testing.expect(t, game.walk_to(&g, {1, 0, 1}), "a walk that does not use the cave")
+	run(&g, 1)
+	testing.expect(t, g.psyche.cell == iso.Cell{1, 0, 1} && game.psyche_alpha(&g) == 1, "goes by it")
+	path: palace.Path
+	testing.expect(t, !palace.find_path(&g.palace, g.psyche.cell, g.data.exit, true, &path), "a walk never goes into the rock by itself")
+	testing.expect(t, walk(t, &g, {2, 0, 1}), "to the mouth")
+	testing.expect(t, game.at_cave(&g), "she stands at the mouth")
+	testing.expect(t, game.enter_cave(&g), "into the cave")
+	// she walks into one mouth and out of the other at their own level: never through the air
+	on_ground := true
+	hidden := false
+	for _ in 0 ..< int((game.PASSAGE_TIME + 0.2) / DT) {
+		game.update(&g, DT)
+		z := g.psyche.pos.z
+		on_ground &&= abs(z - 1) < 0.01 || abs(z - 5) < 0.01
+		hidden ||= game.psyche_alpha(&g) < 0.05
+		free_all(context.temp_allocator)
+	}
+	testing.expect(t, on_ground, "the passage keeps her feet on the mouths' floors")
+	testing.expect(t, hidden, "in the dark of the rock she is not seen")
+	testing.expect(t, g.psyche.cell == iso.Cell{1, 5, 5} && game.psyche_alpha(&g) == 1, "out of the other mouth")
+	testing.expect(t, walk(t, &g, g.data.exit), "on to the exit")
+}
+
 // The level that introduces a mechanic presents it once, before the intro;
 // a restart does not.
 @(test)

@@ -28,6 +28,8 @@ Look :: struct {
 	cloud_front:   Vec3,
 	cloud_crest:   Vec3, // light on the crests (sunlight)
 	mist:          Vec3, // the foot of the level sinks into it
+	water:         Color4, // the river's surface (a = 0: the night's)
+	glint:         Color4, // the light drifting on it
 	daylight:      f32, // stones: 0 moonlit palette .. 1 the low sun
 	candles:       bool, // the candles on the walls are lit
 	gloom:         f32, // 0 .. 1: how much darker the stones are than under a clear moon
@@ -119,6 +121,32 @@ LOOKS := [level.Setting]Look {
 		gloom = 0.3,
 		moon_clouds = 0.8,
 		mote = {0.75, 0.95, 0.45, 0.6},
+	},
+	// dawn over Pan's river: the night withdrawing, a band of rose low in the
+	// east, the morning star still bright, blue ranges, mist on the water
+	.River_Dawn = {
+		sky_top = {0.04, 0.06, 0.17},
+		sky_mid = {0.20, 0.24, 0.42},
+		sky_horizon = {0.86, 0.62, 0.55},
+		orb_pos = {0.24, 0.52},
+		orb_radius = 0.009,
+		orb_color = {1.0, 0.97, 0.9},
+		halo_color = {0.22, 0.22, 0.32},
+		halo_width = 14,
+		stars = 0.35,
+		haze = {0.42, 0.36, 0.48},
+		islands = false,
+		ridges = 1,
+		ridge_color = {{0.36, 0.38, 0.55}, {0.24, 0.27, 0.42}, {0.13, 0.17, 0.27}},
+		ridge_rim = {0.9, 0.6, 0.5},
+		cloud_back = {0.44, 0.42, 0.56},
+		cloud_front = {0.55, 0.52, 0.64},
+		cloud_crest = {0.45, 0.28, 0.2},
+		mist = {0.30, 0.33, 0.46},
+		water = {0.2, 0.25, 0.42, 0.85},
+		glint = {1.0, 0.82, 0.72, 0.55},
+		daylight = 0.45,
+		mote = {1.0, 0.9, 0.75, 0.4},
 	},
 	// Zephyr's crag: the sun sets behind far ranges, the crag stands over the clouds
 	.Crag_Sunset = {

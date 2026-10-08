@@ -10,6 +10,9 @@ apply_move :: proc(g: ^Game, st: pl.Plan_Step) -> bool {
 	switch st.move {
 	case .Start:
 	case .Step:
+		if pl.is_passage(&g.palace, g.psyche.cell, st.cell) {
+			return enter_cave(g)
+		}
 		return walk_to(g, st.cell)
 	case .Turn_Left:
 		request_turn(g, -1)

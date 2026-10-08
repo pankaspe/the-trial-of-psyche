@@ -51,6 +51,8 @@ Mesh_Id :: enum u8 {
 	Crank_Post, // a handle: a bronze post in the (+x, +y) corner...
 	Crank_Wheel, // ...and its wheel, turning about its own centre
 	Altar, // a small brazier in the (-x, -y) corner: a resting place
+	Cave_PX, Cave_MX, Cave_PY, Cave_MY, // the stones framing a cave's mouth on the +x side...
+	Cave_Dark_PX, Cave_Dark_MX, Cave_Dark_PY, Cave_Dark_MY, // ...and the dark inside it
 }
 
 // Where the resting brazier's flame burns, in cell space.
@@ -75,6 +77,7 @@ Material :: enum u8 {
 	Phantom, // a stone real only in the dark: pale, see-through in the light
 	Rock, // living rock under the meadows: brown earth in rough strata
 	Wood, // bark
+	Void, // the dark inside a cave
 }
 
 PROP_MESH := [level.Prop_Kind]Mesh_Id {
@@ -361,6 +364,27 @@ plank_x :: proc() -> []Box {
 	return out[:]
 }
 
+// The mouth of a cave in the rock face on the +x side of the cell (the face
+// at x = 1): rough stones around an arched opening, a fallen one at its foot.
+@(private)
+CAVE_PX := [?]Box {
+	{{0.88, 0.13, 0}, {1.0, 0.26, 0.56}}, // the jambs
+	{{0.9, 0.16, 0.56}, {1.0, 0.3, 0.7}},
+	{{0.88, 0.74, 0}, {1.0, 0.87, 0.5}},
+	{{0.9, 0.7, 0.5}, {1.0, 0.84, 0.68}},
+	{{0.89, 0.2, 0.68}, {1.0, 0.37, 0.8}}, // the arch
+	{{0.89, 0.63, 0.66}, {1.0, 0.8, 0.78}},
+	{{0.86, 0.3, 0.76}, {1.0, 0.7, 0.88}},
+	{{0.7, 0.1, 0}, {0.84, 0.25, 0.11}}, // a fallen stone
+	{{0.76, 0.78, 0}, {0.86, 0.9, 0.07}},
+}
+@(private)
+CAVE_DARK_PX := [?]Box {
+	{{0.955, 0.26, 0}, {1.0, 0.74, 0.54}},
+	{{0.955, 0.3, 0.54}, {1.0, 0.7, 0.68}},
+	{{0.955, 0.36, 0.68}, {1.0, 0.64, 0.77}},
+}
+
 // A standing candelabrum about its own foot (0, 0): a round foot, a slender
 // shaft with a knot, a bar with three cups; the candles are their own piece.
 @(private)
@@ -466,6 +490,8 @@ build_meshes :: proc(meshes: ^[Mesh_Id]rl.Mesh) {
 	four(meshes, .Boulder_PX, BOULDER_PX[:])
 	four(meshes, .Shrub_PX, SHRUB_PX[:])
 	four(meshes, .Cairn_PX, CAIRN_PX[:])
+	four(meshes, .Cave_PX, CAVE_PX[:])
+	four(meshes, .Cave_Dark_PX, CAVE_DARK_PX[:])
 	meshes[.Pillar] = one(PILLAR[:])
 	meshes[.Plinth] = one(PLINTH[:])
 	meshes[.Cypress] = one(cypress())

@@ -17,6 +17,11 @@
 // (the lamp cannot be lit over a phantom); standing on a handle, a click on
 // her own cell (or F) turns a part of the palace a quarter.
 //
+// Caves come in pairs. Standing at the mouth of one, Space (or F) takes her
+// through the rock (a step longer than the others): she walks into the dark
+// and out of the other. Walks never go through a cave by themselves: a click
+// elsewhere must not carry her into the rock.
+//
 // Cutscenes are timelines: a phase plus the time spent in it; every animation
 // is a function of that time, so there are no callbacks to keep alive.
 //
@@ -64,6 +69,8 @@ MAX_QUEUED_VOICES :: 4
 PART_TIME :: 0.9 // a part of the palace turning a quarter
 FALL_TIME :: 1.3 // a crumbling block falling
 DISSOLVE_TIME :: 1.2 // a phantom dissolving, a veiled block appearing
+PASSAGE_TIME :: 2.4 // through the rock from one cave to the other
+PASSAGE_DEPTH :: 0.45 // how far into the mouth she walks before the dark takes her
 
 Phase :: enum u8 {
 	Play,
@@ -111,6 +118,7 @@ Psyche :: struct {
 	step_to:       Cell,
 	step_t:        f32,
 	step_illusion: bool,
+	step_passage:  bool, // the step is a passage between two caves
 	pos:           Vec3, // feet, world space
 	yaw:           f32, // facing, radians in the world xy plane
 	target_yaw:    f32,
@@ -657,6 +665,28 @@ click :: proc(g: ^Game, point: Vec2) {
 	}
 }
 
+// Psyche stands still at the mouth of a cave whose other end can be reached.
+at_cave :: proc(g: ^Game) -> bool {
+	if !g.active || g.phase != .Play || g.turning || g.psyche.walking {
+		return false
+	}
+	i := pl.cave_at(&g.palace, g.psyche.cell)
+	return i >= 0 && pl.is_passage(&g.palace, g.psyche.cell, g.data.caves[i ~ 1].cell) && pl.is_real_edge(&g.palace, g.psyche.cell, g.data.caves[i ~ 1].cell)
+}
+
+// Into the cave at her feet, out of the other end.
+enter_cave :: proc(g: ^Game) -> bool {
+	if !at_cave(g) {
+		return false
+	}
+	learn(g, .Hint_Cave)
+	sa.clear(&g.path)
+	sa.push_back(&g.path, g.data.caves[pl.cave_at(&g.palace, g.psyche.cell) ~ 1].cell)
+	g.pending_turn = 0
+	next_step(g)
+	return true
+}
+
 // Start walking to `target` as a click on it would (tests, scripted scenes).
 walk_to :: proc(g: ^Game, target: Cell) -> bool {
 	from := g.psyche.walking ? g.psyche.step_to : g.psyche.cell
@@ -678,6 +708,7 @@ next_step :: proc(g: ^Game) {
 	}
 	next := sa.get(g.path, 0)
 	illusion := pl.is_illusion(&g.palace, psy.cell, next)
+	passage := pl.is_passage(&g.palace, psy.cell, next)
 	if !pl.is_real_edge(&g.palace, psy.cell, next) && !(illusion && !g.lamp_on) {
 		// the way has changed under her (a stone fell, the light dissolved one)
 		sa.clear(&g.path)
@@ -704,15 +735,41 @@ next_step :: proc(g: ^Game) {
 	psy.step_from = psy.cell
 	psy.step_to = next
 	psy.step_t = 0
-	psy.step_illusion = illusion
+	psy.step_illusion = illusion && !passage
+	psy.step_passage = passage
 	psy.walking = true
-	if illusion {
+	if psy.step_illusion {
 		audio.play(.Seam, -14)
 		learn(g, .Hint_Illusion)
+	}
+	if passage {
+		audio.play(.Wind, -15, 0.55)
 	}
 	a, _ := step_points(g, 0)
 	b, _ := step_points(g, 0.49)
 	face_toward(g, b - a)
+}
+
+// How long the current step lasts.
+step_time :: proc(g: ^Game) -> f32 {
+	return g.psyche.step_passage ? PASSAGE_TIME : STEP_TIME
+}
+
+// Where the dark of cave i begins: inside its mouth, toward the rock.
+cave_inside :: proc(g: ^Game, i: int) -> Vec3 {
+	c := g.data.caves[i]
+	d := iso.DIR_VEC[c.dir]
+	return pl.node_world(&g.palace, c.cell) + {f32(d.x), f32(d.y), 0} * PASSAGE_DEPTH
+}
+
+// How much of Psyche the dark of a cave leaves seen (1 outside).
+passage_alpha :: proc(g: ^Game) -> f32 {
+	psy := &g.psyche
+	if !psy.walking || !psy.step_passage {
+		return 1
+	}
+	u := psy.step_t / PASSAGE_TIME
+	return u < 0.5 ? 1 - fx.sine_in_out(fx.progress(u, 0.18, 0.22)) : fx.sine_in_out(fx.progress(u, 0.6, 0.22))
 }
 
 // Does the (lamp-lit) path from `from` use stairs that are hidden in this view?
@@ -747,6 +804,14 @@ step_points :: proc(g: ^Game, u: f32) -> (pos: Vec3, second_half: bool) {
 	psy := &g.psyche
 	a := pl.node_world(&g.palace, psy.step_from)
 	b := pl.node_world(&g.palace, psy.step_to)
+	if psy.step_passage {
+		// into the dark of one mouth, out of the other
+		i, j := pl.cave_at(&g.palace, psy.step_from), pl.cave_at(&g.palace, psy.step_to)
+		if u < 0.5 {
+			return fx.lerp(a, cave_inside(g, i), fx.sine_in_out(u * 2)), false
+		}
+		return fx.lerp(cave_inside(g, j), b, fx.sine_in_out((u - 0.5) * 2)), true
+	}
 	if !psy.step_illusion {
 		return walk_point(g, psy.step_from, psy.step_to, u), u >= 0.5
 	}
@@ -820,9 +885,17 @@ update_walk :: proc(g: ^Game, dt: f32) {
 		return
 	}
 	psy.walk_anim += dt
+	before := psy.step_t
 	psy.step_t += dt
-	u := min(psy.step_t / STEP_TIME, 1)
+	u := min(psy.step_t / step_time(g), 1)
 	psy.pos, _ = step_points(g, u)
+	if psy.step_passage && before < PASSAGE_TIME * 0.5 && psy.step_t >= PASSAGE_TIME * 0.5 {
+		// in the dark of the rock: she comes out of the other mouth, facing out
+		out, _ := step_points(g, 0.51)
+		face_toward(g, pl.node_world(&g.palace, psy.step_to) - out)
+		psy.yaw = psy.target_yaw
+		audio.play(.Drip, -14, 0.6)
+	}
 	if u < 1 {
 		return
 	}
@@ -858,6 +931,11 @@ cues :: proc(g: ^Game, n: Cell) {
 @(private)
 arrive :: proc(g: ^Game, n: Cell) {
 	cues(g, n)
+	if pl.cave_at(&g.palace, n) >= 0 && !g.psyche.step_passage {
+		hint(g, .Hint_Cave, 0)
+	} else if g.hud.hint.active && g.hud.hint.key == .Hint_Cave {
+		hide(&g.hud.hint)
+	}
 	for c, i in g.data.rests {
 		if c == n {
 			light_rest(g, i)

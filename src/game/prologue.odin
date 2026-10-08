@@ -161,10 +161,11 @@ prologue_mourner :: proc(g: ^Game, i: int) -> (m: Mourner) {
 	return
 }
 
-// Psyche is drawn only once she has come up over the edge.
+// Psyche is drawn only once she has come up over the edge (and not while
+// the dark of a cave hides her).
 psyche_alpha :: proc(g: ^Game) -> f32 {
 	if g.phase != .Prologue {
-		return 1
+		return passage_alpha(g)
 	}
 	return fx.clamp01(1 + psyche_distance(g) / PRO_RISE)
 }

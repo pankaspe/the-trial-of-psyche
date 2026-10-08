@@ -237,6 +237,7 @@ SETTING_BED := [level.Setting]audio.Bed {
 	.Night_Candles = .Night,
 	.Deep_Night    = .Deep_Night,
 	.Forest_Night  = .Forest,
+	.River_Dawn    = .River,
 }
 
 // What the mixer plays: the act's music (silent while the screen goes
@@ -710,7 +711,10 @@ play_input :: proc(app: ^App) {
 		}
 		return
 	}
-	if rl.IsKeyPressed(.SPACE) || rl.IsKeyPressed(.L) || rl.IsMouseButtonPressed(.RIGHT) {
+	if rl.IsKeyPressed(.SPACE) && game.at_cave(g) {
+		// at a cave's mouth, Space leads into the rock
+		game.enter_cave(g)
+	} else if rl.IsKeyPressed(.SPACE) || rl.IsKeyPressed(.L) || rl.IsMouseButtonPressed(.RIGHT) {
 		game.toggle_lamp(g)
 	}
 	if rl.IsKeyPressed(.Q) || rl.IsKeyPressed(.LEFT) {
@@ -721,6 +725,7 @@ play_input :: proc(app: ^App) {
 	}
 	if rl.IsKeyPressed(.F) {
 		game.use_handle(g)
+		game.enter_cave(g)
 	}
 	if app.ui.pressed && !ui.over_ui(&app.ui) {
 		w, h := canvas_size(app)

@@ -185,6 +185,7 @@ Key :: enum u16 {
 	Hint_Handle,
 	Hint_Phantom_Under,
 	Hint_Rest,
+	Hint_Cave,
 
 	// the ending card of a level that ends at an exit
 	Outro_I_1,
@@ -451,12 +452,13 @@ IT := [Key]string {
 	.Hint_Handle    = "Sei su una manovella: clicca su Psiche (o premi F) per ruotare la parte del palazzo che muove",
 	.Hint_Phantom_Under = "Non qui: alla luce, la pietra sotto i tuoi piedi svanirebbe",
 	.Hint_Rest      = "Un braciere acceso: se ti perdi, R ti riporta qui (premuto di nuovo, ricomincia il livello)",
+	.Hint_Cave      = "Una grotta si apre nella roccia: Spazio per entrare",
 
 	.Outro_I_1      = "Il soffio mite di Zefiro la solleva piano, le gonfia la veste e la porta giù per il pendio, fino a deporla nella valle, in grembo a un prato fiorito.",
 	.Outro_I_2      = "Viene la notte. Uno sposo sconosciuto sale sul letto, la fa sua e se ne va prima dell'alba. Psiche non ha visto il suo volto.",
 	.Outro_I_3      = "Zefiro porta giù le sorelle. Vedono le stanze d'oro, e l'invidia le rode.\n«Tuo marito è un serpente enorme» dicono. «Prendi una lampada e un rasoio.»",
 	.Outro_II_1     = "Dalla cima di un cipresso il dio le parla: «Ti ho fatta mia sposa, e tu mi hai creduto una belva. Ti punirò solo con la mia fuga.»\nE vola via.",
-	.Outro_II_2     = "Sulla riva siede Pan, il dio dei campi. «Smetti di piangere» le dice con dolcezza.\n«Prega Amore, il più grande degli dèi, e conquistalo con la devozione.»",
+	.Outro_II_2     = "Sull'alto ciglio del fiume siede Pan, il dio dei campi. «Smetti di piangere» le dice con dolcezza.\n«Prega Amore, il più grande degli dèi, e conquistalo con la devozione.»",
 	.Outro_II_3     = "«Zefiro, prendimi!» grida la sorella, e si getta. Ma il vento non viene, e lei cade tra le rocce.\nPresto la stessa sorte tocca all'altra.",
 	.Outro_II_4     = "Cerere la trova al lavoro e ne ha pietà. «Ma non posso mettermi contro Venere» le dice.\n«Vattene, e sii contenta che non ti trattengo.»",
 	.Outro_II_5     = "Giunone le appare, ma non può aiutarla: la legge vieta di accogliere la serva fuggita di un'altra.\nNon c'è più rifugio. Psiche andrà da Venere.",
@@ -669,12 +671,13 @@ EN := [Key]string {
 	.Hint_Handle    = "You stand on a handle: click Psyche (or press F) to turn the part of the palace it moves",
 	.Hint_Phantom_Under = "Not here: in the light, the stone under your feet would vanish",
 	.Hint_Rest      = "A lit brazier: if you lose your way, R brings you back here (pressed again, it restarts the level)",
+	.Hint_Cave      = "A cave opens in the rock: Space to go in",
 
 	.Outro_I_1      = "The gentle breath of Zephyr lifts her softly, fills her robe and carries her down the slope, laying her in the valley, in the lap of a flowering meadow.",
 	.Outro_I_2      = "Night comes. An unknown bridegroom climbs into the bed, makes her his wife and leaves before dawn. Psyche has not seen his face.",
 	.Outro_I_3      = "Zephyr carries the sisters down. They see the golden rooms, and envy gnaws at them.\n“Your husband is a huge serpent,” they say. “Take a lamp and a razor.”",
 	.Outro_II_1     = "From the top of a cypress the god speaks to her: “I made you my wife, and you took me for a beast. My flight will be your only punishment.”\nAnd he flies away.",
-	.Outro_II_2     = "On the bank sits Pan, the god of the fields. “Stop weeping,” he tells her gently.\n“Pray to Cupid, the greatest of the gods, and win him with devotion.”",
+	.Outro_II_2     = "On the river's high brow sits Pan, the god of the fields. “Stop weeping,” he tells her gently.\n“Pray to Cupid, the greatest of the gods, and win him with devotion.”",
 	.Outro_II_3     = "“Zephyr, take me!” the sister cries, and leaps. But no wind comes, and she falls among the rocks.\nSoon the other meets the same end.",
 	.Outro_II_4     = "Ceres finds her at work and pities her. “But I cannot set myself against Venus,” she says.\n“Go, and be glad I do not keep you here.”",
 	.Outro_II_5     = "Juno appears, but cannot help her: the law forbids sheltering another's runaway servant.\nThere is no refuge left. Psyche will go to Venus.",

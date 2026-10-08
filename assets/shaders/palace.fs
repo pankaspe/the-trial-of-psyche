@@ -31,7 +31,7 @@ uniform int candle_count;
 
 // per piece
 uniform float material;      // 0 marble, 1 masonry, 2 foliage, 3 bronze, 4 psyche, 5 cupid, 6 mourner, 7 lawn,
-                             // 8 phantom, 9 rock, 10 wood (palette 7 grass, 8 earth, 9 phantom, 10 wood)
+                             // 8 phantom, 9 rock, 10 wood, 11 the dark of a cave (palette 7 grass, 8 earth, 9 phantom, 10 wood)
 uniform float detail;        // 0 none, 1 marble block, 2 masonry block
 uniform float hidden;        // 1: visible only in the lamp light, glowing gold; 2: the same, a faint ghost
 uniform float alpha;
@@ -191,6 +191,16 @@ float stone(vec3 n) {
 void main() {
     vec3 n = normalize(fragNormal);
     vec3 L = fragLocal;
+
+    if (material > 10.5) {
+        // the dark inside a cave's mouth: deepest at its back, a breath of the lamp's warmth
+        float lit = light_amount * (1.0 - smoothstep(0.3, 2.0, distance(fragWorld, lamp_pos))) * flicker;
+        vec3 col = mix(vec3(0.012, 0.012, 0.03), vec3(0.09, 0.045, 0.02), lit);
+        float sy = screen_height - gl_FragCoord.y;
+        col = mix(col, mist_color, smoothstep(mist_top, mist_bottom, sy) * 0.85);
+        finalColor = vec4(col, alpha);
+        return;
+    }
 
     // Kenney's light map from the face orientation, relative to the view
     float side = mix(T_LEFT, T_RIGHT, smoothstep(-shade_soft, shade_soft, dot(n.xy, view_right)));
