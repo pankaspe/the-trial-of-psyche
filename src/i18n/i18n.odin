@@ -97,6 +97,7 @@ Key :: enum u16 {
 	Fragment_07,
 	Fragment_07b, // II.3 hides two: Psyche's lie to her sister, the gull
 	Fragment_08,
+	Fragment_08b, // II.4 hides two: Venus and her son, Psyche's prayer to Ceres
 	Fragment_09,
 	Fragment_10,
 	Fragment_11,
@@ -399,6 +400,7 @@ IT := [Key]string {
 	.Fragment_07    = "Un gabbiano bianco si tuffa in fondo al mare e racconta tutto a Venere. «Suo figlio è ferito, e ama una mortale!».",
 	.Fragment_07b   = "Psiche racconta alla sorella: «Alla luce della lampada ho visto il mio sposo: era Amore in persona. Svegliato dall'olio, mi ha cacciata: “Vattene. Sposerò tua sorella.” E ha ordinato a Zefiro di portarmi via.»",
 	.Fragment_08    = "Venere rimprovera il figlio con parole dure e lo chiude in una stanza della sua casa, perché non riveda la fanciulla.",
+	.Fragment_08b   = "Psiche si prostra davanti all'altare di Cerere: «Per la tua mano che dona le messi, per le liete feste del raccolto, per i segreti custoditi nelle ceste, lasciami nascondere qui tra le spighe, pochi giorni soltanto, finché l'ira della dea si plachi.»",
 	.Fragment_09    = "Cerere e Giunone cercano di calmarla: «è giovane, è innamorato, perché punirlo?» Ma parlano così per paura delle sue frecce.",
 	.Fragment_10    = "Mercurio grida il bando per tutte le strade: «a chi riporta la fuggitiva, Venere darà sette baci.»",
 	.Fragment_11    = "Amore è chiuso in una stanza in fondo alla casa, lontano da tutti. La ferita della lampada guarisce piano.",
@@ -646,6 +648,7 @@ EN := [Key]string {
 	.Fragment_07    = "A white gull dives to the bottom of the sea and tells Venus everything: her son is wounded, and he loves a mortal.",
 	.Fragment_07b   = "Psyche tells her sister: “By the lamplight I saw my husband: it was Love himself. Woken by the oil, he drove me out: ‘Go. I will marry your sister.’ And he bade Zephyr carry me away.”",
 	.Fragment_08    = "Venus scolds her son with harsh words and locks him in a room of her house, so that he will not see the girl again.",
+	.Fragment_08b   = "Psyche kneels before the altar of Ceres: “By your hand that gives the harvest, by the glad feasts of reaping, by the secrets kept in the baskets, let me hide here among the ears of wheat, a few days only, until the goddess's anger is soothed.”",
 	.Fragment_09    = "Ceres and Juno try to calm her: he is young, he is in love, why punish him? But they speak so for fear of his arrows.",
 	.Fragment_10    = "Mercury cries the proclamation through every street: whoever brings back the runaway will have seven kisses from Venus.",
 	.Fragment_11    = "Cupid is shut in a room at the back of the house, far from everyone. The wound of the lamp heals slowly.",

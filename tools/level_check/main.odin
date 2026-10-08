@@ -51,7 +51,7 @@ main :: proc() {
 		if risen && len(data.rise) == 0 {
 			break
 		}
-		p.risen = risen
+		p.risen = risen ? pl.all_seals(&data) : {}
 		pl.rebuild_graph(&p)
 		tag := risen ? "risen" : "base "
 		fmt.printfln("\n%s: %d surfaces and stairs", tag, len(p.nodes))
@@ -67,7 +67,7 @@ main :: proc() {
 		pl.reachable_turning(&p, data.start, reached)
 		report(&p, &data, fmt.tprintf("%s dark  turning", tag), reached)
 	}
-	p.risen = false
+	p.risen = {}
 	pl.rebuild_graph(&p)
 
 	for r in 0 ..< 4 {
@@ -129,7 +129,7 @@ check_screen :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 		for &f, i in p.flipped {
 			f = whole && data.blocks[i].trait == .Veiled
 		}
-		p.risen = whole && len(data.rise) > 0
+		p.risen = whole ? pl.all_seals(data) : {}
 		pl.rebuild_graph(p)
 		for c in data.fragments {
 			for r in 0 ..< 4 {
@@ -146,7 +146,7 @@ check_screen :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 	for &f in p.flipped {
 		f = false
 	}
-	p.risen = false
+	p.risen = {}
 	pl.set_view(p, 0)
 	pl.rebuild_graph(p)
 	return
@@ -158,8 +158,8 @@ report :: proc(p: ^pl.Palace, data: ^level.Level_Data, label: string, reached: [
 		count += int(ok)
 	}
 	fmt.printf("  %s  reach %d/%d", label, count, len(p.nodes))
-	if data.has_sigil {
-		i := pl.node_index(p, data.sigil)
+	for c in data.sigils {
+		i := pl.node_index(p, c)
 		fmt.printf("  sigil:%v", i >= 0 && reached[i])
 	}
 	if data.has_amore {

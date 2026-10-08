@@ -77,10 +77,10 @@ lamp_level_rules :: proc(t: ^testing.T) {
 	game.toggle_lamp(&g)
 	oil := g.oil
 	run(&g, 0.5)
-	testing.expect(t, g.activated && g.phase == .Sigil, "the lamp on the seal starts the rising")
+	testing.expect(t, 0 in g.activated && g.phase == .Sigil, "the lamp on the seal starts the rising")
 	testing.expect(t, g.oil < oil, "oil burns while lit")
-	run(&g, game.rise_duration(&g) + 0.2)
-	testing.expect(t, g.phase == .Play && g.palace.risen, "the bridge has risen and play resumes")
+	run(&g, game.rise_duration(&g, 0) + 0.2)
+	testing.expect(t, g.phase == .Play && 0 in g.palace.risen, "the bridge has risen and play resumes")
 	testing.expect(t, g.learned[i18n.Key.Hint_Sigil], "the seal's lesson is done")
 	run(&g, 2)
 	testing.expect(t, g.stain_count > 0, "the burning lamp drops oil")
@@ -114,10 +114,10 @@ ending :: proc(t: ^testing.T, bad: bool) {
 		return
 	}
 	g.trust_allowed = true // the secret ending, after the game has been finished
-	g.palace.risen = true
+	g.palace.risen = {0}
 	palace.rebuild_graph(&g.palace)
 	game.set_view(&g, 0)
-	g.activated = true
+	g.activated = {0}
 	g.psyche.cell = GALLERY
 	testing.expect(t, walk(t, &g, ROOF_ENTRY), "Psyche reaches the roof")
 	if bad {

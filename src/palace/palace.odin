@@ -62,7 +62,7 @@ Palace :: struct {
 	size:       i32,
 	height:     i32,
 	rot:        int, // current view (0..3)
-	risen:      bool,
+	risen:      level.Seals, // the seals lit: their `rise` blocks are up
 	flipped:    []bool, // per data.blocks entry: changed for good (see the top)
 	part_rot:   [level.MAX_PARTS]int, // quarter turns of each part
 	overlap:    bool, // two blocks share a cell (a part turned into the palace)
@@ -268,8 +268,8 @@ rebuild_graph :: proc(p: ^Palace) {
 		p.solid[c] = block_solid(p, i)
 		p.block_at[c] = i32(i)
 	}
-	if p.risen {
-		for e in p.data.rise {
+	for e in p.data.rise {
+		if int(e.seal) in p.risen {
 			p.solid[cell_index(p, e.cell)] = e.solid
 		}
 	}
@@ -757,7 +757,7 @@ check_fragment :: proc(p: ^Palace, i: int) -> (reachable, optional: bool) {
 		if risen && len(p.data.rise) == 0 {
 			break
 		}
-		p.risen = risen
+		p.risen = risen ? all_seals(p.data) : {}
 		rebuild_graph(p)
 		all := reach_goals(p)
 		without := reach_goals(p, p.data.fragments[i])
@@ -765,8 +765,16 @@ check_fragment :: proc(p: ^Palace, i: int) -> (reachable, optional: bool) {
 		lost := (all.sigil && !without.sigil) || (all.amore && !without.amore) || (all.exit && !without.exit)
 		optional &&= !lost
 	}
-	p.risen = false
+	p.risen = {}
 	rebuild_graph(p)
+	return
+}
+
+// Every seal of the level, lit.
+all_seals :: proc(d: ^level.Level_Data) -> (out: level.Seals) {
+	for _, i in d.sigils {
+		out += {i}
+	}
 	return
 }
 

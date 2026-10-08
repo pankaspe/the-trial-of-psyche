@@ -218,6 +218,7 @@ Piece :: struct {
 		Off, // only the lamp shows it, until it is lit
 		On,
 	},
+	seal:       u8, // the seal of a sigil piece (data.sigils index)
 }
 
 Scene :: struct {
@@ -228,6 +229,7 @@ Scene :: struct {
 	dust:       fx.Pool(192), // falling from the cracks (world)
 	debris:     fx.Pool(160), // falling stones, dissolving phantoms (world)
 	wind:       fx.Pool(96), // Zephyr's breath over the exit (world)
+	gusts:      fx.Pool(64), // a windy setting: streaks blowing across (proto px)
 	rng:        fx.Rng,
 	mote:       Color4, // the colour of the drifting motes (from the setting)
 	moon_cover: f32, // how much the night clouds hide the moon now (0..1)
@@ -238,13 +240,16 @@ Scene :: struct {
 	tier:       int, // the band the camera frames (or pans to)
 	pan_from:   f32, // the centre's proto y where the pan began
 	pan_t:      f32, // seconds since it began
+	// a long level (`follow`): the camera follows Psyche, the point it looks at
+	// (proto pixels, before keeping the frame inside the level)
+	cam:        Vec2,
 }
 
 PAN_TIME :: 1.8 // the camera moving from one band of a tall level to the next
 
 scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 	s^ = {}
-	s.pieces = make([dynamic]Piece, 0, len(g.data.blocks) + 2 * len(g.data.props) + 2 * len(g.data.candelabra) + 2 * len(g.data.caves) + len(g.data.rise) + len(g.data.handles) + 2, allocator)
+	s.pieces = make([dynamic]Piece, 0, len(g.data.blocks) + 2 * len(g.data.props) + 2 * len(g.data.candelabra) + 2 * len(g.data.caves) + len(g.data.rise) + len(g.data.handles) + 2 * len(g.data.sigils), allocator)
 	s.rng = fx.rng_init(1234)
 	s.mote = look(g.data.setting).mote
 	for e, i in g.data.blocks {
@@ -314,9 +319,9 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 		}
 		append(&s.pieces, p)
 	}
-	if g.data.has_sigil {
-		append(&s.pieces, Piece{cell = g.data.sigil, mesh = .Sigil_Off, material = .Bronze, rise_index = -1, block = -1, handle = -1, sigil = .Off})
-		append(&s.pieces, Piece{cell = g.data.sigil, mesh = .Sigil_On, material = .Bronze, rise_index = -1, block = -1, handle = -1, sigil = .On})
+	for c, k in g.data.sigils {
+		append(&s.pieces, Piece{cell = c, mesh = .Sigil_Off, material = .Bronze, rise_index = -1, block = -1, handle = -1, sigil = .Off, seal = u8(k)})
+		append(&s.pieces, Piece{cell = c, mesh = .Sigil_On, material = .Bronze, rise_index = -1, block = -1, handle = -1, sigil = .On, seal = u8(k)})
 	}
 
 	// framing: every piece from every view (as the prototype's fit_rect), parts in every position
@@ -361,6 +366,7 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 	}
 	s.tier = camera_tier(g)
 	s.pan_t = PAN_TIME
+	s.cam = follow_target(g)
 
 	// ambient motes start mid-life, as if they had always been there
 	for _ in 0 ..< 40 {
@@ -402,6 +408,11 @@ camera_tier :: proc(g: ^game.Game) -> int {
 	return best
 }
 
+// Where the camera of a long level wants to look: at Psyche, a little above her feet.
+follow_target :: proc(g: ^game.Game) -> Vec2 {
+	return iso.project(iso.view_point(g.psyche.pos + {0, 0, 0.5}, g.angle, g.data.size))
+}
+
 // The proto y the camera centres on for band i.
 @(private)
 tier_center :: proc(s: ^Scene, i: int) -> f32 {
@@ -417,6 +428,16 @@ scene_view :: proc(s: ^Scene, g: ^game.Game, width, height: f32) -> View {
 	v := make_view(fit, width, height, g.angle, g.data.size, g.data.height, shake_offset(g))
 	if len(g.data.tiers) > 0 {
 		v.center.y = fx.lerp(s.pan_from, tier_center(s, s.tier), fx.sine_in_out(fx.clamp01(s.pan_t / PAN_TIME)))
+	}
+	if n := g.data.follow; n > 0 {
+		// a window of n cells across, following her, kept inside the level
+		v.zoom = clamp(width / (f32(n) * 128 + 260), 0.35, 4.0)
+		half := Vec2{width, height} * 0.5 / v.zoom
+		lo := Vec2{s.fit.x, s.fit.y} - {130, 150} + half
+		hi := Vec2{s.fit.x + s.fit.w, s.fit.y + s.fit.h} + {130, 150} - half
+		for k in 0 ..< 2 {
+			v.center[k] = lo[k] <= hi[k] ? clamp(s.cam[k], lo[k], hi[k]) : (lo[k] + hi[k]) * 0.5
+		}
 	}
 	if lift := game.exit_lift(g); lift > 0 {
 		// the camera follows her a little way up as the wind takes her
@@ -454,6 +475,9 @@ emit_mote :: proc(s: ^Scene, aged: bool) {
 }
 
 scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
+	if g.data.follow > 0 {
+		s.cam = fx.lerp(s.cam, follow_target(g), 1 - math.exp(-dt * 2.2))
+	}
 	if len(g.data.tiers) > 0 {
 		s.pan_t += dt
 		if t := camera_tier(g); t != s.tier {
@@ -521,34 +545,36 @@ scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
 		}
 	}
 	// the stones the seal raises: a trail of gold as they come up, a burst of dust as they land
-	if g.rise_t >= 0 && g.rise_t < game.rise_duration(g) + 0.5 {
-		for e, i in g.data.rise {
-			k := fx.progress(g.rise_t, f32(i) * game.RISE_DELAY, game.RISE_TIME)
-			c := Vec3{f32(e.cell.x) + 0.5, f32(e.cell.y) + 0.5, f32(e.cell.z)} + {0, 0, rise_lift(g, i)}
-			if k > 0 && k < 0.6 && fx.randf(&s.rng) < dt * 50 {
-				fx.emit(&s.debris, {
-					pos   = c + {fx.rand_range(&s.rng, -0.45, 0.45), fx.rand_range(&s.rng, -0.45, 0.45), fx.rand_range(&s.rng, -0.2, 0.1)},
-					vel   = {0, 0, fx.rand_range(&s.rng, -0.8, -0.2)},
-					life  = 1.2,
-					size  = 32 * fx.rand_range(&s.rng, 0.08, 0.18),
-					color = {1.0, 0.82, 0.45, 0.85},
+	for e, i in g.data.rise {
+		rt := game.rise_time(g, i)
+		if rt < 0 || rt > game.rise_duration(g, int(e.seal)) + 0.5 {
+			continue
+		}
+		k := fx.progress(rt, game.rise_start(g, i), game.RISE_TIME)
+		c := Vec3{f32(e.cell.x) + 0.5, f32(e.cell.y) + 0.5, f32(e.cell.z)} + {0, 0, rise_lift(g, i)}
+		if k > 0 && k < 0.6 && fx.randf(&s.rng) < dt * 50 {
+			fx.emit(&s.debris, {
+				pos   = c + {fx.rand_range(&s.rng, -0.45, 0.45), fx.rand_range(&s.rng, -0.45, 0.45), fx.rand_range(&s.rng, -0.2, 0.1)},
+				vel   = {0, 0, fx.rand_range(&s.rng, -0.8, -0.2)},
+				life  = 1.2,
+				size  = 32 * fx.rand_range(&s.rng, 0.08, 0.18),
+				color = {1.0, 0.82, 0.45, 0.85},
+			})
+		}
+		land := game.rise_landing(g, i)
+		if rt >= land && rt - dt < land {
+			for n in 0 ..< 22 {
+				a := f32(n) / 22 * math.TAU + fx.randf(&s.rng) * 0.3
+				edge := Vec3{math.cos(a), math.sin(a), 0}
+				edge /= max(abs(edge.x), abs(edge.y)) // on the square's rim
+				fx.emit(&s.dust, {
+					pos   = c + {edge.x * 0.5, edge.y * 0.5, 1.0},
+					vel   = {edge.x * fx.rand_range(&s.rng, 0.3, 0.8), edge.y * fx.rand_range(&s.rng, 0.3, 0.8), fx.rand_range(&s.rng, 0.1, 0.5)},
+					accel = {0, 0, -1.2},
+					life  = 1.1,
+					size  = 32 * fx.rand_range(&s.rng, 0.1, 0.2),
+					color = {1.0, 0.9, 0.7, 0.8},
 				})
-			}
-			land := game.rise_landing(i)
-			if g.rise_t >= land && g.rise_t - dt < land {
-				for n in 0 ..< 22 {
-					a := f32(n) / 22 * math.TAU + fx.randf(&s.rng) * 0.3
-					edge := Vec3{math.cos(a), math.sin(a), 0}
-					edge /= max(abs(edge.x), abs(edge.y)) // on the square's rim
-					fx.emit(&s.dust, {
-						pos   = c + {edge.x * 0.5, edge.y * 0.5, 1.0},
-						vel   = {edge.x * fx.rand_range(&s.rng, 0.3, 0.8), edge.y * fx.rand_range(&s.rng, 0.3, 0.8), fx.rand_range(&s.rng, 0.1, 0.5)},
-						accel = {0, 0, -1.2},
-						life  = 1.1,
-						size  = 32 * fx.rand_range(&s.rng, 0.1, 0.2),
-						color = {1.0, 0.9, 0.7, 0.8},
-					})
-				}
 			}
 		}
 	}
@@ -586,6 +612,22 @@ scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
 	}
 	fx.update(&s.debris, dt)
 	fx.update(&s.motes, dt)
+	if w := look(g.data.setting).wind; w > 0 {
+		// gusts come in waves: now a few streaks, now a flurry
+		wave := 0.35 + 0.65 * (0.5 + 0.5 * math.sin(g.time * 0.7) * math.sin(g.time * 0.23 + 1))
+		if fx.randf(&s.rng) < dt * 26 * w * wave {
+			c := g.data.follow > 0 ? s.cam : Vec2{s.fit.x + s.fit.w * 0.5, s.fit.y + s.fit.h * 0.5}
+			speed := fx.rand_range(&s.rng, 520, 900) * w
+			fx.emit(&s.gusts, {
+				pos   = {c.x + fx.rand_range(&s.rng, -1800, 900), c.y + fx.rand_range(&s.rng, -800, 700), 0},
+				vel   = {speed, speed * fx.rand_range(&s.rng, 0.02, 0.12), 0},
+				life  = fx.rand_range(&s.rng, 1.0, 1.8),
+				size  = fx.rand_range(&s.rng, 0.05, 0.11), // seconds of travel the streak spans
+				color = {1.0, 0.9, 0.78, fx.rand_range(&s.rng, 0.12, 0.3)},
+			})
+		}
+	}
+	fx.update(&s.gusts, dt)
 	fx.update(&s.sparks, dt)
 	fx.update(&s.dust, dt)
 	fx.update(&s.wind, dt)
@@ -849,17 +891,17 @@ piece_state :: proc(g: ^game.Game, p: Piece, i: int) -> (lift, alpha: f32, visib
 	switch p.sigil {
 	case .None:
 	case .Off:
-		visible = !g.activated
+		visible = int(p.seal) not_in g.activated
 	case .On:
-		visible = g.activated
+		visible = int(p.seal) in g.activated
 	}
 	if p.rise_index >= 0 {
-		if g.rise_t < 0 {
+		rt := game.rise_time(g, int(p.rise_index))
+		if rt < 0 {
 			return 0, 0, false, false, false
 		}
-		start := f32(p.rise_index) * game.RISE_DELAY
 		lift = rise_lift(g, int(p.rise_index))
-		alpha = fx.progress(g.rise_t, start, 0.8)
+		alpha = fx.progress(rt, game.rise_start(g, int(p.rise_index)), 0.8)
 	}
 	if p.block >= 0 {
 		t := g.flip_t[p.block]
@@ -1046,10 +1088,11 @@ cupid_fade :: proc(g: ^game.Game) -> f32 {
 
 // How far below its place the i-th stone raised by the seal is now (<= 0).
 rise_lift :: proc(g: ^game.Game, i: int) -> f32 {
-	if g.rise_t < 0 {
+	rt := game.rise_time(g, i)
+	if rt < 0 {
 		return -game.RISE_DEPTH
 	}
-	return -game.RISE_DEPTH * (1 - fx.cubic_out(fx.progress(g.rise_t, f32(i) * game.RISE_DELAY, game.RISE_TIME)))
+	return -game.RISE_DEPTH * (1 - fx.cubic_out(fx.progress(rt, game.rise_start(g, i), game.RISE_TIME)))
 }
 
 // --- immediate-mode helpers (3D) ----------------------------------------------------
@@ -1421,23 +1464,28 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 		glow(v, fp + {0, 0, 0.03}, 3.5, {1.0, 0.95, 0.8, fl}, 1.5)
 	}
 	// the stones the seal raises glow gold as they come up, and a while after
-	if g.rise_t >= 0 {
-		for e, i in g.data.rise {
-			k := fx.progress(g.rise_t, f32(i) * game.RISE_DELAY, game.RISE_TIME)
-			after := g.rise_t - game.rise_landing(i)
-			a := k > 0 ? (after < 0 ? 0.55 * k + 0.2 : 0.75 * math.exp(-after * 1.3)) : 0
-			if a < 0.01 {
-				continue
-			}
-			c := Vec3{f32(e.cell.x) + 0.5, f32(e.cell.y) + 0.5, f32(e.cell.z) + 1.0} + {0, 0, rise_lift(g, i)}
-			glow(v, c, 70, {1.0, 0.75, 0.35, a * 0.5})
-			glow(v, c - {0, 0, 0.5}, 40, {1.0, 0.85, 0.5, a * 0.35}, 2.2)
+	for e, i in g.data.rise {
+		rt := game.rise_time(g, i)
+		if rt < 0 {
+			continue
 		}
+		k := fx.progress(rt, game.rise_start(g, i), game.RISE_TIME)
+		after := rt - game.rise_landing(g, i)
+		a := k > 0 ? (after < 0 ? 0.55 * k + 0.2 : 0.75 * math.exp(-after * 1.3)) : 0
+		if a < 0.01 {
+			continue
+		}
+		c := Vec3{f32(e.cell.x) + 0.5, f32(e.cell.y) + 0.5, f32(e.cell.z) + 1.0} + {0, 0, rise_lift(g, i)}
+		glow(v, c, 70, {1.0, 0.75, 0.35, a * 0.5})
+		glow(v, c - {0, 0, 0.5}, 40, {1.0, 0.85, 0.5, a * 0.35}, 2.2)
 	}
-	// the lit seal breathes
-	if g.activated && g.collapse_t < 0 {
-		c := pl.node_world(&g.palace, g.data.sigil) + {0, 0, 0.05}
-		pulse := 0.25 + 0.55 * (0.5 + 0.5 * math.cos(g.rise_t * math.PI / 1.4))
+	// the lit seals breathe
+	for c0, k in g.data.sigils {
+		if k not_in g.activated || g.collapse_t >= 0 {
+			continue
+		}
+		c := pl.node_world(&g.palace, c0) + {0, 0, 0.05}
+		pulse := 0.25 + 0.55 * (0.5 + 0.5 * math.cos(g.rise_t[k] * math.PI / 1.4))
 		glow(v, c, 70, {1.0, 0.75, 0.35, pulse})
 	}
 	// Cupid: a warm breathing presence
@@ -1643,12 +1691,15 @@ draw_ridges :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 // (0: not at all, 1: as the level): the horizon sinks slowly as she climbs.
 @(private)
 backdrop_view :: proc(s: ^Scene, g: ^game.Game, v: View, k: f32) -> View {
-	if len(g.data.tiers) == 0 {
-		return v
-	}
 	out := v
-	base := tier_center(s, 0)
-	out.center.y = base + (v.center.y - base) * k
+	switch {
+	case len(g.data.tiers) > 0:
+		base := tier_center(s, 0)
+		out.center.y = base + (v.center.y - base) * k
+	case g.data.follow > 0:
+		base := Vec2{s.fit.x + s.fit.w * 0.5, s.fit.y + s.fit.h * 0.5}
+		out.center = base + (v.center - base) * k
+	}
 	return out
 }
 
@@ -1775,6 +1826,13 @@ draw_motes :: proc(r: ^Renderer, s: ^Scene, v: View) {
 		col := p.color
 		col.a *= fx.mote_alpha(p)
 		rl.DrawTexturePro(r.radial, {0, 0, f32(r.radial.width), f32(r.radial.height)}, {pos.x - size * 0.5, pos.y - size * 0.5, size, size}, {}, 0, to_color(col))
+	}
+	for p in fx.alive(&s.gusts) {
+		head := proto_to_screen(v, p.pos.xy)
+		tail := proto_to_screen(v, p.pos.xy - p.vel.xy * p.size)
+		col := p.color
+		col.a *= math.sin(math.PI * fx.clamp01(p.age / p.life))
+		rl.DrawLineEx(tail, head, max(1.6 * v.zoom, 1), to_color(col))
 	}
 	rl.EndBlendMode()
 }

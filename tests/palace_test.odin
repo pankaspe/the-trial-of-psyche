@@ -146,7 +146,7 @@ level_1_walkthrough :: proc(t: ^testing.T) {
 	}
 
 	// the lamp on the seal raises a bridge of five stones
-	p.risen = true
+	p.risen = {0}
 	palace.rebuild_graph(&p)
 	testing.expect(t, reach(&p, sigil, GALLERY, false), "the bridge is real: it joins the seal to the gallery")
 	testing.expect(t, reach(&p, sigil, BRIDGE, false), "the risen stone is really joined to the seal")

@@ -247,6 +247,7 @@ SETTING_BED := [level.Setting]audio.Bed {
 	.Forest_Night  = .Forest,
 	.River_Dawn    = .River,
 	.Crag_Day      = .Mountain,
+	.Windy_Sunset  = .Mountain,
 }
 
 // What the mixer plays: the act's music (silent while the screen goes

@@ -1,74 +1,218 @@
 # The Trial of Psyche - level II.4: "The Temple of Ceres"
-# Handles. Psyche puts the temple of Ceres in order. Standing on a handle, a
-# click on her (or F) turns a part of the palace a quarter, counter-clockwise
-# seen from above; parts carry a bronze inlay.
-#   1. a bridge turns about its middle to join the start to the porch
-#      (tutorial);
-#   2. the floor of offerings, an L about (8,6), joins two of the four doors
-#      at a time: west-north, north-east... (the north door is a step too
-#      high for it). Its handle on the porch can only send Psyche south
-#      (three turns);
-#   3. from the south door the high stone over the porch is joined in view 2,
-#      and the stone to the north door in view 3; the second handle, by the
-#      north door, turns the floor to join south and east (three more turns);
-#      back over the high stone to the south door, through the floor, east to
-#      the exit.
-# Fragment: on the column of the goddess beside the north door, joined to the
-# high stone in view 1.
+# Everything Psyche has learned, at sunset in the wind. A long level (the
+# camera follows her): the crag to the west, a rope bridge, the temple of
+# Ceres to the east.
+#   1. two veiled stones over a cleft: the lamp;
+#   2. from the first ledge, view 3 joins a pillar where the first seal
+#      hides (only the light shows it): lit there, it raises a corridor
+#      east along the crag;
+#   3. the tunnel through the ridge; behind it, steps seen only from the
+#      north (or climbed in the light) up to the bridge;
+#   4. the rope bridge: two planks veiled;
+#   5. the temple: the stair in the nave turns only from its handle in the
+#      north gallery (steps up from the porch). The second seal hides there:
+#      lit, it raises a corridor from the south gallery to the altar. Turn
+#      the stair south (three turns), down the steps, up the stair, across.
+# Fragments: II.4 on the column of Ceres by the altar: view 1 joins it to
+# the south gallery, until the second corridor rises and hides the seam for
+# good (go there before lighting the second seal: the hard one); II.4b on a
+# needle in front of the crag, view 0 from the first seal's pillar.
 # Format: see level_04.txt.
-size 12
+size 30
+setting windy_sunset
+follow 13
+oil 20
 
-# the start (h2) and the first handle
-column 0 9 0 1
-column 1 9 0 1
-# the turning bridge (h2), about (3,9)
-part 3 9
-column 3 8 0 1
-column 3 9 0 1
-column 3 10 0 1
-prop wallBattlement 3 10 2 mx
-prop wallBattlement 3 8 2 px
+# --- the crag (west) ---
+# the ridge: a wall of rock along the crag, the path in front, another behind
+rock 4 14 0 5
+rock 4 13 0 6
+rock 5 14 0 6
+rock 5 13 0 7
+rock 6 14 0 5
+rock 6 13 0 6
+rock 7 14 0 7
+rock 7 13 0 8
+rock 8 14 0 6
+rock 8 13 0 7
+rock 9 14 0 5
+rock 9 13 0 6
+rock 10 14 0 6
+rock 10 13 0 7
+rock 11 14 0 7
+rock 11 13 0 8
+rock 12 14 0 6
+rock 12 13 0 7
+rock 13 14 0 5
+rock 13 13 0 6
+prop pine 7 13 9 my
+prop pine 11 13 9 px
+prop shrub 5 13 8 mx
+# where Psyche comes (h3)
+ground 1 15 0 2
+ground 1 16 0 2
+ground 1 17 0 2
+ground 2 15 0 2
+ground 2 16 0 2
+ground 2 17 0 2
+ground 3 15 0 2
+ground 3 16 0 2
+ground 3 17 0 2
+prop pine 1 15 3 mx
+prop shrub 3 17 3 py
+prop lip 2 17 3 py
+# two veiled stones over a cleft
+veiled 4 16 2 ground
+veiled 5 16 2 ground
+# the first ledge (h3)
+rock 6 15 0 2
+rock 6 16 0 2
+rock 6 17 0 2
+rock 7 15 0 2
+rock 7 16 0 2
+rock 7 17 0 2
+prop lip 6 17 3 py
+# a pillar in front: the first hidden seal (view 3 from the ledge)
+rock 6 19 0 3
+# a needle further out, joined to the seal's pillar in view 0: II.4b
+rock 9 21 0 5
+# the first corridor, raised by the first seal (h3)
+rise 8 16 2 rock 1
+rise 9 16 2 rock 1
+rise 10 16 2 rock 1
+# the second ledge (h3) and the tunnel through the ridge
+rock 11 15 0 2
+rock 11 16 0 2
+rock 12 15 0 2
+rock 12 16 0 2
+cave 12 15 3 my
+# behind the ridge (h3): the tunnel's other end, steps up to the bridge
+rock 11 11 0 2
+rock 11 12 0 2
+rock 12 11 0 2
+rock 12 12 0 2
+cave 12 12 3 py
+steps 13 12 3 px
+rock 14 12 0 3
+steps 15 12 4 px
+rock 16 12 0 4
+rock 16 13 0 4
+# --- the rope bridge (h5) ---
+block 17 13 4 plank
+prop rope 17 13 5 py
+prop rope 17 13 5 my
+block 18 13 4 plank
+prop rope 18 13 5 py
+prop rope 18 13 5 my
+veiled 19 13 4 plank
+prop rope 19 13 5 py
+prop rope 19 13 5 my
+veiled 20 13 4 plank
+prop rope 20 13 5 py
+prop rope 20 13 5 my
+block 21 13 4 plank
+prop rope 21 13 5 py
+prop rope 21 13 5 my
+# --- the temple of Ceres (east) ---
+# the porch (h5)
+column 22 12 0 4
+column 22 13 0 4
+column 22 14 0 4
+column 23 12 0 4
+column 23 13 0 4
+column 23 14 0 4
+# the nave (h5)
+column 24 12 0 4
+column 24 13 0 4
+column 24 14 0 4
+column 25 12 0 4
+column 25 13 0 4
+column 25 14 0 4
+column 26 12 0 4
+column 26 13 0 4
+column 26 14 0 4
+# the turning stair in the nave, from above it reaches the galleries (h6)
+part 25 13
+stairs 24 13 5 mx
+block 23 13 5
 end
-handle 1 9 2 0
-# the porch (h2) to the west door
-column 5 9 0 1
-column 5 8 0 1
-column 5 7 0 1
-column 5 6 0 1
-# the floor of offerings (h2): an L about (8,6), joining west and north at first
-part 8 6
-column 8 6 0 1
-column 7 6 0 1
-column 6 6 0 1
-column 8 5 0 1
-column 8 4 0 1
-end
-handle 5 6 2 1
-# the south door (h2)
-column 8 9 0 1
-column 8 10 0 1
-column 9 10 0 1
-# the north door (h3) and its handle
-column 8 3 0 2
-column 8 2 0 2
-handle 8 2 3 1
-# the east door (h2) and the exit
-column 11 6 0 1
-column 11 5 0 1
-# the high stone over the porch (h5)
-block 5 5 4
-# the column of the goddess, with the fragment
-column 7 2 0 6
-fragment 7 2 7
+# the north gallery (h6): the stair's handle, the second hidden seal
+column 23 10 0 5
+column 24 10 0 5
+column 25 10 0 5
+column 26 10 0 5
+column 27 10 0 5
+stairs 23 11 5 my
+handle 24 10 6
+# the south gallery (h6)
+column 24 16 0 5
+column 25 16 0 5
+column 26 16 0 5
+column 27 16 0 5
+# the second corridor, raised by the second seal, up to the altar (h7)
+rise 28 16 5 2
+rise 28 15 6 my 2
+column 28 13 0 6
+column 28 14 0 6
+# balustrades: the galleries open only where the stair and the steps arrive; the altar only to the corridor
+prop rail 24 10 6 py
+prop rail 24 16 6 my
+prop rail 26 10 6 py
+prop rail 26 16 6 my
+prop rail 27 10 6 py
+prop rail 27 16 6 my
+prop rail 24 12 5 my
+prop rail 24 14 5 py
+prop rail 25 12 5 my
+prop rail 25 14 5 py
+prop rail 26 12 5 my
+prop rail 26 14 5 py
+prop rail 26 12 5 px
+prop rail 26 13 5 px
+prop rail 26 14 5 px
+prop rail 28 13 7 mx
+prop rail 28 13 7 my
+prop rail 28 13 7 px
+prop rail 28 14 7 mx
+prop rail 28 14 7 px
+# the column of Ceres by the altar: view 1 joins it to the south gallery, until the second
+# corridor rises and hides the seam for good: II.4 (go there before lighting the second seal)
+column 29 15 0 6
+# the temple's colonnade, offerings, the goddess
+column 22 11 0 4
+prop pillar 22 11 5
+column 22 15 0 4
+prop pillar 22 15 5
+prop arch 22 13 5 mx
+column 28 12 0 6
+prop statue 28 12 7 my
+prop urn 27 14 7
+prop vase 26 10 6 mx
+prop vase 24 16 6 py
+prop vase 23 14 5 py
+prop sconce 28 14 6 px
+prop sconce 26 16 5 py
+prop sconce 24 10 5 my
+candelabrum 27 10 6 mx
+candelabrum 26 16 6 my
+candelabrum 22 12 5 mx lit
+candelabrum 22 14 5 py lit
+# on the crag: wind-bent pines, a cairn, a candelabrum by the first seal
+prop pine 11 11 3 mx
+prop shrub 12 15 3 px
+prop cairn 7 15 3 mx
+prop shrub 16 12 5 my
+candelabrum 6 19 4 px
+prop boulder 1 17 3
 
-start 0 9 2
-exit 11 5 2
+start 2 16 3
+rest 2 16 3
+rest 16 13 5
+sigil 6 19 4
+sigil 27 10 6
+exit 28 13 7
 lamp
-mechanic handle
+fragment 29 15 7
+fragment 9 21 6
 intro intro_ii_4
 outro outro_ii_4
-hint 1 9 2 hint_handle
-# offerings
-prop urn 9 10 2
-prop vase 5 9 2 py
-prop vase 11 6 2 py

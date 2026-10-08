@@ -34,6 +34,7 @@ Look :: struct {
 	candles:       bool, // the candles on the walls are lit
 	gloom:         f32, // 0 .. 1: how much darker the stones are than under a clear moon
 	moon_clouds:   f32, // 0 none .. 1 dark clouds drifting across the moon (they dim the stones)
+	wind:          f32, // 0 still .. 1 gusts streaking across the screen
 	mote:          Color4,
 }
 
@@ -194,6 +195,32 @@ LOOKS := [level.Setting]Look {
 		mist = {0.68, 0.75, 0.84},
 		daylight = 1,
 		mote = {1.0, 1.0, 0.95, 0.3},
+	},
+	// the same sunset on a windswept crag and the temple beyond it: gusts
+	// streak across, the clouds run; the temple's candles are lit
+	.Windy_Sunset = {
+		sky_top = {0.10, 0.11, 0.30},
+		sky_mid = {0.52, 0.30, 0.42},
+		sky_horizon = {1.0, 0.62, 0.36},
+		orb_pos = {0.76, 0.8},
+		orb_radius = 0.042,
+		orb_color = {1.0, 0.86, 0.6},
+		halo_color = {0.75, 0.42, 0.2},
+		halo_width = 5,
+		stars = 0.25,
+		haze = {0.42, 0.24, 0.30},
+		islands = false,
+		ridges = 1,
+		ridge_color = {{0.62, 0.40, 0.50}, {0.40, 0.25, 0.38}, {0.24, 0.15, 0.26}},
+		ridge_rim = {0.95, 0.55, 0.30},
+		cloud_back = {0.60, 0.36, 0.44},
+		cloud_front = {0.68, 0.46, 0.54},
+		cloud_crest = {0.55, 0.30, 0.12},
+		mist = {0.42, 0.28, 0.38},
+		daylight = 1,
+		candles = true,
+		wind = 1,
+		mote = {1.0, 0.8, 0.5, 0.45},
 	},
 	// the palace of voices at twilight: the sun is gone, its last light low on
 	// the clouds, the first stars, the moon rising; the candles are lit

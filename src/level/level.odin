@@ -51,6 +51,7 @@ Setting :: enum u8 {
 	Forest_Night, // the dead of night in a forest of rock pillars, far from the palace
 	River_Dawn, // the first light over a wide river, mist on the water, the morning star
 	Crag_Day, // a crag of bare rock by day, the wind, the plain far below
+	Windy_Sunset, // the sunset of the crag, windswept, a temple's candles lit
 }
 
 SETTING_NAME := [Setting]string {
@@ -62,6 +63,7 @@ SETTING_NAME := [Setting]string {
 	.Forest_Night = "forest_night",
 	.River_Dawn   = "river_dawn",
 	.Crag_Day     = "crag_day",
+	.Windy_Sunset = "windy_sunset",
 }
 
 // How a block behaves (Act II): fixed stone, or one that changes for good.
@@ -84,6 +86,7 @@ Solid_Entry :: struct {
 	solid: Solid,
 	trait: Trait,
 	part:  u8, // 0: fixed; n: turns with part n-1
+	seal:  u8, // `rise` entries: the seal (data.sigils index) that raises it
 }
 
 // A part of the palace that a handle turns a quarter at a time, about the
@@ -209,7 +212,8 @@ Level_Data :: struct {
 	voices:    [dynamic]Cue,
 	hints:     [dynamic]Cue,
 	start:        Cell,
-	sigil:        Cell,
+	sigil:        Cell, // the first seal (I.4's: the canonical ending's level)
+	sigils:       [dynamic]Cell, // every seal, in file order: each raises its own `rise` blocks
 	amore:        Cell,
 	fragments:    [dynamic]Cell, // the fragments of the tale (optional, never required), in content order
 	exit:         Cell, // reaching it completes the level
@@ -227,6 +231,7 @@ Level_Data :: struct {
 	water:        [dynamic][4]i32, // rectangles of water (x0 y0 x1 y1), just under the h1 surfaces
 	caves:        [dynamic]Cave, // in pairs: each leads to the other of its pair
 	tiers:        [dynamic][2]i32, // a tall level: the camera frames one band of heights (h0 h1) at a time
+	follow:       i32, // a long level: the camera frames about this many cells and follows Psyche (0: the whole level)
 	outro:        i18n.Key, // the text of the ending card at the exit
 	has_outro:    bool,
 	has_lamp:     bool, // Psyche carries the lamp (from the end of Act I)
@@ -244,6 +249,8 @@ MAX_FRAGMENTS :: 4
 MAX_CANDELABRA :: 12
 MAX_DYNAMIC :: 64 // crumbling, phantom and veiled blocks in one level
 MAX_TIERS :: 6
+MAX_SEALS :: 4
+Seals :: bit_set[0 ..< MAX_SEALS; u8] // which seals have been lit
 
 // The cell of a part's block after `r` quarter turns.
 part_cell :: proc(c: Cell, pivot: [2]i32, r: int) -> Cell {
@@ -277,6 +284,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	data.water = make([dynamic][4]i32, 0, 2)
 	data.caves = make([dynamic]Cave, 0, 4)
 	data.tiers = make([dynamic][2]i32, 0, MAX_TIERS)
+	data.sigils = make([dynamic]Cell, 0, MAX_SEALS)
 	data.parts = make([dynamic]Part, 0, 2)
 	data.handles = make([dynamic]Handle, 0, 2)
 	data.rests = make([dynamic]Cell, 0, 4)
@@ -351,7 +359,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 					return data, fail(line_no, "too many changing blocks (max %d)", MAX_DYNAMIC)
 				}
 			}
-			append(&data.blocks, Solid_Entry{v, {kind = .Block}, trait, part})
+			append(&data.blocks, Solid_Entry{v, {kind = .Block}, trait, part, 0})
 			if len(args) > 3 {
 				switch args[3] {
 				case "rock":
@@ -439,7 +447,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				return data, fail(line_no, "column: expected x y z0 z1 with z0 <= z1")
 			}
 			for z in v[2] ..= v[3] {
-				append(&data.blocks, Solid_Entry{{v[0], v[1], z}, {kind = .Block}, .Stone, part})
+				append(&data.blocks, Solid_Entry{{v[0], v[1], z}, {kind = .Block}, .Stone, part, 0})
 			}
 			max_z = max(max_z, v[3])
 
@@ -449,7 +457,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				return data, fail(line_no, "%s: expected x y z0 z1 with z0 <= z1", fields[0])
 			}
 			for z in v[2] ..= v[3] {
-				append(&data.blocks, Solid_Entry{{v[0], v[1], z}, {kind = .Block}, .Stone, part})
+				append(&data.blocks, Solid_Entry{{v[0], v[1], z}, {kind = .Block}, .Stone, part, 0})
 				append(&data.ground, Cell{v[0], v[1], z})
 			}
 			if fields[0] == "ground" {
@@ -465,7 +473,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 			}
 			if !found {
-				return data, fail(line_no, "setting: expected one of night, crag_sunset, dusk, night_candles, deep_night, forest_night, river_dawn, crag_day")
+				return data, fail(line_no, "setting: expected one of night, crag_sunset, dusk, night_candles, deep_night, forest_night, river_dawn, crag_day, windy_sunset")
 			}
 
 		case "tier":
@@ -477,6 +485,13 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				return data, fail(line_no, "too many tiers (max %d)", MAX_TIERS)
 			}
 			append(&data.tiers, v)
+
+		case "follow":
+			v: [1]i32
+			if !ints(args, v[:]) || v[0] < 4 {
+				return data, fail(line_no, "follow: expected the cells the camera frames (>= 4)")
+			}
+			data.follow = v[0]
 
 		case "water":
 			v: [4]i32
@@ -506,7 +521,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			if !ok {
 				return data, fail(line_no, "%s: unknown direction '%s'", fields[0], args[3])
 			}
-			append(&data.blocks, Solid_Entry{v, {.Stairs, d}, .Stone, part})
+			append(&data.blocks, Solid_Entry{v, {.Stairs, d}, .Stone, part, 0})
 			if fields[0] == "steps" {
 				append(&data.ground, v)
 			}
@@ -515,10 +530,20 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 		case "rise":
 			v: [3]i32
 			if !ints(args, v[:]) {
-				return data, fail(line_no, "rise: expected x y z [stairs_dir] [rock|ground]")
+				return data, fail(line_no, "rise: expected x y z [stairs_dir] [rock|ground] [seal]")
 			}
 			s := Solid{kind = .Block}
 			opts := args[3:]
+			seal: u8 = 0
+			if len(opts) > 0 {
+				if k, ok := strconv.parse_int(opts[len(opts) - 1], 10); ok {
+					if k < 1 || k > MAX_SEALS {
+						return data, fail(line_no, "rise: the seal is a number 1..%d", MAX_SEALS)
+					}
+					seal = u8(k - 1)
+					opts = opts[:len(opts) - 1]
+				}
+			}
 			if len(opts) > 0 && (opts[len(opts) - 1] == "rock" || opts[len(opts) - 1] == "ground") {
 				append(&data.ground, v) // living rock rising from the earth (ground: its top grassy)
 				if opts[len(opts) - 1] == "ground" {
@@ -533,7 +558,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 				s = {.Stairs, d}
 			}
-			append(&data.rise, Solid_Entry{cell = v, solid = s})
+			append(&data.rise, Solid_Entry{cell = v, solid = s, seal = seal})
 			max_z = max(max_z, v.z)
 
 		case "candelabrum":
@@ -592,7 +617,14 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			}
 			switch fields[0] {
 			case "start": data.start, has_start = v, true
-			case "sigil": data.sigil, data.has_sigil = v, true
+			case "sigil":
+				if len(data.sigils) == MAX_SEALS {
+					return data, fail(line_no, "sigil: at most %d per level", MAX_SEALS)
+				}
+				if !data.has_sigil {
+					data.sigil, data.has_sigil = v, true
+				}
+				append(&data.sigils, v)
 			case "amore": data.amore, data.has_amore = v, true
 			case "fragment":
 				if len(data.fragments) == MAX_FRAGMENTS {
@@ -677,6 +709,9 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	for e in data.rise {
 		if !check(e.cell, data.size, data.height) {
 			return data, fail(0, "rise %v outside the grid", e.cell)
+		}
+		if int(e.seal) >= len(data.sigils) {
+			return data, fail(0, "rise %v: no seal %d raises it", e.cell, e.seal + 1)
 		}
 	}
 	for c in data.caves {

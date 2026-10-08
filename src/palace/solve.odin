@@ -22,7 +22,7 @@ import "../level"
 Config :: struct {
 	flips: u64, // bit k: the k-th changing block has changed
 	rots:  u32, // 2 bits per part
-	risen: bool, // the seal has been lit
+	risen: level.Seals, // the seals that have been lit
 }
 
 @(private = "file")
@@ -406,15 +406,22 @@ touch :: proc(s: ^Solver, cfg: Config, feet: Cell) -> (out: Config, changed: int
 	return
 }
 
-// The lamp lit on the seal raises the `rise` blocks for good.
+// The lamp lit on a seal raises its `rise` blocks for good.
 @(private = "file")
 seal :: proc(p: ^Palace, cfg: Config, feet: Cell, changed: int) -> (Config, int) {
-	if !p.data.has_sigil || cfg.risen || feet != p.data.sigil {
-		return cfg, changed
+	for c, k in p.data.sigils {
+		if c != feet || k in cfg.risen {
+			continue
+		}
+		out := cfg
+		out.risen += {k}
+		n := changed
+		for e in p.data.rise {
+			n += int(int(e.seal) == k)
+		}
+		return out, n
 	}
-	out := cfg
-	out.risen = true
-	return out, changed + len(p.data.rise)
+	return cfg, changed
 }
 
 // Where the level is won: its exit, or a surface beside Cupid (the lamp is lit there).

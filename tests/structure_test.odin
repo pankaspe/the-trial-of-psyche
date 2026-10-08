@@ -179,10 +179,10 @@ trust_waits_for_the_end_of_the_game :: proc(t: ^testing.T) {
 	if !start(t, &g) {
 		return
 	}
-	g.palace.risen = true
+	g.palace.risen = {0}
 	palace.rebuild_graph(&g.palace)
 	game.set_view(&g, 0)
-	g.activated = true
+	g.activated = {0}
 	g.psyche.cell = GALLERY
 	testing.expect(t, walk(t, &g, ROOF_ENTRY), "Psyche reaches the roof")
 	testing.expect(t, walk(t, &g, BEDSIDE), "Psyche walks to Cupid's side")

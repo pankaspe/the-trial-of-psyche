@@ -4,9 +4,10 @@
 #   column x y z0 z1        stack of blocks (covered blocks are drawn as masonry)
 #   block x y z             single block (floating is fine)
 #   stairs x y z dir        stairs rising toward dir (px/mx/py/my)
-#   rise x y z [stairs_dir] [rock|ground]
+#   rise x y z [stairs_dir] [rock|ground] [n]
 #                           block (or stairs) raised when the sigil is lit
-#                           (rock: living rock; ground: the same, its top grassy)
+#                           (rock: living rock; ground: the same, its top grassy;
+#                           n: raised by the n-th sigil of the file, default 1)
 #   prop name x y z [dir]   decoration in cell (x,y,z); oriented props take a dir.
 #                           pillar/bed/plinth/cypress/urn/brazier block the cell;
 #                           statue dir (a sister in marble on a plinth, her arm
@@ -33,7 +34,8 @@
 #   tier h0 h1              a level too tall for the screen: the camera frames one
 #                           band of heights at a time (Psyche's), panning to the next
 #                           when she changes band (through a cave, while she is inside)
-#   start|sigil x y h       (h = surface height = block z + 1)
+#   start|sigil x y h       (h = surface height = block z + 1); a level may have
+#                           up to 4 sigils, each raising its own `rise` blocks
 #   amore x y h             the cell of the bed where Cupid sleeps
 #   exit x y h              reaching it completes the level
 #   fragment x y h          a fragment of the tale: optional, on a spot reached

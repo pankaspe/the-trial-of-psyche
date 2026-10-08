@@ -168,7 +168,8 @@ Game :: struct {
 	oil:            f32,
 	flicker:        f32,
 	drip:           f32,
-	activated:      bool, // the seal has been lit
+	activated:      level.Seals, // the seals that have been lit
+	rising:         int, // the seal lit last (phase Sigil: its blocks are rising)
 	lightings:      int, // times the lamp was lit
 
 	oil_max:        f32, // the lamp's oil when full (seconds)
@@ -210,8 +211,8 @@ Game :: struct {
 	begin_t:        f32, // time since begin(), < 0 before
 	cine_out:       f32, // time since the prologue gave way to play, < 0 before (the bars withdraw)
 	arrive_t:       f32, // time since the arrival from the last level began, < 0 without one
-	rise_t:         f32, // < 0 until the seal is lit
-	rise_count:     int,
+	rise_t:         [level.MAX_SEALS]f32, // per seal: time since it was lit, < 0 before
+	rise_rank:      []int, // per data.rise entry: its place among the blocks of its seal
 	collapse_t:     f32, // < 0 until the palace falls
 	collapse_keep:  Cell,
 	shake_t:        f32,
@@ -234,7 +235,7 @@ Rest :: struct {
 	flipped:   []bool,
 	part_rot:  [level.MAX_PARTS]int,
 	oil:       f32,
-	activated: bool,
+	activated: level.Seals,
 	lightings: int,
 }
 
@@ -267,7 +268,12 @@ load_text :: proc(g: ^Game, index: int, text: string) -> (err: Maybe(Load_Error)
 	g.data = data
 	pl.init(&g.palace, &g.data, alloc)
 	g.reach_before = make([]bool, len(g.palace.solid), alloc) // one per grid cell: enough for any node count
-	g.rise_count = len(g.data.rise)
+	g.rise_rank = make([]int, len(g.data.rise), alloc)
+	for e, i in g.data.rise {
+		for f in g.data.rise[:i] {
+			g.rise_rank[i] += int(f.seal == e.seal)
+		}
+	}
 	g.flip_t = make([]f32, len(g.data.blocks), alloc)
 	g.rest.flipped = make([]bool, len(g.data.blocks), alloc)
 	g.rests_lit = make([]bool, len(g.data.rests), alloc)
@@ -410,7 +416,7 @@ update :: proc(g: ^Game, dt: f32) {
 		}
 		if g.oil <= 0 {
 			set_lamp(g, false)
-			if !g.activated {
+			if g.activated == {} {
 				hint(g, .Hint_No_Oil, 0, true)
 			}
 		}
@@ -457,8 +463,8 @@ update :: proc(g: ^Game, dt: f32) {
 		if g.lamp_on && g.light > 0.6 {
 			lamp_truth(g)
 		}
-		if g.lamp_on && g.light > 0.6 && !g.activated && !g.psyche.walking && g.data.has_sigil && psy == g.data.sigil {
-			activate_sigil(g)
+		if k := seal_at(g, psy); g.lamp_on && g.light > 0.6 && !g.psyche.walking && k >= 0 && k not_in g.activated {
+			activate_sigil(g, k)
 		} else if g.lamp_on && g.light > 0.3 && in_chamber(g, psy) {
 			start_ending(g, .Ending_Oil)
 		}
@@ -474,7 +480,7 @@ update :: proc(g: ^Game, dt: f32) {
 			g.teach_pending = pending
 		}
 	case .Sigil:
-		if g.phase_t >= rise_duration(g) {
+		if g.phase_t >= rise_duration(g, g.rising) {
 			set_phase(g, .Play)
 		}
 	case .Mechanism:
@@ -1101,7 +1107,9 @@ return_to_rest :: proc(g: ^Game) -> bool {
 	g.palace.part_rot = r.part_rot
 	g.activated = r.activated
 	g.palace.risen = r.activated
-	g.rise_t = r.activated ? 1e3 : -1
+	for &t, k in g.rise_t {
+		t = k in r.activated ? 1e3 : -1
+	}
 	pl.rebuild_graph(&g.palace)
 	for &t, i in g.flip_t {
 		t = g.palace.flipped[i] ? 1e3 : -1
@@ -1138,26 +1146,52 @@ amore_world :: proc(g: ^Game) -> Vec3 {
 	return {f32(a.x) + 0.5, f32(a.y) + 0.5, f32(a.z) + 0.3}
 }
 
+// The seal at feet cell c (index into data.sigils), or -1.
+seal_at :: proc(g: ^Game, c: Cell) -> int {
+	for s, k in g.data.sigils {
+		if s == c {
+			return k
+		}
+	}
+	return -1
+}
+
 @(private)
-activate_sigil :: proc(g: ^Game) {
-	g.activated = true
+activate_sigil :: proc(g: ^Game, k: int) {
+	g.activated += {k}
+	g.rising = k
 	learn(g, .Hint_Sigil)
 	set_phase(g, .Sigil)
 	sa.clear(&g.path)
 	audio.play(.Rumble, -2)
 	shake(g, 2.6)
-	g.palace.risen = true
+	g.palace.risen = g.activated
 	pl.rebuild_graph(&g.palace)
-	g.rise_t = 0
+	g.rise_t[k] = 0
 }
 
-// When the i-th stone raised by the seal reaches its place (seconds after the seal is lit).
-rise_landing :: proc(i: int) -> f32 {
-	return f32(i) * RISE_DELAY + RISE_TIME * 0.55
+// Seconds since the seal raising rise entry i was lit (< 0 before).
+rise_time :: proc(g: ^Game, i: int) -> f32 {
+	return g.rise_t[g.data.rise[i].seal]
 }
 
-rise_duration :: proc(g: ^Game) -> f32 {
-	return f32(max(g.rise_count - 1, 0)) * RISE_DELAY + RISE_TIME
+// When rise entry i reaches its place, seconds after its seal is lit (the
+// stones of a seal come up one after the other, in file order).
+rise_start :: proc(g: ^Game, i: int) -> f32 {
+	return f32(g.rise_rank[i]) * RISE_DELAY
+}
+
+rise_landing :: proc(g: ^Game, i: int) -> f32 {
+	return rise_start(g, i) + RISE_TIME * 0.55
+}
+
+// How long the stones of seal k take to rise.
+rise_duration :: proc(g: ^Game, k: int) -> f32 {
+	n := 0
+	for e in g.data.rise {
+		n += int(int(e.seal) == k)
+	}
+	return f32(max(n - 1, 0)) * RISE_DELAY + RISE_TIME
 }
 
 shake :: proc(g: ^Game, seconds: f32) {
@@ -1299,14 +1333,17 @@ update_ending_trust :: proc(g: ^Game) {
 
 @(private)
 update_effects :: proc(g: ^Game, dt: f32) {
-	if g.rise_t >= 0 {
-		before := g.rise_t
-		g.rise_t += dt
+	for &t, k in g.rise_t {
+		if t < 0 {
+			continue
+		}
+		before := t
+		t = min(t + dt, 1e3)
 		// each stone the seal raises lands with a thud: the bridge forms stone by stone
-		for i in 0 ..< g.rise_count {
-			at := rise_landing(i)
-			if before < at && g.rise_t >= at {
-				audio.play(.Thud, -5, 0.85 + 0.05 * f32(i))
+		for e, i in g.data.rise {
+			at := rise_landing(g, i)
+			if int(e.seal) == k && before < at && t >= at {
+				audio.play(.Thud, -5, 0.85 + 0.05 * f32(g.rise_rank[i]))
 				shake(g, 0.3)
 			}
 		}
