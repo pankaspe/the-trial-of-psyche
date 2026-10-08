@@ -17,10 +17,10 @@
 // (the lamp cannot be lit over a phantom); standing on a handle, a click on
 // her own cell (or F) turns a part of the palace a quarter.
 //
-// Caves come in pairs. Standing at the mouth of one, Space (or F) takes her
-// through the rock (a step longer than the others): she walks into the dark
-// and out of the other. Walks never go through a cave by themselves: a click
-// elsewhere must not carry her into the rock.
+// Caves come in pairs. Standing at the mouth of one, Space (or the card the
+// HUD shows over her) takes her through the rock, a step longer than the
+// others: she walks into the dark and out of the other. Walks never go
+// through a cave by themselves: a click elsewhere must not carry her there.
 //
 // Cutscenes are timelines: a phase plus the time spent in it; every animation
 // is a function of that time, so there are no callbacks to keep alive.
@@ -181,6 +181,8 @@ Game :: struct {
 	teach_card:     bool, // set by the app while the mechanic's card is on screen
 	teach_after:    f32, // time since that card was closed, < 0 before
 	trust_allowed:  bool, // set by the app: the game has been finished once
+	endless_oil:    bool, // set by the app (accessibility): the lamp never runs dry
+	reduce_motion:  bool, // set by the app (accessibility): the screen does not shake
 	fragments_known: Fragment_Set, // set by the app: collected in an earlier play
 	fragments_taken: Fragment_Set, // picked up in this play
 	fragment_new:   bool, // event for the app: `fragment_last` just picked up (it clears it)
@@ -398,7 +400,9 @@ update :: proc(g: ^Game, dt: f32) {
 	g.flicker = 0.93 + 0.05 * math.sin(g.time * 23) + 0.03 * math.sin(g.time * 37 + 1.3)
 
 	if g.lamp_on && g.phase != .Finished {
-		g.oil = max(g.oil - dt, 0)
+		if !g.endless_oil {
+			g.oil = max(g.oil - dt, 0)
+		}
 		g.drip += dt
 		if g.drip >= DRIP_EVERY {
 			g.drip = 0
@@ -577,7 +581,9 @@ toggle_lamp :: proc(g: ^Game) {
 		audio.play(.Blocked, -6)
 		hint(g, .Hint_Phantom_Under, 4, true)
 	} else if g.oil > 0.05 {
-		g.oil = max(g.oil - LIGHT_COST, 0)
+		if !g.endless_oil {
+			g.oil = max(g.oil - LIGHT_COST, 0)
+		}
 		g.lightings += 1
 		set_lamp(g, true)
 		learn(g, .Hint_Lamp)
@@ -665,6 +671,21 @@ click :: proc(g: ^Game, point: Vec2) {
 	}
 }
 
+// Can Psyche use the skill in this level? The lamp where she carries it, the
+// handle from the level that teaches it on.
+has_skill :: proc(g: ^Game, skill: content.Skill) -> bool {
+	switch skill {
+	case .Lamp: return g.data.has_lamp
+	case .Handle: return content.skill_known(g.level_index, .Handle)
+	}
+	return false
+}
+
+// Is she standing still on a handle, the palace ready to turn?
+on_handle :: proc(g: ^Game) -> bool {
+	return g.active && g.phase == .Play && !g.turning && !g.psyche.walking && pl.handle_at(&g.palace, g.psyche.cell) >= 0
+}
+
 // Psyche stands still at the mouth of a cave whose other end can be reached.
 at_cave :: proc(g: ^Game) -> bool {
 	if !g.active || g.phase != .Play || g.turning || g.psyche.walking {
@@ -679,7 +700,6 @@ enter_cave :: proc(g: ^Game) -> bool {
 	if !at_cave(g) {
 		return false
 	}
-	learn(g, .Hint_Cave)
 	sa.clear(&g.path)
 	sa.push_back(&g.path, g.data.caves[pl.cave_at(&g.palace, g.psyche.cell) ~ 1].cell)
 	g.pending_turn = 0
@@ -931,11 +951,6 @@ cues :: proc(g: ^Game, n: Cell) {
 @(private)
 arrive :: proc(g: ^Game, n: Cell) {
 	cues(g, n)
-	if pl.cave_at(&g.palace, n) >= 0 && !g.psyche.step_passage {
-		hint(g, .Hint_Cave, 0)
-	} else if g.hud.hint.active && g.hud.hint.key == .Hint_Cave {
-		hide(&g.hud.hint)
-	}
 	for c, i in g.data.rests {
 		if c == n {
 			light_rest(g, i)
@@ -1146,6 +1161,9 @@ rise_duration :: proc(g: ^Game) -> f32 {
 }
 
 shake :: proc(g: ^Game, seconds: f32) {
+	if g.reduce_motion {
+		return
+	}
 	g.shake_t = 0
 	g.shake_duration = seconds
 }

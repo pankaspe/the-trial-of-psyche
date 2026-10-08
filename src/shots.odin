@@ -64,6 +64,8 @@ SHOT_SCRIPT := [?]Shot_Step {
 	{0.6, "02_settings_graphics", nil},
 	{0.1, "", proc(app: ^App) {app.ui.settings_tab = .Audio}},
 	{0.6, "02_settings_audio", nil},
+	{0.1, "", proc(app: ^App) {app.ui.settings_tab = .Access}},
+	{0.6, "02_settings_access", nil},
 	{0.1, "", proc(app: ^App) {app.ui.settings_tab = .General}},
 	{0.1, "", proc(app: ^App) {close_settings(app)}},
 	{0.1, "", proc(app: ^App) {app.prog.completed = {3}; app.prog.fragments = {2, 3, 4}; app.screen = .Levels}},
@@ -222,6 +224,7 @@ Shots :: struct {
 	has_post: bool,
 	plan:  bool, // --plan: play the solver's plan of the level, a shot after every decision
 	record: bool, // --record (with --plan): every frame at RECORD_FPS instead, for a video
+	cave_shot: int, // --plan: the last move shot at a cave's mouth (the action of the place shows)
 	no_ui: bool, // --no-ui: the world only (backdrops for mockups and stills)
 	frame: int,
 	moves: [dynamic]pl.Plan_Step,
@@ -427,6 +430,15 @@ plan_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool)
 		s.step = 3
 		s.t = 0
 		return "", false
+	}
+	if next := s.moves[s.move]; next.move == .Step && pl.is_passage(&g.palace, g.psyche.cell, next.cell) && s.cave_shot <= s.move {
+		// at a cave's mouth: a shot with the action of the place over her
+		if s.t < 0.6 {
+			return "", false
+		}
+		s.cave_shot = s.move + 1
+		s.t = 0
+		return fmt.tprintf("p%03d_cave", s.move), false
 	}
 	if !game.apply_move(g, s.moves[s.move]) {
 		fmt.eprintfln("plan: the game refused move %d %v", s.move, s.moves[s.move])

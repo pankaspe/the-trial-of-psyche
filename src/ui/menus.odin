@@ -267,9 +267,12 @@ level_select :: proc(u: ^Ui, prog: progress.Progress) -> (chosen: int, back: boo
 				hovered = i
 			}
 			alpha: f32 = open ? 1 : (built ? 0.55 : 0.3)
-			rl.DrawRectangleRounded(r, 0.14, 8, fade(WARM, (hover && open ? 0.8 : 0.55) * alpha))
+			rl.DrawRectangleRec(r, fade({13, 11, 20, 255}, (hover && open ? 0.88 : 0.66) * alpha))
 			edge := done ? fade(GOLD, 0.65) : fade(GOLD, 0.22 * alpha)
-			rl.DrawRectangleRoundedLinesEx(r, 0.14, 8, max(1.2 * s, 1), hover && open ? BRIGHT : edge)
+			rl.DrawRectangleLinesEx(r, max(1.2 * s, 1), hover && open ? BRIGHT : edge)
+			if hover && open {
+				corner_frame(u, {r.x - 4 * s, r.y - 4 * s, r.width + 8 * s, r.height + 8 * s}, 1, s, BRIGHT)
+			}
 			col := done ? TEXT : DIM
 			if hover && open {
 				col = BRIGHT
@@ -381,7 +384,7 @@ achievement_toast :: proc(u: ^Ui, a: progress.Achievement, t: f32) {
 	nst := Style{size = 32, color = TEXT, face = .Semi}
 	w := max(measure(u, name, nst).x, 220 * s) + 96 * s
 	r := rl.Rectangle{32 * s, 32 * s, w, 96 * s}
-	warm_card(u, r, alpha, 0.2, 0.45)
+	warm_card(u, r, alpha, 0.45)
 	c := Vec2{r.x + 36 * s, r.y + r.height * 0.5}
 	glow_dot(c, 9 * s, {255, 176, 77, 255}, alpha)
 	diamond(u, c, 11 * s, fade(BRIGHT, alpha), true)
@@ -401,6 +404,7 @@ Setting_Field :: enum u8 {
 	Volumes,
 	Debug,
 	Look,
+	Access, // the accessibility options (read by the app every frame)
 }
 
 Setting_Changes :: bit_set[Setting_Field]
@@ -410,6 +414,7 @@ Settings_Tab :: enum u8 {
 	General,
 	Graphics,
 	Audio,
+	Access,
 }
 
 @(private)
@@ -417,6 +422,7 @@ TAB_KEY := [Settings_Tab]i18n.Key {
 	.General  = .Set_General,
 	.Graphics = .Set_Graphics,
 	.Audio    = .Set_Audio,
+	.Access   = .Set_Access,
 }
 
 LOOK_NAME := [settings.Look]i18n.Key {
@@ -585,6 +591,54 @@ settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, na
 		y += row
 		if slider(u, i18n.tr(.Set_Sfx), &cfg.sfx, y, left, right) {
 			changes += {.Volumes}
+		}
+
+	case .Access:
+		// the next value in a list, `step` places on, wrapping
+		pick :: proc(list: []f32, value: f32, step: int) -> f32 {
+			current := 0
+			for v, i in list {
+				if abs(v - value) < 0.001 {
+					current = i
+				}
+			}
+			return list[(current + step + len(list)) % len(list)]
+		}
+		if step := option_row(u, i18n.tr(.Set_Hud_Size), fmt.tprintf("%d%%", int(cfg.hud_size * 100 + 0.5)), y, left, right); step != 0 {
+			cfg.hud_size = pick(settings.HUD_SIZES[:], cfg.hud_size, step)
+			changes += {.Access}
+		}
+		line(u, left, right, y)
+		y += row
+		labels := i18n.tr(cfg.skill_labels == .Always ? .Labels_Always : .Labels_Hover)
+		if step := option_row(u, i18n.tr(.Set_Skill_Labels), labels, y, left, right); step != 0 {
+			cfg.skill_labels = cfg.skill_labels == .Always ? .Hover : .Always
+			changes += {.Access}
+		}
+		line(u, left, right, y)
+		y += row
+		if step := option_row(u, i18n.tr(.Set_Restart_Twice), on_off(cfg.restart_twice), y, left, right); step != 0 {
+			cfg.restart_twice = !cfg.restart_twice
+			changes += {.Access}
+		}
+		line(u, left, right, y)
+		y += row
+		hold := fmt.tprintf("%.1f s", cfg.hold_time)
+		if step := option_row(u, i18n.tr(.Set_Hold), hold, y, left, right, !cfg.restart_twice); step != 0 {
+			cfg.hold_time = pick(settings.HOLD_TIMES[:], cfg.hold_time, step)
+			changes += {.Access}
+		}
+		line(u, left, right, y)
+		y += row
+		if step := option_row(u, i18n.tr(.Set_Reduce_Motion), on_off(cfg.reduce_motion), y, left, right); step != 0 {
+			cfg.reduce_motion = !cfg.reduce_motion
+			changes += {.Access}
+		}
+		line(u, left, right, y)
+		y += row
+		if step := option_row(u, i18n.tr(.Set_Endless_Oil), on_off(cfg.endless_oil), y, left, right); step != 0 {
+			cfg.endless_oil = !cfg.endless_oil
+			changes += {.Access}
 		}
 	}
 	back = back_key(u, {left, u.height - 100 * s})

@@ -450,6 +450,18 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   (`Face.Body/Semi/Italic`); Noto Serif removed. Palette in ui.odin (ivory, parchment, gold, warm
   tint). `--shots` has a pause shot (03b).
 
+- **Squared HUD (2026-10-08, the user's choice on the canvas
+  https://claude.ai/artifact/3myJRHmykiACnRbuZfLL9e)**: nothing rounded; cards and key caps square
+  with four gold corners (`ui.corner_frame`, `warm_card`). **Skills** (`content.Skill`, `SKILL_FROM`:
+  one skill learned per act or so, each on its number key): a sidebar on the left, a square slot each
+  (1 the lamp, its oil as 14 notches inside the slot; 2 the handle; still to learn: hatched, a padlock);
+  the name and state slide out on hover (animated) and for a moment when the state changes, or always
+  (setting). **Diorama** (world, not skills): small square buttons bottom right, Q E (turn) and R (the
+  brazier: a tap goes back to it; held, a ring fills and the level restarts; let go half way: nothing;
+  `update_rest` in main.odin); no view indicator (the user removed it). **Space** = the action of the place (today: into a cave), a card over Psyche.
+  Settings > Accessibility: HUD size, skill names (hover/always), hold time or R twice, reduce motion,
+  endless oil. The pause hides the HUD.
+
 ## Roadmap from now (user, 2026-10-06): level by level
 - Art direction is settled as: settings per level (`render/setting.odin`, add a `Look` per new
   place) + the player's visual style (post-processing). The A0 "art style" mockups (engraving,

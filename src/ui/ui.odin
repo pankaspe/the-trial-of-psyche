@@ -1,8 +1,9 @@
 // Immediate-mode UI: fonts, text, buttons, option rows and sliders.
 //
-// The look is "lamplight": titles in Mystery Quest with a warm halo, text in
-// Cormorant Garamond, warm gold and ivory, small diamonds as ornaments; the
-// settings sheet is dark glass over the game (`glass_panel`).
+// The look is "lamplight", squared: titles in Mystery Quest with a warm halo,
+// text in Cormorant Garamond, warm gold and ivory; cards and key caps are
+// square, framed by four small gold corners (`corner_frame`); the settings
+// sheet is dark glass over the game (`glass_panel`).
 //
 // Layout is designed for a 1920 x 1080 screen and scaled by `scale`.
 // Widgets record their rectangles every frame; the game asks `over_ui` (with
@@ -71,6 +72,17 @@ Ui :: struct {
 	prev_count: int,
 	active_slider: rawptr, // the value being dragged
 	runes:     []rune, // every glyph the fonts must hold
+	// set by the app from the settings (accessibility)
+	hud_size:      f32, // the in-game HUD's size factor
+	labels_always: bool, // the skills' names always beside their slots
+	reduce_motion: bool, // nothing pulses or breathes
+	// the HUD's animations
+	dt:            f32,
+	skill_reveal:  [content.MAX_SKILLS]f32, // each skill's name sliding out (0..1)
+	skill_flash:   [content.MAX_SKILLS]f32, // seconds its name stays out after a change
+	skill_state:   [content.MAX_SKILLS]int, // what each slot said last frame (-1: nothing yet)
+	tip_reveal:    [3]f32, // the names of the diorama's buttons (Q, E, R)
+	place_reveal:  f32, // the action of the place, over Psyche
 }
 
 init :: proc(u: ^Ui) {
@@ -103,6 +115,10 @@ init :: proc(u: ^Ui) {
 	u.runes = make([]rune, len(runes))
 	copy(u.runes, runes[:])
 	u.scale = 1
+	u.hud_size = 1
+	for &st in u.skill_state {
+		st = -1
+	}
 	ensure_fonts(u)
 }
 
@@ -156,6 +172,7 @@ begin_frame :: proc(u: ^Ui, width, height: f32) {
 	// 1080p layout; on very wide or narrow windows the width limits it too
 	u.scale = min(height / 1080, width / 1600)
 	ensure_fonts(u)
+	u.dt = min(rl.GetFrameTime(), 0.1)
 	u.mouse = rl.GetMousePosition()
 	u.pressed = rl.IsMouseButtonPressed(.LEFT)
 	u.down = rl.IsMouseButtonDown(.LEFT)
@@ -350,22 +367,44 @@ rule_label :: proc(u: ^Ui, label: string, pos: Vec2, size: f32, line: f32, alpha
 	rl.DrawRectangleRec({pos.x + m.x * 0.5 + gap, y, line, th}, fade(GOLD, 0.55 * alpha))
 }
 
-// A key cap ("Esc") with its top left corner at `pos`; returns its width.
-key_cap :: proc(u: ^Ui, key: string, pos: Vec2, alpha: f32 = 1) -> f32 {
-	s := u.scale
-	st := Style{size = 20, color = BRIGHT, face = .Semi}
+// A square key cap ("Esc") with its top left corner at `pos`; returns its
+// width. `k` is the scale (default: the UI's); `lit` fills it with gold.
+key_cap :: proc(u: ^Ui, key: string, pos: Vec2, alpha: f32 = 1, k: f32 = 0, lit := false) -> f32 {
+	s := k > 0 ? k : u.scale
+	// Cormorant's figures are old style (small): a key's number is set larger
+	big := len(key) == 1 && key[0] >= '0' && key[0] <= '9'
+	st := Style{size = (big ? 26 : 21) * s / u.scale, color = lit ? rl.Color{26, 18, 8, 255} : TITLE, face = .Semi}
 	m := measure(u, key, st)
-	r := rl.Rectangle{pos.x, pos.y, max(m.x + 16 * s, 30 * s), 30 * s}
-	rl.DrawRectangleRounded(r, 0.25, 6, fade(WARM, 0.45 * alpha))
-	rl.DrawRectangleRoundedLinesEx(r, 0.25, 6, max(s, 1), fade(GOLD, 0.55 * alpha))
-	text(u, key, {r.x + r.width * 0.5, r.y + (r.height - m.y) * 0.5}, st, .Center, alpha)
+	r := rl.Rectangle{pos.x, pos.y, max(m.x + 14 * s, 28 * s), 28 * s}
+	rl.DrawRectangleRec(r, lit ? fade(BRIGHT, alpha) : fade({21, 18, 29, 255}, 0.95 * alpha))
+	rl.DrawRectangleLinesEx(r, max(1.5 * s, 1), lit ? fade(BRIGHT, alpha) : fade(TEXT, 0.8 * alpha))
+	text(u, key, {r.x + r.width * 0.5, r.y + (r.height - m.y) * 0.5 - s}, st, .Center, alpha)
 	return r.width
 }
 
-// Warm glass: a tinted, rounded card with a hairline of gold.
-warm_card :: proc(u: ^Ui, r: rl.Rectangle, alpha: f32, round: f32 = 0.18, edge: f32 = 0.3) {
-	rl.DrawRectangleRounded(r, round, 12, fade(WARM, 0.72 * alpha))
-	rl.DrawRectangleRoundedLinesEx(r, round, 12, max(u.scale, 1), fade(GOLD, edge * alpha))
+// Four small gold corners around `r`: the frame of every card.
+corner_frame :: proc(u: ^Ui, r: rl.Rectangle, alpha: f32, k: f32 = 0, col: rl.Color = GOLD) {
+	s := k > 0 ? k : u.scale
+	l := 12 * s
+	t := max(1.5 * s, 1)
+	c := fade(col, alpha)
+	rl.DrawRectangleRec({r.x, r.y, l, t}, c)
+	rl.DrawRectangleRec({r.x, r.y, t, l}, c)
+	rl.DrawRectangleRec({r.x + r.width - l, r.y, l, t}, c)
+	rl.DrawRectangleRec({r.x + r.width - t, r.y, t, l}, c)
+	rl.DrawRectangleRec({r.x, r.y + r.height - t, l, t}, c)
+	rl.DrawRectangleRec({r.x, r.y + r.height - l, t, l}, c)
+	rl.DrawRectangleRec({r.x + r.width - l, r.y + r.height - t, l, t}, c)
+	rl.DrawRectangleRec({r.x + r.width - t, r.y + r.height - l, t, l}, c)
+}
+
+// A card: a square of dark warm glass, framed by its gold corners and a faint
+// hairline. `edge` is how bright the hairline is.
+warm_card :: proc(u: ^Ui, r: rl.Rectangle, alpha: f32, edge: f32 = 0.3, k: f32 = 0) {
+	s := k > 0 ? k : u.scale
+	rl.DrawRectangleRec(r, fade({13, 11, 20, 255}, 0.82 * alpha))
+	rl.DrawRectangleLinesEx(r, max(s, 1), fade(GOLD, edge * 0.5 * alpha))
+	corner_frame(u, r, alpha, s)
 }
 
 // Dark glass: the picture under `r` frosted, darkened and tinted night blue,
@@ -509,41 +548,12 @@ slider :: proc(u: ^Ui, label: string, value: ^f32, y, left, right: f32) -> bool 
 			changed = true
 		}
 	}
-	rl.DrawRectangleRounded(bar, 1, 6, {255, 255, 255, 40})
-	rl.DrawRectangleRounded({bar.x, bar.y, max(bar.width * value^, bar.height), bar.height}, 1, 6, GOLD)
+	rl.DrawRectangleRec(bar, {255, 255, 255, 40})
+	rl.DrawRectangleRec({bar.x, bar.y, max(bar.width * value^, bar.height), bar.height}, GOLD)
 	knob := Vec2{bar.x + bar.width * value^, bar.y + bar.height * 0.5}
 	glow_dot(knob, 9 * s, GOLD, 1)
-	rl.DrawCircleV(knob, 10 * s, {251, 231, 188, 255})
+	rl.DrawRectangleRec({knob.x - 8 * s, knob.y - 11 * s, 16 * s, 22 * s}, {251, 231, 188, 255})
 	return changed
-}
-
-// A round turn button: warm glass with a curved arrow (step -1: anticlockwise).
-turn_button :: proc(u: ^Ui, center: Vec2, step: int, alpha: f32 = 1) -> bool {
-	s := u.scale
-	radius := 40 * s
-	r := rl.Rectangle{center.x - radius, center.y - radius, radius * 2, radius * 2}
-	add_hot(u, r)
-	hover := rl.CheckCollisionPointRec(u.mouse, r)
-	rl.DrawCircleV(center, radius, fade(WARM, (hover ? 0.75 : 0.5) * alpha))
-	rl.DrawRing(center, radius - max(s, 1), radius, 0, 360, 48, fade(GOLD, (hover ? 0.7 : 0.35) * alpha))
-	col := fade(hover ? TITLE : BRIGHT, alpha)
-	ar := 17 * s
-	thick := 2.4 * s
-	// an open ring (gap at the top); the head sits at the end the arrow runs
-	// toward: top right for anticlockwise, top left for clockwise
-	rl.DrawRing(center, ar - thick, ar, -60, 240, 32, col)
-	head: f32 = (step < 0 ? -60 : 240) * math.PI / 180
-	dir: f32 = step < 0 ? -1 : 1
-	normal := Vec2{math.cos(head), math.sin(head)}
-	tip := center + normal * (ar - thick * 0.5)
-	tangent := Vec2{-math.sin(head), math.cos(head)} * dir
-	h := 8 * s
-	tri(tip + tangent * h, tip + normal * h * 0.75, tip - normal * h * 0.75, col)
-	if hover && u.pressed {
-		audio.play(.Tap, -10)
-		return true
-	}
-	return false
 }
 
 tri :: proc(a, b, c: Vec2, col: rl.Color) {

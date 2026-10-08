@@ -158,3 +158,27 @@ SHADER_POST_BRIGHT_FS :: #load("../../assets/shaders/post_bright.fs", cstring)
 SHADER_POST_BLUR_FS :: #load("../../assets/shaders/post_blur.fs", cstring)
 SHADER_POST_FS :: #load("../../assets/shaders/post.fs", cstring)
 SHADER_VEIL_FS :: #load("../../assets/shaders/veil.fs", cstring)
+
+// The skills Psyche learns along the way, one or two per act, each on its
+// number key (1, 2...): the HUD's slots. Each is known from a level on.
+Skill :: enum u8 {
+	Lamp, // 1
+	Handle, // 2
+}
+
+SKILL_FROM := [Skill]string {
+	.Lamp   = "I.4",
+	.Handle = "II.3",
+}
+
+MAX_SKILLS :: 4 // the slots of the HUD: the ones still to learn show locked
+
+// Is the skill known in level slot `index`?
+skill_known :: proc(index: int, skill: Skill) -> bool {
+	for info, i in LEVELS {
+		if info.id == SKILL_FROM[skill] {
+			return index >= i
+		}
+	}
+	return false
+}

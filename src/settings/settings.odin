@@ -35,6 +35,20 @@ LOOK_CODE := [Look]string {
 	.Painted   = "painted",
 }
 
+// When the names of the skills show beside their slots.
+Skill_Labels :: enum u8 {
+	Hover, // on hover, and for a moment when a skill changes state
+	Always,
+}
+
+LABELS_CODE := [Skill_Labels]string {
+	.Hover  = "hover",
+	.Always = "always",
+}
+
+HUD_SIZES := [?]f32{0.75, 0.875, 1, 1.125, 1.25, 1.5}
+HOLD_TIMES := [?]f32{0.6, 0.9, 1.2, 1.5, 2, 2.5, 3}
+
 Settings :: struct {
 	language:   i18n.Language,
 	fullscreen: bool,
@@ -48,6 +62,13 @@ Settings :: struct {
 	music:      f32,
 	sfx:        f32,
 	debug:      bool,
+	// accessibility
+	hud_size:      f32, // the in-game HUD's size (one of HUD_SIZES)
+	skill_labels:  Skill_Labels,
+	hold_time:     f32, // seconds R is held to restart the level (one of HOLD_TIMES)
+	restart_twice: bool, // R pressed twice restarts, instead of held
+	reduce_motion: bool, // no pulsing or breathing in the HUD, no screen shake
+	endless_oil:   bool, // the lamp never runs dry
 }
 
 defaults :: proc() -> Settings {
@@ -64,6 +85,9 @@ defaults :: proc() -> Settings {
 		music = 1,
 		sfx = 1,
 		debug = false,
+		hud_size = 1,
+		skill_labels = .Hover,
+		hold_time = 1.5,
 	}
 }
 
@@ -127,6 +151,12 @@ serialize :: proc(s: Settings, allocator := context.allocator) -> string {
 	fmt.sbprintfln(&b, "music = %.2f", s.music)
 	fmt.sbprintfln(&b, "sfx = %.2f", s.sfx)
 	fmt.sbprintfln(&b, "debug = %v", s.debug)
+	fmt.sbprintfln(&b, "hud_size = %.3f", s.hud_size)
+	fmt.sbprintfln(&b, "skill_labels = %s", LABELS_CODE[s.skill_labels])
+	fmt.sbprintfln(&b, "hold_time = %.2f", s.hold_time)
+	fmt.sbprintfln(&b, "restart_twice = %v", s.restart_twice)
+	fmt.sbprintfln(&b, "reduce_motion = %v", s.reduce_motion)
+	fmt.sbprintfln(&b, "endless_oil = %v", s.endless_oil)
 	return strings.to_string(b)
 }
 
@@ -200,6 +230,26 @@ parse :: proc(text: string, s: ^Settings) {
 			volume(value, &s.sfx)
 		case "debug":
 			boolean(value, &s.debug)
+		case "hud_size":
+			if f, ok := strconv.parse_f32(value); ok {
+				s.hud_size = clamp(f, HUD_SIZES[0], HUD_SIZES[len(HUD_SIZES) - 1])
+			}
+		case "skill_labels":
+			for code, l in LABELS_CODE {
+				if code == value {
+					s.skill_labels = l
+				}
+			}
+		case "hold_time":
+			if f, ok := strconv.parse_f32(value); ok {
+				s.hold_time = clamp(f, HOLD_TIMES[0], HOLD_TIMES[len(HOLD_TIMES) - 1])
+			}
+		case "restart_twice":
+			boolean(value, &s.restart_twice)
+		case "reduce_motion":
+			boolean(value, &s.reduce_motion)
+		case "endless_oil":
+			boolean(value, &s.endless_oil)
 		}
 	}
 }

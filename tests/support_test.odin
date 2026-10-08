@@ -21,6 +21,12 @@ settings_round_trip :: proc(t: ^testing.T) {
 	s.music = 0.25
 	s.look = .Painted
 	s.look_amount = 0.5
+	s.hud_size = 1.25
+	s.skill_labels = .Always
+	s.hold_time = 2.5
+	s.restart_twice = true
+	s.reduce_motion = true
+	s.endless_oil = true
 	text := settings.serialize(s, context.temp_allocator)
 	back := settings.defaults()
 	back.language = .Italian

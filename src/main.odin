@@ -86,7 +86,13 @@ App :: struct {
 	post:            render.Post,
 	black_t:         f32, // < 0, or time since the screen began to fade to black (end of an act)
 	black_next:      int, // the level that follows the black
+	rest_t:          f32, // how long R (or the brazier's button) has been held, < 0 when up
+	rest_fired:      bool, // this hold has already restarted the level
+	rest_tap_t:      f32, // time since the last tap of R (pressed twice: the level again)
 }
+
+REST_TAP :: 0.25 // a press of R shorter than this is a tap: back to the brazier
+REST_TWICE :: 1.5 // R pressed twice within this restarts the level (accessibility)
 
 main :: proc() {
 	when ODIN_DEBUG {
@@ -164,6 +170,8 @@ startup :: proc(app: ^App) -> bool {
 	app.screen = .Title
 	app.menu_fade = -1
 	app.black_t = -1
+	app.rest_t = -1
+	app.rest_tap_t = 1e3
 	return true
 }
 
@@ -307,6 +315,69 @@ draw_black :: proc(app: ^App, w, h: f32) {
 }
 
 // Restart the current level at once (no act card, no prologue).
+// What the HUD needs from the app: where Psyche is on screen, how far R is held.
+hud_input :: proc(app: ^App) -> ui.Hud_Input {
+	g := &app.game
+	w, h := canvas_size(app)
+	view := render.scene_view(&app.scene, g, w, h)
+	in_: ui.Hud_Input
+	in_.psyche_screen = render.world_to_screen(view, g.psyche.pos + {0, 0, 0.8})
+	in_.twice = app.cfg.restart_twice
+	if !in_.twice && app.rest_t > REST_TAP && !app.rest_fired {
+		in_.hold = clamp((app.rest_t - REST_TAP) / max(app.cfg.hold_time - REST_TAP, 0.1), 0, 1)
+	}
+	return in_
+}
+
+// R, or the brazier's button: a tap goes back to the last brazier lit;
+// held for the time chosen in the settings (or pressed twice, if so chosen),
+// the level starts again. Let go half way, nothing happens.
+update_rest :: proc(app: ^App, button_down: bool) {
+	g := &app.game
+	dt := rl.GetFrameTime()
+	app.rest_tap_t += dt
+	twice := app.cfg.restart_twice
+	held := (rl.IsKeyDown(.R) || button_down) && g.active && g.phase != .Prologue
+	if held {
+		if app.rest_t < 0 {
+			app.rest_t = 0
+			app.rest_fired = false
+		} else {
+			app.rest_t += dt
+		}
+		if !twice && !app.rest_fired && app.rest_t >= app.cfg.hold_time {
+			app.rest_fired = true
+			play_level(app)
+		}
+		return
+	}
+	if app.rest_t < 0 {
+		return
+	}
+	tap := !app.rest_fired && (twice || app.rest_t < REST_TAP)
+	app.rest_t = -1
+	if !tap {
+		return
+	}
+	if twice && app.rest_tap_t < REST_TWICE {
+		app.rest_tap_t = 1e3
+		play_level(app)
+		return
+	}
+	app.rest_tap_t = 0
+	switch {
+	case !game.has_rest(g):
+		game.hint(g, twice ? .Hint_No_Rest_Twice : .Hint_No_Rest, 4, true)
+	case game.return_to_rest(g):
+		if twice {
+			game.hint(g, .Hint_Again_Twice, 2.5, true)
+		}
+	case:
+		// already at the brazier, nothing changed
+		game.hint(g, twice ? .Hint_Again_Twice : .Hint_Hold, 3, true)
+	}
+}
+
 play_level :: proc(app: ^App) {
 	if new_level(app, app.game.level_index) {
 		game.begin(&app.game, prologue = false)
@@ -704,28 +775,22 @@ play_input :: proc(app: ^App) {
 		}
 		return
 	}
-	if rl.IsKeyPressed(.R) {
-		// back to the last brazier, or the whole level again
-		if !game.return_to_rest(g) {
-			play_level(app)
-		}
-		return
-	}
-	if rl.IsKeyPressed(.SPACE) && game.at_cave(g) {
-		// at a cave's mouth, Space leads into the rock
-		game.enter_cave(g)
-	} else if rl.IsKeyPressed(.SPACE) || rl.IsKeyPressed(.L) || rl.IsMouseButtonPressed(.RIGHT) {
+	// R (the brazier, held: the level again) is read with the HUD: update_rest
+	// the skills on their number keys, Space for the action of the place
+	if rl.IsKeyPressed(.ONE) || rl.IsKeyPressed(.KP_1) || rl.IsKeyPressed(.L) || rl.IsMouseButtonPressed(.RIGHT) {
 		game.toggle_lamp(g)
+	}
+	if (rl.IsKeyPressed(.TWO) || rl.IsKeyPressed(.KP_2) || rl.IsKeyPressed(.F)) && game.has_skill(g, .Handle) {
+		game.use_handle(g)
+	}
+	if rl.IsKeyPressed(.SPACE) {
+		game.enter_cave(g)
 	}
 	if rl.IsKeyPressed(.Q) || rl.IsKeyPressed(.LEFT) {
 		game.request_turn(g, -1)
 	}
 	if rl.IsKeyPressed(.E) || rl.IsKeyPressed(.RIGHT) {
 		game.request_turn(g, 1)
-	}
-	if rl.IsKeyPressed(.F) {
-		game.use_handle(g)
-		game.enter_cave(g)
 	}
 	if app.ui.pressed && !ui.over_ui(&app.ui) {
 		w, h := canvas_size(app)
@@ -737,6 +802,12 @@ play_input :: proc(app: ^App) {
 draw_screens :: proc(app: ^App) {
 	g := &app.game
 	u := &app.ui
+	// the accessibility settings, for the HUD and the game
+	u.hud_size = app.cfg.hud_size
+	u.labels_always = app.cfg.skill_labels == .Always
+	u.reduce_motion = app.cfg.reduce_motion
+	g.endless_oil = app.cfg.endless_oil
+	g.reduce_motion = app.cfg.reduce_motion
 	u.toast_visible = app.toast_count > 0
 	switch app.screen {
 	case .Title:
@@ -775,13 +846,20 @@ draw_screens :: proc(app: ^App) {
 			dismiss_act_card(app)
 		}
 	case .Play:
-		act := ui.draw_hud(u, g)
+		act := ui.draw_hud(u, g, hud_input(app))
 		if act.lamp {
 			game.toggle_lamp(g)
+		}
+		if act.handle {
+			game.use_handle(g)
+		}
+		if act.place {
+			game.enter_cave(g)
 		}
 		if act.turn != 0 {
 			game.request_turn(g, act.turn)
 		}
+		update_rest(app, act.rest_down)
 		if app.menu_fade >= 0 {
 			// the title menu rises and fades away as the game begins
 			k := app.menu_fade / MENU_FADE
@@ -799,7 +877,7 @@ draw_screens :: proc(app: ^App) {
 			close_mechanic(app)
 		}
 	case .Pause:
-		ui.draw_hud(u, g)
+		// the pause stands alone over the game: no HUD under its menu
 		switch ui.pause_menu(u, g.data.has_lamp) {
 		case .Resume:
 			app.screen = .Play
