@@ -288,7 +288,7 @@ level_select :: proc(u: ^Ui, prog: progress.Progress) -> (chosen: int, back: boo
 				}
 			}
 			if hover && open && u.pressed {
-				audio.play(.Tap, -10)
+				audio.play(.Tap, -14)
 				chosen = i
 			}
 		}
@@ -473,7 +473,7 @@ settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, na
 			rl.DrawRectangleRec({x, ty + 50 * s, m.x, max(3 * s, 1)}, BRIGHT)
 		}
 		if hover && u.pressed && t != tab^ {
-			audio.play(.Tap, -10)
+			audio.play(.Tap, -14)
 			tab^ = t
 		}
 		x += m.x + 42 * s
@@ -643,7 +643,7 @@ back_key :: proc(u: ^Ui, pos: Vec2) -> bool {
 	}
 	text(u, label, {pos.x + cw + 14 * s, pos.y + (30 * s - m.y) * 0.5}, st, .Left)
 	if hover && u.pressed {
-		audio.play(.Tap, -10)
+		audio.play(.Tap, -14)
 		return true
 	}
 	return false

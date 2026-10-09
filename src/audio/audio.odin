@@ -21,7 +21,7 @@ import "../fx"
 SLOTS :: 6 // sounds per effect: its takes, then aliases so they can overlap
 MUSIC_BASE_DB :: -10.0
 BED_BASE_DB :: -6.0
-SFX_BASE_DB :: 0.0
+SFX_BASE_DB :: -3.0 // the effects sit softly under the music
 
 STEPS_GRASS := [?][]u8 {
 	#load("../../assets/sfx/step_grass_0.ogg"),
@@ -88,9 +88,11 @@ init :: proc() {
 		files := id == .Step_Grass ? STEPS_GRASS[:] : STEPS_STONE[:]
 		takes := 0
 		for f in files[:min(len(files), SLOTS)] {
-			wave := rl.LoadWaveFromMemory(".ogg", raw_data(f), i32(len(f)))
-			s.sounds[id][takes] = rl.LoadSoundFromWave(wave)
-			rl.UnloadWave(wave)
+			samples := step_take(f, context.temp_allocator)
+			pcm := make([]i16, len(samples), context.temp_allocator)
+			to_pcm16(samples, pcm)
+			wave := rl.Wave{frameCount = u32(len(pcm) / 2), sampleRate = RATE, sampleSize = 16, channels = 2, data = raw_data(pcm)}
+			s.sounds[id][takes] = rl.LoadSoundFromWave(wave) // copies the samples
 			s.owned[id][takes] = true
 			takes += 1
 		}
@@ -99,6 +101,20 @@ init :: proc() {
 	mixer_start()
 	apply_volumes()
 	s.worker = thread.create_and_start(bake)
+}
+
+// A recorded footstep (OGG) as the game plays it: its highs rounded off, in a
+// small room, interleaved stereo at RATE.
+step_take :: proc(ogg: []u8, allocator := context.allocator) -> []f32 {
+	w := rl.LoadWaveFromMemory(".ogg", raw_data(ogg), i32(len(ogg)))
+	defer rl.UnloadWave(w)
+	rl.WaveFormat(&w, RATE, 32, 1)
+	raw := rl.LoadWaveSamples(w)
+	defer rl.UnloadWaveSamples(raw)
+	dry := make([]f32, int(w.frameCount), context.temp_allocator)
+	copy(dry, raw[:w.frameCount])
+	soften(dry, SOFT_HZ)
+	return reverb(dry, STEP_ROOM, 0.35, allocator)
 }
 
 // The worker: every synthesised take, then the ambience loops.
@@ -143,10 +159,10 @@ update :: proc() {
 				continue
 			}
 			wave := rl.Wave {
-				frameCount = u32(len(pcm)),
+				frameCount = u32(len(pcm) / 2),
 				sampleRate = RATE,
 				sampleSize = 16,
-				channels   = 1,
+				channels   = 2,
 				data       = raw_data(pcm),
 			}
 			s.sounds[id][takes] = rl.LoadSoundFromWave(wave) // copies the samples

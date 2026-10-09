@@ -1,7 +1,10 @@
 // Generative music: each act has a mood, and the music is played live from
 // it, never the same twice. Slow pads breathe through a few chords, a lyre
-// plucks short phrases now and then, glass and bronze bells ring far away,
-// all in a large hall. Nothing pulses: there is no beat to follow, only
+// plucks short phrases now and then, a flute sings long notes, glass bells
+// ring far away, all in a vast, soft hall: music heard as in a dream.
+// Each act gives its voices a different part: the lyre leads Act I, the
+// flute alone Act II, the two answer each other in Act III, a low flute
+// barely moves in Act IV. Nothing pulses: there is no beat to follow, only
 // space (the music of a place, not of a song).
 //
 // `gen_process` adds the next frames to an interleaved stereo buffer; the
@@ -43,6 +46,10 @@ Mood :: struct {
 	bell_gap:    [2]f32,
 	bell_level:  f32,
 	bell_octave: f32,
+	flute_gap:    [2]f32, // seconds between the flute's phrases
+	flute_level:  f32, // 0: no flute
+	flute_octave: f32, // the flute's lowest note, as a ratio over the root
+	flute_note:   [2]f32, // seconds a note is held
 	motif:       [][]Phrase_Note, // written phrases played in turn (else the lyre wanders)
 }
 
@@ -70,6 +77,10 @@ MOODS := [Mood_Id]Mood {
 		bell_gap = {18, 30},
 		bell_level = 0.05,
 		bell_octave = 8,
+		flute_gap = {24, 40},
+		flute_level = 0.05,
+		flute_octave = 4,
+		flute_note = {2.2, 3.4},
 		motif = {THEME_ASK, THEME_ANSWER, THEME_ASK, THEME_HIGH},
 	},
 	.Palace = {
@@ -81,26 +92,34 @@ MOODS := [Mood_Id]Mood {
 		pad_bright = 1400,
 		drone_level = 0.05,
 		lyre_gap = {5, 11},
-		lyre_level = 0.3,
+		lyre_level = 0.28,
 		lyre_octave = 2,
 		bell_gap = {14, 26},
-		bell_level = 0.06,
+		bell_level = 0.05,
 		bell_octave = 8,
+		flute_gap = {28, 48},
+		flute_level = 0.06,
+		flute_octave = 4,
+		flute_note = {1.8, 3},
 	},
 	.Abandonment = {
 		root = 98,
-		chords = {{0, 7, 14, 15}, {-4, 3, 7, 12}, {5, 12, 15, 22}, {0, 7, 10, 17}}, // Gm9 Ebmaj7 Cm7 Gm7sus
+		chords = {{0, 7, 14, 15}, {-4, 3, 7, 10}, {3, 10, 14, 17}, {-2, 5, 9, 12}}, // Gm9 Ebmaj9 Bbmaj9 Fmaj9: wide, open
 		chord_s = {28, 40},
-		scale = {0, 3, 5, 7, 10},
+		scale = {0, 2, 3, 7, 10}, // G A Bb D F: a lonely, open scale
 		pad_level = 0.09,
-		pad_bright = 900,
-		drone_level = 0.06,
-		lyre_gap = {9, 18},
-		lyre_level = 0.22,
+		pad_bright = 1000,
+		drone_level = 0.05,
+		lyre_gap = {16, 30},
+		lyre_level = 0.15,
 		lyre_octave = 2,
-		bell_gap = {8, 16},
-		bell_level = 0.08,
+		bell_gap = {12, 22},
+		bell_level = 0.05,
 		bell_octave = 8,
+		flute_gap = {8, 15},
+		flute_level = 0.1,
+		flute_octave = 4,
+		flute_note = {1.6, 2.8},
 	},
 	.Trials = {
 		root = 73.42,
@@ -110,12 +129,16 @@ MOODS := [Mood_Id]Mood {
 		pad_level = 0.09,
 		pad_bright = 1700,
 		drone_level = 0.05,
-		lyre_gap = {3.5, 8},
-		lyre_level = 0.3,
+		lyre_gap = {4, 9},
+		lyre_level = 0.26,
 		lyre_octave = 4,
 		bell_gap = {16, 30},
-		bell_level = 0.05,
+		bell_level = 0.04,
 		bell_octave = 8,
+		flute_gap = {12, 22},
+		flute_level = 0.08,
+		flute_octave = 4,
+		flute_note = {1.2, 2.2},
 	},
 	.Underworld = {
 		root = 82.41,
@@ -125,12 +148,16 @@ MOODS := [Mood_Id]Mood {
 		pad_level = 0.1,
 		pad_bright = 650,
 		drone_level = 0.08,
-		lyre_gap = {12, 24},
-		lyre_level = 0.18,
+		lyre_gap = {14, 28},
+		lyre_level = 0.14,
 		lyre_octave = 2,
-		bell_gap = {10, 20},
-		bell_level = 0.07,
+		bell_gap = {12, 24},
+		bell_level = 0.05,
 		bell_octave = 4,
+		flute_gap = {12, 22},
+		flute_level = 0.09,
+		flute_octave = 2,
+		flute_note = {3, 5},
 	},
 }
 
@@ -139,6 +166,7 @@ PAD_FADE_S :: 9.0
 LYRE_VOICES :: 8
 LYRE_MAX_DELAY :: 1200
 BELL_VOICES :: 6
+FLUTE_VOICES :: 3
 
 @(private)
 Pad_Tone :: struct {
@@ -176,6 +204,20 @@ Bell_Voice :: struct {
 	life:  int,
 }
 
+// The flute: a near-sine with a breath, slow to speak, a late vibrato.
+@(private)
+Flute_Voice :: struct {
+	freq:   f32,
+	phase:  f32,
+	vib:    f32, // the vibrato's phase
+	breath: Svf,
+	amp:    f32,
+	pan:    f32,
+	t:      int, // samples since the note began
+	hold:   int, // samples it is held, then it dies away
+	life:   int, // samples left
+}
+
 // A stereo hall: 8 delay lines with Householder feedback, even lines to the
 // left, odd to the right.
 @(private)
@@ -209,6 +251,11 @@ Generator :: struct {
 	note_i:     int,
 	bells:      [BELL_VOICES]Bell_Voice,
 	next_bell:  int,
+	flutes:     [FLUTE_VOICES]Flute_Voice,
+	next_flute_phrase: int,
+	flute_left: int, // notes left in the flute's phrase
+	next_flute: int,
+	flute_degree: int,
 	hall:       Hall,
 }
 
@@ -226,16 +273,18 @@ gen_init :: proc(g: ^Generator, mood: Mood_Id, seed: u32 = 1) {
 	g.next_chord = seconds(g, g.mood.chord_s)
 	g.next_phrase = seconds(g, {3, 6})
 	g.next_bell = seconds(g, g.mood.bell_gap)
+	g.next_flute_phrase = seconds(g, {g.mood.flute_gap[0] * 0.5, g.mood.flute_gap[1] * 0.5})
 	g.degree = 5
+	g.flute_degree = 4
 
 	LENGTHS :: [8]int{1777, 2039, 2297, 2549, 2833, 3121, 3389, 3671}
 	lengths := LENGTHS
-	RT60 :: 6.5
+	RT60 :: 8.5 // a vast, soft hall
 	for k in 0 ..< 8 {
 		g.hall.len[k] = lengths[k]
 		g.hall.gain[k] = math.pow(10, -3 * f32(lengths[k]) / (RT60 * RATE))
 	}
-	g.hall.a = coef(3200)
+	g.hall.a = coef(2600)
 }
 
 @(private)
@@ -271,7 +320,7 @@ lyre_note :: proc(g: ^Generator, written: Maybe(f32) = nil) {
 		v.pos, v.prev = 0, 0
 		lp: f32 = 0
 		for k in 0 ..< v.length {
-			lp += (noise(&g.rng) - lp) * 0.3 // a soft finger, not a pick
+			lp += (noise(&g.rng) - lp) * 0.22 // a soft finger, not a pick
 			v.line[k] = lp
 		}
 		v.keep = 0.9965
@@ -295,6 +344,28 @@ bell_note :: proc(g: ^Generator) {
 		b.amp = g.mood.bell_level * fx.rand_range(&g.rng, 0.6, 1)
 		b.pan = fx.rand_range(&g.rng, -0.7, 0.7)
 		b.life = 6 * RATE
+		return
+	}
+}
+
+// The flute's next note: a slow walk over the scale, held a long time.
+@(private)
+flute_note :: proc(g: ^Generator) {
+	n := len(g.mood.scale)
+	step := [?]int{-1, -1, 1, 1, 2, -2, 0}
+	g.flute_degree = clamp(g.flute_degree + step[int(fx.randf(&g.rng) * len(step)) % len(step)], 0, 2 * n - 1)
+	semis := g.mood.scale[g.flute_degree % n] + 12 * f32(g.flute_degree / n)
+	for &v in g.flutes {
+		if v.life > 0 {
+			continue
+		}
+		v = {}
+		v.freq = g.mood.root * g.mood.flute_octave * semitones(semis)
+		v.vib = fx.rand_range(&g.rng, 0, math.TAU)
+		v.amp = g.mood.flute_level * fx.rand_range(&g.rng, 0.75, 1)
+		v.pan = fx.rand_range(&g.rng, -0.35, 0.35)
+		v.hold = seconds(g, g.mood.flute_note)
+		v.life = v.hold + 3 * RATE
 		return
 	}
 }
@@ -348,6 +419,23 @@ gen_process :: proc(g: ^Generator, out: []f32) {
 		if g.next_bell <= 0 {
 			bell_note(g)
 			g.next_bell = seconds(g, m.bell_gap)
+		}
+		if m.flute_level > 0 {
+			g.next_flute_phrase -= 1
+			if g.next_flute_phrase <= 0 {
+				g.flute_left = 2 + int(fx.randf(&g.rng) * 3)
+				g.next_flute = 0
+				g.next_flute_phrase = seconds(g, m.flute_gap)
+			}
+			if g.flute_left > 0 {
+				g.next_flute -= 1
+				if g.next_flute <= 0 {
+					flute_note(g)
+					g.flute_left -= 1
+					// legato: the next note begins as this one is let go
+					g.next_flute = int(fx.rand_range(&g.rng, m.flute_note[0], m.flute_note[1]) * RATE)
+				}
+			}
 		}
 
 		// --- pads: additive tones, slightly detuned left and right
@@ -429,8 +517,34 @@ gen_process :: proc(g: ^Generator, out: []f32) {
 			b.life -= 1
 		}
 
+		// --- flute
+		flute: [2]f32
+		for &v in g.flutes {
+			if v.life <= 0 {
+				continue
+			}
+			t := f32(v.t) / RATE
+			rise := min(t / 0.35, 1)
+			env := rise * rise * (3 - 2 * rise)
+			if v.t > v.hold {
+				env *= math.exp(-f32(v.t - v.hold) / RATE * 2.2)
+			}
+			depth := 0.0045 * clamp((t - 0.5) / 1.0, 0, 1)
+			v.vib += math.TAU * 4.8 / RATE
+			v.phase += math.TAU * v.freq * (1 + depth * math.sin(v.vib)) / RATE
+			if v.phase > math.TAU {
+				v.phase -= math.TAU
+			}
+			_, br, _ := svf(&v.breath, noise(&g.rng), v.freq * 2, 3)
+			x := (math.sin(v.phase) + 0.1 * math.sin(2 * v.phase) + br * (0.04 + 0.2 * math.exp(-t * 6))) * env * v.amp
+			flute[0] += x * (1 - v.pan) * 0.5
+			flute[1] += x * (1 + v.pan) * 0.5
+			v.t += 1
+			v.life -= 1
+		}
+
 		// --- the hall
-		send := (pad[0] + pad[1]) * 0.25 + (lyre[0] + lyre[1]) * 0.45 + (bell[0] + bell[1]) * 0.6
+		send := (pad[0] + pad[1]) * 0.25 + (lyre[0] + lyre[1]) * 0.45 + (bell[0] + bell[1]) * 0.6 + (flute[0] + flute[1]) * 0.55
 		h := &g.hall
 		outs: [8]f32
 		sum: f32 = 0
@@ -448,7 +562,7 @@ gen_process :: proc(g: ^Generator, out: []f32) {
 			wet[k % 2] += outs[k]
 		}
 		for side in 0 ..< 2 {
-			out[2 * i + side] += pad[side] * 0.55 + drone * 0.6 + lyre[side] * 1.1 + bell[side] * 0.7 + wet[side] * 0.4
+			out[2 * i + side] += pad[side] * 0.55 + drone * 0.6 + lyre[side] * 1.0 + bell[side] * 0.6 + flute[side] * 0.9 + wet[side] * 0.45
 		}
 	}
 }

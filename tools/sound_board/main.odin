@@ -21,7 +21,7 @@ main :: proc() {
 		}
 		for v in 0 ..< audio.VARIANTS[id] {
 			b := audio.synthesize(id, v, context.temp_allocator)
-			write_wav(fmt.tprintf("%s/%v_%d.wav", dir, id, v), b, 1)
+			write_wav(fmt.tprintf("%s/%v_%d.wav", dir, id, v), b, 2)
 		}
 		free_all(context.temp_allocator)
 	}

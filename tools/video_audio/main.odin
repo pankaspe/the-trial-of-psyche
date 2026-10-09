@@ -14,7 +14,6 @@ import "core:math"
 import "core:os"
 import "core:strconv"
 import "core:strings"
-import rl "vendor:raylib"
 
 import "../../src/audio"
 import "../../src/fx"
@@ -121,35 +120,30 @@ effects :: proc(log_path, out_path: string) {
 		left := gain * min(1 - e.pan, 1)
 		right := gain * min(1 + e.pan, 1)
 		start := int(e.t * RATE)
-		for pos: f32 = 0; int(pos) + 1 < len(src); pos += e.pitch {
+		frames := len(src) / 2
+		for pos: f32 = 0; int(pos) + 1 < frames; pos += e.pitch {
 			i := start + int(pos / e.pitch)
 			if i >= n {
 				break
 			}
 			k := int(pos)
 			fr := pos - f32(k)
-			v := src[k] * (1 - fr) + src[k + 1] * fr
-			out[2 * i] += v * left
-			out[2 * i + 1] += v * right
+			l := src[2 * k] * (1 - fr) + src[2 * k + 2] * fr
+			r := src[2 * k + 1] * (1 - fr) + src[2 * k + 3] * fr
+			out[2 * i] += l * left
+			out[2 * i + 1] += r * right
 		}
 	}
 	write_wav(out_path, out)
 	fmt.printfln("%s: %.2f s, %d effects, ambience %v", out_path, seconds, len(events), bed)
 }
 
-// Every take of an effect, mono at RATE: the recordings decoded, or synthesised.
+// Every take of an effect, interleaved stereo at RATE: the recordings decoded, or synthesised.
 load_takes :: proc(id: audio.Sound_Id, list: ^[dynamic][]f32) {
 	if id in audio.RECORDED {
 		files := id == .Step_Grass ? audio.STEPS_GRASS[:] : audio.STEPS_STONE[:]
 		for f in files {
-			w := rl.LoadWaveFromMemory(".ogg", raw_data(f), i32(len(f)))
-			rl.WaveFormat(&w, RATE, 32, 1)
-			samples := rl.LoadWaveSamples(w)
-			take := make([]f32, int(w.frameCount))
-			copy(take, samples[:w.frameCount])
-			rl.UnloadWaveSamples(samples)
-			rl.UnloadWave(w)
-			append(list, take)
+			append(list, audio.step_take(f))
 		}
 		return
 	}

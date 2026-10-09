@@ -454,7 +454,7 @@ button :: proc(u: ^Ui, label: string, center: Vec2, size: f32, alpha: f32 = 1, e
 	}
 	text(u, label, {center.x, center.y - m.y * 0.5}, st, .Center, alpha)
 	if hover && u.pressed {
-		audio.play(.Tap, -10)
+		audio.play(.Tap, -14)
 		return true
 	}
 	return false
@@ -483,7 +483,7 @@ menu_item :: proc(u: ^Ui, label: string, pos: Vec2, size: f32, main := false, al
 	}
 	text(u, label, {pos.x + 32 * s, pos.y - m.y * 0.5}, st, .Left, alpha)
 	if hover && u.pressed {
-		audio.play(.Tap, -10)
+		audio.play(.Tap, -14)
 		return true
 	}
 	return false
@@ -523,7 +523,7 @@ option_row :: proc(u: ^Ui, label, value: string, y, left, right: f32, enabled :=
 		step = 1
 	}
 	if step != 0 {
-		audio.play(.Tap, -10)
+		audio.play(.Tap, -14)
 	}
 	return step
 }

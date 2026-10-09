@@ -267,10 +267,20 @@ Full design document (Italian, kept up to date there): https://claude.ai/code/ar
   her light opens it (`audio.set_veil`).
 - Effects: footsteps recorded (Kenney CC0, `tools/sfx_prep.sh`, grass / stone / rock by what is under
   her: `game.footstep`); the rest synthesised at startup on a worker thread (`synth.odin`: modal
-  glass/wood, Karplus-Strong plucks, SVF noise, FDN reverb), a few takes each, never the same take
+  glass/wood, a flute, SVF noise, FDN reverb), a few takes each, never the same take
   twice in a row. In-key effects (`TUNED`) are written in A minor pentatonic and follow `ACT_KEY`;
   pitch arguments at call sites are in semitones (`audio.semitones`). `tools/sound_board` writes
   every effect and bed as WAV (build/sounds) to listen outside the game.
+- **Dreamy pass (2026-10-09, the user: "gli sfx più soft, più delicati, quasi soavi, come un sogno";
+  the arpeggio "più morbido tipo flauto", also when Psyche takes flight)**: a synthesised flute
+  (`synth.flute`: slow attack, breath on the onset, late vibrato) replaces the harp in `Good` (the
+  arpeggio: fragments, new mechanic), sings in `Wind` (exits, flight) and answers in `Reveal`; every
+  effect has soft attacks, no grit or clicks, highs rounded off (`soften`, `SOFT_HZ`) and a stereo
+  reverb tail (`reverb` now returns interleaved stereo; `DREAM` a vast soft space); the recorded steps
+  go through `step_take` (softened, a small room). `SFX_BASE_DB` -3, taps and seams quieter. Music:
+  a flute voice in the generator with a part per act (`Mood.flute_*`): Act I the lyre leads and the
+  flute is rare, Act II the flute leads alone (new open chords and scale), Act III lyre and flute
+  answer each other, Act IV a low slow flute; the hall is larger and darker (RT60 8.5 s).
 - Next, after the user's verdict: per-place one-shots in the beds (birds at sunset, an owl), positional
   pan of events, crumble/handle sounds for Act II.
 

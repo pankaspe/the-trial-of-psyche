@@ -1,6 +1,7 @@
 // Procedural sound: the effects that are not recordings, and the ambience
 // beds, synthesised at startup. Pure functions over f32 buffers; the reverb
-// is baked into the samples, so playback needs no effect chain.
+// is baked into the samples (stereo), so playback needs no effect chain.
+// The effects are meant to sound like a dream: soft, rounded, far.
 //
 // The tuned effects (chimes, plucks, the wind's song) are written in A minor
 // pentatonic (A C D E G), the key of Act I's soundtrack; `play` transposes
@@ -163,30 +164,11 @@ modal :: proc(b: []f32, start, freq, amp: f32, partials: []Partial, attack: f32 
 // Glass and bronze: the chimes of the palace.
 @(private)
 GLASS := []Partial{{1, 1, 1.4}, {2.756, 0.32, 3.6}, {5.404, 0.12, 7}, {8.933, 0.05, 11}}
-// A small block of wood.
+// Glass struck with felt, wood wrapped in cloth: the effects' soft bodies.
 @(private)
-WOOD := []Partial{{1, 1, 28}, {2.57, 0.4, 45}, {4.3, 0.18, 70}}
-
-// A plucked string (Karplus-Strong): a burst of noise in a damped delay line.
+SOFT_GLASS := []Partial{{1, 1, 1.2}, {2.756, 0.14, 3.2}, {5.404, 0.04, 6}}
 @(private)
-pluck :: proc(b: []f32, start, freq, amp: f32, rng: ^fx.Rng, brightness: f32 = 0.5, sustain: f32 = 0.996) {
-	n := int(RATE / freq)
-	line := make([]f32, n, context.temp_allocator)
-	lp: f32 = 0
-	for &v in line {
-		lp += (noise(rng) - lp) * brightness
-		v = lp
-	}
-	s0 := int(start * RATE)
-	prev: f32 = 0
-	for i in s0 ..< len(b) {
-		k := (i - s0) % n
-		y := line[k]
-		line[k] = (y + prev) * 0.5 * sustain
-		prev = y
-		b[i] += y * amp
-	}
-}
+SOFT_WOOD := []Partial{{1, 1, 22}, {2.57, 0.18, 40}}
 
 // Short bursts of filtered noise scattered in time: grit, crackle, debris.
 // `density` grains per second at time t (seconds).
@@ -211,211 +193,253 @@ grains :: proc(b: []f32, rng: ^fx.Rng, from, to: f32, density: proc(t: f32) -> f
 
 PEAK :: 0.7
 
-// The samples of one effect (take `variant`, a different seed each).
+// Every effect is shaped to sound like a dream: soft attacks, no clicks or
+// grit, the highs rounded off (`SOFT_HZ`), and a long stereo tail.
+SOFT_HZ :: 6500
+
+// A soft flute: a near-sine that speaks slowly, with a breath on its onset
+// and a vibrato that comes in late. Added into b from `start` seconds; it
+// holds `dur` seconds, then dies away over `release`.
+@(private)
+flute :: proc(b: []f32, start, freq, dur, amp: f32, rng: ^fx.Rng, attack: f32 = 0.09, release: f32 = 0.8) {
+	s0 := int(start * RATE)
+	f: Svf
+	phase: f32 = 0
+	vib := fx.rand_range(rng, 0, math.TAU)
+	rate := fx.rand_range(rng, 4.6, 5.4)
+	for k in 0 ..< int((dur + release) * RATE) {
+		i := s0 + k
+		if i >= len(b) {
+			break
+		}
+		t := f32(k) / RATE
+		a := min(t / attack, 1)
+		env := a * a * (3 - 2 * a)
+		if t > dur {
+			env *= math.exp(-(t - dur) * 5 / release)
+		}
+		depth := 0.004 * clamp((t - 0.3) / 0.6, 0, 1)
+		phase += math.TAU * freq * (1 + depth * math.sin(math.TAU * rate * t + vib)) / RATE
+		if phase > math.TAU {
+			phase -= math.TAU
+		}
+		tone := math.sin(phase) + 0.12 * math.sin(2 * phase) + 0.03 * math.sin(3 * phase)
+		_, breath, _ := svf(&f, noise(rng), freq * 2, 3)
+		chiff := math.exp(-t * 22)
+		b[i] += (tone * 0.9 + breath * (0.05 + 0.3 * chiff)) * env * amp
+	}
+}
+
+// A slow chord of sines, two voices a few cents apart (a pad of light).
+@(private)
+glow :: proc(b: []f32, freqs: []f32, amp, rise, hold, fall: f32) {
+	for f, n in freqs {
+		g := amp / (1 + f32(n) * 0.35)
+		for &s, i in b {
+			t := time_of(i)
+			env := min(t / rise, 1)
+			env = env * env * (3 - 2 * env) * math.exp(-max(t - rise - hold, 0) / fall)
+			s += (math.sin(math.TAU * f * t) + math.sin(math.TAU * f * 1.003 * t)) * env * g
+		}
+	}
+}
+
+// The samples of one effect (take `variant`, a different seed each), stereo
+// interleaved.
 synthesize :: proc(id: Sound_Id, variant: int, allocator := context.allocator) -> []f32 {
 	rng := fx.rng_init(u32(id) * 97 + u32(variant) * 13 + 5)
 	b: []f32
+	room := DREAM
+	tail: f32 = 3
 	switch id {
 	case .Step_Grass, .Step_Stone:
 		// recordings: a tiny placeholder, only for headless use
-		b = buffer(0.05, allocator)
-		modal(b, 0, 180, 0.3, WOOD)
+		b = buffer(0.05, context.temp_allocator)
+		modal(b, 0, 180, 0.3, SOFT_WOOD)
+		room, tail = ROOM, 0.2
 
 	case .Turn:
-		b = buffer(1.4, allocator)
-		DUR :: 0.8
+		// the world turns: a breath of air rising and settling, a low warmth under it
+		b = buffer(1.4, context.temp_allocator)
+		DUR :: 0.9
 		pk: Pink
-		lo, hi: Svf
+		lo: Svf
 		for &s, i in b {
 			t := time_of(i)
 			u := min(t / DUR, 1)
-			swell := math.pow(max(math.sin(math.PI * u), 0), 1.4)
-			center := 260 + 900 * swell
-			x := pink(&pk, &rng)
-			_, air, _ := svf(&lo, x, center, 1.1)
-			_, hiss, _ := svf(&hi, x, center * 2.6, 3)
-			sub := math.sin(math.TAU * 55 * t) * 0.22 + math.sin(math.TAU * 82.41 * t) * 0.07
-			bloom := min(t / 0.25, 1) * math.exp(-max(t - 0.5, 0) * 4)
-			s = (air * 1.6 + hiss * 0.35) * swell + sub * bloom
+			swell := math.pow(max(math.sin(math.PI * u), 0), 1.6)
+			_, air, _ := svf(&lo, pink(&pk, &rng), 240 + 520 * swell, 0.9)
+			sub := math.sin(math.TAU * 55 * t) * 0.16 * min(t / 0.3, 1) * math.exp(-max(t - 0.5, 0) * 3)
+			s = air * 1.3 * swell + sub
 		}
-		grit :: proc(t: f32) -> f32 {return 120 * math.sin(math.PI * clamp((t - 0.1) / 0.6, 0, 1))}
-		grains(b, &rng, 0.1, 0.7, grit, 1400, 3200, 0.06)
-		// the view settles: a soft low knock
-		modal(b, DUR - 0.04, 92, 0.22, WOOD[:1], 0.004)
-		b = reverb(b, ROOM, 0.8, allocator)
+		modal(b, DUR - 0.05, 110, 0.12, SOFT_WOOD[:1], 0.02)
+		room, tail = HALL, 1.6
 
 	case .Seam:
-		b = buffer(3.0, allocator)
-		modal(b, 0, 880, 0.22, GLASS)
-		modal(b, 0.11, 1318.51, 0.16, GLASS)
-		// the air of the glass: a breath of noise tuned to the notes
-		f1, f2: Svf
-		for &s, i in b {
-			t := time_of(i)
-			x := noise(&rng)
-			_, a, _ := svf(&f1, x, 1760, 40)
-			_, c, _ := svf(&f2, x, 2637, 40)
-			s += (a + c) * 0.25 * math.exp(-t * 5) * min(t / 0.03, 1)
-		}
-		b = reverb(b, HALL, 3.0, allocator)
+		// a way opens: two soft glass notes, far away
+		b = buffer(2.0, context.temp_allocator)
+		modal(b, 0, 880, 0.2, SOFT_GLASS, 0.012)
+		modal(b, 0.14, 1318.51, 0.13, SOFT_GLASS, 0.012)
+		tail = 3.5
 
 	case .Lamp_On:
-		b = buffer(1.8, allocator)
+		// the wick catches: a soft breath of flame, a few sparks, the light swells in key
+		b = buffer(2.2, context.temp_allocator)
 		pk: Pink
 		f: Svf
-		body: f32 = 0
-		flick: f32 = 0
 		for &s, i in b {
 			t := time_of(i)
-			// the catch: the flame climbs and opens
-			cut := 300 + 2600 * min(t / 0.12, 1) * math.exp(-max(t - 0.12, 0) * 2.5)
-			lp, _, _ := svf(&f, pink(&pk, &rng), cut, 0.8)
-			whoomph := lp * math.sqrt(min(t / 0.06, 1)) * math.exp(-t * 4.5)
-			// the steady flame: a low breath that flickers
-			body += (noise(&rng) - body) * coef(380)
-			flick += (fx.randf(&rng) - flick) * coef(9)
-			steady := body * (0.6 + 0.8 * flick) * min(t / 0.2, 1) * math.exp(-t * 1.6)
-			// the light, in key: A3 E4 A4 bloom under it
-			bloom := (math.sin(math.TAU * 220 * t) + math.sin(math.TAU * 329.63 * t) * 0.7 + math.sin(math.TAU * 440 * t) * 0.4) *
-				0.035 * min(t / 0.35, 1) * math.exp(-t * 1.4)
-			s = whoomph * 0.9 + steady * 0.9 + bloom
+			lp, _, _ := svf(&f, pink(&pk, &rng), 260 + 1100 * min(t / 0.15, 1) * math.exp(-max(t - 0.15, 0) * 3), 0.7)
+			a := min(t / 0.05, 1)
+			s = lp * a * a * math.exp(-t * 3.5) * 0.7
 		}
-		crackle :: proc(t: f32) -> f32 {return 90 * math.exp(-t * 2.2) + 8}
-		grains(b, &rng, 0.03, 1.5, crackle, 1800, 5200, 0.22, 0.0015)
-		b = reverb(b, ROOM, 0.8, allocator)
+		crackle :: proc(t: f32) -> f32 {return 22 * math.exp(-t * 3)}
+		grains(b, &rng, 0.05, 1.0, crackle, 1500, 3500, 0.05, 0.002)
+		glow(b, {220, 329.63, 440}, 0.03, 0.45, 0.3, 0.7)
+		flute(b, 0.25, 880, 0.35, 0.05, &rng, 0.12, 0.9)
+		room, tail = DREAM, 3
 
 	case .Lamp_Off:
-		b = buffer(0.7, allocator)
+		// a soft puff, a thread of smoke
+		b = buffer(0.8, context.temp_allocator)
 		f, h: Svf
 		for &s, i in b {
 			t := time_of(i)
 			x := noise(&rng)
-			_, puff, _ := svf(&f, x, 1300 - 800 * min(t / 0.25, 1), 0.9)
-			_, _, smoke := svf(&h, x, 4500, 0.7)
-			thup := math.sin(math.TAU * (120 - 60 * min(t / 0.06, 1)) * t) * math.exp(-t * 40) * 0.25
-			s = puff * min(t / 0.02, 1) * math.exp(-t * 9) * 0.9 + smoke * 0.025 * math.exp(-t * 3) + thup
+			_, puff, _ := svf(&f, x, 1000 - 600 * min(t / 0.25, 1), 0.8)
+			_, _, smoke := svf(&h, x, 3500, 0.7)
+			a := min(t / 0.025, 1)
+			s = puff * a * a * math.exp(-t * 8) * 0.8 + smoke * 0.015 * math.exp(-t * 3)
 		}
-		b = reverb(b, ROOM, 0.6, allocator)
+		room, tail = HALL, 1.2
 
 	case .Blocked:
-		b = buffer(0.4, allocator)
-		modal(b, 0, 196, 0.45, WOOD)
-		modal(b, 0.085, 164.81, 0.32, WOOD)
-		f: Svf
-		for &s, i in b[:int(0.01 * RATE)] {
-			lp, _, _ := svf(&f, noise(&rng), 1200, 0.7)
-			s += lp * 0.2 * (1 - time_of(i) / 0.01)
-		}
-		b = reverb(b, ROOM, 0.5, allocator)
+		// no way: two soft knocks of felt
+		b = buffer(0.5, context.temp_allocator)
+		modal(b, 0, 196, 0.4, SOFT_WOOD, 0.006)
+		modal(b, 0.11, 164.81, 0.3, SOFT_WOOD, 0.006)
+		room, tail = HALL, 0.9
 
 	case .Tap:
-		b = buffer(0.5, allocator)
-		pluck(b, 0, 880, 0.35, &rng, 0.35, 0.985)
-		for &s, i in b {
-			s *= math.exp(-time_of(i) * 7)
-		}
-		b = reverb(b, ROOM, 0.5, allocator)
+		// a button: a small round drop of sound
+		b = buffer(0.4, context.temp_allocator)
+		modal(b, 0, 880, 0.3, {{1, 1, 14}, {2, 0.12, 30}}, 0.004)
+		room, tail = ROOM, 0.6
 
 	case .Rumble:
-		b = buffer(3.2, allocator)
+		// the seal: stone moving far below, more felt than heard
+		b = buffer(3.2, context.temp_allocator)
 		brown, am, amt: f32
 		for &s, i in b {
 			t := time_of(i)
 			brown = clamp(brown + noise(&rng) * 0.04, -1, 1) * 0.998
-			amt += (fx.randf(&rng) - amt) * coef(6)
-			env := min(t / 0.5, 1) * clamp((3.2 - t) / 1.2, 0, 1)
-			am += (brown - am) * coef(170)
-			s = (am * 2.4 * (0.6 + 0.8 * amt) + math.sin(math.TAU * 41.2 * t) * 0.18) * env
+			amt += (fx.randf(&rng) - amt) * coef(4)
+			env := min(t / 0.8, 1) * clamp((3.2 - t) / 1.4, 0, 1)
+			am += (brown - am) * coef(120)
+			s = (am * 1.8 * (0.6 + 0.6 * amt) + math.sin(math.TAU * 41.2 * t) * 0.22) * env
 		}
-		grind :: proc(t: f32) -> f32 {return 220 * min(t / 0.5, 1) * clamp((3 - t) / 1.2, 0, 1)}
-		grains(b, &rng, 0.05, 3.0, grind, 700, 2200, 0.08, 0.006)
-		b = reverb(b, HALL, 1.5, allocator)
+		glow(b, {110, 164.81}, 0.02, 1.2, 1.0, 0.8)
+		room, tail = HALL, 2
 
 	case .Thud:
-		b = buffer(0.7, allocator)
+		// a stone settles into place: a soft, deep touch
+		b = buffer(0.8, context.temp_allocator)
 		f: Svf
 		for &s, i in b {
 			t := time_of(i)
-			hz := 45 + 70 * math.exp(-t * 25)
-			body := math.sin(math.TAU * hz * t) * math.exp(-t * 9) * 0.7
-			lp, _, _ := svf(&f, noise(&rng), 600, 0.7)
-			s = body + lp * 0.5 * math.exp(-t * 60)
+			hz := 48 + 40 * math.exp(-t * 20)
+			a := min(t / 0.008, 1)
+			lp, _, _ := svf(&f, noise(&rng), 380, 0.7)
+			s = (math.sin(math.TAU * hz * t) * 0.7 + lp * 0.25 * math.exp(-t * 30)) * a * math.exp(-t * 8)
 		}
-		debris :: proc(t: f32) -> f32 {return 60 * math.exp(-t * 6)}
-		grains(b, &rng, 0.03, 0.5, debris, 900, 3000, 0.08, 0.003)
-		b = reverb(b, HALL, 1.2, allocator)
+		room, tail = HALL, 1.6
 
 	case .Drip:
-		b = buffer(0.25, allocator)
-		f0 := fx.rand_range(&rng, 1000, 1200)
+		// a drop of oil: a soft rising note in a deep well
+		b = buffer(0.3, context.temp_allocator)
+		f0 := fx.rand_range(&rng, 900, 1050)
 		phase: f32 = 0
 		for &s, i in b {
 			t := time_of(i)
-			hz := f0 * (1 + 1.2 * (1 - math.exp(-t * 45)))
-			phase += math.TAU * hz / RATE
-			s = math.sin(phase) * math.exp(-t * 32) * 0.5 * min(t / 0.001, 1)
+			phase += math.TAU * f0 * (1 + 0.6 * (1 - math.exp(-t * 30))) / RATE
+			s = math.sin(phase) * math.exp(-t * 24) * 0.5 * min(t / 0.003, 1)
 		}
-		b = reverb(b, HALL, 2.0, allocator)
+		tail = 2.5
 
 	case .Reveal:
-		b = buffer(5.0, allocator)
-		CHORD :: [5]f32{110, 164.81, 246.94, 261.63, 329.63} // A2 E3 B3 C4 E4: A minor, add 9
-		for f, n in CHORD {
-			for &s, i in b {
-				t := time_of(i)
-				env := min(t / 1.4, 1) * math.exp(-max(t - 2.0, 0) * 1.1) * (0.07 - f32(n) * 0.008)
-				// two voices a few cents apart, slowly beating
-				v := math.sin(math.TAU * f * t + math.sin(math.TAU * 4.5 * t) * 0.15) + math.sin(math.TAU * f * 1.003 * t)
-				s += v * env
-			}
-		}
-		modal(b, 1.2, 1760, 0.08, GLASS)
-		modal(b, 1.45, 1318.51, 0.05, GLASS)
-		b = reverb(b, HALL, 3.5, allocator)
+		// the face in the lamplight: a chord swells, a flute answers
+		b = buffer(5.5, context.temp_allocator)
+		glow(b, {110, 164.81, 246.94, 261.63, 329.63}, 0.06, 1.5, 0.8, 1.2) // A minor, add 9
+		flute(b, 1.2, 659.25, 0.9, 0.09, &rng, 0.2, 1.2)
+		flute(b, 2.1, 880, 1.4, 0.08, &rng, 0.25, 1.6)
+		tail = 4.5
 
 	case .Good:
-		b = buffer(5.0, allocator)
-		HARP :: [5]f32{220, 261.63, 329.63, 440, 659.25} // A3 C4 E4 A4 E5
-		for f, n in HARP {
-			pluck(b, f32(n) * 0.075, f, 0.22, &rng, 0.45, 0.998)
+		// something found: a flute arpeggio, legato, over a pad of light
+		b = buffer(4.0, context.temp_allocator)
+		NOTES :: [5]f32{440, 523.25, 659.25, 880, 1046.5} // A4 C5 E5 A5 C6
+		for f, n in NOTES {
+			flute(b, f32(n) * 0.17, f, 0.5, 0.1 - f32(n) * 0.012, &rng, 0.07, 1.1)
 		}
-		for f in ([3]f32{110, 164.81, 220}) {
-			for &s, i in b {
-				t := time_of(i)
-				s += math.sin(math.TAU * f * t) * 0.045 * min(t / 0.8, 1) * math.exp(-max(t - 1, 0) * 1.3)
-			}
-		}
-		b = reverb(b, HALL, 3.0, allocator)
+		glow(b, {220, 329.63, 440}, 0.035, 0.7, 0.8, 1.0)
+		tail = 4.5
 
 	case .Wind:
-		b = buffer(4.2, allocator)
+		// Zephyr: soft air and its song, a flute-like voice gliding in the gust
+		b = buffer(4.4, context.temp_allocator)
 		pk: Pink
-		f1, f2, song: Svf
+		f1, f2: Svf
 		drift := fx.rand_range(&rng, -0.3, 0.3)
 		for &s, i in b {
 			t := time_of(i)
-			u := min(t / 4.0, 1)
-			gust := math.pow(max(math.sin(math.PI * u), 0), 1.3)
+			u := min(t / 4.2, 1)
+			gust := math.pow(max(math.sin(math.PI * u), 0), 1.5)
 			x := pink(&pk, &rng)
-			_, low, _ := svf(&f1, x, 350 + 400 * gust + 80 * math.sin(math.TAU * (0.7 + drift) * t), 0.7)
-			_, high, _ := svf(&f2, x, 1000 + 900 * gust, 2.2)
-			// the wind's song: a narrow resonance gliding between E5 and A5
-			_, sing, _ := svf(&song, noise(&rng), 659.25 + 220.75 * (0.5 + 0.5 * math.sin(math.PI * (u - 0.3))), 60)
-			s = (low * 1.4 + high * 0.4) * gust + sing * 0.6 * gust * gust
+			_, low, _ := svf(&f1, x, 300 + 300 * gust + 60 * math.sin(math.TAU * (0.6 + drift) * t), 0.7)
+			_, high, _ := svf(&f2, x, 900 + 500 * gust, 1.6)
+			s = (low * 1.0 + high * 0.15) * gust
 		}
-		b = reverb(b, HALL, 2.0, allocator)
+		// the wind's song: a breathy voice gliding E5 -> A5 -> E5
+		song: Svf
+		phase: f32 = 0
+		for &s, i in b {
+			t := time_of(i)
+			u := min(t / 4.2, 1)
+			gust := math.pow(max(math.sin(math.PI * u), 0), 2)
+			freq := 659.25 + 220.75 * (0.5 + 0.5 * math.sin(math.PI * (u - 0.3)))
+			phase += math.TAU * freq / RATE
+			if phase > math.TAU {
+				phase -= math.TAU
+			}
+			_, breath, _ := svf(&song, noise(&rng), freq, 25)
+			s += (math.sin(phase) * 0.05 + breath * 0.5) * gust
+		}
+		tail = 3.5
 	}
+	soften(b, SOFT_HZ)
+	out := reverb(b, room, tail, allocator)
 	// every effect leaves at the same peak: the call sites set the levels
 	peak: f32 = 0
-	for v in b {
+	for v in out {
 		peak = max(peak, abs(v))
 	}
 	if peak > 0 {
-		for &v in b {
+		for &v in out {
 			v *= PEAK / peak
 		}
 	}
-	return b
+	return out
+}
+
+// Round off the highs: two one-pole low-passes.
+soften :: proc(b: []f32, hz: f32) {
+	a := coef(hz)
+	l1, l2: f32
+	for &s in b {
+		l1 += (s - l1) * a
+		l2 += (l1 - l2) * a
+		s = l2
+	}
 }
 
 // One seamless stereo loop (interleaved) of BED_SECONDS for a place.
@@ -590,7 +614,8 @@ river :: proc(raw: []f32, m: int, rng: ^fx.Rng) {
 }
 
 // Feedback delay network reverb: 8 lines, Householder feedback, damping per
-// line, two allpasses of diffusion in front.
+// line, two allpasses of diffusion in front; the even lines make the left
+// tail, the odd the right, so the space opens wide around a mono source.
 Reverb_Params :: struct {
 	rt60:     f32, // seconds for the tail to fall 60 dB
 	damp_hz:  f32, // the tail darkens above this
@@ -599,17 +624,20 @@ Reverb_Params :: struct {
 	predelay: f32, // seconds
 }
 
-ROOM :: Reverb_Params{0.9, 4500, 0.6, 0.22, 1, 0.008}
-HALL :: Reverb_Params{2.8, 3800, 1.2, 0.42, 1, 0.022}
+ROOM :: Reverb_Params{0.9, 4000, 0.6, 0.25, 1, 0.008}
+STEP_ROOM :: Reverb_Params{0.7, 3500, 0.5, 0.12, 1, 0.006} // the footsteps: barely a room
+HALL :: Reverb_Params{2.8, 3400, 1.2, 0.45, 1, 0.022}
+DREAM :: Reverb_Params{4.8, 2900, 1.5, 0.6, 0.85, 0.035} // a vast, soft space
 
-// The input plus a tail of `tail` seconds.
+// The mono input plus a tail of `tail` seconds, as interleaved stereo.
 reverb :: proc(input: []f32, params: Reverb_Params, tail: f32, allocator := context.allocator) -> []f32 {
 	LENGTHS :: [8]int{1123, 1291, 1447, 1597, 1789, 1993, 2179, 2357}
 	AP :: [2]int{347, 113}
 	lengths := LENGTHS
 	aps := AP
 	n := len(input)
-	out := make([]f32, n + int(tail * RATE), allocator)
+	frames := n + int(tail * RATE)
+	out := make([]f32, frames * 2, allocator)
 
 	lines: [8][]f32
 	pos: [8]int
@@ -634,7 +662,9 @@ reverb :: proc(input: []f32, params: Reverb_Params, tail: f32, allocator := cont
 	end_fade :: proc(i, from, n: int) -> f32 {
 		return i < from ? 1 : max(f32(n - i) / f32(n - from), 0)
 	}
-	for i in 0 ..< len(out) {
+	// the tail itself fades out over its last half second
+	tail_from := max(frames - int(0.5 * RATE), n)
+	for i in 0 ..< frames {
 		x: f32 = i < n ? input[i] * end_fade(i, fade_from, n) : 0
 		// predelay, then diffusion
 		d := pre[pre_pos]
@@ -656,14 +686,16 @@ reverb :: proc(input: []f32, params: Reverb_Params, tail: f32, allocator := cont
 			sum += outs[k]
 		}
 		h := sum * 2 / 8
-		wet: f32 = 0
+		wet: [2]f32
 		for k in 0 ..< 8 {
 			lines[k][pos[k]] = outs[k] - h + d * 0.35
 			pos[k] = (pos[k] + 1) % len(lines[k])
-			wet += k % 2 == 0 ? outs[k] : -outs[k]
+			wet[k % 2] += outs[k]
 		}
-		dry: f32 = i < n ? input[i] * end_fade(i, fade_from, n) : 0
-		out[i] = dry * params.dry + wet * params.wet * 0.5
+		fade: f32 = i < tail_from ? 1 : f32(frames - i) / f32(frames - tail_from)
+		for side in 0 ..< 2 {
+			out[2 * i + side] = (x * params.dry + wet[side] * params.wet * 0.5) * fade
+		}
 	}
 	return out
 }

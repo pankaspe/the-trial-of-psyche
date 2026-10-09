@@ -572,7 +572,7 @@ update_turn :: proc(g: ^Game, dt: f32) {
 	for ok, i in after {
 		if ok && !g.reach_before[i] {
 			// a new way has opened in this view
-			audio.play(.Seam, -12, audio.semitones(-2))
+			audio.play(.Seam, -16, audio.semitones(-2))
 			break
 		}
 	}
@@ -773,7 +773,7 @@ next_step :: proc(g: ^Game) {
 	psy.step_passage = passage
 	psy.walking = true
 	if psy.step_illusion {
-		audio.play(.Seam, -14)
+		audio.play(.Seam, -18)
 		learn(g, .Hint_Illusion)
 	}
 	if passage {
