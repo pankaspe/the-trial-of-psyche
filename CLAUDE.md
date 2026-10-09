@@ -401,6 +401,11 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   leaf, the camera widens and lifts to see him over the cypress, he rises into the stars; four captions
   (`Fl_*`). After a cutscene the level starts as a first start (`start_play`: the mechanic card).
   `--plan` takes a shot of the cutscene every 1.5 s (c00, c01...).
+- **README (2026-10-09, for presenting the game)**: centred header, badges in the game's colours (dark
+  violet label, gold value, `for-the-badge`), a gallery of 8 screenshots in `docs/screenshots/` (JPEG,
+  1600x900, `--quality ultra`, English UI via `LANG=en_US.UTF-8`, mostly `--no-ui`), the game, the stack,
+  Linux build, controls, **GPL-3.0** (`LICENSE`, the user's choice: forks must keep the credit) with the
+  third-party licenses (OFL fonts, Kenney CC0). The old gameplay GIF was removed.
 - Text rule (user, 2026-10-05): little text, so the gameplay comes first: prologue -> one intro line
   per level -> outro at the end; mechanics explained once, by tutorial hints.
 - Decoration rules (user: readable, not cluttered): small, few objects; never hide Psyche's start.
