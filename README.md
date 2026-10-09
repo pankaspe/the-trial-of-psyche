@@ -15,10 +15,6 @@ from Apuleius' tale of Cupid and Psyche (Metamorphoses IV–VI).*
 
 <img src="docs/screenshots/title.jpg" alt="The title screen: Zephyr's crag at sunset over a sea of clouds" width="100%">
 
-<br><br>
-
-<a href="https://github.com/pankaspe/the-trial-of-psyche/releases"><img src="https://img.shields.io/github/v/release/pankaspe/the-trial-of-psyche?include_prereleases&style=for-the-badge&label=download%20for%20linux&labelColor=e8792b&color=e8792b&logo=linux&logoColor=white" alt="Download for Linux" height="44"></a>
-
 </div>
 
 <br>
