@@ -156,9 +156,7 @@ SHADER_PALACE_FS :: #load("../../assets/shaders/palace.fs", cstring)
 SHADER_SKY_FS :: #load("../../assets/shaders/sky.fs", cstring)
 SHADER_CLOUDS_FS :: #load("../../assets/shaders/clouds.fs", cstring)
 SHADER_RIDGES_FS :: #load("../../assets/shaders/ridges.fs", cstring)
-SHADER_POST_BRIGHT_FS :: #load("../../assets/shaders/post_bright.fs", cstring)
 SHADER_POST_BLUR_FS :: #load("../../assets/shaders/post_blur.fs", cstring)
-SHADER_POST_FS :: #load("../../assets/shaders/post.fs", cstring)
 SHADER_VEIL_FS :: #load("../../assets/shaders/veil.fs", cstring)
 
 // The skills Psyche learns along the way, one or two per act, each on its

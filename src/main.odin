@@ -131,10 +131,9 @@ startup :: proc(app: ^App) -> bool {
 	i18n.set_language(app.cfg.language)
 
 	rl.SetTraceLogLevel(.WARNING)
-	flags := rl.ConfigFlags{.WINDOW_RESIZABLE}
-	if app.cfg.msaa {
-		flags += {.MSAA_4X_HINT}
-	}
+	// MSAA serves the High quality (drawn straight to the screen); the
+	// others draw through a canvas, so the quality changes without a restart
+	flags := rl.ConfigFlags{.WINDOW_RESIZABLE, .MSAA_4X_HINT}
 	if app.cfg.vsync {
 		flags += {.VSYNC_HINT}
 	}
@@ -160,8 +159,8 @@ startup :: proc(app: ^App) -> bool {
 	audio.set_volumes(app.cfg.master, app.cfg.music, app.cfg.sfx)
 	render.init(&app.renderer)
 	render.post_init(&app.post)
-	if app.shots.has_post {
-		app.cfg.look = app.shots.post
+	if app.shots.has_quality {
+		app.cfg.quality = app.shots.quality
 	}
 	ui.init(&app.ui)
 	if !new_level(app, progress.current_level(app.prog)) {
@@ -553,32 +552,36 @@ frame :: proc(app: ^App) {
 	}
 
 	// drawing (widgets also report their clicks here)
-	view := render.scene_view(&app.scene, g, w, h)
 	rl.BeginDrawing()
-	// the settings sheet is glass: the world goes through the canvas to be
-	// frosted under it, even with the visual style off (a neutral look)
-	glass := app.screen == .Settings
-	post := app.cfg.look != .Off && app.cfg.look_amount > 0 || glass
-	look := render.post_params(app.cfg.look, app.cfg.look_amount)
-	if post {
+	// the graphics quality draws the world through a canvas (smaller, or twice
+	// the size), or straight to the screen (High, with the window's MSAA)
+	k := render.canvas_scale(app.cfg.quality, w, h)
+	// the settings sheet is glass: the world frosted under it comes from the
+	// canvas (drawn there apart at High, so the picture beside the sheet keeps
+	// its MSAA while the quality is judged)
+	app.ui.has_glass = app.screen == .Settings
+	if app.ui.has_glass && k == 0 {
 		render.post_begin(&app.post, w, h)
+		draw_world(app, w, h)
+		render.post_end(&app.post)
+		app.ui.glass = render.post_glass(&app.post)
+	}
+	if k > 0 {
+		render.post_begin(&app.post, w * k, h * k)
 	} else if app.has_target {
 		rl.BeginTextureMode(app.target)
 	}
-	reset_canvas(w, h)
-	rl.ClearBackground({5, 5, 15, 255})
-	render.draw_world(&app.renderer, &app.scene, g, view, app.time)
-	if post {
-		render.post_end(&app.post, look)
-		app.ui.has_glass = glass
-		if glass {
+	draw_world(app, k > 0 ? w * k : w, k > 0 ? h * k : h)
+	if k > 0 {
+		render.post_end(&app.post)
+		if app.ui.has_glass {
 			app.ui.glass = render.post_glass(&app.post)
 		}
 		if app.has_target {
 			rl.BeginTextureMode(app.target)
 		}
 		reset_canvas(w, h)
-		render.post_draw(&app.post, look, w, h, render.sun_uv(&app.scene, g, view), render.focus_uv(g, view), app.time)
+		render.post_draw(&app.post, w, h)
 	}
 	render.draw_veil(&app.renderer, g, w, h, app.time)
 	if !(app.shooting && app.shots.no_ui) {
@@ -598,6 +601,13 @@ frame :: proc(app: ^App) {
 		shots_capture(&app.shots, shot)
 	}
 	rl.EndDrawing()
+}
+
+// The world, at w x h pixels, into whatever is being drawn to now.
+draw_world :: proc(app: ^App, w, h: f32) {
+	reset_canvas(w, h)
+	rl.ClearBackground({5, 5, 15, 255})
+	render.draw_world(&app.renderer, &app.scene, &app.game, render.scene_view(&app.scene, &app.game, w, h), app.time)
 }
 
 // The size we really draw to. raylib's screen size can lag behind the
@@ -678,11 +688,6 @@ global_keys :: proc(app: ^App) {
 	if rl.IsKeyPressed(.F11) {
 		app.cfg.fullscreen = !app.cfg.fullscreen
 		apply(app, {.Fullscreen})
-	}
-	if rl.IsKeyPressed(.F4) {
-		// the next visual style (as in the settings)
-		app.cfg.look = settings.Look((int(app.cfg.look) + 1) % len(settings.Look))
-		save_settings(app)
 	}
 	if rl.IsKeyPressed(.F3) {
 		app.cfg.debug = !app.cfg.debug
@@ -973,7 +978,7 @@ apply :: proc(app: ^App, changes: ui.Setting_Changes) {
 		audio.set_volumes(c.master, c.music, c.sfx)
 	}
 	// sliders are saved when the panel closes, not on every step of a drag
-	if changes - {.Volumes, .Look} != {} {
+	if changes - {.Volumes} != {} {
 		save_settings(app)
 	}
 }

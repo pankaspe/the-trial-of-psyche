@@ -1,5 +1,5 @@
 #version 330
-// Post: a separable gaussian blur, 9 taps along `dir` (in source pixels).
+// The glass sheet: a separable gaussian blur, 9 taps along `dir` (in source pixels).
 
 in vec2 fragTexCoord;
 

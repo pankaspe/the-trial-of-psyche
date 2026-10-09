@@ -221,8 +221,8 @@ Shots :: struct {
 	dir:  string,
 	size: [2]i32, // offscreen canvas size (--size WxH), 0 = the window
 	level: int, // --level ID: the slot to tour, -1 = the full script
-	post:  settings.Look, // --post NAME: a visual style (off, clean, miniature, film, dream, painted)
-	has_post: bool,
+	quality: settings.Quality, // --quality NAME: the graphics quality (low, medium, high, ultra)
+	has_quality: bool,
 	plan:  bool, // --plan: play the solver's plan of the level, a shot after every decision
 	record: bool, // --record (with --plan): every frame at RECORD_FPS instead, for a video
 	cave_shot: int, // --plan: the last move shot at a cave's mouth (the action of the place shows)
@@ -269,10 +269,10 @@ shots_from_args :: proc(args: []string) -> (s: Shots, ok: bool) {
 			}
 		case "--plan":
 			s.plan = true
-		case "--post":
-			for name, st in settings.LOOK_CODE {
+		case "--quality":
+			for name, q in settings.QUALITY_CODE {
 				if name == args[i + 1] {
-					s.post, s.has_post = st, true
+					s.quality, s.has_quality = q, true
 				}
 			}
 		case "--size":

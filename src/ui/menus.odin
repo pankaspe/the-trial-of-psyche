@@ -400,10 +400,9 @@ Setting_Field :: enum u8 {
 	Resolution,
 	Vsync,
 	Fps,
-	Msaa,
 	Volumes,
 	Debug,
-	Look,
+	Quality,
 	Access, // the accessibility options (read by the app every frame)
 }
 
@@ -425,28 +424,25 @@ TAB_KEY := [Settings_Tab]i18n.Key {
 	.Access   = .Set_Access,
 }
 
-LOOK_NAME := [settings.Look]i18n.Key {
-	.Off       = .Look_Off,
-	.Clean     = .Look_Clean,
-	.Miniature = .Look_Miniature,
-	.Film      = .Look_Film,
-	.Dream     = .Look_Dream,
-	.Painted   = .Look_Painted,
+@(private)
+QUALITY_NAME := [settings.Quality]i18n.Key {
+	.Low    = .Quality_Low,
+	.Medium = .Quality_Medium,
+	.High   = .Quality_High,
+	.Ultra  = .Quality_Ultra,
 }
 
 @(private)
-LOOK_DESC := [settings.Look]i18n.Key {
-	.Off       = .Look_Off_Desc,
-	.Clean     = .Look_Clean_Desc,
-	.Miniature = .Look_Miniature_Desc,
-	.Film      = .Look_Film_Desc,
-	.Dream     = .Look_Dream_Desc,
-	.Painted   = .Look_Painted_Desc,
+QUALITY_DESC := [settings.Quality]i18n.Key {
+	.Low    = .Quality_Low_Desc,
+	.Medium = .Quality_Medium_Desc,
+	.High   = .Quality_High_Desc,
+	.Ultra  = .Quality_Ultra_Desc,
 }
 
 // The settings panel, in tabs: edits `cfg` in place and reports what changed.
-// On the Graphics tab the game behind shows through, so the visual style can
-// be judged while it is changed.
+// On the Graphics tab the game behind shows through, so the quality can be
+// judged while it is changed.
 settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, native: [2]i32) -> (changes: Setting_Changes, back: bool) {
 	s := u.scale
 	tab := &u.settings_tab
@@ -513,22 +509,15 @@ settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, na
 		}
 
 	case .Graphics:
-		section(u, .Set_Effects, left, &y)
-		if step := option_row(u, i18n.tr(.Set_Look), i18n.tr(LOOK_NAME[cfg.look]), y, left, right); step != 0 {
-			n := len(settings.Look)
-			cfg.look = settings.Look((int(cfg.look) + step + n) % n)
-			changes += {.Look}
+		section(u, .Set_Picture, left, &y)
+		if step := option_row(u, i18n.tr(.Set_Quality), i18n.tr(QUALITY_NAME[cfg.quality]), y, left, right); step != 0 {
+			n := len(settings.Quality)
+			cfg.quality = settings.Quality((int(cfg.quality) + step + n) % n)
+			changes += {.Quality}
 		}
 		line(u, left, right, y)
 		y += row
-		if cfg.look != .Off {
-			if slider(u, i18n.tr(.Set_Look_Amount), &cfg.look_amount, y, left, right) {
-				changes += {.Look}
-			}
-		}
-		line(u, left, right, y)
-		y += row
-		y += paragraph(u, i18n.tr(LOOK_DESC[cfg.look]), {left, y - 6 * s}, {size = 26, color = DIM, face = .Italic}, right - left, 1, 1.2, .Left)
+		y += paragraph(u, i18n.tr(QUALITY_DESC[cfg.quality]), {left, y - 6 * s}, {size = 26, color = DIM, face = .Italic}, right - left, 1, 1.2, .Left)
 		y += 36 * s
 
 		section(u, .Set_Screen, left, &y)
@@ -569,13 +558,6 @@ settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, na
 			}
 			cfg.fps_limit = limits[(current + step + len(limits)) % len(limits)]
 			changes += {.Fps}
-		}
-		line(u, left, right, y)
-		y += row
-		msaa_label := fmt.tprintf("%s  %s", on_off(cfg.msaa), i18n.tr(.Set_Restart_Note))
-		if step := option_row(u, i18n.tr(.Set_Msaa), msaa_label, y, left, right); step != 0 {
-			cfg.msaa = !cfg.msaa
-			changes += {.Msaa}
 		}
 
 	case .Audio:

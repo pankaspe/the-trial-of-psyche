@@ -16,23 +16,21 @@ FILE_NAME :: "settings.cfg"
 FPS_LIMITS := [?]i32{0, 30, 60, 120, 144, 240}
 RESOLUTIONS := [?][2]i32{{1280, 720}, {1600, 900}, {1920, 1080}, {2560, 1440}, {3840, 2160}}
 
-// The visual style: a post-processing look over the whole picture (render/post.odin).
-Look :: enum u8 {
-	Off,
-	Clean,
-	Miniature,
-	Film,
-	Dream,
-	Painted,
+// The graphics quality: how the world is drawn (render/post.odin). Low draws
+// it smaller and stretches it, Medium at the screen's size, High with the
+// window's anti-aliasing (MSAA), Ultra twice the size and shrunk (supersampling).
+Quality :: enum u8 {
+	Low,
+	Medium,
+	High,
+	Ultra,
 }
 
-LOOK_CODE := [Look]string {
-	.Off       = "off",
-	.Clean     = "clean",
-	.Miniature = "miniature",
-	.Film      = "film",
-	.Dream     = "dream",
-	.Painted   = "painted",
+QUALITY_CODE := [Quality]string {
+	.Low    = "low",
+	.Medium = "medium",
+	.High   = "high",
+	.Ultra  = "ultra",
 }
 
 // When the names of the skills show beside their slots.
@@ -55,9 +53,7 @@ Settings :: struct {
 	resolution: [2]i32, // window size when not fullscreen
 	vsync:      bool,
 	fps_limit:  i32, // 0 = unlimited
-	msaa:       bool, // applied at the next start
-	look:       Look,
-	look_amount: f32, // 0..1, how strongly the look is applied
+	quality:    Quality,
 	master:     f32, // volumes, 0..1
 	music:      f32,
 	sfx:        f32,
@@ -78,9 +74,7 @@ defaults :: proc() -> Settings {
 		resolution = {1600, 900},
 		vsync = true,
 		fps_limit = 0,
-		msaa = true,
-		look = .Clean,
-		look_amount = 1,
+		quality = .High,
 		master = 1,
 		music = 1,
 		sfx = 1,
@@ -144,9 +138,7 @@ serialize :: proc(s: Settings, allocator := context.allocator) -> string {
 	fmt.sbprintfln(&b, "resolution = %dx%d", s.resolution.x, s.resolution.y)
 	fmt.sbprintfln(&b, "vsync = %v", s.vsync)
 	fmt.sbprintfln(&b, "fps_limit = %d", s.fps_limit)
-	fmt.sbprintfln(&b, "msaa = %v", s.msaa)
-	fmt.sbprintfln(&b, "look = %s", LOOK_CODE[s.look])
-	fmt.sbprintfln(&b, "look_amount = %.2f", s.look_amount)
+	fmt.sbprintfln(&b, "quality = %s", QUALITY_CODE[s.quality])
 	fmt.sbprintfln(&b, "master = %.2f", s.master)
 	fmt.sbprintfln(&b, "music = %.2f", s.music)
 	fmt.sbprintfln(&b, "sfx = %.2f", s.sfx)
@@ -212,16 +204,12 @@ parse :: proc(text: string, s: ^Settings) {
 			if v, ok := strconv.parse_int(value, 10); ok && v >= 0 && v <= 1000 {
 				s.fps_limit = i32(v)
 			}
-		case "msaa":
-			boolean(value, &s.msaa)
-		case "look":
-			for code, l in LOOK_CODE {
+		case "quality":
+			for code, q in QUALITY_CODE {
 				if code == value {
-					s.look = l
+					s.quality = q
 				}
 			}
-		case "look_amount":
-			volume(value, &s.look_amount)
 		case "master":
 			volume(value, &s.master)
 		case "music":

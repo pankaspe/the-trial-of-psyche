@@ -239,11 +239,12 @@ Full design document (Italian, kept up to date there): https://claude.ai/code/ar
   `candle_lights` -> `candles[]` in palace.fs). `night_candles` (I.3): the night with candles lit. `deep_night` (I.4): darker stones (`gloom`),
   candles out, clouds drifting across the moon (`moon_clouds`; sky.fs draws them, `moon_cover` mirrors
   them on the CPU and dims the stones while the moon is hidden: `moonlight` in palace.fs).
-- Post-processing (`render/post.odin`, `post*.fs`): the world goes to a canvas, then bloom,
-  soft scene, light shafts, tilt-shift (focus on Psyche), Kuwahara paint, grade, vignette,
-  grain; the UI is drawn after, untouched. Six visual styles (`settings.Look`: off, clean
-  (default), miniature, film, dream, painted) chosen by the player in Settings > Graphics
-  with a strength slider; F4 cycles them; `--shots ... --post NAME`.
+- No post-processing (2026-10-09, the user: the visual styles removed, the game's own picture is
+  the look). Graphics quality instead (`settings.Quality`, Settings > Graphics, applied at once, no
+  restart; `render/post.odin`): Low draws the world into a canvas at 0.67 and stretches it, Medium
+  into a canvas at 1x (no AA), High (default) straight to the screen with the window's MSAA 4x
+  (always requested), Ultra into a canvas at 2x and shrinks it (supersampling, long side capped at
+  8192). Offscreen shots have no MSAA (High looks like Medium there). `--shots ... --quality NAME`.
 - Figures (Psyche, Cupid) are abstract lathes + additive wings: placeholders until the
   user picks a character style.
 
@@ -277,7 +278,8 @@ Full design document (Italian, kept up to date there): https://claude.ai/code/ar
 - Always draw on the real framebuffer (`canvas_size` = GetRenderWidth/Height) and reset
   viewport + 2D projection every frame (`reset_canvas`): raylib's screen size can be stale.
 - Settings panel: a sheet on the left with tabs (General, Graphics, Audio); the game stays
-  visible on the right, unshaded on the Graphics tab, so the style is judged live.
+  visible on the right, unshaded on the Graphics tab, so the quality is judged live (at High the
+  world is drawn twice while the sheet is open: once into the canvas for the glass, once with MSAA).
 - Fullscreen = true fullscreen at the monitor's native size (`set_fullscreen`). raylib's
   borderless mode cannot be left on GNOME/XWayland (window stays monitor-sized and ignores
   resizes). Window sizes are applied a few frames later and retried (`update_window_size`).
@@ -415,9 +417,8 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
     because the lamp is not needed yet (Act I settings need not all be at night).
   - Filmed prologue: letterbox (`game.cine`, `ui.cinema_bars`), tilt down from the sky,
     close-up on Psyche, bars withdraw when play begins.
-  - Visual styles (post-processing) shown as five previews (artifact
-    https://claude.ai/artifact/8TSirwBuD8xmcCeztNwmJv); the user chose to keep **all of them as a
-    player setting** (default Clean) in a tabbed settings panel. 32 tests. Pushed.
+  - Visual styles (post-processing) kept as a player setting in a tabbed settings panel (removed
+    2026-10-09 for graphics quality levels).
   - Tutorial hints (`game.is_tutorial`) are a card over the game on the left (`ui.draw_tutorial`):
     "How to play" label, a drawn sign per mechanic, slides in, stays until done, then a tick;
     the controls it talks about pulse (`point_at`). Other hints keep the bottom band.
@@ -478,7 +479,7 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
   capitals, the title in two lines, an ornament, menu entries with diamonds, the oracle's words bottom
   right); the settings are style 1's sheet of **dark glass** at full height on the left
   (`ui.glass_panel`: `render.post_glass` frosts the soft scene at quarter size; the world goes
-  through the post canvas while the sheet is open, even with the visual style off); the oil gauge is
+  through the canvas while the sheet is open); the oil gauge is
   style 4's upright line of light on the right with a bead of flame (`draw_oil`). Acts are named in
   spaced capitals between two rules, ──── ATTO I ──── (`ui.rule_label`): under the level's title,
   on act cards, in the prologue. Fonts (OFL, assets/fonts): Mystery Quest for titles (`Face.Display`,
@@ -502,8 +503,8 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
 - **Next session**: the user plays the new II.4 (the temple of Ceres and Juno, the last of Act II) and
   judges it; then the texts of II.4b and II.4d; only after their ok, Act III.
 - Art direction is settled as: settings per level (`render/setting.odin`, add a `Look` per new
-  place) + the player's visual style (post-processing). The A0 "art style" mockups (engraving,
-  mosaic...) are superseded by the post styles unless the user brings them back.
+  place); no post-processing styles (removed 2026-10-09). The A0 "art style" mockups (engraving,
+  mosaic...) are not pursued unless the user brings them back.
 - **One level at a time**, in order I.1 … E: its setting and props (grow the reusable prop set),
   puzzle depth (aim 15-18 minutes), texts, level_check + tests; the user's playtest and ok close
   each level before the next. Act II levels already built (mechanics, solver) are reworked in
