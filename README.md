@@ -121,7 +121,7 @@ all of the sound.
 ## Play it
 
 The game is in development and builds on **Linux** for now (Windows and macOS
-should follow: raylib and Odin support them, but they are not tested yet).
+should follow: raylib and Odin support them, but they are not tested yet at the moment).
 
 You need the [Odin compiler](https://odin-lang.org/docs/install/) (a recent `dev`
 build; raylib comes with it) and a GPU with OpenGL 3.3.
