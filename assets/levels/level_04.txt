@@ -69,6 +69,9 @@
 #                           walking into one, Psyche comes out of the other
 #   prologue x y h          the level opens with the prologue cutscene; the
 #                           procession comes up at this cell and walks to start
+#   flight x y h            the level opens with Cupid's flight (II.1): he carries
+#                           Psyche across the sky, she falls onto start, he flies
+#                           on over this cell (the cypress) and is gone
 # Act II (palaces that change; ./build.sh check solves them move by move):
 #   veiled x y z [opt]      a block hidden in the dark: the lamp shows it in gold
 #                           and, within about 2.5 cells of her, makes it real for

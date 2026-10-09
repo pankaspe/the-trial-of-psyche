@@ -567,7 +567,7 @@ cinema_bars :: proc(u: ^Ui, k: f32) -> (height: f32) {
 
 CINEMA_BAR :: 0.12 // of the screen height
 
-// The prologue over the palace, filmed: the letterbox, the fade from black,
+// The opening cutscene over the level, filmed: the letterbox, the fade from black,
 // the act's name in the upper band, the captions in the lower one, and at
 // the end the invitation to begin.
 @(private)
@@ -575,8 +575,8 @@ draw_prologue :: proc(u: ^Ui, g: ^game.Game) {
 	s := u.scale
 	w, h := u.width, u.height
 	t := g.phase_t
-	if t < game.PRO_WALK_START {
-		rl.DrawRectangleRec({0, 0, w, h}, fade({3, 3, 10, 255}, 1 - t / game.PRO_WALK_START))
+	if fade_in := game.prologue_fade_in(g); t < fade_in {
+		rl.DrawRectangleRec({0, 0, w, h}, fade({3, 3, 10, 255}, 1 - t / fade_in))
 	}
 	bar := cinema_bars(u, game.cine(g).bars)
 	act := content.LEVELS[g.level_index].act

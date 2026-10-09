@@ -480,7 +480,7 @@ scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
 		}
 	}
 	// Zephyr's breath: motes spiralling up from the exit, a gust when it takes Psyche
-	alone_wind := g.phase == .Prologue && g.phase_t > game.prologue_alone(g) - 0.5
+	alone_wind := game.procession(g) && g.phase_t > game.prologue_alone(g) - 0.5
 	if (g.data.has_exit && g.phase != .Finished && exit_alpha(g) > 0) || alone_wind {
 		gust := g.phase == .Ending_Exit || alone_wind
 		want := gust ? 60 : 40
@@ -941,7 +941,7 @@ draw_figures :: proc(r: ^Renderer, g: ^game.Game) {
 	set_piece_uniforms(r, .Psyche, 0, 0, game.psyche_alpha(g), 0.9, 0.04)
 	rl.DrawMesh(r.meshes[.Robe], r.material, rl.MatrixTranslate(base.x, base.y, base.z) * rot)
 	rl.DrawMesh(r.meshes[.Head], r.material, rl.MatrixTranslate(base.x, base.y, base.z + 0.548) * rl.MatrixScale(0.046, 0.046, 0.05))
-	if g.data.has_lamp {
+	if g.data.has_lamp && g.phase != .Prologue {
 		lamp := game.lamp_world(g)
 		set_piece_uniforms(r, .Bronze, 0, 0, game.psyche_alpha(g), 0.9, 0)
 		rl.DrawMesh(r.meshes[.Lamp], r.material, rl.MatrixTranslate(lamp.x, lamp.y, lamp.z - 0.05))
@@ -950,7 +950,7 @@ draw_figures :: proc(r: ^Renderer, g: ^game.Game) {
 	draw_fragments(r, g)
 
 	// the prologue's procession: veiled mourners, a little taller than Psyche
-	if g.phase == .Prologue {
+	if game.procession(g) {
 		for i in 0 ..< game.MOURNERS {
 			m := game.prologue_mourner(g, i)
 			if m.alpha < 0.003 {
@@ -965,6 +965,13 @@ draw_figures :: proc(r: ^Renderer, g: ^game.Game) {
 			set_piece_uniforms(r, .Bronze, 0, 0, m.alpha, 0.9, 0)
 			rl.DrawMesh(r.meshes[.Lamp], r.material, rl.MatrixTranslate(tw.x, tw.y, tw.z - 0.06) * rl.MatrixScale(0.6, 0.6, 1.4))
 		}
+	}
+
+	// Cupid flying away (the opening of Act II)
+	if c, alpha := game.flight_cupid(g); alpha > 0.003 {
+		set_piece_uniforms(r, .Cupid, 0, 0, alpha, 0.9, 0.12)
+		rl.DrawMesh(r.meshes[.Robe_Cupid], r.material, rl.MatrixTranslate(c.x, c.y, c.z - 0.15))
+		rl.DrawMesh(r.meshes[.Head], r.material, rl.MatrixTranslate(c.x, c.y, c.z + 0.455) * rl.MatrixScale(0.05, 0.05, 0.055))
 	}
 
 	// Cupid: only a presence in the dark; the lamp shows him
@@ -1280,7 +1287,7 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	// Psyche's faint inner light
 	glow(v, psy.pos + {0, 0, 0.42}, 46, {0.55, 0.6, 1.0, (0.18 + 0.06 * math.sin(t * 1.7)) * game.psyche_alpha(g)})
 	// the procession's torches, and their smoke once put out
-	if g.phase == .Prologue {
+	if game.procession(g) {
 		for i in 0 ..< game.MOURNERS {
 			m := game.prologue_mourner(g, i)
 			tw := game.torch_world(m)
@@ -1399,6 +1406,11 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 		pulse := 0.25 + 0.55 * (0.5 + 0.5 * math.cos(g.rise_t[k] * math.PI / 1.4))
 		glow(v, c, 70, {1.0, 0.75, 0.35, pulse})
 	}
+	// Cupid flying away: his light in the night sky
+	if c, alpha := game.flight_cupid(g); alpha > 0.003 {
+		glow(v, c + {0, 0, 0.2}, 150, {1.0, 0.72, 0.35, 0.35 * alpha})
+		glow(v, c + {0, 0, 0.2}, 40, {1.0, 0.88, 0.6, 0.5 * alpha})
+	}
 	// Cupid: a warm breathing presence
 	if g.data.has_amore {
 		c := amore_position(g)
@@ -1478,12 +1490,13 @@ draw_wings :: proc(g: ^game.Game, v: View) {
 		ellipse_3d(root + u * 0.09 - up * 0.08, u, up, 0.085, 0.055, -sgn * 0.5, {0.86, 0.7, 1.0, 0.26 * pa})
 	}
 
-	if g.data.has_amore && g.amore.reveal > 0.003 {
-		alpha := g.amore.reveal * cupid_fade(g)
-		c := amore_position(g)
+	fc, falpha := game.flight_cupid(g)
+	if (g.data.has_amore && g.amore.reveal > 0.003) || falpha > 0.003 {
+		alpha := falpha > 0 ? falpha : g.amore.reveal * cupid_fade(g)
+		c := falpha > 0 ? fc : amore_position(g)
 		right, _ := billboard_axes(v)
 		cside := right / math.sqrt(linalg_dot(right, right))
-		flap: f32 = g.amore.fly_t >= 0 ? 1 : 0
+		flap: f32 = g.amore.fly_t >= 0 || falpha > 0 ? 1 : 0
 		spread := 1 + 0.25 * math.sin(g.time * (2 + flap * 14)) * (0.3 + flap)
 		wroot := c + {0, 0, 0.4}
 		for sgn in ([2]f32{-1, 1}) {

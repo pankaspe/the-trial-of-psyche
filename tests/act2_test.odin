@@ -176,6 +176,11 @@ new_mechanic_is_presented :: proc(t: ^testing.T) {
 	}
 	testing.expect(t, g.data.mechanic == .Veiled, "II.1 introduces the veiled stones")
 	game.begin(&g)
+	testing.expect(t, g.phase == .Prologue, "the act opens with its cutscene")
+	game.prologue_advance(&g) // skip to its end...
+	run(&g, game.PRO_PROMPT + 0.1)
+	game.prologue_advance(&g) // ...and begin
+	testing.expect(t, g.phase == .Play, "then the level begins")
 	run(&g, game.TEACH_AT + 0.1)
 	testing.expect(t, g.mechanic_new, "its card comes at the start")
 	testing.expect(t, game.fade_alpha(g.hud.voice) == 0, "before the intro line")

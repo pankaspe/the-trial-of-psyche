@@ -56,6 +56,11 @@ Key :: enum u16 {
 	Pro_Leave,
 	Pro_Alone,
 	Pro_Start,
+	// the cutscene that opens Act II (II.1): Cupid's flight
+	Fl_Wake,
+	Fl_Cling,
+	Fl_Fall,
+	Fl_Alone,
 
 	// level titles
 	Level_I_1,
@@ -346,6 +351,10 @@ IT := [Key]string {
 	.Pro_Leave      = "Lassù la lasciano. Tornano indietro, e spengono le fiaccole una a una.",
 	.Pro_Alone      = "Psiche resta sola sulla cima, a piangere. Intorno al monte, l'aria comincia a muoversi.",
 	.Pro_Start      = "Premi un tasto per iniziare",
+	.Fl_Wake        = "La goccia d'olio brucia la spalla del dio. Amore si sveglia e, senza una parola, vola via.",
+	.Fl_Cling       = "Psiche si aggrappa alla sua gamba e sale con lui nella notte, finché le forze la lasciano.",
+	.Fl_Fall        = "Cade lentamente, come una foglia, in un bosco lontano. Il palazzo si è sciolto nell'aria.",
+	.Fl_Alone       = "Amore vola via e si perde tra le stelle. Psiche resta sola, nel buio, con la sua lampada.",
 
 	.Level_I_1      = "La rupe di Zefiro",
 	.Level_I_2      = "Il palazzo invisibile",
@@ -467,7 +476,7 @@ IT := [Key]string {
 	.Intro_I_2      = "Psiche si sveglia su un prato. Davanti a lei, una reggia che non è opera di mani umane, e voci senza corpo pronte a servirla.",
 	.Intro_I_3      = "Ogni notte lo sposo torna, e la avverte: le sorelle vorranno convincerla a guardare il suo volto. «Se lo vedrai, non lo vedrai più.»",
 	.Intro_I_4      = "Notte. Lo sposo dorme in cima alla torre. Psiche ha con sé la lampada e il rasoio, come le hanno detto le sorelle.",
-	.Intro_II_1     = "Amore si sveglia e vola via. Psiche si aggrappa alla sua gamba, sale con lui, poi cade nel bosco, lontano dal palazzo. È notte fonda: le resta solo la lampada.",
+	.Intro_II_1     = "Psiche si rialza tra le rocce del bosco. Per ritrovarlo dovrà attraversare la notte.",
 	.Intro_II_2     = "Disperata, Psiche si getta nel fiume. Ma il fiume teme il dio che brucia perfino le acque, e con un'onda gentile la posa sulla riva.",
 	.Intro_II_3     = "Psiche va dalla sorella maggiore e le dice: «Il mio sposo ora vuole te.» La sorella corre alla rupe, senza dirlo a nessuno.",
 	.Intro_II_4     = "Psiche vaga giorno e notte in cerca dello sposo. Al tramonto trova un tempio di Cerere e di Giunone: spighe e falci in disordine, doni appesi alle colonne.",
@@ -578,6 +587,10 @@ EN := [Key]string {
 	.Pro_Leave      = "Up there they leave her. They turn back, putting out the torches one by one.",
 	.Pro_Alone      = "Psyche is left alone on the summit, weeping. Around the mountain, the air begins to stir.",
 	.Pro_Start      = "Press any key to begin",
+	.Fl_Wake        = "The drop of oil burns the god's shoulder. Cupid wakes and, without a word, flies away.",
+	.Fl_Cling       = "Psyche clings to his leg and rises with him into the night, until her strength fails.",
+	.Fl_Fall        = "She falls slowly, like a leaf, into a far forest. The palace has melted into the air.",
+	.Fl_Alone       = "Cupid flies on and is lost among the stars. Psyche is left alone in the dark, with her lamp.",
 
 	.Level_I_1      = "Zephyr's Crag",
 	.Level_I_2      = "The Invisible Palace",
@@ -699,7 +712,7 @@ EN := [Key]string {
 	.Intro_I_2      = "Psyche wakes on a meadow. Before her stands a palace not made by human hands, and bodiless voices ready to serve her.",
 	.Intro_I_3      = "Every night the bridegroom comes back, and warns her: her sisters will try to make her look at his face. “If you see it, you will never see it again.”",
 	.Intro_I_4      = "Night. The bridegroom sleeps at the top of the tower. Psyche has the lamp and the razor with her, as her sisters told her.",
-	.Intro_II_1     = "Cupid wakes and flies away. Psyche clings to his leg, rises with him, then falls into the forest, far from the palace. It is the dead of night: only the lamp is left to her.",
+	.Intro_II_1     = "Psyche rises among the rocks of the forest. To find him again she must cross the night.",
 	.Intro_II_2     = "In despair, Psyche throws herself into the river. But the river fears the god who burns even the waters, and with a gentle wave it sets her on the bank.",
 	.Intro_II_3     = "Psyche goes to her eldest sister and tells her: “My husband wants you now.” The sister runs to the crag, telling no one.",
 	.Intro_II_4     = "Psyche wanders day and night in search of her husband. At dusk she finds a temple of Ceres and Juno: wheat and sickles in disorder, gifts hung on the columns.",

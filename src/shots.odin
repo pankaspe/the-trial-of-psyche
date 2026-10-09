@@ -107,8 +107,8 @@ SHOT_SCRIPT := [?]Shot_Step {
 	{2.0, "13_collapse", nil},
 	{4.0, "14_end_card", nil},
 	{0.1, "", proc(app: ^App) {start_level(app, app.ending.level + 1)}},
-	{4.0, "14b_act2_card", nil},
-	{0.1, "", proc(app: ^App) {dismiss_act_card(app)}},
+	{4.0, "14b_act2_flight", nil}, // Act II opens with Cupid's flight
+	{0.1, "", proc(app: ^App) {for app.game.phase == .Prologue {game.prologue_advance(&app.game); if !game.prologue_ready(&app.game) {app.game.phase_t = 1e3}}}},
 	{1.0, "14c_act2_begins", nil},
 	// window modes (skipped on an offscreen canvas)
 	{0.1, "", proc(app: ^App) {window_mode(app, true, {1600, 900})}},
@@ -217,6 +217,8 @@ window_mode :: proc(app: ^App, fullscreen: bool, size: [2]i32) {
 	apply(app, {.Fullscreen, .Resolution})
 }
 
+CINE_SHOT_EVERY :: 1.5
+
 Shots :: struct {
 	dir:  string,
 	size: [2]i32, // offscreen canvas size (--size WxH), 0 = the window
@@ -226,6 +228,7 @@ Shots :: struct {
 	plan:  bool, // --plan: play the solver's plan of the level, a shot after every decision
 	record: bool, // --record (with --plan): every frame at RECORD_FPS instead, for a video
 	cave_shot: int, // --plan: the last move shot at a cave's mouth (the action of the place shows)
+	cine_shot: int, // --plan: shots taken of the opening cutscene (one every CINE_SHOT_EVERY s)
 	no_ui: bool, // --no-ui: the world only (backdrops for mockups and stills)
 	survey: bool, // --survey: the level from the four views, band by band (a tall level), no walking
 	frame: int,
@@ -361,7 +364,11 @@ plan_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool)
 	}
 	if s.step == 1 {
 		if g.phase == .Prologue {
-			// the cutscene plays; at its invitation, a key starts the level
+			// the cutscene plays (a shot now and then); at its invitation, a key starts the level
+			if !s.record && g.phase_t >= f32(s.cine_shot) * CINE_SHOT_EVERY {
+				s.cine_shot += 1
+				return fmt.tprintf("c%02d", s.cine_shot - 1), false
+			}
 			if game.prologue_ready(g) && s.t > 2 {
 				game.prologue_advance(g)
 			}

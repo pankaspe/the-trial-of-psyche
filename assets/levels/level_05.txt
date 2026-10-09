@@ -1,4 +1,5 @@
 # The Trial of Psyche - level II.1: "Cupid's Flight"
+# Opens with a cutscene (the first level of Act II): Cupid's flight.
 # Veiled stones (and planks). Cupid has flown; Psyche has fallen into a forest
 # of rock pillars, at the dead of night, far from the palace. A veiled block is
 # not there in the dark; the lamp shows it in gold and, close by (about two
@@ -104,6 +105,8 @@ prop log 9 4 9 py
 prop log 9 4 9 my
 
 start 3 11 2
+# the level opens with Cupid's flight: he flies on over the cypress
+flight 8 3 10
 sigil 3 5 8
 exit 9 4 9
 fragment 6 1 9

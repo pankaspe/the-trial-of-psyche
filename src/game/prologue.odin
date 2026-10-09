@@ -1,5 +1,7 @@
-// The prologue cutscene (level I.1, `prologue x y h` in the level file).
-// Apollo's oracle; the wedding procession, Psyche at its head and veiled
+// The cutscenes that open a level (the first of each act), in phase
+// Prologue: `data.scene` says which.
+//
+// The Oracle (level I.1, `prologue x y h` in the level file): Apollo's oracle; the wedding procession, Psyche at its head and veiled
 // mourners with torches behind her, climbs from the edge of the crag to the
 // summit; they leave her there and go back down, putting the torches out
 // one by one; alone, she feels the first breath of Zephyr. Then a key starts
@@ -8,6 +10,11 @@
 // Like every scene, it is a timeline: each figure, caption and light is a
 // function of the time spent in the phase. The procession follows the walk
 // path from the entry cell to the start, measured in cells.
+//
+// The Flight (level II.1, `flight x y h`): the night sky; Cupid's light
+// crosses it with Psyche clinging to his leg; her strength fails and she
+// drifts down into the forest like a leaf; he flies on over the cypress and
+// is lost among the stars. The camera opens on the sky and comes down with her.
 package game
 
 import "core:math"
@@ -48,7 +55,7 @@ prologue_start :: proc(g: ^Game) {
 	sa.clear(&g.prologue.route)
 	sa.push_back(&g.prologue.route, g.data.prologue)
 	path: pl.Path
-	if pl.find_path(&g.palace, g.data.prologue, g.data.start, false, &path) {
+	if g.data.scene == .Oracle && pl.find_path(&g.palace, g.data.prologue, g.data.start, false, &path) {
 		for i in 0 ..< min(sa.len(path), MAX_ROUTE - 1) {
 			sa.push_back(&g.prologue.route, sa.get(path, i))
 		}
@@ -79,9 +86,22 @@ mourner_stop :: proc(g: ^Game, i: int) -> f32 {
 	return max(route_length(g) - f32(i + 1) * PRO_GAP, 0)
 }
 
-// Psyche is alone: the last mourner has sunk out of sight.
+// Psyche is alone: the last mourner has sunk out of sight (Cupid is gone).
 prologue_alone :: proc(g: ^Game) -> f32 {
+	if g.data.scene == .Flight {
+		return FL_GONE
+	}
 	return prologue_back(g) + (mourner_stop(g, 0) + PRO_RISE) * PRO_BACK_PACE + 0.6
+}
+
+// How long the scene rises out of black.
+prologue_fade_in :: proc(g: ^Game) -> f32 {
+	return g.data.scene == .Flight ? FL_FADE : PRO_WALK_START
+}
+
+// Is the procession of the Oracle on the scene?
+procession :: proc(g: ^Game) -> bool {
+	return g.phase == .Prologue && g.data.scene == .Oracle
 }
 
 prologue_ready :: proc(g: ^Game) -> bool {
@@ -167,6 +187,9 @@ psyche_alpha :: proc(g: ^Game) -> f32 {
 	if g.phase != .Prologue {
 		return passage_alpha(g)
 	}
+	if g.data.scene == .Flight {
+		return 1
+	}
 	return fx.clamp01(1 + psyche_distance(g) / PRO_RISE)
 }
 
@@ -191,7 +214,14 @@ prologue_caption :: proc(g: ^Game) -> (key: Key, alpha: f32) {
 		{.Pro_Leave, back + 0.3, alone - 0.3},
 		{.Pro_Alone, alone, 1e9},
 	}
-	for c in captions {
+	flight := [?]Caption {
+		{.Fl_Wake, 1.0, 5.4},
+		{.Fl_Cling, 5.7, FL_LET_GO + 1.5},
+		{.Fl_Fall, FL_LET_GO + 1.8, alone - 0.3},
+		{.Fl_Alone, alone, 1e9},
+	}
+	list := g.data.scene == .Flight ? flight[:] : captions[:]
+	for c in list {
 		if t >= c.from && t < c.to {
 			return c.key, fx.clamp01((t - c.from) / 0.7) * fx.clamp01((c.to - t) / 0.7)
 		}
@@ -201,6 +231,10 @@ prologue_caption :: proc(g: ^Game) -> (key: Key, alpha: f32) {
 
 @(private)
 update_prologue :: proc(g: ^Game, dt: f32) {
+	if g.data.scene == .Flight {
+		update_flight(g, dt)
+		return
+	}
 	t := g.phase_t
 	g.angle = PRO_SPIN * (1 - fx.sine_in_out(fx.clamp01(t / (prologue_alone(g) + 1))))
 	s := psyche_distance(g)
@@ -239,9 +273,7 @@ prologue_advance :: proc(g: ^Game) {
 	set_phase(g, .Play)
 	set_view(g, 0)
 	g.psyche.pos = pl.stand_world(&g.palace, g.data.start)
-	g.hud.visible = true
-	show(&g.hud.title, title_key(g), 1.5, 3.5, 2.0)
-	g.begin_t = 0
+	start_play(g, true) // the first time: the new mechanic is presented
 	g.cine_out = 0
 }
 
@@ -268,6 +300,17 @@ cine :: proc(g: ^Game) -> (c: Cine) {
 		return
 	}
 	t := g.phase_t
+	if g.data.scene == .Flight {
+		// close on her across the sky and down into the forest, then back to
+		// the usual framing, so he is seen over the cypress before he goes
+		c.bars = 1
+		closer := fx.sine_in_out(fx.progress(t, 0.2, 2.2)) * (1 - fx.sine_in_out(fx.progress(t, FL_LAND + 0.3, 2.5)))
+		c.zoom = 1 + 0.5 * closer
+		c.focus = 0.85 * closer
+		// the camera lifts a little to the sky over the cypress while he goes
+		c.look_up = 0.45 * fx.sine_in_out(fx.progress(t, FL_LAND + 0.3, 2.5)) * (1 - fx.sine_in_out(fx.progress(t, FL_GONE + 0.5, 2)))
+		return
+	}
 	back := prologue_back(g)
 	alone := prologue_alone(g)
 	c.bars = 1
@@ -276,4 +319,84 @@ cine :: proc(g: ^Game) -> (c: Cine) {
 	c.zoom = 1 + 0.32 * closer
 	c.focus = 0.55 * closer
 	return
+}
+
+// --- the Flight ---------------------------------------------------------------------
+
+FL_FADE :: 2.0 // out of black: the night sky
+FL_CARRY :: 1.0 // Cupid's light comes into the sky, Psyche with him...
+FL_LET_GO :: 8.0 // ...until her strength fails
+FL_LAND :: 12.5 // she has drifted down onto the start
+FL_GONE :: 17.0 // he is lost among the stars
+
+// Where the flight goes: in from the far side of the sky, over the start,
+// then on over the cypress and up.
+@(private)
+flight_points :: proc(g: ^Game) -> (a, b, c, d: Vec3) {
+	s := pl.stand_world(&g.palace, g.data.start)
+	mid := f32(g.data.size) * 0.5
+	a = {mid + 5, mid - 4, s.z + 9}
+	b = s + {0.3, -0.3, 6.5}
+	p := g.data.prologue
+	c = {f32(p.x) + 0.5, f32(p.y) + 0.5, f32(p.z) + 2.2} // just over the cypress
+	d = c + {2.5, -2.5, 9}
+	return
+}
+
+// Cupid in the flight: where he is and how much he is seen (0: gone).
+flight_cupid :: proc(g: ^Game) -> (pos: Vec3, alpha: f32) {
+	if g.phase != .Prologue || g.data.scene != .Flight {
+		return
+	}
+	t := g.phase_t
+	a, b, c, d := flight_points(g)
+	switch {
+	case t < FL_LET_GO:
+		u := fx.sine_in_out(fx.clamp01((t - FL_CARRY) / (FL_LET_GO - FL_CARRY)))
+		pos = fx.lerp(a, b, u) + {0, 0, 0.25 * math.sin(t * 1.3)}
+	case t < FL_GONE - 2.5:
+		u := fx.sine_in_out(fx.clamp01((t - FL_LET_GO) / (FL_GONE - 2.5 - FL_LET_GO)))
+		pos = fx.lerp(b, c, u) + {0, 0, 0.25 * math.sin(t * 1.3)}
+	case:
+		// a moment over the cypress, then up and away
+		u := fx.clamp01((t - (FL_GONE - 2.5)) / 3.5)
+		pos = fx.lerp(c, d, fx.quad_in(u)) + {0, 0, 0.25 * math.sin(t * 1.3)}
+	}
+	alpha = fx.clamp01((t - FL_CARRY + 0.6) / 1.2) * (1 - fx.progress(t, FL_GONE - 1, 1.6))
+	return
+}
+
+@(private)
+update_flight :: proc(g: ^Game, dt: f32) {
+	t := g.phase_t
+	g.angle = PRO_SPIN * (1 - fx.sine_in_out(fx.clamp01(t / (FL_GONE + 1))))
+	s := pl.stand_world(&g.palace, g.data.start)
+	cupid, _ := flight_cupid(g)
+	switch {
+	case t < FL_LET_GO:
+		// hanging from his leg
+		g.psyche.pos = cupid - {0, 0, 0.75}
+	case t < FL_LAND:
+		// a leaf falling: slow, swaying
+		_, b, _, _ := flight_points(g)
+		from := b + {0, 0, 0.25 * math.sin(f32(FL_LET_GO) * 1.3) - 0.75}
+		u := fx.sine_in_out(fx.clamp01((t - FL_LET_GO) / (FL_LAND - FL_LET_GO)))
+		sway := math.sin(u * math.PI * 3) * 0.35 * (1 - u)
+		g.psyche.pos = fx.lerp(from, s, u) + {sway, -sway, 0}
+	case:
+		g.psyche.pos = s
+		face_point(g, cupid)
+	}
+	if crossed(t, dt, FL_CARRY) {
+		audio.play(.Wind, -10, 0.9)
+	}
+	if crossed(t, dt, FL_LET_GO) {
+		audio.play(.Wind, -12, 0.75)
+	}
+	if crossed(t, dt, FL_LAND) {
+		audio.play(.Thud, -18, 1.3)
+	}
+	if crossed(t, dt, FL_GONE - 1) {
+		audio.play(.Seam, -18, audio.semitones(5))
+	}
 }

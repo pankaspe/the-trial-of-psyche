@@ -394,6 +394,13 @@ Settings file: `~/.config/the-trial-of-psyche/settings.cfg`.
     slim `arch`, corner `vase`, unlit wall `sconce`; slender battlements; no windows (disliked).
   - Tools: `--shots DIR --level ID` tours a level.
   - 27 tests. Pushed to GitHub.
+- **Act openings (user, 2026-10-09): the first level of every act opens with a cutscene** (phase
+  Prologue, `level.Scene`; the act card is skipped for such a level). I.1: the Oracle (`prologue x y
+  h`). II.1: Cupid's Flight (`flight x y h`, the cypress; `game.update_flight`, `flight_cupid`): close on
+  Cupid's light crossing the sky with Psyche hanging from his leg, she drifts down onto the start like a
+  leaf, the camera widens and lifts to see him over the cypress, he rises into the stars; four captions
+  (`Fl_*`). After a cutscene the level starts as a first start (`start_play`: the mechanic card).
+  `--plan` takes a shot of the cutscene every 1.5 s (c00, c01...).
 - Text rule (user, 2026-10-05): little text, so the gameplay comes first: prologue -> one intro line
   per level -> outro at the end; mechanics explained once, by tutorial hints.
 - Decoration rules (user: readable, not cluttered): small, few objects; never hide Psyche's start.

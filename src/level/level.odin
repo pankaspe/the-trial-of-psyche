@@ -37,6 +37,13 @@ MECHANIC_NAME := [Mechanic]string {
 	.Handle  = "handle",
 }
 
+// The cutscene that opens a level (the first of each act has one).
+Scene :: enum u8 {
+	None,
+	Oracle, // I.1: the oracle, the procession up the crag, Psyche left alone
+	Flight, // II.1: Cupid flies away, Psyche clinging to him, and she falls into the forest
+}
+
 // Where a level takes place: the sky, the backdrop, the light on the stones.
 Setting :: enum u8 {
 	Night, // the palace of voices under the moon (the default)
@@ -212,8 +219,9 @@ Level_Data :: struct {
 	has_sigil:    bool,
 	has_amore:    bool,
 	has_exit:     bool,
-	prologue:     Cell, // where the prologue's procession comes up onto the level
-	has_prologue: bool, // the level opens with the prologue cutscene (I.1)
+	prologue:     Cell, // the scene's place: where the procession comes up (Oracle), the cypress Cupid flies over (Flight)
+	has_prologue: bool, // the level opens with a cutscene (`scene` says which)
+	scene:        Scene,
 	intro:        i18n.Key, // the line shown when the level begins
 	has_intro:    bool,
 	lawn:         [dynamic]Cell, // blocks with a grassy top
@@ -595,7 +603,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			append(&data.props, p)
 			max_z = max(max_z, v.z + 1)
 
-		case "start", "sigil", "amore", "fragment", "exit", "prologue":
+		case "start", "sigil", "amore", "fragment", "exit", "prologue", "flight":
 			v: [3]i32
 			if !ints(args, v[:]) {
 				return data, fail(line_no, "%s: expected x y h", fields[0])
@@ -617,7 +625,8 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 				append(&data.fragments, v)
 			case "exit": data.exit, data.has_exit = v, true
-			case "prologue": data.prologue, data.has_prologue = v, true
+			case "prologue": data.prologue, data.has_prologue, data.scene = v, true, .Oracle
+			case "flight": data.prologue, data.has_prologue, data.scene = v, true, .Flight
 			}
 			max_z = max(max_z, v.z)
 
