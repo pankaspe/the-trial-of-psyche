@@ -13,6 +13,10 @@ from Apuleius' tale of Cupid and Psyche (Metamorphoses IV–VI).*
 
 <br><br>
 
+<a href="https://github.com/pankaspe/the-trial-of-psyche/releases"><img src="https://img.shields.io/github/v/release/pankaspe/the-trial-of-psyche?include_prereleases&style=for-the-badge&label=download%20for%20linux&labelColor=1d1530&color=c9a24a&logo=linux&logoColor=f3e3c3" alt="Download for Linux" height="44"></a>
+
+<br><br>
+
 <img src="docs/screenshots/title.jpg" alt="The title screen: Zephyr's crag at sunset over a sea of clouds" width="100%">
 
 </div>
@@ -122,6 +126,8 @@ all of the sound.
 
 The game is in development and builds on **Linux** for now (Windows and macOS
 should follow: raylib and Odin support them, but they are not tested yet at the moment).
+
+<p align="center"><a href="https://github.com/pankaspe/the-trial-of-psyche/releases"><img src="https://img.shields.io/github/v/release/pankaspe/the-trial-of-psyche?include_prereleases&style=for-the-badge&label=download%20for%20linux&labelColor=1d1530&color=c9a24a&logo=linux&logoColor=f3e3c3" alt="Download for Linux" height="44"></a></p>
 
 **Download:** a ready-to-run Linux build (x86_64, glibc 2.29 or newer) is on the
 [Releases](https://github.com/pankaspe/the-trial-of-psyche/releases) page: unpack it
