@@ -123,7 +123,11 @@ all of the sound.
 The game is in development and builds on **Linux** for now (Windows and macOS
 should follow: raylib and Odin support them, but they are not tested yet at the moment).
 
-You need the [Odin compiler](https://odin-lang.org/docs/install/) (a recent `dev`
+**Download:** a ready-to-run Linux build (x86_64, glibc 2.29 or newer) is on the
+[Releases](https://github.com/pankaspe/the-trial-of-psyche/releases) page: unpack it
+and run `./trial-of-psyche`.
+
+**From source:** you need the [Odin compiler](https://odin-lang.org/docs/install/) (a recent `dev`
 build; raylib comes with it) and a GPU with OpenGL 3.3.
 
 ```bash
