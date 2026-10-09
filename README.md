@@ -12,7 +12,7 @@ lamp, and the light shows the truth.
 
 ![Gameplay: the invisible palace at dusk, the sisters' crag by candlelight, the night of the lamp](docs/gameplay.gif)
 
-Twenty levels in four acts and an epilogue, following the tale in Apuleius'
+Nineteen levels in four acts and an epilogue, following the tale in Apuleius'
 order. **Act I, *The Palace of Voices*, is playable**: the prologue on Zephyr's
 crag, the first illusions, the climb to the sisters' crag and the night of the
 lamp. Fragments of the tale wait on hidden spots, gathered in the Book.

@@ -1,7 +1,7 @@
 // Assets embedded in the executable at compile time (#load): level files,
 // shaders and fonts. No file IO at runtime, nothing to lose next to the binary.
 //
-// The game is 20 levels in four acts and an epilogue, in Apuleius' order.
+// The game is 19 levels in four acts and an epilogue, in Apuleius' order.
 // Every level has its slot from the start; a slot without a level file is
 // not built yet (the level select shows it, nobody can play it).
 // To add a level: drop assets/levels/level_NN.txt (NN = slot number) and
@@ -60,7 +60,6 @@ LEVELS := [?]Level_Info {
 	{"II.2", .II, .Level_II_2, #load("../../assets/levels/level_06.txt", string)},
 	{"II.3", .II, .Level_II_3, #load("../../assets/levels/level_07.txt", string)},
 	{"II.4", .II, .Level_II_4, #load("../../assets/levels/level_08.txt", string)},
-	{"II.5", .II, .Level_II_5, #load("../../assets/levels/level_09.txt", string)},
 	{"III.1", .III, .Level_III_1, ""},
 	{"III.2", .III, .Level_III_2, ""},
 	{"III.3", .III, .Level_III_3, ""},
@@ -98,19 +97,19 @@ FRAGMENTS := [?]Fragment_Info {
 	{"II.3b", 6, .Fragment_07b, "V.26"},
 	{"II.4", 7, .Fragment_08, "V.29–31"},
 	{"II.4b", 7, .Fragment_08b, "VI.2"},
-	{"II.5", 8, .Fragment_09, "V.31"},
-	{"II.5b", 8, .Fragment_09b, "VI.4"},
-	{"III.1", 9, .Fragment_10, "VI.7–8"},
-	{"III.2", 10, .Fragment_11, "VI.11"},
-	{"III.3", 11, .Fragment_12, "VI.11"},
-	{"III.4", 12, .Fragment_13, "VI.14"},
-	{"III.5", 13, .Fragment_14, "VI.16"},
-	{"IV.1", 14, .Fragment_15, "VI.17"},
-	{"IV.2", 15, .Fragment_16, "VI.18"},
-	{"IV.3", 16, .Fragment_17, "VI.18"},
-	{"IV.4", 17, .Fragment_18, "VI.20"},
-	{"IV.5", 18, .Fragment_19, "VI.21"},
-	{"E", 19, .Fragment_20, "VI.24–25"},
+	{"II.4c", 7, .Fragment_08c, "V.31"},
+	{"II.4d", 7, .Fragment_08d, "VI.4"},
+	{"III.1", 8, .Fragment_10, "VI.7–8"},
+	{"III.2", 9, .Fragment_11, "VI.11"},
+	{"III.3", 10, .Fragment_12, "VI.11"},
+	{"III.4", 11, .Fragment_13, "VI.14"},
+	{"III.5", 12, .Fragment_14, "VI.16"},
+	{"IV.1", 13, .Fragment_15, "VI.17"},
+	{"IV.2", 14, .Fragment_16, "VI.18"},
+	{"IV.3", 15, .Fragment_17, "VI.18"},
+	{"IV.4", 16, .Fragment_18, "VI.20"},
+	{"IV.5", 17, .Fragment_19, "VI.21"},
+	{"E", 18, .Fragment_20, "VI.24–25"},
 }
 
 FRAGMENT_COUNT :: len(FRAGMENTS)

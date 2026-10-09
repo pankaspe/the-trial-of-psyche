@@ -17,11 +17,9 @@
 // other. A passage is a real edge between the two mouths (it works in the
 // dark and in the light, whatever the view).
 //
-// Act II: some blocks change for good (`flipped`): a crumbling block falls once
-// Psyche steps off it, a phantom block (real only in the dark) dissolves when
-// the lamp's light reaches it, a veiled block (hidden in the dark) becomes
-// real there. Parts of the palace turn a quarter at a time about a pivot
-// (`part_rot`). The graph is rebuilt after every change.
+// Act II: veiled blocks (hidden in the dark) become real for good where the
+// lamp's light reaches them (`flipped`). Parts of the palace turn a quarter at
+// a time about a pivot (`part_rot`). The graph is rebuilt after every change.
 //
 // Memory: every array is allocated once from the allocator given to `init`
 // (the level arena) and reused; rebuilding the graph or the illusions does not
@@ -192,19 +190,13 @@ in_truth :: proc(feet, b: Cell) -> bool {
 	return d.x * d.x + d.y * d.y + d.z * d.z <= TRUTH_RADIUS * TRUTH_RADIUS
 }
 
-// The lamp cannot be lit over a phantom: it would vanish under Psyche's feet.
-can_light :: proc(p: ^Palace, feet: Cell) -> bool {
-	i := support(p, feet)
-	return i < 0 || p.data.blocks[i].trait != .Phantom || !block_present(p, i)
-}
-
-// The lamp's light at feet cell `feet`: phantoms within reach dissolve, veiled
-// blocks become real (never where Psyche stands: `keep` holds the feet cells
-// she occupies). Returns true if anything changed (the graph is rebuilt).
+// The lamp's light at feet cell `feet`: veiled blocks within reach become
+// real (never where Psyche stands: `keep` holds the feet cells she occupies).
+// Returns true if anything changed (the graph is rebuilt).
 lamp_touch :: proc(p: ^Palace, feet: Cell, keep: []Cell) -> bool {
 	changed := false
 	blocks: for e, i in p.data.blocks {
-		if (e.trait != .Phantom && e.trait != .Veiled) || p.flipped[i] {
+		if e.trait != .Veiled || p.flipped[i] {
 			continue
 		}
 		c := block_cell(p, i)
@@ -223,17 +215,6 @@ lamp_touch :: proc(p: ^Palace, feet: Cell, keep: []Cell) -> bool {
 		rebuild_graph(p)
 	}
 	return changed
-}
-
-// Psyche has left feet cell c: a crumbling block under it falls.
-leave :: proc(p: ^Palace, c: Cell) -> (fell: int) {
-	i := support(p, c)
-	if i < 0 || p.data.blocks[i].trait != .Crumble || !block_present(p, i) {
-		return -1
-	}
-	p.flipped[i] = true
-	rebuild_graph(p)
-	return i
 }
 
 // The handle at feet cell c, or -1.
@@ -547,15 +528,6 @@ is_real_edge :: proc(p: ^Palace, a, b: Cell) -> bool {
 	return slice.contains(neighbours(&p.real, ia), ib)
 }
 
-// Does Psyche stand on a crumbling block at node n?
-on_crumble :: proc(p: ^Palace, n: i32) -> bool {
-	if p.nodes[n].stair {
-		return false
-	}
-	b := support(p, p.nodes[n].cell)
-	return b >= 0 && p.data.blocks[b].trait == .Crumble
-}
-
 is_illusion :: proc(p: ^Palace, a, b: Cell) -> bool {
 	ia, ib := node_index(p, a), node_index(p, b)
 	if ia < 0 || ib < 0 {
@@ -568,15 +540,8 @@ is_illusion :: proc(p: ^Palace, a, b: Cell) -> bool {
 
 // Breadth-first path from `from` to `to` (excluding `from`) into `out`; it
 // never goes through a cave (that is entered on purpose).
-// Returns false (and an empty path) when unreachable. A path that crosses no
-// crumbling block on the way is preferred: those fall behind her, so she
-// crosses them only when there is no other way.
+// Returns false (and an empty path) when unreachable.
 find_path :: proc(p: ^Palace, from, to: Cell, dark: bool, out: ^Path) -> bool {
-	return search_path(p, from, to, dark, out, true) || search_path(p, from, to, dark, out, false)
-}
-
-@(private)
-search_path :: proc(p: ^Palace, from, to: Cell, dark: bool, out: ^Path, careful: bool) -> bool {
 	sa.clear(out)
 	start, goal := node_index(p, from), node_index(p, to)
 	if start < 0 || goal < 0 || start == goal {
@@ -599,9 +564,6 @@ search_path :: proc(p: ^Palace, from, to: Cell, dark: bool, out: ^Path, careful:
 			}
 			for nb in neighbours(g, cur) {
 				if parent[nb] < 0 && step_allowed(p, cur, nb, dark) {
-					if careful && nb != goal && on_crumble(p, nb) {
-						continue
-					}
 					if is_passage(p, p.nodes[cur].cell, p.nodes[nb].cell) {
 						continue // only on purpose: game.enter_cave
 					}

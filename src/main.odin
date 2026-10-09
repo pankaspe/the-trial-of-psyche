@@ -247,8 +247,7 @@ SETTING_BED := [level.Setting]audio.Bed {
 	.Forest_Night  = .Forest,
 	.River_Dawn    = .River,
 	.Crag_Day      = .Mountain,
-	.Windy_Sunset  = .Mountain,
-	.Valley_Dusk   = .Dusk,
+	.Temple_Dusk   = .Dusk,
 }
 
 // What the mixer plays: the act's music (silent while the screen goes
@@ -737,8 +736,6 @@ close_mechanic :: proc(app: ^App) {
 
 MECHANIC_CARD := [level.Mechanic][2]i18n.Key {
 	.None    = {.Mech_New, .Mech_New},
-	.Crumble = {.Mech_Crumble_Title, .Mech_Crumble},
-	.Phantom = {.Mech_Phantom_Title, .Mech_Phantom},
 	.Veiled  = {.Mech_Veiled_Title, .Mech_Veiled},
 	.Handle  = {.Mech_Handle_Title, .Mech_Handle},
 }

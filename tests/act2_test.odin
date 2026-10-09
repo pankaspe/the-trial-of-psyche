@@ -1,5 +1,5 @@
-// Act II: the rules of the palace that changes (crumbling, phantom and veiled
-// blocks, parts turned by handles, braziers) on small hand-made palaces, and
+// Act II: the rules of the palace that changes (veiled blocks, parts turned
+// by handles, braziers) on small hand-made palaces, and
 // every built level of the act solved by palace.solve and played through
 // the game move by move (so the game and the solver agree).
 package tests
@@ -47,40 +47,16 @@ play_plan :: proc(t: ^testing.T, g: ^game.Game, plan: []palace.Plan_Step) -> boo
 }
 
 @(test)
-crumbling_stone_falls_behind :: proc(t: ^testing.T) {
+lamp_reveals_veiled :: proc(t: ^testing.T) {
 	g: game.Game
 	defer game.destroy(&g)
-	LEVEL :: `size 6
+	LEVEL :: `size 9
 block 0 0 0
-crumble 1 0 0
-block 2 0 0
-start 0 0 1
-exit 2 0 1
-`
-	if !load_text(t, &g, LEVEL) {
-		return
-	}
-	testing.expect(t, walk(t, &g, {1, 0, 1}), "Psyche stands on the cracked stone")
-	testing.expect(t, walk(t, &g, {0, 0, 1}), "and steps back")
-	run(&g, 2)
-	testing.expect(t, !palace.is_node(&g.palace, {1, 0, 1}), "the cracked stone has fallen")
-	testing.expect(t, g.flip_t[1] > game.FALL_TIME, "and its fall has played out (it is gone from sight)")
-	path: palace.Path
-	testing.expect(t, !palace.find_path(&g.palace, g.psyche.cell, {2, 0, 1}, true, &path), "no way across any more")
-	testing.expect(t, game.has_rest(&g) == false, "no brazier in this palace")
-}
-
-@(test)
-lamp_dissolves_phantoms_and_reveals_veiled :: proc(t: ^testing.T) {
-	g: game.Game
-	defer game.destroy(&g)
-	LEVEL :: `size 8
-block 0 0 0
-phantom 1 0 0
+block 1 0 0
 block 2 0 0
 veiled 3 0 0
 block 4 0 0
-phantom 6 0 0
+veiled 7 0 0
 start 0 0 1
 exit 4 0 1
 lamp
@@ -88,20 +64,16 @@ lamp
 	if !load_text(t, &g, LEVEL) {
 		return
 	}
-	testing.expect(t, walk(t, &g, {1, 0, 1}), "in the dark the phantom holds")
-	game.toggle_lamp(&g)
-	testing.expect(t, !g.lamp_on, "the lamp is not lit over a phantom")
-	testing.expect(t, walk(t, &g, {2, 0, 1}), "on to real stone")
+	testing.expect(t, walk(t, &g, {2, 0, 1}), "Psyche walks to the gap")
 	testing.expect(t, !palace.is_node(&g.palace, {3, 0, 1}), "the veiled stone is not there in the dark")
 	game.toggle_lamp(&g)
 	run(&g, 1)
-	testing.expect(t, !palace.is_node(&g.palace, {1, 0, 1}), "the light dissolves the phantom nearby")
-	testing.expect(t, palace.is_node(&g.palace, {3, 0, 1}), "and makes the veiled stone real")
-	testing.expect(t, palace.is_node(&g.palace, {6, 0, 1}), "a phantom out of reach stays")
+	testing.expect(t, palace.is_node(&g.palace, {3, 0, 1}), "the light makes the veiled stone real")
+	testing.expect(t, !palace.is_node(&g.palace, {7, 0, 1}), "a veiled stone out of reach stays hidden")
 	game.toggle_lamp(&g)
 	run(&g, 1)
 	testing.expect(t, palace.is_node(&g.palace, {3, 0, 1}), "for good: the veiled stone stays in the dark")
-	testing.expect(t, g.flip_t[1] > game.DISSOLVE_TIME, "the phantom's dissolving has played out")
+	testing.expect(t, g.flip_t[3] > game.DISSOLVE_TIME, "its appearing has played out")
 	testing.expect(t, walk(t, &g, g.data.exit), "the revealed stone leads to the exit")
 }
 

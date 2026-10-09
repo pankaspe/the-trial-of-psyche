@@ -2,9 +2,8 @@
 // Psyche can make, one at a time, exactly as the game does: a step along a
 // real edge (or, in the dark, an illusion of the current view, with the
 // hidden-stairs rule), a turn of the view, lighting or putting out the lamp,
-// a handle. Crumbling blocks fall when she steps off them; the lamp's light
-// dissolves phantoms and makes veiled blocks real within its reach; the lamp
-// lit on the seal raises the `rise` blocks.
+// a handle. The lamp's light makes veiled blocks real within its reach; the
+// lamp lit on a seal raises its `rise` blocks.
 // A state is her cell, the view, the lamp and the palace's configuration
 // (which blocks changed, how each part is turned). The search is a cheapest
 // path (steps cost least; turns, lightings and handles more, so the plan it
@@ -97,8 +96,6 @@ Config_Graph :: struct {
 	ill_start:  [4][]i32,
 	ill_list:   [4][]i32,
 	stair_seen: [4][]bool,
-	phantom:    []bool, // per node: stands on a phantom (no lighting there)
-	crumble:    []int, // per node: index of the crumbling block under it, -1
 }
 
 @(private = "file")
@@ -131,21 +128,8 @@ graph_of :: proc(s: ^Solver, cfg: Config) -> ^Config_Graph {
 	g := new(Config_Graph)
 	g.nodes = slice.clone(p.nodes[:])
 	g.index = make(map[Cell]i32, len(p.nodes))
-	g.phantom = make([]bool, len(p.nodes))
-	g.crumble = make([]int, len(p.nodes))
 	for n, i in p.nodes {
 		g.index[n.cell] = i32(i)
-		g.crumble[i] = -1
-		if n.stair {
-			continue
-		}
-		if b := support(p, n.cell); b >= 0 {
-			switch p.data.blocks[b].trait {
-			case .Phantom: g.phantom[i] = true
-			case .Crumble: g.crumble[i] = b
-			case .Stone, .Veiled:
-			}
-		}
 	}
 	g.real_start = slice.clone(p.real.start[:])
 	g.real_list = slice.clone(p.real.list[:])
@@ -265,7 +249,7 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 					off := st
 					off.lamp = false
 					next(&entries, &seen, &buckets, &edges, id, off, .Douse)
-				} else if !g.phantom[a] {
+				} else {
 					on := st
 					on.lamp = true
 					cfg, changed := touch(&s, st.cfg, st.cell)
@@ -312,11 +296,6 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 					moved := st
 					moved.cell = to
 					changed := 0
-					if c := g.crumble[a]; c >= 0 {
-						bit, _ := slice.linear_search(s.changing[:], c)
-						moved.cfg.flips |= 1 << u64(bit)
-						changed += 1
-					}
 					if st.lamp {
 						n := 0
 						moved.cfg, n = touch(&s, moved.cfg, to)
@@ -408,7 +387,7 @@ touch :: proc(s: ^Solver, cfg: Config, feet: Cell) -> (out: Config, changed: int
 	d := s.p.data
 	for b, k in s.changing {
 		e := d.blocks[b]
-		if (e.trait != .Phantom && e.trait != .Veiled) || cfg.flips & (1 << u64(k)) != 0 {
+		if e.trait != .Veiled || cfg.flips & (1 << u64(k)) != 0 {
 			continue
 		}
 		c := e.cell

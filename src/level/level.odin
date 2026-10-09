@@ -27,16 +27,12 @@ Solid :: struct {
 // The mechanic a level introduces: a card presents it when the level begins.
 Mechanic :: enum u8 {
 	None,
-	Crumble,
-	Phantom,
 	Veiled,
 	Handle,
 }
 
 MECHANIC_NAME := [Mechanic]string {
 	.None    = "none",
-	.Crumble = "crumble",
-	.Phantom = "phantom",
 	.Veiled  = "veiled",
 	.Handle  = "handle",
 }
@@ -51,8 +47,7 @@ Setting :: enum u8 {
 	Forest_Night, // the dead of night in a forest of rock pillars, far from the palace
 	River_Dawn, // the first light over a wide river, mist on the water, the morning star
 	Crag_Day, // a crag of bare rock by day, the wind, the plain far below
-	Windy_Sunset, // the sunset of the crag, windswept, a temple's candles lit
-	Valley_Dusk, // the last of the twilight in a deep valley, almost night: a temple's candles lit
+	Temple_Dusk, // a temple at dusk among the ranges: the afterglow, the first stars, its candles lit
 }
 
 SETTING_NAME := [Setting]string {
@@ -64,23 +59,18 @@ SETTING_NAME := [Setting]string {
 	.Forest_Night = "forest_night",
 	.River_Dawn   = "river_dawn",
 	.Crag_Day     = "crag_day",
-	.Windy_Sunset = "windy_sunset",
-	.Valley_Dusk  = "valley_dusk",
+	.Temple_Dusk  = "temple_dusk",
 }
 
 // How a block behaves (Act II): fixed stone, or one that changes for good.
 Trait :: enum u8 {
 	Stone,
-	Crumble, // holds one crossing: falls when Psyche steps off it
-	Phantom, // exists only in the dark: the lamp's light dissolves it
 	Veiled, // hidden in the dark: the lamp's light makes it real
 }
 
 TRAIT_NAME := [Trait]string {
-	.Stone   = "block",
-	.Crumble = "crumble",
-	.Phantom = "phantom",
-	.Veiled  = "veiled",
+	.Stone  = "block",
+	.Veiled = "veiled",
 }
 
 Solid_Entry :: struct {
@@ -233,7 +223,6 @@ Level_Data :: struct {
 	water:        [dynamic][4]i32, // rectangles of water (x0 y0 x1 y1), just under the h1 surfaces
 	caves:        [dynamic]Cave, // in pairs: each leads to the other of its pair
 	tiers:        [dynamic][2]i32, // a tall level: the camera frames one band of heights (h0 h1) at a time
-	follow:       i32, // a long level: the camera frames about this many cells and follows Psyche (0: the whole level)
 	outro:        i18n.Key, // the text of the ending card at the exit
 	has_outro:    bool,
 	has_lamp:     bool, // Psyche carries the lamp (from the end of Act I)
@@ -250,7 +239,7 @@ MAX_PARTS :: 8
 MAX_FRAGMENTS :: 4
 MAX_CANDELABRA :: 12
 MAX_LIGHTS :: 16 // flames the stone shader takes at once: wall candles first, then candelabra
-MAX_DYNAMIC :: 64 // crumbling, phantom and veiled blocks in one level
+MAX_DYNAMIC :: 64 // veiled blocks in one level
 MAX_TIERS :: 6
 MAX_SEALS :: 4
 Seals :: bit_set[0 ..< MAX_SEALS; u8] // which seals have been lit
@@ -345,7 +334,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			}
 			data.size = v[0]
 
-		case "block", "crumble", "phantom", "veiled":
+		case "block", "veiled":
 			v: [3]i32
 			if !ints(args, v[:]) {
 				return data, fail(line_no, "%s: expected x y z", fields[0])
@@ -426,7 +415,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 			}
 			if !found {
-				return data, fail(line_no, "mechanic: expected crumble, phantom, veiled or handle")
+				return data, fail(line_no, "mechanic: expected veiled or handle")
 			}
 
 		case "rest":
@@ -476,7 +465,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 			}
 			if !found {
-				return data, fail(line_no, "setting: expected one of night, crag_sunset, dusk, night_candles, deep_night, forest_night, river_dawn, crag_day, windy_sunset, valley_dusk")
+				return data, fail(line_no, "setting: expected one of night, crag_sunset, dusk, night_candles, deep_night, forest_night, river_dawn, crag_day, temple_dusk")
 			}
 
 		case "tier":
@@ -488,13 +477,6 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				return data, fail(line_no, "too many tiers (max %d)", MAX_TIERS)
 			}
 			append(&data.tiers, v)
-
-		case "follow":
-			v: [1]i32
-			if !ints(args, v[:]) || v[0] < 4 {
-				return data, fail(line_no, "follow: expected the cells the camera frames (>= 4)")
-			}
-			data.follow = v[0]
 
 		case "water":
 			v: [4]i32

@@ -75,7 +75,6 @@ Material :: enum u8 {
 	Cupid,
 	Mourner,
 	Lawn, // grass on top, earth on the sides
-	Phantom, // a stone real only in the dark: pale, see-through in the light
 	Rock, // living rock under the meadows: brown earth in rough strata
 	Wood, // bark
 	Void, // the dark inside a cave

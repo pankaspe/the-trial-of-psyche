@@ -227,9 +227,8 @@ Scene :: struct {
 	motes:      fx.Pool(64), // drifting in front of everything (proto px)
 	sparks:     fx.Pool(64), // around Cupid (world)
 	dust:       fx.Pool(192), // falling from the cracks (world)
-	debris:     fx.Pool(160), // falling stones, dissolving phantoms (world)
+	debris:     fx.Pool(160), // gold gathering where a veiled stone becomes real (world)
 	wind:       fx.Pool(96), // Zephyr's breath over the exit (world)
-	gusts:      fx.Pool(64), // a windy setting: streaks blowing across (proto px)
 	rng:        fx.Rng,
 	mote:       Color4, // the colour of the drifting motes (from the setting)
 	moon_cover: f32, // how much the night clouds hide the moon now (0..1)
@@ -240,9 +239,6 @@ Scene :: struct {
 	tier:       int, // the band the camera frames (or pans to)
 	pan_from:   f32, // the centre's proto y where the pan began
 	pan_t:      f32, // seconds since it began
-	// a long level (`follow`): the camera follows Psyche, the point it looks at
-	// (proto pixels, before keeping the frame inside the level)
-	cam:        Vec2,
 }
 
 PAN_TIME :: 1.8 // the camera moving from one band of a tall level to the next
@@ -270,9 +266,6 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 				p.mesh = pk.along_y ? .Plank_Y : .Plank_X
 				p.material, p.cube, p.lawn, p.ground = .Wood, false, false, false
 			}
-		}
-		if e.trait == .Phantom {
-			p.material = .Phantom
 		}
 		append(&s.pieces, p)
 	}
@@ -366,7 +359,6 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 	}
 	s.tier = camera_tier(g)
 	s.pan_t = PAN_TIME
-	s.cam = follow_target(g)
 
 	// ambient motes start mid-life, as if they had always been there
 	for _ in 0 ..< 40 {
@@ -408,11 +400,6 @@ camera_tier :: proc(g: ^game.Game) -> int {
 	return best
 }
 
-// Where the camera of a long level wants to look: at Psyche, a little above her feet.
-follow_target :: proc(g: ^game.Game) -> Vec2 {
-	return iso.project(iso.view_point(g.psyche.pos + {0, 0, 0.5}, g.angle, g.data.size))
-}
-
 // The proto y the camera centres on for band i.
 @(private)
 tier_center :: proc(s: ^Scene, i: int) -> f32 {
@@ -428,16 +415,6 @@ scene_view :: proc(s: ^Scene, g: ^game.Game, width, height: f32) -> View {
 	v := make_view(fit, width, height, g.angle, g.data.size, g.data.height, shake_offset(g))
 	if len(g.data.tiers) > 0 {
 		v.center.y = fx.lerp(s.pan_from, tier_center(s, s.tier), fx.sine_in_out(fx.clamp01(s.pan_t / PAN_TIME)))
-	}
-	if n := g.data.follow; n > 0 {
-		// a window of n cells across, following her, kept inside the level
-		v.zoom = clamp(width / (f32(n) * 128 + 260), 0.35, 4.0)
-		half := Vec2{width, height} * 0.5 / v.zoom
-		lo := Vec2{s.fit.x, s.fit.y} - {130, 150} + half
-		hi := Vec2{s.fit.x + s.fit.w, s.fit.y + s.fit.h} + {130, 150} - half
-		for k in 0 ..< 2 {
-			v.center[k] = lo[k] <= hi[k] ? clamp(s.cam[k], lo[k], hi[k]) : (lo[k] + hi[k]) * 0.5
-		}
 	}
 	if lift := game.exit_lift(g); lift > 0 {
 		// the camera follows her a little way up as the wind takes her
@@ -475,9 +452,6 @@ emit_mote :: proc(s: ^Scene, aged: bool) {
 }
 
 scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
-	if g.data.follow > 0 {
-		s.cam = fx.lerp(s.cam, follow_target(g), 1 - math.exp(-dt * 2.2))
-	}
 	if len(g.data.tiers) > 0 {
 		s.pan_t += dt
 		if t := camera_tier(g); t != s.tier {
@@ -578,56 +552,26 @@ scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
 			}
 		}
 	}
-	// stones that fall shed grit; phantoms dissolve into pale mist; veiled stones gather gold
+	// veiled stones gather gold as they become real
 	for t, i in g.flip_t {
 		if t < 0 || t > 0.9 {
 			continue
 		}
-		trait := g.data.blocks[i].trait
 		if fx.randf(&s.rng) > dt * 40 {
 			continue
 		}
 		c := block_world(g, int(i), {0.5, 0.5, 0.5})
-		if trait == .Crumble {
-			c.z -= 7 * fx.quad_in(fx.clamp01(t / game.FALL_TIME))
-		}
-		col := Color4{0.7, 0.72, 0.9, 0.7}
 		vel := Vec3{fx.rand_range(&s.rng, -0.4, 0.4), fx.rand_range(&s.rng, -0.4, 0.4), fx.rand_range(&s.rng, -0.6, 0.2)}
-		#partial switch trait {
-		case .Phantom:
-			col = {0.65, 0.8, 1.0, 0.8}
-			vel.z = fx.rand_range(&s.rng, 0.2, 0.6)
-		case .Veiled:
-			col = {1.0, 0.82, 0.45, 0.85}
-			vel = -vel * 0.5
-		}
 		fx.emit(&s.debris, {
 			pos   = c + {fx.rand_range(&s.rng, -0.5, 0.5), fx.rand_range(&s.rng, -0.5, 0.5), fx.rand_range(&s.rng, -0.5, 0.5)},
-			vel   = vel,
-			accel = trait == .Crumble ? Vec3{0, 0, -3} : Vec3{},
+			vel   = -vel * 0.5,
 			life  = 1.4,
 			size  = 32 * fx.rand_range(&s.rng, 0.1, 0.22),
-			color = col,
+			color = {1.0, 0.82, 0.45, 0.85},
 		})
 	}
 	fx.update(&s.debris, dt)
 	fx.update(&s.motes, dt)
-	if w := look(g.data.setting).wind; w > 0 {
-		// gusts come in waves: now a few streaks, now a flurry
-		wave := 0.35 + 0.65 * (0.5 + 0.5 * math.sin(g.time * 0.7) * math.sin(g.time * 0.23 + 1))
-		if fx.randf(&s.rng) < dt * 26 * w * wave {
-			c := g.data.follow > 0 ? s.cam : Vec2{s.fit.x + s.fit.w * 0.5, s.fit.y + s.fit.h * 0.5}
-			speed := fx.rand_range(&s.rng, 520, 900) * w
-			fx.emit(&s.gusts, {
-				pos   = {c.x + fx.rand_range(&s.rng, -1800, 900), c.y + fx.rand_range(&s.rng, -800, 700), 0},
-				vel   = {speed, speed * fx.rand_range(&s.rng, 0.02, 0.12), 0},
-				life  = fx.rand_range(&s.rng, 1.0, 1.8),
-				size  = fx.rand_range(&s.rng, 0.05, 0.11), // seconds of travel the streak spans
-				color = {1.0, 0.9, 0.78, fx.rand_range(&s.rng, 0.12, 0.3)},
-			})
-		}
-	}
-	fx.update(&s.gusts, dt)
 	fx.update(&s.sparks, dt)
 	fx.update(&s.dust, dt)
 	fx.update(&s.wind, dt)
@@ -882,7 +826,7 @@ piece_cell :: proc(g: ^game.Game, p: Piece) -> Cell {
 }
 
 // Lift, opacity and visibility of piece i in this frame; `ghost`: drawn with
-// the see-through pieces (phantoms, veiled blocks shown by the lamp).
+// the see-through pieces (veiled blocks shown by the lamp).
 @(private)
 piece_state :: proc(g: ^game.Game, p: Piece, i: int) -> (lift, alpha: f32, visible, ghost, hidden: bool) {
 	alpha = 1
@@ -907,17 +851,6 @@ piece_state :: proc(g: ^game.Game, p: Piece, i: int) -> (lift, alpha: f32, visib
 		t := g.flip_t[p.block]
 		switch g.data.blocks[p.block].trait {
 		case .Stone:
-		case .Crumble:
-			if t >= 0 {
-				lift -= 7 * fx.quad_in(fx.clamp01(t / game.FALL_TIME))
-				alpha = 1 - fx.progress(t, game.FALL_TIME * 0.45, game.FALL_TIME * 0.55)
-			}
-		case .Phantom:
-			ghost = true
-			if t >= 0 {
-				alpha = 1 - fx.progress(t, 0, game.DISSOLVE_TIME)
-				lift += 0.35 * fx.cubic_out(fx.clamp01(t / game.DISSOLVE_TIME))
-			}
 		case .Veiled:
 			if t < 0 {
 				ghost, hidden = true, true
@@ -973,7 +906,7 @@ draw_pieces :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, transparent: bool) {
 		lift, alpha, _, _, hidden := piece_state(g, p, i)
 		material := p.material
 		detail: f32 = 0
-		if p.cube && material != .Phantom {
+		if p.cube {
 			covered := pl.solid_at(&g.palace, piece_cell(g, p) + {0, 0, 1}).kind != .None
 			material = covered ? .Masonry : .Marble
 			detail = covered ? 2 : 1
@@ -1260,9 +1193,9 @@ draw_decals :: proc(g: ^game.Game) {
 		}
 	}
 
-	// cracks on the stones that will fall; a bronze inlay on the parts that turn
+	// a bronze inlay on the parts that turn
 	for e, i in g.data.blocks {
-		if (e.trait != .Crumble && e.part == 0) || !pl.block_present(&g.palace, i) || g.flip_t[i] >= 0 {
+		if e.part == 0 || !pl.block_present(&g.palace, i) || g.flip_t[i] >= 0 {
 			continue
 		}
 		if e.solid.kind != .Block || pl.solid_at(&g.palace, pl.block_cell(&g.palace, i) + {0, 0, 1}).kind != .None {
@@ -1271,39 +1204,17 @@ draw_decals :: proc(g: ^game.Game) {
 		top :: proc(g: ^game.Game, i: int, x, y: f32) -> Vec3 {
 			return block_world(g, i, {x, y, 1.006})
 		}
-		if e.part > 0 {
-			col := Color4{0.62, 0.48, 0.26, 0.6}
-			I :: 0.14
-			W :: 0.035
-			corners := [4][2]f32{{I, I}, {1 - I, I}, {1 - I, 1 - I}, {I, 1 - I}}
-			for k in 0 ..< 4 {
-				a, b := corners[k], corners[(k + 1) % 4]
-				inward := top(g, i, 0.5, 0.5) - top(g, i, (a.x + b.x) * 0.5, (a.y + b.y) * 0.5)
-				inward /= math.sqrt(linalg_dot(inward, inward))
-				floor_strip(top(g, i, a.x, a.y), top(g, i, b.x, b.y), inward, W, col)
-			}
-		}
-		if e.trait == .Crumble {
-			// three jagged cracks from near the centre to the edges
-			for k in 0 ..< 3 {
-				h := u32(i * 13 + k * 5)
-				ang := f32(k) * math.TAU / 3 + fx.hash01(h) * 1.2
-				prev := [2]f32{0.5 + 0.06 * math.cos(ang), 0.5 + 0.06 * math.sin(ang)}
-				for step in 1 ..= 4 {
-					rad := 0.06 + 0.4 * f32(step) / 4
-					wob := (fx.hash01(h + u32(step) * 17) - 0.5) * 0.5
-					next := [2]f32{0.5 + rad * math.cos(ang + wob), 0.5 + rad * math.sin(ang + wob)}
-					a, b := top(g, i, prev.x, prev.y), top(g, i, next.x, next.y)
-					d := b - a
-					side := Vec3{-d.y, d.x, 0}
-					side /= max(math.sqrt(linalg_dot(side, side)), 1e-4)
-					floor_strip(a, b, side, 0.022 * (1 - f32(step) / 5), {0.02, 0.02, 0.06, 0.85})
-					prev = next
-				}
-			}
+		col := Color4{0.62, 0.48, 0.26, 0.6}
+		I :: 0.14
+		W :: 0.035
+		corners := [4][2]f32{{I, I}, {1 - I, I}, {1 - I, 1 - I}, {I, 1 - I}}
+		for k in 0 ..< 4 {
+			a, b := corners[k], corners[(k + 1) % 4]
+			inward := top(g, i, 0.5, 0.5) - top(g, i, (a.x + b.x) * 0.5, (a.y + b.y) * 0.5)
+			inward /= math.sqrt(linalg_dot(inward, inward))
+			floor_strip(top(g, i, a.x, a.y), top(g, i, b.x, b.y), inward, W, col)
 		}
 	}
-
 
 	// the exit: rings of wind spreading on the stone
 	if ea := exit_alpha(g); g.data.has_exit && g.phase != .Finished && ea > 0 {
@@ -1692,13 +1603,9 @@ draw_ridges :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 @(private)
 backdrop_view :: proc(s: ^Scene, g: ^game.Game, v: View, k: f32) -> View {
 	out := v
-	switch {
-	case len(g.data.tiers) > 0:
+	if len(g.data.tiers) > 0 {
 		base := tier_center(s, 0)
 		out.center.y = base + (v.center.y - base) * k
-	case g.data.follow > 0:
-		base := Vec2{s.fit.x + s.fit.w * 0.5, s.fit.y + s.fit.h * 0.5}
-		out.center = base + (v.center - base) * k
 	}
 	return out
 }
@@ -1827,13 +1734,6 @@ draw_motes :: proc(r: ^Renderer, s: ^Scene, v: View) {
 		col.a *= fx.mote_alpha(p)
 		rl.DrawTexturePro(r.radial, {0, 0, f32(r.radial.width), f32(r.radial.height)}, {pos.x - size * 0.5, pos.y - size * 0.5, size, size}, {}, 0, to_color(col))
 	}
-	for p in fx.alive(&s.gusts) {
-		head := proto_to_screen(v, p.pos.xy)
-		tail := proto_to_screen(v, p.pos.xy - p.vel.xy * p.size)
-		col := p.color
-		col.a *= math.sin(math.PI * fx.clamp01(p.age / p.life))
-		rl.DrawLineEx(tail, head, max(1.6 * v.zoom, 1), to_color(col))
-	}
 	rl.EndBlendMode()
 }
 
@@ -1886,8 +1786,6 @@ draw_teach :: proc(g: ^game.Game, v: View, time: f32) {
 		want := false
 		switch mech {
 		case .None:
-		case .Crumble: want = e.trait == .Crumble && pl.block_present(&g.palace, i)
-		case .Phantom: want = e.trait == .Phantom && pl.block_present(&g.palace, i)
 		case .Veiled: want = e.trait == .Veiled && !g.palace.flipped[i]
 		case .Handle: want = e.part > 0
 		}

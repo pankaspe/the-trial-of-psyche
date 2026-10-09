@@ -485,9 +485,6 @@ survey_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: boo
 		return
 	}
 	bands := max(len(g.data.tiers), 1)
-	if g.data.follow > 0 {
-		bands = 4 // a long level: four stretches along x
-	}
 	k := s.step - 2
 	if k >= bands * 4 {
 		return "", true
@@ -509,24 +506,7 @@ survey_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: boo
 				app.scene.tier = render.camera_tier(g)
 				app.scene.pan_t = 1e3
 			}
-			if g.data.follow > 0 {
-				// the surface nearest the k-th stretch along x
-				lo, hi := i32(1 << 30), i32(-1 << 30)
-				for node in g.palace.nodes {
-					lo, hi = min(lo, node.cell.x), max(hi, node.cell.x)
-				}
-				want := lo + (hi - lo) * i32(k / 4) / 3
-				best := g.data.start
-				gap := i32(1 << 30)
-				for node in g.palace.nodes {
-					if d := abs(node.cell.x - want); !node.stair && d < gap {
-						best, gap = node.cell, d
-					}
-				}
-				place(app, best)
-			}
 			game.set_view(g, k % 4)
-			app.scene.cam = render.follow_target(g)
 		}
 		return
 	}

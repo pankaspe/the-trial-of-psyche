@@ -12,10 +12,9 @@
 // shows its text and waits for the player.
 // Cupid's lines never cut each other off: a line said while another is on
 // screen waits its turn.
-// Act II: a crumbling block falls when Psyche steps off it; the lamp's light,
-// close to her, dissolves phantom blocks and makes veiled ones real, for good
-// (the lamp cannot be lit over a phantom); standing on a handle, a click on
-// her own cell (or F) turns a part of the palace a quarter.
+// Act II: the lamp's light, close to her, makes veiled blocks real, for good;
+// standing on a handle, a click on her own cell (or F) turns a part of the
+// palace a quarter.
 //
 // Caves come in pairs. Standing at the mouth of one, Space (or the card the
 // HUD shows over her) takes her through the rock, a step longer than the
@@ -67,8 +66,7 @@ MAX_MARKERS :: 4
 MARKER_TIME :: 0.6
 MAX_QUEUED_VOICES :: 4
 PART_TIME :: 0.9 // a part of the palace turning a quarter
-FALL_TIME :: 1.3 // a crumbling block falling
-DISSOLVE_TIME :: 1.2 // a phantom dissolving, a veiled block appearing
+DISSOLVE_TIME :: 1.2 // a veiled block appearing
 PASSAGE_TIME :: 2.4 // through the rock from one cave to the other
 PASSAGE_DEPTH :: 0.45 // how far into the mouth she walks before the dark takes her
 
@@ -596,10 +594,6 @@ toggle_lamp :: proc(g: ^Game) {
 	if g.lamp_on {
 		set_lamp(g, false)
 		learn(g, .Hint_Oil)
-	} else if !pl.can_light(&g.palace, g.psyche.cell) || (g.psyche.walking && !pl.can_light(&g.palace, g.psyche.step_to)) {
-		// a phantom under her feet would vanish in the light
-		audio.play(.Blocked, -6)
-		hint(g, .Hint_Phantom_Under, 4, true)
 	} else if g.oil > 0.05 {
 		if !g.endless_oil {
 			g.oil = max(g.oil - LIGHT_COST, 0)
@@ -750,7 +744,7 @@ next_step :: proc(g: ^Game) {
 	illusion := pl.is_illusion(&g.palace, psy.cell, next)
 	passage := pl.is_passage(&g.palace, psy.cell, next)
 	if !pl.is_real_edge(&g.palace, psy.cell, next) && !(illusion && !g.lamp_on) {
-		// the way has changed under her (a stone fell, the light dissolved one)
+		// the way has changed under her (a part turned away)
 		sa.clear(&g.path)
 		audio.play(.Blocked, -8)
 		stop_walking(g)
@@ -942,13 +936,6 @@ update_walk :: proc(g: ^Game, dt: f32) {
 	psy.cell = psy.step_to
 	psy.pos = pl.stand_world(&g.palace, psy.cell)
 	footstep(g, psy.cell)
-	if fell := pl.leave(&g.palace, psy.step_from); fell >= 0 {
-		// the cracked stone she has just left falls
-		g.flip_t[fell] = 0
-		audio.play(.Rumble, -10, 1.6)
-		shake(g, 0.35)
-		learn(g, .Hint_Crumble)
-	}
 	arrive(g, psy.cell)
 	next_step(g)
 }
@@ -1027,7 +1014,7 @@ add_marker :: proc(g: ^Game, c: Cell, ok: bool) {
 
 // --- Act II: the lamp's truth, handles ---------------------------------------------------
 
-// The light close to Psyche dissolves phantoms and makes veiled blocks real.
+// The light close to Psyche makes veiled blocks real.
 @(private)
 lamp_truth :: proc(g: ^Game) {
 	psy := &g.psyche
@@ -1040,14 +1027,8 @@ lamp_truth :: proc(g: ^Game) {
 			continue
 		}
 		t = 0
-		#partial switch g.data.blocks[i].trait {
-		case .Phantom:
-			audio.play(.Seam, -10, audio.semitones(-5))
-			learn(g, .Hint_Phantom)
-		case .Veiled:
-			audio.play(.Good, -14, audio.semitones(-5))
-			learn(g, .Hint_Veiled)
-		}
+		audio.play(.Good, -14, audio.semitones(-5))
+		learn(g, .Hint_Veiled)
 	}
 }
 
@@ -1575,7 +1556,7 @@ candelabrum_flame :: proc(g: ^Game, i: int) -> f32 {
 is_tutorial :: proc(key: Key) -> bool {
 	#partial switch key {
 	case .Hint_Move, .Hint_Turn, .Hint_Lamp, .Hint_Illusion, .Hint_Sigil, .Hint_Oil,
-	     .Hint_Crumble, .Hint_Phantom, .Hint_Veiled, .Hint_Handle:
+	     .Hint_Veiled, .Hint_Handle:
 		return true
 	}
 	return false

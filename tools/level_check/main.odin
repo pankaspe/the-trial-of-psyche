@@ -7,7 +7,7 @@
 // lists the illusions of every view: watch out for unintended shortcuts.
 // The fragment of the tale must be reachable and optional (the exit status
 // is 1 otherwise).
-// Levels whose palace changes (crumbling, phantom, veiled blocks, parts that
+// Levels whose palace changes (veiled blocks, seals, parts that
 // turn) are also solved move by move: the tool prints the plan with the
 // fewest decisions, how many states can be reached and how many of them are
 // dead ends (the level must be restarted), and checks that no part turns

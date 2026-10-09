@@ -13,7 +13,7 @@ import "../src/progress"
 
 @(test)
 acts_and_levels :: proc(t: ^testing.T) {
-	testing.expect(t, content.LEVEL_COUNT == 20, "twenty levels")
+	testing.expect(t, content.LEVEL_COUNT == 19, "nineteen levels")
 	per_act: [content.Act]int
 	seen_fragment: [i18n.Key]bool
 	for info, i in content.LEVELS {
@@ -37,8 +37,8 @@ acts_and_levels :: proc(t: ^testing.T) {
 			testing.expectf(t, i == j || f.id != other.id, "fragment id %s is unique", f.id)
 		}
 	}
-	testing.expect(t, per_act == {.I = 4, .II = 5, .III = 5, .IV = 5, .Epilogue = 1}, "4 + 5 + 5 + 5 levels and an epilogue")
-	for i in ([?]int{0, 4, 9, 14, 19}) {
+	testing.expect(t, per_act == {.I = 4, .II = 4, .III = 5, .IV = 5, .Epilogue = 1}, "4 + 4 + 5 + 5 levels and an epilogue")
+	for i in ([?]int{0, 4, 8, 13, 18}) {
 		testing.expectf(t, content.opens_act(i), "level %s opens an act", content.LEVELS[i].id)
 	}
 	testing.expect(t, !content.opens_act(3) && content.closes_act(3), "I.4 closes Act I")
