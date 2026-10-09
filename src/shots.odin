@@ -16,6 +16,7 @@ import "vendor:raylib/rlgl"
 import "audio"
 import "content"
 import "game"
+import "input"
 import "iso"
 import "render"
 import pl "palace"
@@ -231,6 +232,7 @@ Shots :: struct {
 	cine_shot: int, // --plan: shots taken of the opening cutscene (one every CINE_SHOT_EVERY s)
 	no_ui: bool, // --no-ui: the world only (backdrops for mockups and stills)
 	survey: bool, // --survey: the level from the four views, band by band (a tall level), no walking
+	pad: Maybe(input.Layout), // --pad xbox|playstation|nintendo: the HUD of a pad in hand
 	frame: int,
 	moves: [dynamic]pl.Plan_Step,
 	arena: virtual.Arena,
@@ -277,6 +279,12 @@ shots_from_args :: proc(args: []string) -> (s: Shots, ok: bool) {
 				if name == args[i + 1] {
 					s.quality, s.has_quality = q, true
 				}
+			}
+		case "--pad":
+			switch args[i + 1] {
+			case "xbox": s.pad = .Xbox
+			case "playstation": s.pad = .PlayStation
+			case "nintendo": s.pad = .Nintendo
 			}
 		case "--size":
 			v := args[i + 1]

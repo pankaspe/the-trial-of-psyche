@@ -147,15 +147,19 @@ analysis: illusions per view, the solver's plan).
 
 ### Controls
 
-| | |
-|---|---|
-| Click | walk |
-| Q / E (or ← / →) | turn the diorama |
-| 1, L or right click | the lamp |
-| 2 or F | turn a handle (standing on it) |
-| Space | the action of the place (into a cave) |
-| R | tap: back to the last brazier · hold: restart the level |
-| Esc | pause and controls · F11 fullscreen |
+| | Keyboard and mouse | Gamepad |
+|---|---|---|
+| walk | click | left stick or d-pad |
+| turn the diorama | Q / E (or ← / →) | LB / RB |
+| the lamp | 1, L or right click | X |
+| turn a handle (standing on it) | 2 or F | Y |
+| the action of the place (into a cave) | Space | A |
+| tap: back to the last brazier · hold: restart the level | R | B |
+| pause and controls | Esc · F11 fullscreen | Start |
+
+The game is fully playable with a gamepad: the HUD shows the buttons of the
+device used last (Xbox, PlayStation or Nintendo marks, or chosen in the
+settings), and the menus are walked with the d-pad, A to choose, B to go back.
 
 <br>
 

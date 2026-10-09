@@ -8,6 +8,12 @@
 // Layout is designed for a 1920 x 1080 screen and scaled by `scale`.
 // Widgets record their rectangles every frame; the game asks `over_ui` (with
 // the previous frame's rectangles) before treating a click as a walk order.
+//
+// With a pad in hand the cursor hides and menus are walked with a focus: the
+// widgets that can be chosen register (`focusable`) in drawing order, the
+// d-pad or the stick moves the focus to the nearest one that way (on last
+// frame's rectangles), South chooses it; option rows and sliders take left
+// and right for themselves.
 package ui
 
 import "core:math"
@@ -18,6 +24,7 @@ import rl "vendor:raylib"
 import "../audio"
 import "../content"
 import "../i18n"
+import "../input"
 import "../iso"
 
 Vec2 :: iso.Vec2
@@ -52,6 +59,7 @@ FACE_BASE := [Face]f32 {
 }
 
 MAX_HOT :: 48
+MAX_FOCUS :: 48
 
 Ui :: struct {
 	fonts:     [Face]rl.Font,
@@ -71,6 +79,18 @@ Ui :: struct {
 	prev_hot:  [MAX_HOT]rl.Rectangle,
 	prev_count: int,
 	active_slider: rawptr, // the value being dragged
+	// the pad's focus (see the top)
+	pad:         bool, // the pad is in hand: focus, not the mouse; its buttons on the HUD
+	layout:      input.Layout,
+	focus:       int, // the focused widget, by its place in drawing order
+	focus_rects: [MAX_FOCUS]rl.Rectangle,
+	focus_wide:  [MAX_FOCUS]bool, // takes left and right for itself
+	focus_count: int,
+	prev_focus:  [MAX_FOCUS]rl.Rectangle,
+	prev_wide:   [MAX_FOCUS]bool,
+	prev_focus_count: int,
+	accept:      bool, // South went down: the focused widget is chosen
+	nav_x:       int, // left or right for the focused option row or slider
 	runes:     []rune, // every glyph the fonts must hold
 	// set by the app from the settings (accessibility)
 	hud_size:      f32, // the in-game HUD's size factor
@@ -182,6 +202,126 @@ begin_frame :: proc(u: ^Ui, width, height: f32) {
 	u.prev_hot = u.hot
 	u.prev_count = u.hot_count
 	u.hot_count = 0
+	update_focus(u)
+}
+
+// The pad's focus for this frame, from last frame's widgets.
+@(private)
+update_focus :: proc(u: ^Ui) {
+	u.pad = input.using_pad()
+	u.layout = input.layout()
+	u.prev_focus = u.focus_rects
+	u.prev_wide = u.focus_wide
+	u.prev_focus_count = u.focus_count
+	u.focus_count = 0
+	u.nav_x = 0
+	u.accept = false
+	if !u.pad {
+		return
+	}
+	u.pressed = false
+	u.down = false
+	// South also closes the cards that wait to be read (no widgets on them)
+	u.accept = input.pressed(.South)
+	n := u.prev_focus_count
+	if n == 0 {
+		return
+	}
+	u.focus = clamp(u.focus, 0, n - 1)
+	step := input.nav()
+	if u.prev_wide[u.focus] && step.x != 0 {
+		u.nav_x = step.x
+		step.x = 0
+	}
+	if step != {} {
+		if next := nearest(u.prev_focus[:n], u.focus, step); next != u.focus {
+			u.focus = next
+			audio.play(.Tap, -22)
+		}
+	}
+}
+
+// The widget nearest to `from` the way `step` points; past the last one, round
+// to the far side.
+@(private)
+nearest :: proc(rects: []rl.Rectangle, from: int, step: [2]int) -> int {
+	centre :: proc(r: rl.Rectangle) -> Vec2 {
+		return {r.x + r.width * 0.5, r.y + r.height * 0.5}
+	}
+	d := Vec2{f32(step.x), f32(step.y)}
+	c := centre(rects[from])
+	best, wrap := -1, -1
+	best_score, wrap_score: f32 = 1e30, 1e30
+	for r, i in rects {
+		if i == from {
+			continue
+		}
+		v := centre(r) - c
+		along := v.x * d.x + v.y * d.y
+		across := abs(v.x * d.y - v.y * d.x)
+		score := along + across * 2.5
+		if along > 1 && score < best_score {
+			best, best_score = i, score
+		} else if along < -1 && across * 2.5 + along < wrap_score {
+			wrap, wrap_score = i, across * 2.5 + along
+		}
+	}
+	if best >= 0 {
+		return best
+	}
+	return wrap >= 0 ? wrap : from
+}
+
+// A new screen: the focus goes back to its first widget (or `first`).
+reset_focus :: proc(u: ^Ui, first := 0) {
+	u.focus = first
+	u.prev_focus_count = 0
+}
+
+// Register a widget that can be chosen at `r` (in drawing order); is it
+// hovered: the mouse over it, or the pad's focus on it? `wide`: it takes left
+// and right for itself (option rows, sliders).
+focusable :: proc(u: ^Ui, r: rl.Rectangle, wide := false) -> bool {
+	i := u.focus_count
+	if i < MAX_FOCUS {
+		u.focus_rects[i] = r
+		u.focus_wide[i] = wide
+		u.focus_count += 1
+	}
+	if u.pad {
+		return i == u.focus
+	}
+	if rl.CheckCollisionPointRec(u.mouse, r) {
+		u.focus = i // the pad, picked up again, starts from here
+		return true
+	}
+	return false
+}
+
+// A hovered widget chosen this frame: clicked, or South on the pad.
+activated :: proc(u: ^Ui, hover: bool) -> bool {
+	if !hover {
+		return false
+	}
+	if u.pad && u.accept {
+		input.consume(.South)
+		u.accept = false
+		return true
+	}
+	return u.pressed
+}
+
+// Is the mouse over `r`? Never while the pad is in hand (the cursor is hidden
+// where it was left).
+mouse_over :: proc(u: ^Ui, r: rl.Rectangle) -> bool {
+	return !u.pad && rl.CheckCollisionPointRec(u.mouse, r)
+}
+
+// The soft band behind the option row the pad's focus is on.
+focus_band :: proc(u: ^Ui, r: rl.Rectangle) {
+	s := u.scale
+	rl.DrawRectangleRec(r, fade(GOLD, 0.07))
+	rl.DrawRectangleRec({r.x, r.y, max(3 * s, 1), r.height}, BRIGHT)
 }
 
 // Is the mouse over a widget drawn last frame?
@@ -382,6 +522,119 @@ key_cap :: proc(u: ^Ui, key: string, pos: Vec2, alpha: f32 = 1, k: f32 = 0, lit 
 	return r.width
 }
 
+// A pad's button, the size of a key cap, its top left corner at `pos`:
+// the face buttons round (a letter, or the PlayStation's marks), the
+// shoulders and Start rounded tabs. Returns its width; `k` and `lit` as for
+// `key_cap`.
+pad_button :: proc(u: ^Ui, b: input.Button, pos: Vec2, alpha: f32 = 1, k: f32 = 0, lit := false) -> f32 {
+	s := k > 0 ? k : u.scale
+	h := 28 * s
+	fill := lit ? fade(BRIGHT, alpha) : fade({21, 18, 29, 255}, 0.95 * alpha)
+	ink := lit ? fade({26, 18, 8, 255}, alpha) : fade(TITLE, alpha)
+	edge := lit ? fade(BRIGHT, alpha) : fade(TEXT, 0.8 * alpha)
+	th := max(1.8 * s, 1)
+	st := Style{size = 19 * s / u.scale, color = lit ? rl.Color{26, 18, 8, 255} : TITLE, face = .Semi}
+	switch b {
+	case .South, .East, .West, .North:
+		c := pos + {h * 0.5, h * 0.5}
+		r := h * 0.5
+		rl.DrawCircleV(c, r, fill)
+		rl.DrawRing(c, r - th, r, 0, 360, 32, edge)
+		if u.layout == .PlayStation {
+			m := 5.5 * s
+			lw := max(1.8 * s, 1)
+			switch b {
+			case .South:
+				rl.DrawLineEx(c - {m, m}, c + {m, m}, lw, ink)
+				rl.DrawLineEx(c + {-m, m}, c + {m, -m}, lw, ink)
+			case .East:
+				rl.DrawRing(c, m - lw * 0.5, m + lw * 0.5, 0, 360, 24, ink)
+			case .West:
+				rl.DrawRectangleLinesEx({c.x - m, c.y - m, 2 * m, 2 * m}, lw, ink)
+			case .North:
+				a, bb, cc := c + {0, -m * 1.1}, c + {m * 1.05, m * 0.75}, c + {-m * 1.05, m * 0.75}
+				rl.DrawLineEx(a, bb, lw, ink)
+				rl.DrawLineEx(bb, cc, lw, ink)
+				rl.DrawLineEx(cc, a, lw, ink)
+			case .LB, .RB, .LT, .RT, .Start, .Select, .Up, .Down, .Left, .Right:
+			}
+		} else {
+			names := PAD_LETTERS[u.layout == .Nintendo ? 1 : 0]
+			letter := names[b]
+			st.size = 20 * s / u.scale
+			m := measure(u, letter, st)
+			text(u, letter, {c.x, c.y - m.y * 0.5 - s}, st, .Center, alpha)
+		}
+		return h
+	case .LB, .RB, .LT, .RT:
+		label := PAD_SHOULDER[u.layout][b]
+		m := measure(u, label, st)
+		r := rl.Rectangle{pos.x, pos.y + 2 * s, max(m.x + 16 * s, 34 * s), h - 4 * s}
+		rl.DrawRectangleRounded(r, 0.5, 8, fill)
+		rl.DrawRectangleRoundedLinesEx(r, 0.5, 8, th, edge)
+		text(u, label, {r.x + r.width * 0.5, r.y + (r.height - m.y) * 0.5 - s}, st, .Center, alpha)
+		return r.width
+	case .Start, .Select:
+		r := rl.Rectangle{pos.x, pos.y + 3 * s, 36 * s, h - 6 * s}
+		rl.DrawRectangleRounded(r, 0.6, 8, fill)
+		rl.DrawRectangleRoundedLinesEx(r, 0.6, 8, th, edge)
+		c := Vec2{r.x + r.width * 0.5, r.y + r.height * 0.5}
+		for n in -1 ..= 1 {
+			rl.DrawRectangleRec({c.x - 7 * s, c.y + f32(n) * 4.5 * s - 0.8 * s, 14 * s, max(1.6 * s, 1)}, ink)
+		}
+		return r.width
+	case .Up, .Down, .Left, .Right:
+		// a d-pad, the arm pressed lit
+		c := pos + {h * 0.5, h * 0.5}
+		arm := 4.5 * s
+		long := 12 * s
+		rl.DrawRectangleRec({c.x - arm, c.y - long, 2 * arm, 2 * long}, fade(TEXT, 0.75 * alpha))
+		rl.DrawRectangleRec({c.x - long, c.y - arm, 2 * long, 2 * arm}, fade(TEXT, 0.75 * alpha))
+		d: Vec2
+		#partial switch b {
+		case .Up: d = {0, -1}
+		case .Down: d = {0, 1}
+		case .Left: d = {-1, 0}
+		case .Right: d = {1, 0}
+		}
+		hit := c + d * long * 0.6
+		rl.DrawRectangleRec({hit.x - arm * 0.8, hit.y - arm * 0.8, arm * 1.6, arm * 1.6}, fade(BRIGHT, alpha))
+		return h
+	}
+	return h
+}
+
+// The width `pad_button` will take.
+pad_button_width :: proc(u: ^Ui, b: input.Button, k: f32 = 0) -> f32 {
+	s := k > 0 ? k : u.scale
+	#partial switch b {
+	case .LB, .RB, .LT, .RT:
+		m := measure(u, PAD_SHOULDER[u.layout][b], {size = 19 * s / u.scale, face = .Semi})
+		return max(m.x + 16 * s, 34 * s)
+	case .Start, .Select:
+		return 36 * s
+	}
+	return 28 * s
+}
+
+// The control of an action, for the device in hand: a key cap or a pad's button.
+control :: proc(u: ^Ui, key: string, b: input.Button, pos: Vec2, alpha: f32 = 1, k: f32 = 0, lit := false) -> f32 {
+	return u.pad ? pad_button(u, b, pos, alpha, k, lit) : key_cap(u, key, pos, alpha, k, lit)
+}
+
+@(private)
+PAD_LETTERS := [2][input.Button]string {
+	#partial {.South = "A", .East = "B", .West = "X", .North = "Y"}, // Xbox
+	#partial {.South = "B", .East = "A", .West = "Y", .North = "X"}, // Nintendo, by place
+}
+
+@(private)
+PAD_SHOULDER := [input.Layout][input.Button]string {
+	.Xbox        = #partial {.LB = "LB", .RB = "RB", .LT = "LT", .RT = "RT"},
+	.PlayStation = #partial {.LB = "L1", .RB = "R1", .LT = "L2", .RT = "R2"},
+	.Nintendo    = #partial {.LB = "L", .RB = "R", .LT = "ZL", .RT = "ZR"},
+}
+
 // Four small gold corners around `r`: the frame of every card.
 corner_frame :: proc(u: ^Ui, r: rl.Rectangle, alpha: f32, k: f32 = 0, col: rl.Color = GOLD) {
 	s := k > 0 ? k : u.scale
@@ -435,14 +688,17 @@ hairline :: proc(u: ^Ui, x, y, w: f32, col: rl.Color = {255, 255, 255, 20}) {
 // --- widgets -------------------------------------------------------------------------
 
 // A text button centred on `center`; returns true when clicked.
-button :: proc(u: ^Ui, label: string, center: Vec2, size: f32, alpha: f32 = 1, enabled := true) -> bool {
+// `focus`: the pad's focus can land on it (false where the pad has its own
+// buttons for it).
+button :: proc(u: ^Ui, label: string, center: Vec2, size: f32, alpha: f32 = 1, enabled := true, focus := true) -> bool {
 	st := Style{size = size, color = TEXT, face = .Semi, shadow = true}
 	m := measure(u, label, st)
 	pad := Vec2{22, 6} * u.scale
 	r := rl.Rectangle{center.x - m.x * 0.5 - pad.x, center.y - m.y * 0.5 - pad.y, m.x + pad.x * 2, m.y + pad.y * 2}
-	hover := enabled && alpha > 0.5 && rl.CheckCollisionPointRec(u.mouse, r)
+	hover := false
 	if alpha > 0.5 {
 		add_hot(u, r)
+		hover = (focus ? focusable(u, r) : mouse_over(u, r)) && enabled
 	}
 	if hover {
 		st.color = u.down ? TITLE : BRIGHT
@@ -453,7 +709,7 @@ button :: proc(u: ^Ui, label: string, center: Vec2, size: f32, alpha: f32 = 1, e
 		st.color = fade(DIM, 0.4)
 	}
 	text(u, label, {center.x, center.y - m.y * 0.5}, st, .Center, alpha)
-	if hover && u.pressed {
+	if activated(u, hover) {
 		audio.play(.Tap, -14)
 		return true
 	}
@@ -468,11 +724,13 @@ menu_item :: proc(u: ^Ui, label: string, pos: Vec2, size: f32, main := false, al
 	st := Style{size = size, color = TEXT, face = main ? .Semi : .Body, shadow = true}
 	m := measure(u, label, st)
 	r := rl.Rectangle{pos.x - 12 * s, pos.y - m.y * 0.5 - 6 * s, m.x + 52 * s, m.y + 12 * s}
-	hover := alpha > 0.5 && rl.CheckCollisionPointRec(u.mouse, r)
+	hover := false
 	if alpha > 0.5 {
 		add_hot(u, r)
+		hover = focusable(u, r)
 	}
-	lit := main || hover
+	// with the pad, only the focus is lit
+	lit := hover || (main && !u.pad)
 	c := Vec2{pos.x + 6 * s, pos.y}
 	if lit {
 		glow_dot(c, 6 * s, {255, 176, 77, 255}, alpha)
@@ -482,7 +740,7 @@ menu_item :: proc(u: ^Ui, label: string, pos: Vec2, size: f32, main := false, al
 		diamond(u, c, 7 * s, fade(GOLD, 0.55 * alpha), false)
 	}
 	text(u, label, {pos.x + 32 * s, pos.y - m.y * 0.5}, st, .Left, alpha)
-	if hover && u.pressed {
+	if activated(u, hover) {
 		audio.play(.Tap, -14)
 		return true
 	}
@@ -502,7 +760,18 @@ option_row :: proc(u: ^Ui, label, value: string, y, left, right: f32, enabled :=
 	cx := right - 150 * s
 	text(u, value, {cx, y}, vst, .Center, a)
 	h := ROW_SIZE * s * 1.3
+	row := rl.Rectangle{left - 18 * s, y - 12 * s, right - left + 30 * s, h + 18 * s}
+	focused := focusable(u, row, true) && u.pad
+	if focused {
+		focus_band(u, row)
+	}
 	step := 0
+	if focused && enabled {
+		step = u.nav_x
+		if activated(u, true) {
+			step = 1
+		}
+	}
 	arrows := [2]struct {
 		label: string,
 		x:     f32,
@@ -511,15 +780,15 @@ option_row :: proc(u: ^Ui, label, value: string, y, left, right: f32, enabled :=
 	for ar in arrows {
 		r := rl.Rectangle{ar.x - 22 * s, y - 4 * s, 44 * s, h}
 		add_hot(u, r)
-		hover := enabled && rl.CheckCollisionPointRec(u.mouse, r)
-		text(u, ar.label, {ar.x, y - 6 * s}, {size = 34, color = hover ? BRIGHT : fade(GOLD, 0.7), face = .Semi}, .Center, enabled ? 1 : 0.3)
+		hover := enabled && (mouse_over(u, r) || (focused && u.nav_x == ar.dir))
+		text(u, ar.label, {ar.x, y - 6 * s}, {size = 34, color = hover || focused ? BRIGHT : fade(GOLD, 0.7), face = .Semi}, .Center, enabled ? 1 : 0.3)
 		if hover && u.pressed {
 			step = ar.dir
 		}
 	}
 	vr := rl.Rectangle{cx - vw * 0.5 - 10 * s, y - 4 * s, vw + 20 * s, h}
 	add_hot(u, vr)
-	if enabled && u.pressed && rl.CheckCollisionPointRec(u.mouse, vr) {
+	if enabled && u.pressed && mouse_over(u, vr) {
 		step = 1
 	}
 	if step != 0 {
@@ -537,10 +806,23 @@ slider :: proc(u: ^Ui, label: string, value: ^f32, y, left, right: f32) -> bool 
 	bar := rl.Rectangle{cx - w * 0.5, y + 19 * s, w, 4 * s}
 	hit := rl.Rectangle{bar.x - 12 * s, y - 4 * s, bar.width + 24 * s, 44 * s}
 	add_hot(u, hit)
-	if u.pressed && rl.CheckCollisionPointRec(u.mouse, hit) {
+	row := rl.Rectangle{left - 18 * s, y - 12 * s, right - left + 30 * s, ROW_SIZE * s * 1.3 + 18 * s}
+	focused := focusable(u, row, true) && u.pad
+	if focused {
+		focus_band(u, row)
+	}
+	if u.pressed && mouse_over(u, hit) {
 		u.active_slider = value
 	}
 	changed := false
+	if focused && u.nav_x != 0 {
+		v := clamp(math.round(value^ * 20 + f32(u.nav_x)) / 20, 0, 1)
+		if abs(v - value^) > 0.0001 {
+			value^ = v
+			changed = true
+			audio.play(.Tap, -20)
+		}
+	}
 	if u.active_slider == value && u.down {
 		v := clamp((u.mouse.x - bar.x) / bar.width, 0, 1)
 		if abs(v - value^) > 0.0001 {

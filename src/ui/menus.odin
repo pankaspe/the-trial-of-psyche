@@ -11,6 +11,7 @@ import "../content"
 import "../fx"
 import "../game"
 import "../i18n"
+import "../input"
 import "../progress"
 import "../settings"
 
@@ -158,7 +159,7 @@ act_card :: proc(u: ^Ui, act: content.Act, t: f32, alpha: f32, unbuilt: bool) ->
 		blink := 0.55 + 0.35 * math.sin(t * 2.4)
 		text(u, i18n.tr(.Card_Continue), {cx, u.height - 80 * s}, {size = 24, color = FAINT, face = .Italic, shadow = true}, .Center, alpha * blink * clamp((t - 2.5) / 1, 0, 1))
 	}
-	return ready && u.pressed
+	return ready && (u.pressed || take_accept(u))
 }
 
 Ending_Info :: struct {
@@ -262,7 +263,7 @@ level_select :: proc(u: ^Ui, prog: progress.Progress) -> (chosen: int, back: boo
 			open := progress.is_unlocked(prog, i)
 			done := i in prog.completed
 			add_hot(u, r)
-			hover := rl.CheckCollisionPointRec(u.mouse, r)
+			hover := focusable(u, r)
 			if hover {
 				hovered = i
 			}
@@ -287,7 +288,7 @@ level_select :: proc(u: ^Ui, prog: progress.Progress) -> (chosen: int, back: boo
 					diamond(u, {r.x + r.width * 0.5 + dx, r.y + r.height - 18 * s}, 8 * s, fade(GOLD, alpha * 0.9), first + k in prog.fragments)
 				}
 			}
-			if hover && open && u.pressed {
+			if open && activated(u, hover) {
 				audio.play(.Tap, -14)
 				chosen = i
 			}
@@ -363,11 +364,20 @@ book :: proc(u: ^Ui, prog: progress.Progress, page: ^int) -> (back: bool) {
 
 	ny := u.height * 0.5 + 370 * s
 	text(u, fmt.tprintf("%d / %d", page^ + 1, BOOK_PAGES), {cx, ny}, {size = 24, color = DIM, face = .Semi, shadow = true})
-	if page^ > 0 && button(u, "‹", {cx - 110 * s, ny + 14 * s}, 40) {
+	// the pad turns the pages with left and right (read by the app)
+	if page^ > 0 && button(u, "‹", {cx - 110 * s, ny + 14 * s}, 40, focus = false) {
 		page^ -= 1
 	}
-	if page^ < BOOK_PAGES - 1 && button(u, "›", {cx + 110 * s, ny + 14 * s}, 40) {
+	if page^ < BOOK_PAGES - 1 && button(u, "›", {cx + 110 * s, ny + 14 * s}, 40, focus = false) {
 		page^ += 1
+	}
+	if u.pad {
+		if page^ > 0 {
+			pad_button(u, .Left, {cx - 110 * s - 14 * s, ny + 44 * s}, 0.8)
+		}
+		if page^ < BOOK_PAGES - 1 {
+			pad_button(u, .Right, {cx + 110 * s - 14 * s, ny + 44 * s}, 0.8)
+		}
 	}
 	back = button(u, i18n.tr(.Back), {cx, u.height * 0.5 + 460 * s}, 30)
 	return
@@ -433,6 +443,14 @@ QUALITY_NAME := [settings.Quality]i18n.Key {
 }
 
 @(private)
+PAD_GLYPHS_NAME := [settings.Pad_Glyphs]i18n.Key {
+	.Auto        = .Glyphs_Auto,
+	.Xbox        = .Glyphs_Xbox,
+	.PlayStation = .Glyphs_PlayStation,
+	.Nintendo    = .Glyphs_Nintendo,
+}
+
+@(private)
 QUALITY_DESC := [settings.Quality]i18n.Key {
 	.Low    = .Quality_Low_Desc,
 	.Medium = .Quality_Medium_Desc,
@@ -464,7 +482,7 @@ settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, na
 		m := measure(u, label, st)
 		r := rl.Rectangle{x - 12 * s, ty - 6 * s, m.x + 24 * s, m.y + 12 * s}
 		add_hot(u, r)
-		hover := rl.CheckCollisionPointRec(u.mouse, r)
+		hover := mouse_over(u, r)
 		if hover && t != tab^ {
 			st.color = TEXT
 		}
@@ -475,8 +493,27 @@ settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, na
 		if hover && u.pressed && t != tab^ {
 			audio.play(.Tap, -14)
 			tab^ = t
+			reset_focus(u)
 		}
 		x += m.x + 42 * s
+	}
+	// the pad's shoulders go through the tabs
+	if u.pad {
+		pad_button(u, .RB, {x - 20 * s, ty + 4 * s}, 0.9)
+		pad_button(u, .LB, {left - pad_button_width(u, .LB) - 22 * s, ty + 4 * s}, 0.9)
+		n := len(Settings_Tab)
+		step := 0
+		if input.take(.LB) {
+			step = -1
+		}
+		if input.take(.RB) {
+			step = 1
+		}
+		if step != 0 {
+			audio.play(.Tap, -14)
+			tab^ = Settings_Tab((int(tab^) + step + n) % n)
+			reset_focus(u)
+		}
 	}
 	hairline(u, left, ty + 52 * s, right - left, {255, 255, 255, 30})
 
@@ -500,6 +537,13 @@ settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, na
 			n := len(i18n.Language)
 			cfg.language = i18n.Language((int(cfg.language) + step + n) % n)
 			changes += {.Language}
+		}
+		line(u, left, right, y)
+		y += row
+		if step := option_row(u, i18n.tr(.Set_Pad_Glyphs), i18n.tr(PAD_GLYPHS_NAME[cfg.pad_glyphs]), y, left, right); step != 0 {
+			n := len(settings.Pad_Glyphs)
+			cfg.pad_glyphs = settings.Pad_Glyphs((int(cfg.pad_glyphs) + step + n) % n)
+			changes += {.Access}
 		}
 		line(u, left, right, y)
 		y += row
@@ -636,13 +680,13 @@ back_key :: proc(u: ^Ui, pos: Vec2) -> bool {
 	m := measure(u, label, st)
 	r := rl.Rectangle{pos.x - 8 * s, pos.y - 8 * s, m.x + 90 * s, 46 * s}
 	add_hot(u, r)
-	hover := rl.CheckCollisionPointRec(u.mouse, r)
-	cw := key_cap(u, "Esc", pos)
+	hover := focusable(u, r)
+	cw := control(u, "Esc", .East, pos)
 	if hover {
 		st.color = BRIGHT
 	}
 	text(u, label, {pos.x + cw + 14 * s, pos.y + (30 * s - m.y) * 0.5}, st, .Left)
-	if hover && u.pressed {
+	if activated(u, hover) {
 		audio.play(.Tap, -14)
 		return true
 	}

@@ -23,6 +23,15 @@ Controls
     Esc               pause and controls
     F11               fullscreen
 
+Gamepad (Xbox names; PlayStation and Nintendo pads work too)
+    Left stick, d-pad walk
+    LB / RB           turn the diorama
+    X                 the lamp
+    Y                 turn a handle
+    A                 the action of the place; in menus, choose
+    B                 the brazier (hold: restart); in menus, back
+    Start             pause and controls
+
 Saves and settings: ~/.config/the-trial-of-psyche/
 Source and news:    https://github.com/pankaspe/the-trial-of-psyche
 

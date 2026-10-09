@@ -26,6 +26,7 @@ settings_round_trip :: proc(t: ^testing.T) {
 	s.restart_twice = true
 	s.reduce_motion = true
 	s.endless_oil = true
+	s.pad_glyphs = .PlayStation
 	text := settings.serialize(s, context.temp_allocator)
 	back := settings.defaults()
 	back.language = .Italian

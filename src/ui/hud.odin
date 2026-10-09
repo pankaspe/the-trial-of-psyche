@@ -6,6 +6,9 @@
 //   bottom     right: the diorama's own buttons (Q, E turn it; R the brazier,
 //              held: the level again, a ring filling);
 //   over Psyche the action of the place (Space), when there is one.
+// With a pad in hand the keys give way to its buttons (`control`): West the
+// lamp, North the handle, LB / RB turn, East the brazier, South the place,
+// Start the pause.
 // Titles, Cupid's voice, hints and tutorials as before. Everything but the
 // titles follows the HUD size of the accessibility settings.
 package ui
@@ -18,6 +21,7 @@ import "../content"
 import "../fx"
 import "../game"
 import "../i18n"
+import "../input"
 
 // What the app tells the HUD each frame.
 Hud_Input :: struct {
@@ -213,7 +217,7 @@ draw_skills :: proc(u: ^Ui, g: ^game.Game, act: ^Hud_Action) {
 		r := skill_slot(u, i)
 		sl := slot_of(g, i)
 		add_hot(u, r)
-		hover := rl.CheckCollisionPointRec(u.mouse, r)
+		hover := mouse_over(u, r)
 		if hover && u.pressed && sl.action {
 			switch i {
 			case 0: act.lamp = true
@@ -229,7 +233,7 @@ draw_skills :: proc(u: ^Ui, g: ^game.Game, act: ^Hud_Action) {
 		u.skill_state[i] = state
 		u.skill_flash[i] = max(u.skill_flash[i] - u.dt, 0)
 		label_hot := rl.Rectangle{r.x + r.width, r.y, 320 * k, r.height}
-		over_label := u.skill_reveal[i] > 0.5 && rl.CheckCollisionPointRec(u.mouse, label_hot)
+		over_label := u.skill_reveal[i] > 0.5 && mouse_over(u, label_hot)
 		want: f32 = (u.labels_always || hover || over_label || u.skill_flash[i] > 0) ? 1 : 0
 		approach(u, &u.skill_reveal[i], want, 1 / 0.22)
 
@@ -256,7 +260,7 @@ draw_slot :: proc(u: ^Ui, g: ^game.Game, i: int, r: rl.Rectangle, sl: Slot, hove
 		rl.EndScissorMode()
 		rl.DrawRectangleLinesEx(r, max(k, 1), {156, 145, 126, 115})
 		padlock(u, {r.x + r.width * 0.5, r.y + r.height * 0.5}, k, {142, 132, 114, 255})
-		key_cap(u, fmt.tprintf("%d", i + 1), {r.x - 1 * k, r.y - 1 * k}, 0.6, k * 0.9)
+		control(u, fmt.tprintf("%d", i + 1), SKILL_PAD[i], {r.x - 1 * k, r.y - 1 * k}, 0.6, k * 0.9)
 		return
 	case .Off:
 		rl.DrawRectangleRec(r, fade({13, 11, 20, 255}, 0.82))
@@ -300,8 +304,11 @@ draw_slot :: proc(u: ^Ui, g: ^game.Game, i: int, r: rl.Rectangle, sl: Slot, hove
 			rl.DrawRectangleRec({x0 + f32(n) * (seg + gap), r.y + r.height - 15 * k, seg, 6 * k}, col)
 		}
 	}
-	key_cap(u, fmt.tprintf("%d", i + 1), {r.x - 1 * k, r.y - 1 * k}, 1, k * 0.9, sl.look == .Active)
+	control(u, fmt.tprintf("%d", i + 1), SKILL_PAD[i], {r.x - 1 * k, r.y - 1 * k}, 1, k * 0.9, sl.look == .Active)
 }
+
+// The pad's button for each skill slot.
+SKILL_PAD := [content.MAX_SKILLS]input.Button{.West, .North, .LT, .RT}
 
 // The skill's name and state, in a panel that slides out of the slot.
 @(private)
@@ -417,14 +424,15 @@ diorama_button :: proc(u: ^Ui, i: int) -> rl.Rectangle {
 }
 
 @(private)
-draw_diorama :: proc(u: ^Ui, g: ^game.Game, input: Hud_Input, act: ^Hud_Action) {
+draw_diorama :: proc(u: ^Ui, g: ^game.Game, hud: Hud_Input, act: ^Hud_Action) {
 	k := hud_k(u)
 	keys := [3]string{"Q", "E", "R"}
+	pads := [3]input.Button{.LB, .RB, .East}
 	for i in 0 ..< 3 {
 		r := diorama_button(u, i)
 		add_hot(u, r)
-		hover := rl.CheckCollisionPointRec(u.mouse, r)
-		held := i == 2 && input.hold > 0
+		hover := mouse_over(u, r)
+		held := i == 2 && hud.hold > 0
 		rl.DrawRectangleRec(r, fade({21, 18, 29, 255}, hover ? 0.95 : 0.78))
 		rl.DrawRectangleLinesEx(r, max((hover ? 2 : 1.5) * k, 1), hover || held ? BRIGHT : fade(TEXT, 0.85))
 		c := Vec2{r.x + r.width * 0.5, r.y + r.height * 0.5 + 2 * k}
@@ -439,15 +447,15 @@ draw_diorama :: proc(u: ^Ui, g: ^game.Game, input: Hud_Input, act: ^Hud_Action) 
 			// the brazier's flame in a ring that fills while R is held
 			rad := 21 * k
 			rl.DrawRing(c, rad - 3 * k, rad, 0, 360, 48, {239, 230, 210, 50})
-			if input.hold > 0 {
-				rl.DrawRing(c, rad - 3 * k, rad, -90, -90 + 360 * input.hold, 48, input.hold >= 1 ? rl.Color{255, 211, 138, 255} : BRIGHT)
+			if hud.hold > 0 {
+				rl.DrawRing(c, rad - 3 * k, rad, -90, -90 + 360 * hud.hold, 48, hud.hold >= 1 ? rl.Color{255, 211, 138, 255} : BRIGHT)
 			}
 			flame(u, c + {0, 2 * k}, k, {242, 180, 92, 255})
 			if hover && u.down {
 				act.rest_down = true
 			}
 		}
-		key_cap(u, keys[i], {r.x - 1 * k, r.y - 1 * k}, 1, k * 0.8)
+		control(u, keys[i], pads[i], {r.x - 1 * k, r.y - 1 * k}, 1, k * 0.8)
 
 		// its name, above it, on hover
 		approach(u, &u.tip_reveal[i], hover || held ? 1 : 0, 1 / 0.18)
@@ -456,7 +464,7 @@ draw_diorama :: proc(u: ^Ui, g: ^game.Game, input: Hud_Input, act: ^Hud_Action) 
 			switch i {
 			case 0: label = .Turn_Left
 			case 1: label = .Turn_Right
-			case 2: label = input.twice ? .Rest_Button_Twice : .Rest_Button
+			case 2: label = hud.twice ? .Rest_Button_Twice : .Rest_Button
 			}
 			st := Style{size = 20 * k / u.scale, color = TEXT}
 			msg := i18n.tr(label)
@@ -494,7 +502,7 @@ flame :: proc(u: ^Ui, c: Vec2, k: f32, col: rl.Color) {
 
 // The action of the place (Space): a card over Psyche when there is one.
 @(private)
-draw_place :: proc(u: ^Ui, g: ^game.Game, input: Hud_Input, act: ^Hud_Action) {
+draw_place :: proc(u: ^Ui, g: ^game.Game, hud: Hud_Input, act: ^Hud_Action) {
 	k := hud_k(u)
 	here := game.at_cave(g)
 	approach(u, &u.place_reveal, here ? 1 : 0, 1 / 0.25)
@@ -505,16 +513,16 @@ draw_place :: proc(u: ^Ui, g: ^game.Game, input: Hud_Input, act: ^Hud_Action) {
 	st := Style{size = 22 * k / u.scale, color = TEXT, face = .Semi}
 	msg := i18n.tr(.Place_Cave)
 	m := measure(u, msg, st)
-	cap_w := key_cap_width(u, i18n.tr(.Key_Space), k)
+	cap_w := u.pad ? pad_button_width(u, .South, k) : key_cap_width(u, i18n.tr(.Key_Space), k)
 	wd := cap_w + m.x + 40 * k
 	ht := 46 * k
 	lift := (1 - fx.cubic_out(a)) * 10 * k
-	p := input.psyche_screen
+	p := hud.psyche_screen
 	box := rl.Rectangle{p.x - wd * 0.5, p.y - ht - 16 * k + lift, wd, ht}
 	add_hot(u, box)
-	hover := here && rl.CheckCollisionPointRec(u.mouse, box)
+	hover := here && mouse_over(u, box)
 	warm_card(u, box, a, hover ? 0.8 : 0.4, k)
-	key_cap(u, i18n.tr(.Key_Space), {box.x + 12 * k, box.y + (ht - 28 * k) * 0.5}, a, k)
+	control(u, i18n.tr(.Key_Space), .South, {box.x + 12 * k, box.y + (ht - 28 * k) * 0.5}, a, k)
 	text(u, msg, {box.x + 24 * k + cap_w, box.y + (ht - m.y) * 0.5 - k}, {size = st.size, color = hover ? BRIGHT : TEXT, face = .Semi}, .Left, a)
 	tip := Vec2{p.x, box.y + ht + 10 * k}
 	tri(tip, tip + {-8 * k, -10 * k}, tip + {8 * k, -10 * k}, fade(GOLD, a))
@@ -536,7 +544,7 @@ keys_badge :: proc(u: ^Ui, a: f32) {
 	st := Style{size = 24 * k / u.scale, color = TEXT, face = .Semi, shadow = true}
 	x := 40 * k
 	y := 36 * k
-	x += key_cap(u, "Esc", {x, y}, a, k) + 10 * k
+	x += control(u, "Esc", .Start, {x, y}, a, k) + 10 * k
 	label := i18n.tr(.Badge_Pause)
 	lm := measure(u, label, st)
 	text(u, label, {x, y + (28 * k - lm.y) * 0.5 - k}, st, .Left, a * 0.9)
@@ -785,7 +793,7 @@ mechanic_card :: proc(u: ^Ui, title, body: i18n.Key, t: f32) -> (clicked: bool) 
 		blink := 0.8 + 0.2 * math.sin(t * 2.4)
 		text(u, i18n.tr(.Fragment_Continue), {w * 0.5, y + 30 * s + bh + 30 * s}, {size = 25, color = DIM, face = .Italic}, .Center, blink * clamp((t - 0.8) / 0.6, 0, 1))
 	}
-	return ready && u.pressed
+	return ready && (u.pressed || take_accept(u))
 }
 
 // The fragment just found: the game waits while it is read. Reports a click
@@ -811,5 +819,17 @@ fragment_card :: proc(u: ^Ui, key: i18n.Key, t: f32) -> (clicked: bool) {
 		blink := 0.8 + 0.2 * math.sin(t * 2.4)
 		text(u, i18n.tr(.Fragment_Continue), {w * 0.5, y + 44 * s + bh + 30 * s}, {size = 25, color = DIM, face = .Italic}, .Center, blink * clamp((t - 0.8) / 0.6, 0, 1))
 	}
-	return ready && u.pressed
+	return ready && (u.pressed || take_accept(u))
+}
+
+// South on a card that waits to be read: it is taken (the game behind does
+// not see it).
+@(private)
+take_accept :: proc(u: ^Ui) -> bool {
+	if u.pad && u.accept {
+		input.consume(.South)
+		u.accept = false
+		return true
+	}
+	return false
 }

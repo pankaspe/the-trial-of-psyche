@@ -44,6 +44,21 @@ LABELS_CODE := [Skill_Labels]string {
 	.Always = "always",
 }
 
+// Which pad's buttons the HUD shows: the one plugged in, or a family chosen.
+Pad_Glyphs :: enum u8 {
+	Auto,
+	Xbox,
+	PlayStation,
+	Nintendo,
+}
+
+PAD_GLYPHS_CODE := [Pad_Glyphs]string {
+	.Auto        = "auto",
+	.Xbox        = "xbox",
+	.PlayStation = "playstation",
+	.Nintendo    = "nintendo",
+}
+
 HUD_SIZES := [?]f32{0.75, 0.875, 1, 1.125, 1.25, 1.5}
 HOLD_TIMES := [?]f32{0.6, 0.9, 1.2, 1.5, 2, 2.5, 3}
 
@@ -58,6 +73,7 @@ Settings :: struct {
 	music:      f32,
 	sfx:        f32,
 	debug:      bool,
+	pad_glyphs: Pad_Glyphs,
 	// accessibility
 	hud_size:      f32, // the in-game HUD's size (one of HUD_SIZES)
 	skill_labels:  Skill_Labels,
@@ -143,6 +159,7 @@ serialize :: proc(s: Settings, allocator := context.allocator) -> string {
 	fmt.sbprintfln(&b, "music = %.2f", s.music)
 	fmt.sbprintfln(&b, "sfx = %.2f", s.sfx)
 	fmt.sbprintfln(&b, "debug = %v", s.debug)
+	fmt.sbprintfln(&b, "pad_glyphs = %s", PAD_GLYPHS_CODE[s.pad_glyphs])
 	fmt.sbprintfln(&b, "hud_size = %.3f", s.hud_size)
 	fmt.sbprintfln(&b, "skill_labels = %s", LABELS_CODE[s.skill_labels])
 	fmt.sbprintfln(&b, "hold_time = %.2f", s.hold_time)
@@ -218,6 +235,12 @@ parse :: proc(text: string, s: ^Settings) {
 			volume(value, &s.sfx)
 		case "debug":
 			boolean(value, &s.debug)
+		case "pad_glyphs":
+			for code, g in PAD_GLYPHS_CODE {
+				if code == value {
+					s.pad_glyphs = g
+				}
+			}
 		case "hud_size":
 			if f, ok := strconv.parse_f32(value); ok {
 				s.hud_size = clamp(f, HUD_SIZES[0], HUD_SIZES[len(HUD_SIZES) - 1])

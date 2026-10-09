@@ -199,6 +199,7 @@ Game :: struct {
 	reach_before:   []bool, // reachable nodes when a turn started
 
 	path:           pl.Path,
+	steering:       bool, // the path is the next step of a stick (or d-pad) held
 	prologue:       Prologue,
 	psyche:         Psyche,
 	amore:          Amore,
@@ -680,6 +681,7 @@ click :: proc(g: ^Game, point: Vec2) {
 	learn(g, .Hint_Move)
 	g.pending_turn = 0
 	g.path = path
+	g.steering = false
 	if !g.psyche.walking {
 		next_step(g)
 	}
@@ -731,6 +733,110 @@ walk_to :: proc(g: ^Game, target: Cell) -> bool {
 		next_step(g)
 	}
 	return true
+}
+
+// Steered with a pad: Psyche steps to the neighbour that lies the way `dir`
+// points on screen (y down), over the same edges a click would use (the
+// illusions of this view in the dark, real edges in the light, stairs seen),
+// and keeps walking while it is held. The next step is chosen from where the
+// current one ends, so she does not stop between cells. `dir` zero: she stops
+// at the end of the step. `fresh`: the stick was just pushed (a way that is
+// not there is answered once, not every frame).
+steer :: proc(g: ^Game, dir: Vec2, fresh: bool) {
+	if !g.active || g.phase != .Play || g.turning {
+		return
+	}
+	psy := &g.psyche
+	if dir == {} || g.pending_turn != 0 {
+		if g.steering {
+			sa.clear(&g.path)
+			g.steering = false
+		}
+		return
+	}
+	from := psy.walking ? psy.step_to : psy.cell
+	next, ok := step_toward(g, from, dir, !g.lamp_on)
+	if !ok {
+		if g.steering {
+			sa.clear(&g.path)
+			g.steering = false
+		}
+		if fresh && !psy.walking {
+			audio.play(.Blocked, -12)
+			if _, seam := step_toward(g, from, dir, true); seam && g.lamp_on {
+				hint(g, .Hint_Seam, 3, true)
+			} else if _, hidden := step_toward(g, from, dir, false); hidden && !g.lamp_on {
+				hint(g, .Hint_Hidden_Stairs, 4, true)
+			}
+		}
+		return
+	}
+	if g.steering && sa.len(g.path) == 1 && sa.get(g.path, 0) == next {
+		return
+	}
+	if !g.steering {
+		learn(g, .Hint_Move)
+	}
+	sa.clear(&g.path)
+	sa.push_back(&g.path, next)
+	g.steering = true
+	if !psy.walking {
+		next_step(g)
+	}
+}
+
+// The neighbour of `from` that lies the way `dir` points on screen, over the
+// edges of the dark (`dark`: illusions, seen stairs) or of the light. Caves
+// are never stepped into (Space, on purpose). Each step points along the
+// floor's grid as the view shows it (`step_dir`); the nearest within about
+// 70 degrees wins, and between steps that point the same way, the nearer to
+// the camera (the one a click there would pick).
+step_toward :: proc(g: ^Game, from: Cell, dir: Vec2, dark: bool) -> (next: Cell, ok: bool) {
+	p := &g.palace
+	a := pl.node_index(p, from)
+	if a < 0 {
+		return
+	}
+	best: f32 = 0.35
+	best_depth: i32
+	for graph in ([]^pl.Graph{&p.real, &p.illusion}) {
+		if graph == &p.illusion && !dark {
+			break
+		}
+		for b in pl.neighbours(graph, a) {
+			cell := p.nodes[b].cell
+			if !pl.step_allowed(p, a, b, dark) || pl.is_passage(p, from, cell) {
+				continue
+			}
+			d := step_dir(g, from, cell)
+			c := d.x * dir.x + d.y * dir.y
+			v := iso.to_view(cell, p.rot, p.size)
+			depth := v.x + v.y + v.z
+			if c > best + 1e-4 || (ok && abs(c - best) <= 1e-4 && depth > best_depth) {
+				best, best_depth = c, depth
+				next, ok = cell, true
+			}
+		}
+	}
+	return
+}
+
+// The way a step from cell a to its neighbour b points on screen: along the
+// floor's grid in the current view, heights left out (a stair climbs along
+// its own side), and an illusion's lift k taken off (it looks like a plain
+// step: (x', y', h) to (x'+dx+k, y'+dy+k, h+k)). One of four diagonals.
+step_dir :: proc(g: ^Game, a, b: Cell) -> Vec2 {
+	p := &g.palace
+	av := iso.to_view(a, p.rot, p.size)
+	bv := iso.to_view(b, p.rot, p.size)
+	d := bv - av
+	if pl.is_illusion(p, a, b) {
+		d.x -= d.z
+		d.y -= d.z
+	}
+	s := iso.project({f32(d.x), f32(d.y), 0})
+	l := math.sqrt(s.x * s.x + s.y * s.y)
+	return l > 1e-6 ? s / l : {}
 }
 
 @(private)

@@ -213,6 +213,34 @@ Key :: enum u16 {
 	Hint_Handle,
 	Hint_Rest,
 
+	// with a pad in hand: the texts that name keys, in `pad_text` (buttons as
+	// {S} {E} {W} {N} {LB} {RB} {START}, named by the pad's layout)
+	Card_Continue_Pad,
+	Pro_Start_Pad,
+	Fragment_Continue_Pad,
+	Mech_Handle_Pad,
+	Hint_No_Rest_Pad,
+	Hint_No_Rest_Twice_Pad,
+	Hint_Again_Twice_Pad,
+	Hint_Hold_Pad,
+	Controls_Pad,
+	Controls_Dark_Pad,
+	Hint_Move_Pad,
+	Hint_Lamp_Pad,
+	Hint_Oil_Pad,
+	Hint_Turn_Pad,
+	Hint_Handle_Pad,
+	Hint_Rest_Pad,
+	Pad_Cross, // a PlayStation pad's face buttons, by name
+	Pad_Circle,
+	Pad_Square,
+	Pad_Triangle,
+	Set_Pad_Glyphs, // settings: which pad's buttons the HUD shows
+	Glyphs_Auto,
+	Glyphs_Xbox,
+	Glyphs_PlayStation,
+	Glyphs_Nintendo,
+
 	// the ending card of a level that ends at an exit
 	Outro_I_1,
 	Outro_I_2,
@@ -285,7 +313,76 @@ language :: proc() -> Language {
 }
 
 tr :: proc(k: Key) -> string {
+	if pad != nil {
+		if p := PAD_TEXT[k]; p != .Title {
+			return pad_text(TABLES[current][p])
+		}
+	}
 	return TABLES[current][k]
+}
+
+// The names of a pad's buttons, by place: {S} {E} {W} {N} {LB} {RB} {START}.
+Pad_Names :: struct {
+	south, east, west, north, lb, rb, start: string,
+}
+
+PAD_XBOX :: Pad_Names{"A", "B", "X", "Y", "LB", "RB", "Start"}
+PAD_NINTENDO :: Pad_Names{"B", "A", "Y", "X", "L", "R", "+"}
+
+// The PlayStation's face buttons have names, in the current language.
+pad_playstation :: proc() -> Pad_Names {
+	t := TABLES[current]
+	return {t[.Pad_Cross], t[.Pad_Circle], t[.Pad_Square], t[.Pad_Triangle], "L1", "R1", "Options"}
+}
+
+@(private)
+pad: ^Pad_Names
+@(private)
+pad_names: Pad_Names
+
+// A pad in hand: the texts that name keys say the pad's buttons instead
+// (nil: the keyboard and the mouse).
+set_pad :: proc(names: Maybe(Pad_Names)) {
+	if n, ok := names.?; ok {
+		pad_names = n
+		pad = &pad_names
+	} else {
+		pad = nil
+	}
+}
+
+// The texts that name keys, and their pad version (.Title: none).
+@(private)
+PAD_TEXT := #partial [Key]Key {
+	.Card_Continue      = .Card_Continue_Pad,
+	.Pro_Start          = .Pro_Start_Pad,
+	.Fragment_Continue  = .Fragment_Continue_Pad,
+	.Mech_Handle        = .Mech_Handle_Pad,
+	.Hint_No_Rest       = .Hint_No_Rest_Pad,
+	.Hint_No_Rest_Twice = .Hint_No_Rest_Twice_Pad,
+	.Hint_Again_Twice   = .Hint_Again_Twice_Pad,
+	.Hint_Hold          = .Hint_Hold_Pad,
+	.Controls           = .Controls_Pad,
+	.Controls_Dark      = .Controls_Dark_Pad,
+	.Hint_Move          = .Hint_Move_Pad,
+	.Hint_Lamp          = .Hint_Lamp_Pad,
+	.Hint_Oil           = .Hint_Oil_Pad,
+	.Hint_Turn          = .Hint_Turn_Pad,
+	.Hint_Handle        = .Hint_Handle_Pad,
+	.Hint_Rest          = .Hint_Rest_Pad,
+}
+
+// A pad text with its buttons named (in the temp allocator).
+pad_text :: proc(s: string) -> string {
+	n := pad^
+	out, _ := strings.replace_all(s, "{S}", n.south, context.temp_allocator)
+	out, _ = strings.replace_all(out, "{E}", n.east, context.temp_allocator)
+	out, _ = strings.replace_all(out, "{W}", n.west, context.temp_allocator)
+	out, _ = strings.replace_all(out, "{N}", n.north, context.temp_allocator)
+	out, _ = strings.replace_all(out, "{LB}", n.lb, context.temp_allocator)
+	out, _ = strings.replace_all(out, "{RB}", n.rb, context.temp_allocator)
+	out, _ = strings.replace_all(out, "{START}", n.start, context.temp_allocator)
+	return out
 }
 
 tr_in :: proc(l: Language, k: Key) -> string {
@@ -496,6 +593,31 @@ IT := [Key]string {
 	.Hint_Veiled    = "La lampada mostra in oro ciò che il buio nasconde: avvicinati con la luce, e diventa vero per sempre",
 	.Hint_Handle    = "Sei su una manovella: premi 2 (o clicca su Psiche) per ruotare la parte che muove",
 	.Hint_Rest      = "Un braciere acceso: se ti perdi, R ti riporta qui (tenuto premuto, ricomincia il livello)",
+	.Card_Continue_Pad = "Premi {S} per continuare",
+	.Pro_Start_Pad  = "Premi un pulsante per iniziare",
+	.Fragment_Continue_Pad = "Premi {S} per continuare",
+	.Mech_Handle_Pad = "Una manovella muove la parte segnata dall'intarsio di bronzo.\nStando sulla manovella, premi {N}: la parte ruota di un quarto.",
+	.Hint_No_Rest_Pad = "Nessun braciere acceso: tieni premuto {E} per ricominciare il livello",
+	.Hint_No_Rest_Twice_Pad = "Nessun braciere acceso: premi due volte {E} per ricominciare il livello",
+	.Hint_Again_Twice_Pad = "Premi di nuovo {E} per ricominciare il livello",
+	.Hint_Hold_Pad  = "Sei al braciere: tieni premuto {E} per ricominciare il livello",
+	.Controls_Pad   = "Levetta sinistra o frecce: cammina  ·  {LB} / {RB}: ruota il palazzo  ·  {W}: lampada  ·  {N}: manovella  ·  {S}: azione del luogo  ·  {E}: braciere (tieni premuto: ricomincia)  ·  {START}: pausa",
+	.Controls_Dark_Pad = "Levetta sinistra o frecce: cammina  ·  {LB} / {RB}: ruota il palazzo  ·  {S}: azione del luogo  ·  {E}: braciere (tieni premuto: ricomincia)  ·  {START}: pausa",
+	.Hint_Move_Pad  = "Muovi Psiche con la levetta sinistra (o con le frecce)",
+	.Hint_Lamp_Pad  = "Un candelabro spento aspetta la tua fiamma: premi {W} per accendere la lampada e si accenderà. La luce mostra la realtà: qui il portico nasconde una scala",
+	.Hint_Oil_Pad   = "La lampada consuma olio finché è accesa (le tacche nel suo riquadro, a sinistra): premi di nuovo {W} per spegnerla",
+	.Hint_Turn_Pad  = "Il monte non si mostra mai tutto da un lato. Premi {LB} o {RB} per girargli intorno: da un'altra parte le rocce lontane si toccano, e affiorano i frammenti del racconto.",
+	.Hint_Handle_Pad = "Sei su una manovella: premi {N} per ruotare la parte che muove",
+	.Hint_Rest_Pad  = "Un braciere acceso: se ti perdi, {E} ti riporta qui (tenuto premuto, ricomincia il livello)",
+	.Pad_Cross      = "Croce",
+	.Pad_Circle     = "Cerchio",
+	.Pad_Square     = "Quadrato",
+	.Pad_Triangle   = "Triangolo",
+	.Set_Pad_Glyphs = "Pulsanti del controller",
+	.Glyphs_Auto    = "Automatico",
+	.Glyphs_Xbox    = "Xbox",
+	.Glyphs_PlayStation = "PlayStation",
+	.Glyphs_Nintendo = "Nintendo",
 
 	.Outro_I_1      = "Il soffio mite di Zefiro la solleva piano, le gonfia la veste e la porta giù per il pendio, fino a deporla nella valle, in grembo a un prato fiorito.",
 	.Outro_I_2      = "Viene la notte. Uno sposo sconosciuto sale sul letto, la fa sua e se ne va prima dell'alba. Psiche non ha visto il suo volto.",
@@ -732,6 +854,31 @@ EN := [Key]string {
 	.Hint_Veiled    = "The lamp shows in gold what the dark hides: come near with the light, and it becomes real for good",
 	.Hint_Handle    = "You stand on a handle: press 2 (or click Psyche) to turn the part it moves",
 	.Hint_Rest      = "A lit brazier: if you lose your way, R brings you back here (held down, it restarts the level)",
+	.Card_Continue_Pad = "Press {S} to continue",
+	.Pro_Start_Pad  = "Press any button to begin",
+	.Fragment_Continue_Pad = "Press {S} to continue",
+	.Mech_Handle_Pad = "A handle moves the part marked by the bronze inlay.\nStanding on the handle, press {N}: the part turns a quarter.",
+	.Hint_No_Rest_Pad = "No brazier lit: hold {E} to start the level again",
+	.Hint_No_Rest_Twice_Pad = "No brazier lit: press {E} twice to start the level again",
+	.Hint_Again_Twice_Pad = "Press {E} again to start the level again",
+	.Hint_Hold_Pad  = "You are at the brazier: hold {E} to start the level again",
+	.Controls_Pad   = "Left stick or d-pad: walk  ·  {LB} / {RB}: turn the palace  ·  {W}: lamp  ·  {N}: handle  ·  {S}: action of the place  ·  {E}: brazier (hold: start again)  ·  {START}: pause",
+	.Controls_Dark_Pad = "Left stick or d-pad: walk  ·  {LB} / {RB}: turn the palace  ·  {S}: action of the place  ·  {E}: brazier (hold: start again)  ·  {START}: pause",
+	.Hint_Move_Pad  = "Move Psyche with the left stick (or the d-pad)",
+	.Hint_Lamp_Pad  = "An unlit candelabrum waits for your flame: press {W} to light the lamp and it will catch. The light shows what is real: here the portico hides a stair",
+	.Hint_Oil_Pad   = "The lamp burns oil while it is lit (the notches in its slot, on the left): press {W} again to put it out",
+	.Hint_Turn_Pad  = "The mountain never shows itself whole from one side. Press {LB} or {RB} to walk around it: from elsewhere, distant rocks touch, and fragments of the tale come to light.",
+	.Hint_Handle_Pad = "You stand on a handle: press {N} to turn the part it moves",
+	.Hint_Rest_Pad  = "A lit brazier: if you lose your way, {E} brings you back here (held down, it restarts the level)",
+	.Pad_Cross      = "Cross",
+	.Pad_Circle     = "Circle",
+	.Pad_Square     = "Square",
+	.Pad_Triangle   = "Triangle",
+	.Set_Pad_Glyphs = "Controller buttons",
+	.Glyphs_Auto    = "Automatic",
+	.Glyphs_Xbox    = "Xbox",
+	.Glyphs_PlayStation = "PlayStation",
+	.Glyphs_Nintendo = "Nintendo",
 
 	.Outro_I_1      = "The gentle breath of Zephyr lifts her softly, fills her robe and carries her down the slope, laying her in the valley, in the lap of a flowering meadow.",
 	.Outro_I_2      = "Night comes. An unknown bridegroom climbs into the bed, makes her his wife and leaves before dawn. Psyche has not seen his face.",

@@ -20,6 +20,7 @@ import "audio"
 import "content"
 import "game"
 import "i18n"
+import "input"
 import "level"
 import "progress"
 import "render"
@@ -89,6 +90,8 @@ App :: struct {
 	rest_t:          f32, // how long R (or the brazier's button) has been held, < 0 when up
 	rest_fired:      bool, // this hold has already restarted the level
 	rest_tap_t:      f32, // time since the last tap of R (pressed twice: the level again)
+	east_block:      bool, // the pad's East closed a menu: it is not the brazier until let go
+	focus_screen:    Screen, // the screen the UI's focus belongs to
 }
 
 REST_TAP :: 0.25 // a press of R shorter than this is a tap: back to the brazier
@@ -113,6 +116,9 @@ main :: proc() {
 	app := new(App)
 	defer free(app)
 	app.shots, app.shooting = shots_from_args(os.args)
+	if l, ok := app.shots.pad.?; ok && app.shooting {
+		input.force(l)
+	}
 	if !startup(app) {
 		os.exit(1)
 	}
@@ -338,7 +344,11 @@ update_rest :: proc(app: ^App, button_down: bool) {
 	dt := rl.GetFrameTime()
 	app.rest_tap_t += dt
 	twice := app.cfg.restart_twice
-	held := (rl.IsKeyDown(.R) || button_down) && g.active && g.phase != .Prologue
+	if !input.down(.East) {
+		app.east_block = false
+	}
+	pad_down := input.down(.East) && !app.east_block
+	held := (rl.IsKeyDown(.R) || button_down || pad_down) && g.active && g.phase != .Prologue
 	if held {
 		if app.rest_t < 0 {
 			app.rest_t = 0
@@ -491,6 +501,20 @@ frame :: proc(app: ^App) {
 	u := &app.ui
 	update_window_size(app)
 	w, h := canvas_size(app)
+	input.update(dt, app.shooting)
+	switch app.cfg.pad_glyphs {
+	case .Auto: input.choose_layout(nil)
+	case .Xbox: input.choose_layout(.Xbox)
+	case .PlayStation: input.choose_layout(.PlayStation)
+	case .Nintendo: input.choose_layout(.Nintendo)
+	}
+	pad_names(app)
+	if app.screen != app.focus_screen {
+		// a new screen: the pad's focus starts on its first choice (the
+		// level to continue from, in the level select)
+		app.focus_screen = app.screen
+		ui.reset_focus(u, app.screen == .Levels ? progress.current_level(app.prog) : 0)
+	}
 	ui.begin_frame(u, w, h)
 	global_keys(app)
 
@@ -684,7 +708,74 @@ update_window_size :: proc(app: ^App) {
 	app.resize_wait = 10 // check again shortly
 }
 
+// The texts that name keys follow the device in hand (and the pad's family).
+pad_names :: proc(app: ^App) {
+	if !input.using_pad() {
+		i18n.set_pad(nil)
+		return
+	}
+	switch input.layout() {
+	case .Xbox: i18n.set_pad(i18n.PAD_XBOX)
+	case .PlayStation: i18n.set_pad(i18n.pad_playstation())
+	case .Nintendo: i18n.set_pad(i18n.PAD_NINTENDO)
+	}
+}
+
+// The pad's Start and East (back) over the screens, as Esc and Enter.
+pad_keys :: proc(app: ^App) {
+	if input.take(.Start) {
+		#partial switch app.screen {
+		case .Play:
+			app.screen = .Pause
+		case .Pause:
+			app.screen = .Play
+		case .Settings:
+			close_settings(app)
+		case .Card:
+			dismiss_act_card(app)
+		case .Fragment:
+			close_fragment(app)
+		case .Mechanic:
+			close_mechanic(app)
+		}
+	}
+	if app.screen != .Play && input.pressed(.East) {
+		used := true
+		#partial switch app.screen {
+		case .Pause:
+			app.screen = .Play
+		case .Settings:
+			close_settings(app)
+		case .Levels, .Book:
+			app.screen = .Title
+		case .Card:
+			dismiss_act_card(app)
+		case .Fragment:
+			close_fragment(app)
+		case .Mechanic:
+			close_mechanic(app)
+		case:
+			used = false
+		}
+		if used {
+			input.consume(.East)
+			app.east_block = true
+		}
+	}
+	if app.screen == .Book {
+		step := input.nav().x
+		if input.take(.LB) {
+			step = -1
+		}
+		if input.take(.RB) {
+			step = 1
+		}
+		app.book_page = clamp(app.book_page + step, 0, ui.BOOK_PAGES - 1)
+	}
+}
+
 global_keys :: proc(app: ^App) {
+	pad_keys(app)
 	if rl.IsKeyPressed(.F11) {
 		app.cfg.fullscreen = !app.cfg.fullscreen
 		apply(app, {.Fullscreen})
@@ -774,8 +865,8 @@ update_act_card :: proc(app: ^App, dt: f32) {
 play_input :: proc(app: ^App) {
 	g := &app.game
 	if g.phase == .Prologue {
-		// any key or click: skip the scene, then start
-		if rl.GetKeyPressed() != .KEY_NULL || rl.IsMouseButtonPressed(.LEFT) || rl.IsMouseButtonPressed(.RIGHT) {
+		// any key, click or button: skip the scene, then start
+		if rl.GetKeyPressed() != .KEY_NULL || rl.IsMouseButtonPressed(.LEFT) || rl.IsMouseButtonPressed(.RIGHT) || input.any_pressed() {
 			game.prologue_advance(g)
 		}
 		return
@@ -797,10 +888,43 @@ play_input :: proc(app: ^App) {
 	if rl.IsKeyPressed(.E) || rl.IsKeyPressed(.RIGHT) {
 		game.request_turn(g, 1)
 	}
+	pad_play(app)
 	if app.ui.pressed && !ui.over_ui(&app.ui) {
 		w, h := canvas_size(app)
 		view := render.scene_view(&app.scene, g, w, h)
 		game.click(g, render.screen_to_proto(view, app.ui.mouse))
+	}
+}
+
+// The pad in play: the stick (or the d-pad) steers Psyche; West the lamp,
+// North the handle, South the action of the place (or the handle she stands
+// on); the shoulders or a flick of the right stick turn the palace (the
+// triggers wait for the skills still to come). East, the brazier, is read
+// with the HUD (update_rest).
+pad_play :: proc(app: ^App) {
+	g := &app.game
+	dir, fresh := input.steer()
+	game.steer(g, dir, fresh)
+	if input.take(.West) {
+		game.toggle_lamp(g)
+	}
+	if input.take(.North) && game.has_skill(g, .Handle) {
+		game.use_handle(g)
+	}
+	if input.take(.South) {
+		if !game.enter_cave(g) && game.on_handle(g) && game.has_skill(g, .Handle) {
+			game.use_handle(g)
+		}
+	}
+	turn := input.flick()
+	if input.take(.LB) {
+		turn = -1
+	}
+	if input.take(.RB) {
+		turn = 1
+	}
+	if turn != 0 {
+		game.request_turn(g, turn)
 	}
 }
 
