@@ -7,3 +7,6 @@
 .vscode/
 .idea/
 
+
+# Claude Code notes: local only
+CLAUDE.md
