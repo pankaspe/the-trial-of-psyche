@@ -1,14 +1,15 @@
 // In-game overlay, squared, in the lamplight:
 //   top left   Esc and the pause; achievements also land there;
 //   left       the skills, one slot per number key (1 the lamp, 2 the
-//              handle...; those still to learn show locked); a skill's name
+//              handle, 3 the ants...; those still to learn show locked); a skill's name
 //              slides out on hover (or always, by the settings);
 //   bottom     right: the diorama's own buttons (Q, E turn it; R the brazier,
 //              held: the level again, a ring filling);
-//   over Psyche the action of the place (Space), when there is one.
+//   over Psyche the action of the place (Space), when there is one: into a
+//              cave, or the ants called to the seed beside her.
 // With a pad in hand the keys give way to its buttons (`control`): West the
-// lamp, North the handle, LB / RB turn, East the brazier, South the place,
-// Start the pause.
+// lamp, North the handle, LT the ants, LB / RB turn, East the brazier, South
+// the place, Start the pause.
 // Titles, Cupid's voice, hints and tutorials as before. Everything but the
 // titles follows the HUD size of the accessibility settings.
 package ui
@@ -33,7 +34,8 @@ Hud_Input :: struct {
 Hud_Action :: struct {
 	lamp:      bool,
 	handle:    bool,
-	place:     bool, // the action of the place (into the cave)
+	ants:      bool,
+	place:     bool, // the action of the place (into the cave, the ants)
 	turn:      int,
 	rest_down: bool, // the brazier's button is held down with the mouse
 }
@@ -91,6 +93,8 @@ draw_hud :: proc(u: ^Ui, g: ^game.Game, input: Hud_Input = {}) -> (act: Hud_Acti
 			point_at(u, g, skill_slot(u, 0))
 		case .Hint_Handle:
 			point_at(u, g, skill_slot(u, 1))
+		case .Hint_Ants:
+			point_at(u, g, skill_slot(u, 2))
 		}
 	}
 	_ = k
@@ -139,7 +143,7 @@ Slot :: struct {
 // Is there a skill to show in this level? (None in the first levels.)
 @(private)
 skills_shown :: proc(g: ^game.Game) -> bool {
-	return game.has_skill(g, .Lamp) || game.has_skill(g, .Handle)
+	return game.has_skill(g, .Lamp) || game.has_skill(g, .Handle) || game.has_skill(g, .Ants)
 }
 
 // Where slot i is on screen: down the left edge, around the middle.
@@ -198,6 +202,23 @@ slot_of :: proc(g: ^game.Game, i: int) -> (sl: Slot) {
 			sl.look = .Off
 			sl.status = i18n.tr(.Skill_Handle_Away)
 		}
+	case 2:
+		sl.name = .Ants_Button
+		if !game.has_skill(g, .Ants) {
+			return
+		}
+		switch {
+		case g.phase == .Carry:
+			sl.look = .Active
+			sl.status = i18n.tr(.Skill_Ants_Carrying)
+		case game.at_seed(g):
+			sl.look = .Ready
+			sl.status = i18n.tr(.Skill_Ants_Here)
+			sl.action = true
+		case:
+			sl.look = .Off
+			sl.status = i18n.tr(.Skill_Ants_Away)
+		}
 	}
 	return
 }
@@ -222,6 +243,7 @@ draw_skills :: proc(u: ^Ui, g: ^game.Game, act: ^Hud_Action) {
 			switch i {
 			case 0: act.lamp = true
 			case 1: act.handle = true
+			case 2: act.ants = true
 			}
 		}
 
@@ -290,6 +312,7 @@ draw_slot :: proc(u: ^Ui, g: ^game.Game, i: int, r: rl.Rectangle, sl: Slot, hove
 	switch i {
 	case 0: lamp_icon(u, c, k, ink, sl.look == .Active, t)
 	case 1: crank_icon(u, c, k, ink, sl.look == .Active ? f32(t) * 2 : 0)
+	case 2: ant_icon(u, c, k, ink, sl.look == .Active ? f32(t) : 0)
 	}
 	if sl.oil >= 0 {
 		// the oil: a row of notches across the slot's foot
@@ -403,6 +426,26 @@ crank_icon :: proc(u: ^Ui, c: Vec2, k: f32, col: rl.Color, spin: f32) {
 	rl.DrawLineEx(c + d * 12 * k, c + d * 20 * k, 3 * k, col)
 }
 
+// An ant seen from above, carrying a grain; `walk` moves its legs.
+@(private)
+ant_icon :: proc(u: ^Ui, c: Vec2, k: f32, col: rl.Color, walk: f32) {
+	// head, thorax, abdomen along the axis, the grain held up in front
+	rl.DrawCircleV(c + Vec2{0, -9} * k, 3.6 * k, col)
+	rl.DrawEllipse(i32(c.x), i32(c.y), 3.4 * k, 4.6 * k, col)
+	rl.DrawEllipse(i32(c.x), i32(c.y + 11 * k), 5.2 * k, 7 * k, col)
+	rl.DrawCircleLinesV(c + Vec2{0, -17} * k, 3.4 * k, col)
+	// the feelers
+	rl.DrawLineEx(c + Vec2{-1.5, -11} * k, c + Vec2{-6, -16} * k, 1.6 * k, col)
+	rl.DrawLineEx(c + Vec2{1.5, -11} * k, c + Vec2{6, -16} * k, 1.6 * k, col)
+	// three legs a side, stepping
+	for n in 0 ..< 3 {
+		step := (u.reduce_motion ? 0 : math.sin(walk * 10 + f32(n) * 2.1)) * 2.5
+		y := f32(n - 1) * 4.5
+		rl.DrawLineEx(c + Vec2{-2, y} * k, c + Vec2{-10, y - 3 + step} * k, 1.7 * k, col)
+		rl.DrawLineEx(c + Vec2{2, y} * k, c + Vec2{10, y - 3 - step} * k, 1.7 * k, col)
+	}
+}
+
 @(private)
 padlock :: proc(u: ^Ui, c: Vec2, k: f32, col: rl.Color) {
 	rl.DrawRectangleLinesEx({c.x - 9 * k, c.y - 3 * k, 18 * k, 14 * k}, max(2 * k, 1), col)
@@ -504,14 +547,18 @@ flame :: proc(u: ^Ui, c: Vec2, k: f32, col: rl.Color) {
 @(private)
 draw_place :: proc(u: ^Ui, g: ^game.Game, hud: Hud_Input, act: ^Hud_Action) {
 	k := hud_k(u)
-	here := game.at_cave(g)
+	cave := game.at_cave(g)
+	here := cave || game.at_seed(g)
+	if here {
+		u.place_key = cave ? .Place_Cave : .Place_Ants
+	}
 	approach(u, &u.place_reveal, here ? 1 : 0, 1 / 0.25)
 	a := u.place_reveal
 	if a <= 0.003 {
 		return
 	}
 	st := Style{size = 22 * k / u.scale, color = TEXT, face = .Semi}
-	msg := i18n.tr(.Place_Cave)
+	msg := i18n.tr(u.place_key)
 	m := measure(u, msg, st)
 	cap_w := u.pad ? pad_button_width(u, .South, k) : key_cap_width(u, i18n.tr(.Key_Space), k)
 	wd := cap_w + m.x + 40 * k
@@ -732,6 +779,15 @@ tutorial_sign :: proc(u: ^Ui, g: ^game.Game, key: i18n.Key, c: Vec2, col: rl.Col
 		// two tiles that seem to touch
 		tile(c + {-9 * s, 5 * s}, 15 * s, col, true)
 		tile(c + {9 * s, -5 * s}, 15 * s, col, false)
+	case .Hint_Ants:
+		// a stone going down into the hollow of a floor, a file of ants behind it
+		tile(c + {6 * s, 8 * s}, 20 * s, col, false)
+		k := math.mod(g.time, 2.2) / 2.2
+		y := fx.lerp(f32(-12), 4, fx.sine_in_out(fx.clamp01(k * 1.4)))
+		tile(c + {6 * s, y * s}, 13 * s, col, true)
+		for n in 0 ..< 4 {
+			rl.DrawCircleV(c + Vec2{-22 + f32(n) * 5, 14 - f32(n) * 2.5} * s, 1.8 * s, col)
+		}
 	case:
 		diamond(u, c, 14 * s, col, true)
 	}

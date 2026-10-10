@@ -322,6 +322,40 @@ check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 			}
 		}
 	}
+	// the seeds rest on a floor, alone in their cell; a hollow is an empty
+	// cell with a floor beside it at its own level (where the seed comes from)
+	for c in data.seeds {
+		for e in data.blocks {
+			if e.cell == c {
+				say(&said, &ok, true, "the seed at %v is inside a block", c)
+			}
+			if e.cell == c - {0, 0, 1} && (e.part != 0 || e.trait != .Stone) {
+				say(&said, &ok, true, "the seed at %v rests on a part or a veiled stone", c)
+			}
+		}
+		for prop in data.props {
+			if prop.cell == c && prop.kind not_in level.EDGE_PROPS {
+				say(&said, &ok, true, "%v at %v stands where a seed lies", prop.kind, c)
+			}
+		}
+	}
+	for h in data.hollows {
+		for e in data.blocks {
+			if e.cell == h {
+				say(&said, &ok, true, "the hollow at %v is filled by a block already", h)
+			}
+		}
+		floors := 0
+		for d in iso.Dir {
+			v := iso.DIR_VEC[d]
+			for e in data.blocks {
+				floors += int(e.cell == h + {v.x, v.y, 0} && e.part == 0)
+			}
+		}
+		if floors == 0 {
+			say(&said, &ok, false, "the hollow at %v has no floor beside it", h)
+		}
+	}
 	// what stands on a veiled stone floats while it is hidden (the hand
 	// ropes of a bridge do not: they hang between the posts)
 	for prop in data.props {
@@ -408,7 +442,7 @@ solve_report :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Allo
 		optional := pl.solve(p, data.exit, c, alloc)
 		fmt.printfln("\nfragment %v: reachable %v, optional %v", c, reach.solved, optional.solved)
 		if reach.solved {
-			fmt.printfln("  fragment plan: %d steps, %d turns, %d lightings, %d handles", reach.steps, reach.turns, reach.lightings, reach.handles)
+			fmt.printfln("  fragment plan: %d steps, %d turns, %d lightings, %d handles, %d ants", reach.steps, reach.turns, reach.lightings, reach.handles, reach.ants)
 		}
 		if !reach.solved || !optional.solved {
 			fmt.eprintln("error: the fragment must be reachable and never required")
@@ -432,7 +466,7 @@ print_plan :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Alloca
 		fmt.eprintln("error: the exit cannot be reached")
 		return false
 	}
-	fmt.printfln("plan: %d steps (%d in the light), %d turns, %d lightings, %d handles", sol.steps, sol.light_steps, sol.turns, sol.lightings, sol.handles)
+	fmt.printfln("plan: %d steps (%d in the light), %d turns, %d lightings, %d handles, %d ants", sol.steps, sol.light_steps, sol.turns, sol.lightings, sol.handles, sol.ants)
 	if data.has_lamp {
 		rules := game.oil_rules(data)
 		least := pl.oil_left(p, sol.plan[:], rules)
@@ -468,6 +502,7 @@ print_plan :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Alloca
 		case .Light: fmt.printfln("  light the lamp at %v (%d blocks change)", st.cell, st.changed)
 		case .Douse: fmt.printfln("  put the lamp out")
 		case .Handle: fmt.printfln("  turn the handle at %v", st.cell)
+		case .Ants: fmt.printfln("  view %d: call the ants at %v, the seed goes %d cells into the hollow %v", st.view, st.cell, st.carry - 1, data.hollows[st.hollow])
 		case .Start, .Step:
 		}
 		_ = i

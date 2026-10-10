@@ -30,6 +30,10 @@ Mesh_Id :: enum u8 {
 	Boulder_PX, Boulder_MX, Boulder_PY, Boulder_MY,
 	Shrub_PX, Shrub_MX, Shrub_PY, Shrub_MY,
 	Cairn_PX, Cairn_MX, Cairn_PY, Cairn_MY,
+	Rose_PX, Rose_MX, Rose_PY, Rose_MY, // a rose bush in a corner...
+	Rose_Bloom_PX, Rose_Bloom_MX, Rose_Bloom_PY, Rose_Bloom_MY, // ...and its flowers
+	Myrtle_PX, Myrtle_MX, Myrtle_PY, Myrtle_MY, // a myrtle's crown...
+	Myrtle_Pot_PX, Myrtle_Pot_MX, Myrtle_Pot_PY, Myrtle_Pot_MY, // ...in its pot
 	Statue_PX, Statue_MX, Statue_PY, Statue_MY,
 	Candelabrum_PX, Candelabrum_MX, Candelabrum_PY, Candelabrum_MY, // a standing candelabrum in a corner...
 	Candelabrum_Wax_PX, Candelabrum_Wax_MX, Candelabrum_Wax_PY, Candelabrum_Wax_MY, // ...and its three candles
@@ -38,6 +42,7 @@ Mesh_Id :: enum u8 {
 	Cypress,
 	Spruce, // the crown in tiers...
 	Spruce_Trunk, // ...on its straight trunk
+	Heap, // a mound of mixed seeds
 	Plank_X, // the deck of a rope bridge running along x...
 	Plank_Y, // ...or along y
 	Urn,
@@ -78,6 +83,9 @@ Material :: enum u8 {
 	Rock, // living rock under the meadows: brown earth in rough strata
 	Wood, // bark
 	Void, // the dark inside a cave
+	Seeds, // grains of five kinds, mixed (detail: how far up they are sorted into layers)
+	Blossom, // roses
+	Venus, // the goddess: a figure of rose light
 }
 
 PROP_MESH := [level.Prop_Kind]Mesh_Id {
@@ -97,6 +105,7 @@ PROP_MESH := [level.Prop_Kind]Mesh_Id {
 	.Bed             = .Bed_PX,
 	.Statue          = .Statue_PX,
 	.Spruce          = .Spruce,
+	.Heap            = .Heap,
 	.Arch            = .Arch_PX,
 	.Vase            = .Vase_PX,
 	.Reeds           = .Reeds_PX,
@@ -105,6 +114,8 @@ PROP_MESH := [level.Prop_Kind]Mesh_Id {
 	.Boulder         = .Boulder_PX,
 	.Shrub           = .Shrub_PX,
 	.Cairn           = .Cairn_PX,
+	.Rose            = .Rose_PX,
+	.Myrtle          = .Myrtle_PX,
 }
 
 PROP_MATERIAL := [level.Prop_Kind]Material {
@@ -124,6 +135,7 @@ PROP_MATERIAL := [level.Prop_Kind]Material {
 	.Bed             = .Bronze,
 	.Statue          = .Marble,
 	.Spruce          = .Foliage,
+	.Heap            = .Seeds,
 	.Arch            = .Masonry,
 	.Vase            = .Bronze,
 	.Reeds           = .Foliage,
@@ -132,6 +144,8 @@ PROP_MATERIAL := [level.Prop_Kind]Material {
 	.Boulder         = .Rock,
 	.Shrub           = .Foliage,
 	.Cairn           = .Rock,
+	.Rose            = .Foliage,
+	.Myrtle          = .Foliage,
 }
 
 // --- box lists ---------------------------------------------------------------------
@@ -308,6 +322,39 @@ SHRUB_PX := [?]Box {
 	{{0.66, 0.66, 0}, {0.95, 0.95, 0.13}},
 	{{0.71, 0.71, 0.13}, {0.91, 0.91, 0.22}},
 	{{0.56, 0.8, 0}, {0.68, 0.96, 0.09}},
+}
+// A rose bush in the (+x, +y) corner, and its flowers (their own piece, in blossom).
+@(private)
+ROSE_PX := [?]Box {
+	{{0.62, 0.62, 0}, {0.95, 0.95, 0.16}},
+	{{0.66, 0.66, 0.16}, {0.93, 0.93, 0.27}},
+	{{0.71, 0.7, 0.27}, {0.89, 0.9, 0.34}},
+	{{0.54, 0.78, 0}, {0.66, 0.95, 0.12}},
+}
+@(private)
+ROSE_BLOOM_PX := [?]Box {
+	{{0.595, 0.73, 0.08}, {0.65, 0.79, 0.14}},
+	{{0.74, 0.595, 0.06}, {0.8, 0.65, 0.12}},
+	{{0.635, 0.85, 0.2}, {0.685, 0.9, 0.25}},
+	{{0.85, 0.635, 0.21}, {0.9, 0.685, 0.26}},
+	{{0.77, 0.77, 0.33}, {0.83, 0.83, 0.385}},
+	{{0.685, 0.71, 0.26}, {0.735, 0.76, 0.31}},
+	{{0.515, 0.84, 0.08}, {0.565, 0.89, 0.13}},
+	{{0.885, 0.8, 0.12}, {0.955, 0.86, 0.18}},
+}
+// A myrtle, Venus's tree, clipped round in a bronze pot in the (+x, +y) corner.
+@(private)
+MYRTLE_PX := [?]Box {
+	{{0.785, 0.785, 0.16}, {0.815, 0.815, 0.3}},
+	{{0.67, 0.67, 0.28}, {0.93, 0.93, 0.44}},
+	{{0.7, 0.7, 0.44}, {0.9, 0.9, 0.51}},
+	{{0.64, 0.72, 0.31}, {0.96, 0.88, 0.41}},
+}
+@(private)
+MYRTLE_POT_PX := [?]Box {
+	{{0.69, 0.69, 0}, {0.91, 0.91, 0.03}},
+	{{0.67, 0.67, 0.03}, {0.93, 0.93, 0.15}},
+	{{0.65, 0.65, 0.15}, {0.95, 0.95, 0.18}},
 }
 @(private)
 CAIRN_PX := [?]Box {
@@ -501,6 +548,10 @@ build_meshes :: proc(meshes: ^[Mesh_Id]rl.Mesh) {
 	four(meshes, .Boulder_PX, BOULDER_PX[:])
 	four(meshes, .Shrub_PX, SHRUB_PX[:])
 	four(meshes, .Cairn_PX, CAIRN_PX[:])
+	four(meshes, .Rose_PX, ROSE_PX[:])
+	four(meshes, .Rose_Bloom_PX, ROSE_BLOOM_PX[:])
+	four(meshes, .Myrtle_PX, MYRTLE_PX[:])
+	four(meshes, .Myrtle_Pot_PX, MYRTLE_POT_PX[:])
 	four(meshes, .Cave_PX, CAVE_PX[:])
 	four(meshes, .Cave_Dark_PX, CAVE_DARK_PX[:])
 	meshes[.Pillar] = one(PILLAR[:])
@@ -508,6 +559,12 @@ build_meshes :: proc(meshes: ^[Mesh_Id]rl.Mesh) {
 	meshes[.Cypress] = one(cypress())
 	meshes[.Spruce] = one(spruce())
 	meshes[.Spruce_Trunk] = one(SPRUCE_TRUNK[:])
+	{
+		// the heap of seeds Venus poured out: a low round mound
+		hb := builder_make()
+		lathe(&hb, {{0.0, 0.0}, {0.45, 0.0}, {0.42, 0.07}, {0.35, 0.17}, {0.25, 0.27}, {0.13, 0.35}, {0.04, 0.39}, {0.0, 0.4}}, 18, {0.5, 0.5, 0})
+		meshes[.Heap] = upload(&hb)
+	}
 	meshes[.Plank_X] = one(plank_x())
 	meshes[.Plank_Y] = one(oriented(plank_x(), .PY))
 	meshes[.Urn] = one(URN[:])

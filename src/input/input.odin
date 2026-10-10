@@ -95,11 +95,12 @@ state: State = {pad = -1}
 
 // Read the pad, the keyboard and the mouse; switch device when the other one
 // is used. Call once at the start of a frame. `scripted`: screenshots and
-// tests, the cursor is left alone.
+// tests, nothing is read (a pad left plugged in must not steer a scripted
+// run) and the cursor is left alone.
 update :: proc(dt: f32, scripted := false) {
 	s := &state
-	if s.forced {
-		s.device = .Pad
+	if s.forced || scripted {
+		s.device = s.forced ? .Pad : .Keyboard
 		s.down, s.pressed, s.consumed, s.stick, s.stick_on, s.nav = {}, {}, {}, {}, false, {}
 		return
 	}

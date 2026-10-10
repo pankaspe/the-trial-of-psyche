@@ -221,6 +221,34 @@ LOOKS := [level.Setting]Look {
 		candles = true,
 		mote = {1.0, 0.82, 0.55, 0.42},
 	},
+	// the house of Venus above the clouds at evening: a rose sky, Venus's own
+	// star bright over the far banks of cloud, the stones warm in the last
+	// light, candles lit in her house
+	.Venus_Evening = {
+		sky_top = {0.07, 0.05, 0.20},
+		sky_mid = {0.40, 0.23, 0.42},
+		sky_horizon = {0.98, 0.66, 0.62},
+		orb_pos = {0.25, 0.24},
+		orb_radius = 0.0045,
+		orb_color = {1.0, 0.97, 0.92},
+		halo_color = {0.46, 0.30, 0.42},
+		halo_width = 16,
+		stars = 0.3,
+		haze = {0.55, 0.32, 0.45},
+		islands = false,
+		ridges = 1,
+		ridge_color = {{0.70, 0.50, 0.62}, {0.55, 0.38, 0.54}, {0.40, 0.26, 0.42}},
+		ridge_rim = {1.0, 0.72, 0.62},
+		cloud_back = {0.66, 0.44, 0.56},
+		cloud_front = {0.78, 0.56, 0.64},
+		cloud_crest = {0.52, 0.28, 0.20},
+		mist = {0.46, 0.30, 0.44},
+		water = {0.30, 0.22, 0.42, 0.85},
+		glint = {1.0, 0.82, 0.86, 0.55},
+		daylight = 0.8,
+		candles = true,
+		mote = {1.0, 0.76, 0.82, 0.45},
+	},
 	// the palace of voices at twilight: the sun is gone, its last light low on
 	// the clouds, the first stars, the moon rising; the candles are lit
 	.Dusk = {

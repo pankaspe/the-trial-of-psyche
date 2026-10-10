@@ -8,6 +8,7 @@ package render
 
 import "core:math"
 import "core:slice"
+import sa "core:container/small_array"
 import rl "vendor:raylib"
 import "vendor:raylib/rlgl"
 
@@ -219,6 +220,7 @@ Piece :: struct {
 		On,
 	},
 	seal:       u8, // the seal of a sigil piece (data.sigils index)
+	seed:       u8, // n > 0: the stone of seeds n-1 (it is carried, then set in a hollow)
 }
 
 Scene :: struct {
@@ -245,7 +247,7 @@ PAN_TIME :: 1.8 // the camera moving from one band of a tall level to the next
 
 scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 	s^ = {}
-	s.pieces = make([dynamic]Piece, 0, len(g.data.blocks) + 2 * len(g.data.props) + 2 * len(g.data.candelabra) + 2 * len(g.data.caves) + len(g.data.rise) + len(g.data.handles) + 2 * len(g.data.sigils), allocator)
+	s.pieces = make([dynamic]Piece, 0, len(g.data.blocks) + 2 * len(g.data.props) + 2 * len(g.data.candelabra) + 2 * len(g.data.caves) + len(g.data.rise) + len(g.data.handles) + 2 * len(g.data.sigils) + len(g.data.seeds), allocator)
 	s.rng = fx.rng_init(1234)
 	s.mote = look(g.data.setting).mote
 	for e, i in g.data.blocks {
@@ -283,6 +285,10 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 			append(&s.pieces, Piece{cell = prop.cell, mesh = oriented_mesh(.Trunk_PX, prop.dir), material = .Wood, rise_index = -1, block = -1, handle = -1, part = prop.part})
 		case .Spruce:
 			append(&s.pieces, Piece{cell = prop.cell, mesh = .Spruce_Trunk, material = .Wood, rise_index = -1, block = -1, handle = -1, part = prop.part})
+		case .Rose:
+			append(&s.pieces, Piece{cell = prop.cell, mesh = oriented_mesh(.Rose_Bloom_PX, prop.dir), material = .Blossom, rise_index = -1, block = -1, handle = -1, part = prop.part})
+		case .Myrtle:
+			append(&s.pieces, Piece{cell = prop.cell, mesh = oriented_mesh(.Myrtle_Pot_PX, prop.dir), material = .Bronze, rise_index = -1, block = -1, handle = -1, part = prop.part})
 		}
 	}
 	for c in g.data.candelabra {
@@ -312,13 +318,25 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 		}
 		append(&s.pieces, p)
 	}
+	for c, i in g.data.seeds {
+		append(&s.pieces, Piece{cell = c, mesh = .Block, material = .Seeds, rise_index = -1, block = -1, handle = -1, seed = u8(i + 1)})
+	}
 	for c, k in g.data.sigils {
 		append(&s.pieces, Piece{cell = c, mesh = .Sigil_Off, material = .Bronze, rise_index = -1, block = -1, handle = -1, sigil = .Off, seal = u8(k)})
 		append(&s.pieces, Piece{cell = c, mesh = .Sigil_On, material = .Bronze, rise_index = -1, block = -1, handle = -1, sigil = .On, seal = u8(k)})
 	}
 
 	// framing: every piece from every view (as the prototype's fit_rect), parts in every position
+	// (the hollows too: a seed may end there)
 	first := true
+	for h in g.data.hollows {
+		for r in 0 ..< 4 {
+			c := iso.floor_center(iso.to_view(h, r, g.data.size))
+			rect := Rect{c.x - 64, c.y - 96, 128, 152}
+			s.fit = first ? rect : rect_merge(s.fit, rect)
+			first = false
+		}
+	}
 	for p in s.pieces {
 		for turn in 0 ..< (p.part > 0 ? 4 : 1) {
 			cell := p.cell
@@ -423,6 +441,11 @@ scene_view :: proc(s: ^Scene, g: ^game.Game, width, height: f32) -> View {
 	if g.phase == .Prologue {
 		cam := game.cine(g)
 		her := world_to_proto(v, g.psyche.pos + {0, 0, 0.3})
+		if cam.venus > 0 {
+			// the goddess, where she stands
+			there := world_to_proto(v, pl.stand_world(&g.palace, g.data.prologue) + {0, 0, 0.4})
+			her = fx.lerp(her, there, cam.venus)
+		}
 		v.center = fx.lerp(v.center, her, cam.focus) - {0, cam.look_up * CINE_LOOK_UP}
 		v.zoom *= cam.zoom
 	}
@@ -803,6 +826,10 @@ part_point :: proc(g: ^game.Game, n: u8, w: Vec3) -> Vec3 {
 
 @(private)
 piece_matrix :: proc(g: ^game.Game, p: Piece, lift: f32) -> rl.Matrix {
+	if p.seed > 0 {
+		w := game.seed_world(g, int(p.seed - 1))
+		return rl.MatrixTranslate(w.x, w.y, w.z + lift)
+	}
 	m := rl.MatrixTranslate(f32(p.cell.x), f32(p.cell.y), f32(p.cell.z) + lift)
 	if p.part > 0 {
 		pv := g.data.parts[p.part - 1].pivot
@@ -816,6 +843,10 @@ piece_matrix :: proc(g: ^game.Game, p: Piece, lift: f32) -> rl.Matrix {
 // The cell a piece stands in now.
 @(private)
 piece_cell :: proc(g: ^game.Game, p: Piece) -> Cell {
+	if p.seed > 0 {
+		w := game.seed_world(g, int(p.seed - 1))
+		return {i32(math.floor(w.x + 0.5)), i32(math.floor(w.y + 0.5)), i32(math.floor(w.z + 0.5))}
+	}
 	if p.block >= 0 {
 		return pl.block_cell(&g.palace, int(p.block))
 	}
@@ -916,6 +947,12 @@ draw_pieces :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, transparent: bool) {
 				material, detail = .Lawn, 0
 			}
 		}
+		if p.seed > 0 {
+			// the seeds settle into their layers once the stone is set
+			if t := g.seed_t[p.seed - 1]; t >= 0 {
+				detail = fx.clamp01(t / game.SORT_TIME) * 1.05
+			}
+		}
 		// a veiled stone shows as a faint golden ghost; the seal's panel glows full
 		ghost_veil := hidden && p.block >= 0
 		set_piece_uniforms(r, material, detail, hidden ? (ghost_veil ? 2 : 1) : 0, alpha, 0.25, 0)
@@ -964,6 +1001,20 @@ draw_figures :: proc(r: ^Renderer, g: ^game.Game) {
 			tw := game.torch_world(m)
 			set_piece_uniforms(r, .Bronze, 0, 0, m.alpha, 0.9, 0)
 			rl.DrawMesh(r.meshes[.Lamp], r.material, rl.MatrixTranslate(tw.x, tw.y, tw.z - 0.06) * rl.MatrixScale(0.6, 0.6, 1.4))
+		}
+	}
+
+	// Venus among her doves (the opening of Act III)
+	if v, alpha := game.venus_figure(g); alpha > 0.003 {
+		set_piece_uniforms(r, .Venus, 0, 0, alpha, 0.9, 0.1)
+		face := rl.MatrixRotateZ(math.atan2(g.psyche.pos.y - v.y, g.psyche.pos.x - v.x))
+		rl.DrawMesh(r.meshes[.Robe], r.material, rl.MatrixTranslate(v.x, v.y, v.z) * face * rl.MatrixScale(1.15, 1.15, 1.18))
+		rl.DrawMesh(r.meshes[.Head], r.material, rl.MatrixTranslate(v.x, v.y, v.z + 0.645) * rl.MatrixScale(0.052, 0.052, 0.058))
+		for i in 0 ..< game.VE_DOVES {
+			p, d, a := game.venus_dove(g, i)
+			set_piece_uniforms(r, .Psyche, 0, 0, a, 0.9, 0.06)
+			yaw := math.atan2(d.y, d.x)
+			rl.DrawMesh(r.meshes[.Head], r.material, rl.MatrixTranslate(p.x, p.y, p.z) * rl.MatrixRotateZ(yaw) * rl.MatrixScale(0.05, 0.026, 0.026))
 		}
 	}
 
@@ -1250,8 +1301,195 @@ draw_decals :: proc(g: ^game.Game) {
 			}
 		}
 	}
+	draw_hollows(g)
+	draw_ants(g)
+	if g.phase == .Prologue && g.data.scene == .Venus {
+		// the scene's ants: the first one, then the files coming to her
+		if p, d, a := game.venus_first_ant(g); a > 0 {
+			ant(p + {0, 0, 0.006}, d, a, true)
+		}
+		for r in 0 ..< g.prologue.ant_count {
+			for j in 0 ..< game.VE_FILE {
+				if p, d, a := game.venus_ant(g, r, j); a > 0 {
+					ant(p + {0, 0, 0.006}, d, a, j % 3 == 0)
+				}
+			}
+		}
+	}
 	rlgl.DrawRenderBatchActive()
 	rlgl.EnableDepthMask()
+}
+
+// The colours of the grains (as palace.fs: wheat, barley, poppy, lentil, chickpea).
+@(private)
+GRAIN := [5]Color4{{0.86, 0.64, 0.30, 1}, {0.93, 0.85, 0.62, 1}, {0.16, 0.13, 0.17, 1}, {0.66, 0.36, 0.20, 1}, {0.90, 0.76, 0.54, 1}}
+
+// The hollows still waiting for their seed: the shape of the missing stone in
+// gold, dashed, breathing slowly, and a few grains spilt on the floors beside it.
+@(private)
+draw_hollows :: proc(g: ^game.Game) {
+	for h, k in g.data.hollows {
+		if !pl.hollow_free(&g.palace, k) {
+			continue
+		}
+		pulse := 0.5 + 0.5 * math.sin(g.time * 1.6 + f32(k) * 1.3)
+		z := f32(h.z) + 1.004
+		o := Vec3{f32(h.x), f32(h.y), z}
+		gold := Color4{1.0, 0.82, 0.45, 1}
+		I :: 0.07
+		corners := [4]Vec3{o + {I, I, 0}, o + {1 - I, I, 0}, o + {1 - I, 1 - I, 0}, o + {I, 1 - I, 0}}
+		rlgl.Begin(rlgl.TRIANGLES)
+		color({gold.r, gold.g, gold.b, 0.07 + 0.05 * pulse})
+		vtx(corners[0])
+		vtx(corners[1])
+		vtx(corners[2])
+		vtx(corners[0])
+		vtx(corners[2])
+		vtx(corners[3])
+		rlgl.End()
+		DASHES :: 5
+		for side in 0 ..< 4 {
+			a, b := corners[side], corners[(side + 1) % 4]
+			inward := (o + {0.5, 0.5, 0}) - (a + b) * 0.5
+			inward /= math.sqrt(linalg_dot(inward, inward))
+			for d in 0 ..< DASHES {
+				u0 := (f32(d) + 0.2) / DASHES
+				u1 := (f32(d) + 0.8) / DASHES
+				floor_strip(fx.lerp(a, b, u0), fx.lerp(a, b, u1), inward, 0.035, {gold.r, gold.g, gold.b, 0.65 + 0.3 * pulse})
+			}
+		}
+		// grains spilt on the floors around it
+		for d in iso.Dir {
+			v := iso.DIR_VEC[d]
+			n := h + {v.x, v.y, 1}
+			if !pl.is_surface(&g.palace, n) {
+				continue
+			}
+			for j in 0 ..< 5 {
+				hh := u32(k * 131 + int(d) * 17 + j * 7)
+				along := 0.15 + 0.7 * fx.hash01(hh)
+				out := 0.04 + 0.16 * fx.hash01(hh + 1)
+				edge := Vec3{f32(h.x) + 0.5 + f32(v.x) * (0.5 + out), f32(h.y) + 0.5 + f32(v.y) * (0.5 + out), z + 0.002}
+				side := Vec3{f32(-v.y), f32(v.x), 0}
+				p := edge + side * (along - 0.5)
+				c := GRAIN[int(fx.hash01(hh + 2) * 5) % 5]
+				floor_ellipse(p, 0.018, 0.013, {c.r, c.g, c.b, 0.85})
+			}
+		}
+	}
+}
+
+ANTS :: 46
+ANTS_RING :: 30 // around the seed's foot; the others follow it in a file
+
+// The ants of the last call: out of the cracks around the seed, a dark ring
+// that carries it (some with a golden grain on their backs), a file trailing
+// behind it; when it is set, or when there is no way, back into the cracks.
+@(private)
+draw_ants :: proc(g: ^game.Game) {
+	c := &g.carry
+	if c.seed < 0 || sa.len(c.path) == 0 && c.hollow >= 0 {
+		return
+	}
+	t := c.t
+	end := game.carry_end(g)
+	ok := c.hollow >= 0
+	rest := game.seed_rest(g, c.seed) + {0.5, 0.5, 0}
+	carrying := game.ANTS_GATHER + f32(max(sa.len(c.path) - 1, 0)) * game.CARRY_STEP
+	// the foot of the seed on the floor at time u
+	foot :: proc(g: ^game.Game, u: f32, ok: bool, rest: Vec3) -> Vec3 {
+		if !ok {
+			return rest
+		}
+		p := game.carry_point(g, max(u, 0))
+		return {p.x, p.y, math.floor(p.z + 0.06)}
+	}
+	for j in 0 ..< ANTS {
+		h := u32(j) * 7919 + 13
+		lag: f32 = 0
+		if j >= ANTS_RING {
+			if !ok {
+				continue
+			}
+			lag = (0.3 + f32(j - ANTS_RING) * 0.11) * game.CARRY_STEP
+		}
+		u := min(t, end) - lag
+		// how many are out: they come out of the cracks, and go back after
+		alpha := fx.clamp01((t - fx.hash01(h + 3) * 0.4) / 0.45)
+		if j >= ANTS_RING {
+			alpha *= fx.clamp01((u - game.ANTS_GATHER) / 0.3)
+			alpha *= 1 - fx.clamp01((t - carrying - 0.3) / 0.5) // the file joins the ring at the hollow
+		}
+		scatter := fx.clamp01((t - end) / game.ANTS_SCATTER)
+		alpha *= 1 - fx.sine_in_out(scatter)
+		if alpha < 0.02 {
+			continue
+		}
+		centre := foot(g, u, ok, rest)
+		if t > end && ok {
+			// they leave from the floor beside the hollow
+			centre = foot(g, carrying - 0.01, ok, rest)
+		}
+		pos: Vec3
+		dir: Vec3
+		if j < ANTS_RING {
+			// on the square around the foot, shuffling along it
+			wiggle: f32 = ok ? 0.06 : 0.16
+			q := math.mod(fx.hash01(h) * 4 + wiggle * math.sin(t * (6 + 3 * fx.hash01(h + 1)) + f32(j)), 4)
+			side := int(q)
+			f := q - f32(side)
+			r := 0.53 + 0.09 * fx.hash01(h + 2) + 0.35 * scatter
+			corner := [5][2]f32{{-1, -1}, {1, -1}, {1, 1}, {-1, 1}, {-1, -1}}
+			a, b := corner[side], corner[side + 1]
+			pt := fx.lerp(a, b, f) * r
+			pos = centre + {pt.x, pt.y, 0}
+			dir = {b.x - a.x, b.y - a.y, 0}
+			if scatter > 0 {
+				dir = {pt.x, pt.y, 0}
+			}
+		} else {
+			ahead := foot(g, u + 0.03, ok, rest)
+			dir = ahead - centre
+			l := math.sqrt(dir.x * dir.x + dir.y * dir.y)
+			if l > 1e-5 {
+				dir /= l
+			} else {
+				dir = {1, 0, 0}
+			}
+			side := Vec3{-dir.y, dir.x, 0} * (0.07 * (fx.hash01(h + 5) - 0.5) * 2)
+			pos = centre + side
+		}
+		ant(pos + {0, 0, 0.006}, dir, alpha, j % 3 == 0)
+	}
+}
+
+// One ant on the floor at pos, walking toward dir: a dark body and head, a
+// grain on its back.
+@(private)
+ant :: proc(pos, dir: Vec3, alpha: f32, grain: bool) {
+	d := dir
+	l := math.sqrt(d.x * d.x + d.y * d.y)
+	d = l > 1e-5 ? d / l : Vec3{1, 0, 0}
+	ink := Color4{0.05, 0.03, 0.04, 0.92 * alpha}
+	blob :: proc(c, d: Vec3, along, across: f32, col: Color4) {
+		side := Vec3{-d.y, d.x, 0}
+		N :: 8
+		rlgl.Begin(rlgl.TRIANGLES)
+		color(col)
+		for i in 0 ..< N {
+			a0 := f32(i) / N * math.TAU
+			a1 := f32(i + 1) / N * math.TAU
+			vtx(c)
+			vtx(c + d * (math.cos(a0) * along) + side * (math.sin(a0) * across))
+			vtx(c + d * (math.cos(a1) * along) + side * (math.sin(a1) * across))
+		}
+		rlgl.End()
+	}
+	blob(pos - d * 0.016, d, 0.022, 0.012, ink)
+	blob(pos + d * 0.016, d, 0.011, 0.009, ink)
+	if grain {
+		blob(pos - d * 0.005, d, 0.016, 0.011, {0.98, 0.84, 0.5, 0.95 * alpha})
+	}
 }
 
 // A soft round glow facing the camera; radius in proto pixels.
@@ -1317,6 +1555,14 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	glow(v, lamp, 150, {1.0, 0.68, 0.32, g.light * 0.32 * f * (0.4 + 0.6 * seen)})
 	glow(v, lamp + {0, 0, 0.02}, 9 * (0.85 + 0.15 * f), {1.0, 0.75, 0.4, g.light * f * seen}, 1.7)
 	glow(v, lamp + {0, 0, 0.02}, 4 * (0.85 + 0.15 * f), {1.0, 0.95, 0.8, g.light * f * seen}, 1.6)
+	// the hollows waiting for their seeds: a breath of gold
+	for h, k in g.data.hollows {
+		if !pl.hollow_free(&g.palace, k) {
+			continue
+		}
+		pulse := 0.5 + 0.5 * math.sin(t * 1.6 + f32(k) * 1.3)
+		glow(v, {f32(h.x) + 0.5, f32(h.y) + 0.5, f32(h.z) + 1.0}, 70, {1.0, 0.8, 0.45, 0.12 + 0.08 * pulse}, 0.55)
+	}
 	// the fragments' faint glow
 	for _, i in g.data.fragments {
 		if a, lift := fragment_alpha(g, i); a > 0.003 && i not_in g.fragments_known {
@@ -1406,6 +1652,16 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 		pulse := 0.25 + 0.55 * (0.5 + 0.5 * math.cos(g.rise_t[k] * math.PI / 1.4))
 		glow(v, c, 70, {1.0, 0.75, 0.35, pulse})
 	}
+	// Venus: a rose light, her star's
+	if vp, alpha := game.venus_figure(g); alpha > 0.003 {
+		glow(v, vp + {0, 0, 0.35}, 160, {1.0, 0.55, 0.62, 0.32 * alpha})
+		glow(v, vp + {0, 0, 0.4}, 46, {1.0, 0.82, 0.86, 0.45 * alpha})
+	}
+	// the little ant that pities her: a glint at her feet
+	if p, _, a := game.venus_first_ant(g); a > 0.003 {
+		fade := 1 - fx.progress(g.phase_t, game.VE_SWARM + 1.5, 1.5)
+		glow(v, p + {0, 0, 0.02}, 12, {1.0, 0.85, 0.5, 0.8 * a * fade})
+	}
 	// Cupid flying away: his light in the night sky
 	if c, alpha := game.flight_cupid(g); alpha > 0.003 {
 		glow(v, c + {0, 0, 0.2}, 150, {1.0, 0.72, 0.35, 0.35 * alpha})
@@ -1488,6 +1744,22 @@ draw_wings :: proc(g: ^game.Game, v: View) {
 		pa := game.psyche_alpha(g)
 		ellipse_3d(root + u * 0.12 + up * 0.06, u, up, 0.13, 0.085, sgn * 0.6, {0.62, 0.74, 1.0, 0.32 * pa})
 		ellipse_3d(root + u * 0.09 - up * 0.08, u, up, 0.085, 0.055, -sgn * 0.5, {0.86, 0.7, 1.0, 0.26 * pa})
+	}
+
+	// the doves of Venus: white wings beating fast
+	for i in 0 ..< game.VE_DOVES {
+		p, d, a := game.venus_dove(g, i)
+		if a <= 0.003 {
+			continue
+		}
+		l := math.sqrt(d.x * d.x + d.y * d.y)
+		dfwd := l > 1e-5 ? Vec3{d.x / l, d.y / l, 0} : Vec3{1, 0, 0}
+		dside := Vec3{-dfwd.y, dfwd.x, 0}
+		beat := math.sin(g.time * 15 + f32(i) * 1.7)
+		for sgn in ([2]f32{-1, 1}) {
+			wing := dside * sgn * math.cos(beat * 0.9) + up * math.sin(beat * 0.9)
+			ellipse_3d(p + wing * 0.05 + up * 0.012, wing, dfwd, 0.055, 0.022, 0, {1.0, 0.97, 0.94, 0.8 * a})
+		}
 	}
 
 	fc, falpha := game.flight_cupid(g)
@@ -1801,6 +2073,7 @@ draw_teach :: proc(g: ^game.Game, v: View, time: f32) {
 		case .None:
 		case .Veiled: want = e.trait == .Veiled && !g.palace.flipped[i]
 		case .Handle: want = e.part > 0
+		case .Ants:
 		}
 		if !want || pl.solid_at(&g.palace, pl.block_cell(&g.palace, i) + {0, 0, 1}).kind != .None {
 			continue
@@ -1809,6 +2082,22 @@ draw_teach :: proc(g: ^game.Game, v: View, time: f32) {
 		outline(v, top(g, i, I, I), top(g, i, 1 - I, I), top(g, i, 1 - I, 1 - I), top(g, i, I, 1 - I), col, width)
 		J :: 0.3
 		outline(v, top(g, i, J, J), top(g, i, 1 - J, J), top(g, i, 1 - J, 1 - J), top(g, i, J, 1 - J), {col.r, col.g, col.b, col.a * 0.5}, width * 0.7)
+	}
+	if mech == .Ants {
+		for _, i in g.data.seeds {
+			if g.palace.seed_at[i] >= 0 {
+				continue
+			}
+			c := game.seed_rest(g, i) + {0, 0, 1.01}
+			outline(v, c + {0.06, 0.06, 0}, c + {0.94, 0.06, 0}, c + {0.94, 0.94, 0}, c + {0.06, 0.94, 0}, col, width)
+		}
+		for h, k in g.data.hollows {
+			if !pl.hollow_free(&g.palace, k) {
+				continue
+			}
+			c := Vec3{f32(h.x), f32(h.y), f32(h.z) + 1.01}
+			outline(v, c + {0.06, 0.06, 0}, c + {0.94, 0.06, 0}, c + {0.94, 0.94, 0}, c + {0.06, 0.94, 0}, col, width)
+		}
 	}
 	if mech == .Handle {
 		for h in g.data.handles {

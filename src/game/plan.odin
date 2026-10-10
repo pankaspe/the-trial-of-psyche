@@ -25,6 +25,8 @@ apply_move :: proc(g: ^Game, st: pl.Plan_Step) -> bool {
 	case .Handle:
 		use_handle(g)
 		return g.phase == .Mechanism
+	case .Ants:
+		return call_ants(g)
 	}
 	return true
 }

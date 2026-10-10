@@ -31,8 +31,9 @@ uniform int candle_count;
 
 // per piece
 uniform float material;      // 0 marble, 1 masonry, 2 foliage, 3 bronze, 4 psyche, 5 cupid, 6 mourner, 7 lawn,
-                             // 8 rock, 9 wood, 10 the dark of a cave (palette 7 grass, 8 earth, 9 wood)
-uniform float detail;        // 0 none, 1 marble block, 2 masonry block
+                             // 8 rock, 9 wood, 10 the dark of a cave (palette 7 grass, 8 earth, 9 wood),
+                             // 11 seeds, 12 blossom, 13 Venus
+uniform float detail;        // 0 none, 1 marble block, 2 masonry block; seeds: how far up they are sorted (0..1)
 uniform float hidden;        // 1: visible only in the lamp light, glowing gold; 2: the same, a faint ghost
 uniform float alpha;
 uniform float shade_soft;    // width of the left/right tone blend (curved figures)
@@ -76,9 +77,15 @@ void palette(float m, float t, out vec3 night, out vec3 warm) {
     } else if (m < 8.5) {   // earth: brown, cooled by the moon
         night = ramp(vec3(0.05, 0.035, 0.06), vec3(0.18, 0.12, 0.14), vec3(0.42, 0.31, 0.28), t);
         warm = ramp(vec3(0.16, 0.08, 0.03), vec3(0.45, 0.28, 0.14), vec3(0.70, 0.50, 0.30), t);
-    } else {                // wood: dark bark
+    } else if (m < 9.5) {   // wood: dark bark
         night = ramp(vec3(0.03, 0.025, 0.05), vec3(0.11, 0.08, 0.12), vec3(0.24, 0.19, 0.22), t);
         warm = ramp(vec3(0.10, 0.05, 0.03), vec3(0.30, 0.17, 0.09), vec3(0.50, 0.33, 0.18), t);
+    } else if (m < 12.5) {  // blossom: roses, pale under the moon
+        night = mix(vec3(0.22, 0.12, 0.26), vec3(0.86, 0.62, 0.86), t);
+        warm = mix(vec3(0.48, 0.12, 0.20), vec3(1.0, 0.66, 0.74), t);
+    } else {                // Venus: a figure of rose light
+        night = mix(vec3(0.62, 0.26, 0.36), vec3(1.0, 0.86, 0.90), t);
+        warm = night;
     }
 }
 
@@ -98,10 +105,10 @@ vec3 sunset(float m, float t, vec3 warm) {
         return ramp(vec3(0.10, 0.10, 0.14), vec3(0.40, 0.40, 0.22), vec3(0.74, 0.70, 0.42), t);
     } else if (m < 8.5) {   // mountain stone: grey ochre, violet in the shade
         return ramp(vec3(0.17, 0.12, 0.20), vec3(0.62, 0.44, 0.36), vec3(0.92, 0.76, 0.58), t);
-    } else {                // wood
+    } else if (m < 9.5) {   // wood
         return ramp(vec3(0.07, 0.04, 0.07), vec3(0.30, 0.17, 0.12), vec3(0.50, 0.32, 0.20), t);
     }
-    return warm;
+    return warm;            // blossom, Venus: as in the warm light
 }
 
 float hash(vec2 p) {
@@ -162,6 +169,43 @@ vec2 plates(vec2 p) {
     return vec2(sqrt(d2) - sqrt(d1), hash(id));
 }
 
+// A stone of seeds: grains of five kinds (wheat, barley, poppy, lentil,
+// chickpea), each a small rounded grain in a dark gap. Mixed at random; where
+// sorted (below `sorted`, in local height) each kind lies in its own layer,
+// the heaviest at the bottom. Returns the albedo.
+vec3 seeds(vec3 n, vec3 L, float sorted) {
+    vec2 p = n.z > 0.5 ? L.xy : vec2(abs(n.x) > 0.5 ? L.y : L.x, L.z);
+    const float G = 13.0;
+    vec2 cell = floor(p * G);
+    vec2 f = fract(p * G) - 0.5;
+    float h = hash(cell + floor(fragWorld.xy) * 17.0);
+    float a = h * 6.2832;
+    vec2 q = mat2(cos(a), -sin(a), sin(a), cos(a)) * (f - (hash2(cell) - 0.5) * 0.12);
+    float d = length(q / vec2(0.6, 0.43));
+    // mixed: mostly wheat and barley, fewer chickpeas and lentils, a little poppy
+    float r = hash(cell * 1.7 + 3.1);
+    float k = r < 0.32 ? 0.0 : (r < 0.58 ? 1.0 : (r < 0.78 ? 4.0 : (r < 0.92 ? 3.0 : 2.0)));
+    float z = n.z > 0.5 ? 1.0 : L.z;
+    if (z <= sorted) {
+        k = clamp(4.0 - floor(z * 5.0 - 0.001), 0.0, 4.0);
+    }
+    vec3 c;
+    if (k < 0.5) {
+        c = vec3(0.95, 0.74, 0.38);         // wheat
+    } else if (k < 1.5) {
+        c = vec3(1.0, 0.9, 0.66);           // barley
+    } else if (k < 2.5) {
+        c = vec3(0.30, 0.24, 0.30);         // poppy
+    } else if (k < 3.5) {
+        c = vec3(0.80, 0.46, 0.26);         // lentil
+    } else {
+        c = vec3(0.98, 0.84, 0.62);         // chickpea
+    }
+    c *= 0.9 + 0.2 * hash(cell + 9.0);
+    c *= mix(1.12, 0.9, smoothstep(0.1, 0.95, d)); // rounded: lit in the middle
+    return mix(c, vec3(0.42, 0.29, 0.18), smoothstep(0.9, 1.05, d));
+}
+
 // Distance from a point of a cell's top to the nearest edge of the cell.
 float tile_edge(vec2 p) {
     vec2 q = min(p, 1.0 - p);
@@ -189,7 +233,7 @@ void main() {
     vec3 n = normalize(fragNormal);
     vec3 L = fragLocal;
 
-    if (material > 9.5) {
+    if (material > 9.5 && material < 10.5) {
         // the dark inside a cave's mouth: deepest at its back, a breath of the lamp's warmth
         float lit = light_amount * (1.0 - smoothstep(0.3, 2.0, distance(fragWorld, lamp_pos))) * flicker;
         vec3 col = mix(vec3(0.012, 0.012, 0.03), vec3(0.09, 0.045, 0.02), lit);
@@ -229,7 +273,9 @@ void main() {
         }
     }
     float m = material;
-    if (material > 8.5) {
+    if (material > 10.5) {
+        // seeds, blossom, Venus: their own colours below
+    } else if (material > 8.5) {
         // bark: vertical grain
         m = 9.0;
         float u = abs(n.x) > 0.5 ? L.y : L.x;
@@ -283,8 +329,15 @@ void main() {
 
     vec3 night;
     vec3 warm;
-    palette(m, t, night, warm);
-    night = mix(night, sunset(m, t, warm), daylight);
+    if (material > 10.5 && material < 11.5) {
+        vec3 c = seeds(n, L, detail);
+        warm = c * mix(vec3(0.36, 0.20, 0.12), vec3(1.15, 1.0, 0.86), t);
+        night = c * mix(vec3(0.14, 0.15, 0.30), vec3(0.62, 0.66, 0.95), t);
+        night = mix(night, c * mix(vec3(0.32, 0.22, 0.34), vec3(1.06, 0.94, 0.84), t), daylight);
+    } else {
+        palette(m, t, night, warm);
+        night = mix(night, sunset(m, t, warm), daylight);
+    }
     night *= moonlight;
     vec3 col = mix(night, warm, lit);
     // the candles warm the stones around them, most the faces that look at them
@@ -297,7 +350,8 @@ void main() {
         cl += candles[i].w * facing * (1.0 - smoothstep(0.1, candle_reach[i], dist));
     }
     col = mix(col, warm, clamp(cl, 0.0, 1.0) * 0.65);
-    if (material < 3.5 || material > 6.5) {
+    bool figure = (material > 3.5 && material < 6.5) || material > 12.5;
+    if (!figure) {
         // under the lamp the eye adapts: what is far from the flame sinks into the dark
         col *= mix(1.0, 0.55, light_amount * (1.0 - lit));
         // true depth, visible only in the light

@@ -103,6 +103,7 @@ Ui :: struct {
 	skill_state:   [content.MAX_SKILLS]int, // what each slot said last frame (-1: nothing yet)
 	tip_reveal:    [3]f32, // the names of the diorama's buttons (Q, E, R)
 	place_reveal:  f32, // the action of the place, over Psyche
+	place_key:     i18n.Key, // what it says (kept while it fades out)
 }
 
 init :: proc(u: ^Ui) {

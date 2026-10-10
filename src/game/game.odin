@@ -16,6 +16,11 @@
 // standing on a handle, a click on her own cell (or F) turns a part of the
 // palace a quarter.
 //
+// Act III: beside a stone of seeds, 3 (or Space, or the card over her) calls
+// the ants: they carry it over the surfaces that join in this view (the
+// illusions too, in the dark) to the nearest hollow in a floor, and it drops
+// in for good. With no way in this view they come, and go back.
+//
 // Caves come in pairs. Standing at the mouth of one, Space (or the card the
 // HUD shows over her) takes her through the rock, a step longer than the
 // others: she walks into the dark and out of the other. Walks never go
@@ -69,11 +74,19 @@ PART_TIME :: 0.9 // a part of the palace turning a quarter
 DISSOLVE_TIME :: 1.2 // a veiled block appearing
 PASSAGE_TIME :: 2.4 // through the rock from one cave to the other
 PASSAGE_DEPTH :: 0.45 // how far into the mouth she walks before the dark takes her
+ANTS_GATHER :: 0.9 // the ants come out of the cracks around the seed
+CARRY_STEP :: 0.36 // the seed carried over one cell
+ANTS_SLIDE :: 0.45 // over the hollow...
+ANTS_SINK :: 0.55 // ...and down into it
+SORT_TIME :: 1.6 // the seeds settle into their layers once it is set
+ANTS_SCATTER :: 1.4 // the ants go back into the cracks
+ANTS_FAIL :: 2.2 // no way: they gather, mill about and go back
 
 Phase :: enum u8 {
 	Play,
 	Sigil, // the seal is lit: blocks rise, input waits
 	Mechanism, // a handle turns a part of the palace: input waits
+	Carry, // the ants carry a seed to its hollow: input waits
 	Prologue, // the opening cutscene (prologue.odin): input only skips or starts
 	Arrival, // coming from the last level: the palace rises, Psyche comes down; input waits
 	Ending_Oil,
@@ -148,6 +161,16 @@ Marker :: struct {
 	t:      f32,
 }
 
+// The ants at work (phase Carry), or their last call while it plays out.
+Carry :: struct {
+	seed:     int, // -1: none
+	hollow:   int, // where it goes (-1: no way, they go back)
+	path:     pl.Path, // from where it lay to the floor beside the hollow
+	illusion: [pl.MAX_PATH]bool, // illusion[j]: the step from path[j] to path[j + 1] crosses an illusion
+	view:     int, // the view the way was found in
+	t:        f32, // since the call
+}
+
 Game :: struct {
 	arena:          virtual.Arena,
 	level_index:    int,
@@ -173,6 +196,8 @@ Game :: struct {
 	oil_max:        f32, // the lamp's oil when full (seconds)
 	flip_t:         []f32, // per data.blocks entry: time since it changed for good, < 0 before
 	part_turning:   int, // the part a handle is turning (phase Mechanism)
+	carry:          Carry,
+	seed_t:         [level.MAX_SEEDS]f32, // time since each seed dropped into its hollow, < 0 before
 	rest:           Rest, // the last brazier Psyche lit
 	rests_lit:      []bool, // per data.rests entry
 	teach_pending:  bool, // the level's new mechanic is still to be presented
@@ -233,6 +258,7 @@ Rest :: struct {
 	view:      int,
 	flipped:   []bool,
 	part_rot:  [level.MAX_PARTS]int,
+	seed_at:   [level.MAX_SEEDS]i8,
 	oil:       f32,
 	activated: level.Seals,
 	lightings: int,
@@ -287,6 +313,8 @@ load_text :: proc(g: ^Game, index: int, text: string) -> (err: Maybe(Load_Error)
 	g.cine_out = -1
 	g.arrive_t = -1
 	g.rise_t = -1
+	g.seed_t = -1
+	g.carry.seed = -1
 	g.collapse_t = -1
 	for &t in g.fragment_t {
 		t = -1
@@ -324,6 +352,8 @@ oil_rules :: proc(d: ^level.Level_Data) -> pl.Oil_Rules {
 		passage = PASSAGE_TIME,
 		turn = ROTATE_TIME,
 		handle = PART_TIME,
+		ants = ANTS_GATHER + ANTS_SLIDE + ANTS_SINK - CARRY_STEP,
+		carry = CARRY_STEP,
 		rise_delay = RISE_DELAY,
 		rise_time = RISE_TIME,
 	}
@@ -503,6 +533,8 @@ update :: proc(g: ^Game, dt: f32) {
 			shake(g, 0.25)
 			set_phase(g, .Play)
 		}
+	case .Carry:
+		update_carry(g, dt)
 	case .Ending_Oil:
 		update_ending_oil(g, dt)
 	case .Ending_Trust:
@@ -662,6 +694,13 @@ click :: proc(g: ^Game, point: Vec2) {
 		use_handle(g)
 		return
 	}
+	if !g.psyche.walking && has_skill(g, .Ants) {
+		// a click on the seed beside her calls the ants
+		if i := pl.seed_beside(&g.palace, g.psyche.cell); i >= 0 && target == g.data.seeds[i] + {0, 0, 1} {
+			call_ants(g)
+			return
+		}
+	}
 	// while a step is under way, plan from where that step will end
 	from := g.psyche.walking ? g.psyche.step_to : g.psyche.cell
 	path: pl.Path
@@ -693,6 +732,7 @@ has_skill :: proc(g: ^Game, skill: content.Skill) -> bool {
 	switch skill {
 	case .Lamp: return g.data.has_lamp
 	case .Handle: return content.skill_known(g.level_index, .Handle)
+	case .Ants: return content.skill_known(g.level_index, .Ants)
 	}
 	return false
 }
@@ -1163,6 +1203,150 @@ part_angle :: proc(g: ^Game, n: int) -> f32 {
 	return a
 }
 
+// --- Act III: the ants ---------------------------------------------------------------
+
+// Is she standing still beside a seed the ants could carry?
+at_seed :: proc(g: ^Game) -> bool {
+	return g.active && g.phase == .Play && !g.turning && !g.psyche.walking && has_skill(g, .Ants) && pl.seed_beside(&g.palace, g.psyche.cell) >= 0
+}
+
+// Call the ants to the seed beside her. True if they carry it away (phase
+// Carry); with no way in this view they come and go back.
+call_ants :: proc(g: ^Game) -> bool {
+	if !g.active || g.phase != .Play || g.turning || g.psyche.walking || !has_skill(g, .Ants) {
+		return false
+	}
+	p := &g.palace
+	i := pl.seed_beside(p, g.psyche.cell)
+	if i < 0 {
+		audio.play(.Blocked, -10)
+		hint(g, .Hint_Ants_Find, 4, true)
+		return false
+	}
+	c := &g.carry
+	c^ = {seed = i, view = p.rot}
+	c.hollow = pl.seed_route(p, i, g.psyche.cell, !g.lamp_on, &c.path)
+	face_point(g, seed_rest(g, i) + {0.5, 0.5, 0})
+	sa.clear(&g.path)
+	audio.play(.Rustle, -6)
+	if c.hollow < 0 {
+		hint(g, .Hint_Ants_No_Way, 5, true)
+		return false
+	}
+	// which steps cross an illusion (the seed lifted, as the way was sought)
+	p.seed_lifted = i
+	pl.rebuild_graph(p)
+	for j in 0 ..< sa.len(c.path) - 1 {
+		a, b := sa.get(c.path, j), sa.get(c.path, j + 1)
+		c.illusion[j] = !pl.is_real_edge(p, a, b) && pl.is_illusion(p, a, b)
+	}
+	p.seed_lifted = -1
+	pl.rebuild_graph(p)
+	set_phase(g, .Carry)
+	learn(g, .Hint_Ants)
+	return true
+}
+
+// When the ants' work is done: the seed set in its hollow (or, with no way,
+// the ants about to go back).
+carry_end :: proc(g: ^Game) -> f32 {
+	c := &g.carry
+	if c.hollow < 0 {
+		return ANTS_FAIL - ANTS_SCATTER
+	}
+	return ANTS_GATHER + f32(sa.len(c.path) - 1) * CARRY_STEP + ANTS_SLIDE + ANTS_SINK
+}
+
+@(private)
+update_carry :: proc(g: ^Game, dt: f32) {
+	c := &g.carry
+	before := c.t
+	c.t += dt
+	// a soft rustle of little feet every few cells
+	carrying := ANTS_GATHER + f32(sa.len(c.path) - 1) * CARRY_STEP
+	for mark := f32(ANTS_GATHER + 3 * CARRY_STEP); mark < carrying; mark += 4 * CARRY_STEP {
+		if crossed(c.t, dt, mark) {
+			audio.play(.Rustle, -14, fx.rand_range(&g.rng, 0.9, 1.1))
+		}
+	}
+	if crossed(c.t, dt, carrying + ANTS_SLIDE + ANTS_SINK * 0.8) {
+		audio.play(.Thud, -9, 1.15)
+	}
+	end := carry_end(g)
+	if before < end && c.t >= end {
+		pl.set_seed(&g.palace, c.seed, c.hollow)
+		g.seed_t[c.seed] = 0
+		audio.play(.Good, -10, audio.semitones(5))
+		set_phase(g, .Play)
+	}
+}
+
+// Where seed i lay (its block's corner, world space).
+seed_rest :: proc(g: ^Game, i: int) -> Vec3 {
+	c := g.data.seeds[i]
+	return {f32(c.x), f32(c.y), f32(c.z)}
+}
+
+// Where seed i's block is drawn now (its corner, world space): where it lay,
+// carried by the ants, or set in its hollow.
+seed_world :: proc(g: ^Game, i: int) -> Vec3 {
+	if k := g.palace.seed_at[i]; k >= 0 {
+		h := g.data.hollows[k]
+		return {f32(h.x), f32(h.y), f32(h.z)}
+	}
+	c := &g.carry
+	if c.seed != i || c.hollow < 0 || g.phase != .Carry {
+		return seed_rest(g, i)
+	}
+	return carry_point(g, c.t) - {0.5, 0.5, 0}
+}
+
+// The middle of the seed's foot, `t` seconds after the ants were called.
+carry_point :: proc(g: ^Game, t: f32) -> Vec3 {
+	c := &g.carry
+	n := sa.len(c.path)
+	at :: proc(cell: Cell) -> Vec3 {
+		return {f32(cell.x) + 0.5, f32(cell.y) + 0.5, f32(cell.z)}
+	}
+	if t < ANTS_GATHER || n == 0 {
+		// lifted a little by the ants under it, as they take hold
+		return at(sa.get(c.path, 0)) + {0, 0, 0.04 * fx.sine_in_out(fx.clamp01(t / ANTS_GATHER))}
+	}
+	lift := Vec3{0, 0, 0.04}
+	u := (t - ANTS_GATHER) / CARRY_STEP
+	if u < f32(n - 1) {
+		j := int(u)
+		f := u - f32(j)
+		a, b := sa.get(c.path, j), sa.get(c.path, j + 1)
+		bob := Vec3{0, 0, 0.012 * math.abs(math.sin(f * math.PI))}
+		if !c.illusion[j] {
+			return fx.lerp(at(a), at(b), f) + lift + bob
+		}
+		// across an illusion: to the edge of the first surface, on from the
+		// matching edge of the second (the same spot on screen)
+		r, size := c.view, g.palace.size
+		av := iso.to_view(a, r, size)
+		bv := iso.to_view(b, r, size)
+		k := bv.z - av.z
+		d := [2]f32{f32(bv.x - av.x - k), f32(bv.y - av.y - k)}
+		edge := Vec3{f32(av.x) + 0.5 + d.x * 0.5, f32(av.y) + 0.5 + d.y * 0.5, f32(av.z)}
+		if f < 0.5 {
+			return fx.lerp(at(a), iso.world_point(edge, f32(r), size), f * 2) + lift + bob
+		}
+		return fx.lerp(iso.world_point(edge + f32(k), f32(r), size), at(b), (f - 0.5) * 2) + lift + bob
+	}
+	// over the hollow, then down into it
+	last := at(sa.get(c.path, n - 1))
+	h := g.data.hollows[c.hollow]
+	over := Vec3{f32(h.x) + 0.5, f32(h.y) + 0.5, last.z}
+	s := t - ANTS_GATHER - f32(n - 1) * CARRY_STEP
+	if s < ANTS_SLIDE {
+		return fx.lerp(last + lift, over + lift, fx.sine_in_out(s / ANTS_SLIDE))
+	}
+	k := fx.clamp01((s - ANTS_SLIDE) / ANTS_SINK)
+	return over + lift * (1 - k) - {0, 0, fx.quad_in(k)}
+}
+
 // --- braziers -----------------------------------------------------------------------
 
 @(private)
@@ -1180,6 +1364,7 @@ light_rest :: proc(g: ^Game, i: int, quiet := false) {
 	r.view = g.palace.rot
 	copy(r.flipped, g.palace.flipped)
 	r.part_rot = g.palace.part_rot
+	r.seed_at = g.palace.seed_at
 	r.oil = g.oil
 	r.activated = g.activated
 	r.lightings = g.lightings
@@ -1197,7 +1382,7 @@ return_to_rest :: proc(g: ^Game) -> bool {
 		return false
 	}
 	r := &g.rest
-	if g.psyche.cell == r.cell && !g.psyche.walking && slice.equal(g.palace.flipped, r.flipped) && g.palace.part_rot == r.part_rot && g.activated == r.activated {
+	if g.psyche.cell == r.cell && !g.psyche.walking && slice.equal(g.palace.flipped, r.flipped) && g.palace.part_rot == r.part_rot && g.palace.seed_at == r.seed_at && g.activated == r.activated {
 		return false
 	}
 	set_lamp(g, false)
@@ -1206,6 +1391,11 @@ return_to_rest :: proc(g: ^Game) -> bool {
 	g.lightings = r.lightings
 	copy(g.palace.flipped, r.flipped)
 	g.palace.part_rot = r.part_rot
+	g.palace.seed_at = r.seed_at
+	for &t, i in g.seed_t {
+		t = g.palace.seed_at[i] >= 0 ? 1e3 : -1
+	}
+	g.carry.seed = -1
 	g.activated = r.activated
 	g.palace.risen = r.activated
 	for &t, k in g.rise_t {
@@ -1319,7 +1509,7 @@ start_ending :: proc(g: ^Game, p: Phase) {
 		audio.play(.Good, -2)
 	case .Ending_Exit:
 		audio.play(.Wind, -4)
-	case .Play, .Sigil, .Mechanism, .Prologue, .Arrival, .Finished:
+	case .Play, .Sigil, .Mechanism, .Carry, .Prologue, .Arrival, .Finished:
 	}
 }
 
@@ -1451,6 +1641,18 @@ update_effects :: proc(g: ^Game, dt: f32) {
 	}
 	if g.collapse_t >= 0 {
 		g.collapse_t += dt
+	}
+	for &t in g.seed_t {
+		if t >= 0 {
+			t = min(t + dt, 1e3)
+		}
+	}
+	if g.carry.seed >= 0 && g.phase != .Carry {
+		// the last call plays out: the ants go back into the cracks
+		g.carry.t += dt
+		if g.carry.t > carry_end(g) + ANTS_SCATTER {
+			g.carry.seed = -1
+		}
 	}
 	// stones that fell, dissolved or appeared: their animations run on this clock
 	for &t in g.flip_t {
@@ -1662,7 +1864,7 @@ candelabrum_flame :: proc(g: ^Game, i: int) -> f32 {
 is_tutorial :: proc(key: Key) -> bool {
 	#partial switch key {
 	case .Hint_Move, .Hint_Turn, .Hint_Lamp, .Hint_Illusion, .Hint_Sigil, .Hint_Oil,
-	     .Hint_Veiled, .Hint_Handle:
+	     .Hint_Veiled, .Hint_Handle, .Hint_Ants:
 		return true
 	}
 	return false

@@ -29,6 +29,7 @@ Sound_Id :: enum u8 {
 	Reveal, // the face in the lamplight: a swelling chord, a bell
 	Good, // something found: a harp, a pad
 	Wind, // a gust (Zephyr, the exits): air and its song
+	Rustle, // the ants: a dry whisper of little feet and grains
 }
 
 // Effects drawn from recordings (loaded in audio.odin).
@@ -54,6 +55,7 @@ VARIANTS := [Sound_Id]int {
 	.Reveal     = 1,
 	.Good       = 1,
 	.Wind       = 2,
+	.Rustle     = 3,
 }
 
 // The ambience of a place: a seamless stereo loop.
@@ -65,6 +67,7 @@ Bed :: enum u8 {
 	Deep_Night, // low wind, a few far crickets
 	Forest, // the night wind in the trees, crickets in the grass
 	River, // a wide river flowing, a breeze, the first birds of the morning
+	Garden, // the house of Venus at evening: a breeze, a fountain, doves far off
 }
 
 BED_SECONDS :: 24
@@ -415,6 +418,20 @@ synthesize :: proc(id: Sound_Id, variant: int, allocator := context.allocator) -
 			s += (math.sin(phase) * 0.05 + breath * 0.5) * gust
 		}
 		tail = 3.5
+
+	case .Rustle:
+		// the ants: a dry whisper of little feet over stone, seeds shifting
+		b = buffer(1.6, context.temp_allocator)
+		swell :: proc(t: f32) -> f32 {return 900 * math.pow(max(math.sin(math.PI * min(t / 1.4, 1)), 0), 1.4)}
+		grains(b, &rng, 0, 1.45, swell, 1800, 4200, 0.06, 0.0015)
+		pk: Pink
+		f: Svf
+		for &s, i in b {
+			t := time_of(i)
+			_, hiss, _ := svf(&f, pink(&pk, &rng), 2600, 1.4)
+			s += hiss * 0.05 * math.pow(max(math.sin(math.PI * min(t / 1.4, 1)), 0), 2)
+		}
+		room, tail = ROOM, 0.8
 	}
 	soften(b, SOFT_HZ)
 	out := reverb(b, room, tail, allocator)
@@ -479,6 +496,9 @@ synthesize_bed :: proc(bed: Bed, allocator := context.allocator) -> []f32 {
 	case .River:
 		wind = {0.1, 220, 700, 0.5}
 		crickets, cricket_level = 1, 0.01
+	case .Garden:
+		wind = {0.11, 200, 620, 0.45}
+		crickets, cricket_level = 2, 0.014
 	}
 	for ch in 0 ..< 2 {
 		pk: Pink
@@ -528,6 +548,9 @@ synthesize_bed :: proc(bed: Bed, allocator := context.allocator) -> []f32 {
 	}
 	if bed == .River {
 		river(raw, m, &rng)
+	}
+	if bed == .Garden {
+		garden(raw, m, &rng)
 	}
 	// the wrap: the last XF seconds fade into the first, equal power
 	out := make([]f32, n * 2, allocator)
@@ -609,6 +632,69 @@ river :: proc(raw: []f32, m: int, rng: ^fx.Rng) {
 				raw[2 * i + 1] += v * right
 			}
 			at += dur + fx.rand_range(rng, 0.03, 0.12)
+		}
+	}
+}
+
+// The house of Venus: a fountain trickling into its basin (a few bright
+// drops over a soft wash) and, now and then, a pair of doves cooing far off.
+@(private)
+garden :: proc(raw: []f32, m: int, rng: ^fx.Rng) {
+	for ch in 0 ..< 2 {
+		pk: Pink
+		f: Svf
+		for i in 0 ..< m {
+			_, bp, _ := svf(&f, pink(&pk, rng), 1300, 1.2)
+			raw[2 * i + ch] += bp * 0.035
+		}
+	}
+	// the drops: small rising tones, close together, near the middle
+	for b := 0; b < int(f32(m) / RATE * 14); b += 1 {
+		start := int(fx.randf(rng) * f32(m))
+		hz := fx.rand_range(rng, 900, 2200)
+		dur := fx.rand_range(rng, 0.01, 0.025)
+		level := fx.rand_range(rng, 0.003, 0.01)
+		pan := fx.rand_range(rng, -0.35, 0.35)
+		left, right := math.sqrt(0.5 * (1 - pan)), math.sqrt(0.5 * (1 + pan))
+		length := int(dur * RATE)
+		phase: f32 = 0
+		for k in 0 ..< length {
+			i := start + k
+			if i >= m {
+				break
+			}
+			u := f32(k) / f32(length)
+			phase += math.TAU * hz * (1 + 0.6 * u) / RATE
+			v := math.sin(phase) * math.sin(math.PI * u) * (1 - u) * level
+			raw[2 * i] += v * left
+			raw[2 * i + 1] += v * right
+		}
+	}
+	// the doves: "coo-coo-ooo", a low round voice, soft and far
+	for start := fx.rand_range(rng, 2, 5); start < f32(m) / RATE - 3; start += fx.rand_range(rng, 6, 11) {
+		pan := fx.rand_range(rng, -0.8, 0.8)
+		left, right := math.sqrt(0.5 * (1 - pan)), math.sqrt(0.5 * (1 + pan))
+		base := fx.rand_range(rng, 360, 430)
+		NOTES :: [3][3]f32{{0, 0.22, 1.0}, {0.3, 0.2, 1.06}, {0.62, 0.55, 0.94}} // start, length, pitch
+		f: Svf
+		phase: f32 = 0
+		for note in NOTES {
+			s0 := int((start + note[0]) * RATE)
+			length := int(note[1] * RATE)
+			for k in 0 ..< length {
+				i := s0 + k
+				if i >= m {
+					break
+				}
+				u := f32(k) / f32(length)
+				env := math.sin(math.PI * min(u * 1.6, 1) * 0.5) * (1 - u * u)
+				hz := base * note[2] * (1 + 0.04 * math.sin(math.PI * u))
+				phase += math.TAU * hz / RATE
+				lp, _, _ := svf(&f, math.sin(phase) + 0.25 * math.sin(2 * phase), 700, 0.7)
+				v := lp * env * 0.016
+				raw[2 * i] += v * left
+				raw[2 * i + 1] += v * right
+			}
 		}
 	}
 }

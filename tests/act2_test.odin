@@ -199,12 +199,13 @@ new_mechanic_is_presented :: proc(t: ^testing.T) {
 	testing.expect(t, !g.mechanic_new, "a restart does not present it again")
 }
 
-// Every built level of Act II can be solved, and the solver's plan, played
-// through the game, reaches the exit; the fragment is reachable and optional.
+// Every built level of Acts II and III can be solved, and the solver's plan,
+// played through the game, reaches the exit; the fragment is reachable and
+// optional.
 @(test)
 act2_levels_solve_and_play :: proc(t: ^testing.T) {
 	for info, index in content.LEVELS {
-		if info.act != .II || !content.is_built(index) {
+		if (info.act != .II && info.act != .III) || !content.is_built(index) {
 			continue
 		}
 		g: game.Game

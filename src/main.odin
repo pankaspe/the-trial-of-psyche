@@ -253,6 +253,7 @@ SETTING_BED := [level.Setting]audio.Bed {
 	.River_Dawn    = .River,
 	.Crag_Day      = .Mountain,
 	.Temple_Dusk   = .Dusk,
+	.Venus_Evening = .Garden,
 }
 
 // What the mixer plays: the act's music (silent while the screen goes
@@ -834,6 +835,7 @@ MECHANIC_CARD := [level.Mechanic][2]i18n.Key {
 	.None    = {.Mech_New, .Mech_New},
 	.Veiled  = {.Mech_Veiled_Title, .Mech_Veiled},
 	.Handle  = {.Mech_Handle_Title, .Mech_Handle},
+	.Ants    = {.Mech_Ants_Title, .Mech_Ants},
 }
 
 @(private)
@@ -879,8 +881,11 @@ play_input :: proc(app: ^App) {
 	if (rl.IsKeyPressed(.TWO) || rl.IsKeyPressed(.KP_2) || rl.IsKeyPressed(.F)) && game.has_skill(g, .Handle) {
 		game.use_handle(g)
 	}
+	if (rl.IsKeyPressed(.THREE) || rl.IsKeyPressed(.KP_3)) && game.has_skill(g, .Ants) {
+		game.call_ants(g)
+	}
 	if rl.IsKeyPressed(.SPACE) {
-		game.enter_cave(g)
+		place(g)
 	}
 	if rl.IsKeyPressed(.Q) || rl.IsKeyPressed(.LEFT) {
 		game.request_turn(g, -1)
@@ -896,11 +901,20 @@ play_input :: proc(app: ^App) {
 	}
 }
 
+// The action of the place: into the cave at her feet, or the ants called to
+// the seed beside her.
+place :: proc(g: ^game.Game) -> bool {
+	if game.enter_cave(g) {
+		return true
+	}
+	return game.at_seed(g) && game.call_ants(g)
+}
+
 // The pad in play: the stick (or the d-pad) steers Psyche; West the lamp,
-// North the handle, South the action of the place (or the handle she stands
-// on); the shoulders or a flick of the right stick turn the palace (the
-// triggers wait for the skills still to come). East, the brazier, is read
-// with the HUD (update_rest).
+// North the handle, LT the ants, South the action of the place (or the
+// handle she stands on); the shoulders or a flick of the right stick turn the
+// palace (RT waits for the last skill). East, the brazier, is read with the
+// HUD (update_rest).
 pad_play :: proc(app: ^App) {
 	g := &app.game
 	dir, fresh := input.steer()
@@ -911,8 +925,11 @@ pad_play :: proc(app: ^App) {
 	if input.take(.North) && game.has_skill(g, .Handle) {
 		game.use_handle(g)
 	}
+	if input.take(.LT) && game.has_skill(g, .Ants) {
+		game.call_ants(g)
+	}
 	if input.take(.South) {
-		if !game.enter_cave(g) && game.on_handle(g) && game.has_skill(g, .Handle) {
+		if !place(g) && game.on_handle(g) && game.has_skill(g, .Handle) {
 			game.use_handle(g)
 		}
 	}
@@ -982,8 +999,11 @@ draw_screens :: proc(app: ^App) {
 		if act.handle {
 			game.use_handle(g)
 		}
+		if act.ants {
+			game.call_ants(g)
+		}
 		if act.place {
-			game.enter_cave(g)
+			place(g)
 		}
 		if act.turn != 0 {
 			game.request_turn(g, act.turn)

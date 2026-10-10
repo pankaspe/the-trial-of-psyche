@@ -29,12 +29,14 @@ Mechanic :: enum u8 {
 	None,
 	Veiled,
 	Handle,
+	Ants,
 }
 
 MECHANIC_NAME := [Mechanic]string {
 	.None    = "none",
 	.Veiled  = "veiled",
 	.Handle  = "handle",
+	.Ants    = "ants",
 }
 
 // The cutscene that opens a level (the first of each act has one).
@@ -42,6 +44,7 @@ Scene :: enum u8 {
 	None,
 	Oracle, // I.1: the oracle, the procession up the crag, Psyche left alone
 	Flight, // II.1: Cupid flies away, Psyche clinging to him, and she falls into the forest
+	Venus, // III.1: Venus pours the seeds and leaves on her doves; an ant takes pity on Psyche
 }
 
 // Where a level takes place: the sky, the backdrop, the light on the stones.
@@ -55,6 +58,7 @@ Setting :: enum u8 {
 	River_Dawn, // the first light over a wide river, mist on the water, the morning star
 	Crag_Day, // a crag of bare rock by day, the wind, the plain far below
 	Temple_Dusk, // a temple at dusk among the ranges: the afterglow, the first stars, its candles lit
+	Venus_Evening, // the house of Venus above the clouds at evening: rose light, her star bright
 }
 
 SETTING_NAME := [Setting]string {
@@ -67,6 +71,7 @@ SETTING_NAME := [Setting]string {
 	.River_Dawn   = "river_dawn",
 	.Crag_Day     = "crag_day",
 	.Temple_Dusk  = "temple_dusk",
+	.Venus_Evening = "venus_evening",
 }
 
 // How a block behaves (Act II): fixed stone, or one that changes for good.
@@ -119,6 +124,7 @@ Prop_Kind :: enum u8 {
 	Bed,
 	Statue, // a marble woman on a plinth, calling with her arm raised toward `dir`
 	Spruce, // a tall fir of the forest
+	Heap, // a mound of mixed seeds (Venus's task)
 	// decoration only
 	Arch,
 	Vase, // small, in one corner of the cell: px (+x,+y), py (-x,+y), mx (-x,-y), my (+x,-y)
@@ -130,12 +136,15 @@ Prop_Kind :: enum u8 {
 	// the mountain: decoration only, in one corner of the cell (as the vase)
 	Shrub, // a low bush
 	Cairn, // a few stones piled up by passers-by
+	// the house of Venus: decoration only, in one corner of the cell (as the vase)
+	Rose, // a rose bush in flower
+	Myrtle, // a small myrtle, Venus's tree, in a pot
 }
 
 EDGE_PROPS :: bit_set[Prop_Kind]{.Rail, .Wall, .Wall_Half, .Wall_Battlement, .Fence, .Rope, .Log, .Lip}
-BLOCKING_PROPS :: bit_set[Prop_Kind]{.Pillar, .Plinth, .Cypress, .Urn, .Brazier, .Bed, .Statue, .Spruce, .Pine, .Boulder}
-ORIENTED_PROPS :: EDGE_PROPS + bit_set[Prop_Kind]{.Bed, .Statue, .Arch, .Vase, .Reeds, .Sconce, .Pine, .Boulder, .Shrub, .Cairn}
-NEEDS_DIR :: EDGE_PROPS + bit_set[Prop_Kind]{.Statue, .Vase, .Reeds, .Sconce, .Shrub, .Cairn}
+BLOCKING_PROPS :: bit_set[Prop_Kind]{.Pillar, .Plinth, .Cypress, .Urn, .Brazier, .Bed, .Statue, .Spruce, .Pine, .Boulder, .Heap}
+ORIENTED_PROPS :: EDGE_PROPS + bit_set[Prop_Kind]{.Bed, .Statue, .Arch, .Vase, .Reeds, .Sconce, .Pine, .Boulder, .Shrub, .Cairn, .Rose, .Myrtle}
+NEEDS_DIR :: EDGE_PROPS + bit_set[Prop_Kind]{.Statue, .Vase, .Reeds, .Sconce, .Shrub, .Cairn, .Rose, .Myrtle}
 
 PROP_NAME := [Prop_Kind]string {
 	.Rail            = "rail",
@@ -154,6 +163,7 @@ PROP_NAME := [Prop_Kind]string {
 	.Bed             = "bed",
 	.Statue          = "statue",
 	.Spruce          = "spruce",
+	.Heap            = "heap",
 	.Arch            = "arch",
 	.Vase            = "vase",
 	.Reeds           = "reeds",
@@ -162,6 +172,8 @@ PROP_NAME := [Prop_Kind]string {
 	.Boulder         = "boulder",
 	.Shrub           = "shrub",
 	.Cairn           = "cairn",
+	.Rose            = "rose",
+	.Myrtle          = "myrtle",
 }
 
 // A standing candelabrum in a corner of a surface: lit from the start, or
@@ -239,6 +251,8 @@ Level_Data :: struct {
 	parts:        [dynamic]Part,
 	handles:      [dynamic]Handle,
 	rests:        [dynamic]Cell, // braziers: lit by passing, R brings Psyche back to the last one
+	seeds:        [dynamic]Cell, // Act III: stones of seeds, each resting on the surface (x, y, h): the ants carry them
+	hollows:      [dynamic]Cell, // the hollows where seeds belong: empty block cells (x, y, z) in a floor
 	mechanic:     Mechanic, // the new mechanic this level introduces (a card at the start)
 	setting:      Setting, // the sky, the backdrop, the light on the stones
 }
@@ -251,6 +265,8 @@ MAX_DYNAMIC :: 64 // veiled blocks in one level
 MAX_TIERS :: 6
 MAX_SEALS :: 4
 Seals :: bit_set[0 ..< MAX_SEALS; u8] // which seals have been lit
+MAX_SEEDS :: 4
+MAX_HOLLOWS :: 6
 
 // The cell of a part's block after `r` quarter turns.
 part_cell :: proc(c: Cell, pivot: [2]i32, r: int) -> Cell {
@@ -288,6 +304,8 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	data.parts = make([dynamic]Part, 0, 2)
 	data.handles = make([dynamic]Handle, 0, 2)
 	data.rests = make([dynamic]Cell, 0, 4)
+	data.seeds = make([dynamic]Cell, 0, MAX_SEEDS)
+	data.hollows = make([dynamic]Cell, 0, MAX_HOLLOWS)
 	has_start := false
 	part: u8 = 0 // the part being described (between `part` and `end`)
 	dynamic_count := 0
@@ -423,7 +441,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 			}
 			if !found {
-				return data, fail(line_no, "mechanic: expected veiled or handle")
+				return data, fail(line_no, "mechanic: expected veiled, handle or ants")
 			}
 
 		case "rest":
@@ -433,6 +451,27 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			}
 			append(&data.rests, v)
 			max_z = max(max_z, v.z)
+
+		case "seed", "hollow":
+			v: [3]i32
+			if !ints(args, v[:]) {
+				return data, fail(line_no, "%s: expected x y %s", fields[0], fields[0] == "seed" ? "h" : "z")
+			}
+			if part != 0 {
+				return data, fail(line_no, "%s: not inside a part", fields[0])
+			}
+			if fields[0] == "seed" {
+				if len(data.seeds) == MAX_SEEDS {
+					return data, fail(line_no, "seed: at most %d per level", MAX_SEEDS)
+				}
+				append(&data.seeds, v)
+			} else {
+				if len(data.hollows) == MAX_HOLLOWS {
+					return data, fail(line_no, "hollow: at most %d per level", MAX_HOLLOWS)
+				}
+				append(&data.hollows, v)
+			}
+			max_z = max(max_z, v.z + 1)
 
 		case "oil":
 			v: [1]i32
@@ -473,7 +512,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 			}
 			if !found {
-				return data, fail(line_no, "setting: expected one of night, crag_sunset, dusk, night_candles, deep_night, forest_night, river_dawn, crag_day, temple_dusk")
+				return data, fail(line_no, "setting: expected one of night, crag_sunset, dusk, night_candles, deep_night, forest_night, river_dawn, crag_day, temple_dusk, venus_evening")
 			}
 
 		case "tier":
@@ -603,7 +642,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			append(&data.props, p)
 			max_z = max(max_z, v.z + 1)
 
-		case "start", "sigil", "amore", "fragment", "exit", "prologue", "flight":
+		case "start", "sigil", "amore", "fragment", "exit", "prologue", "flight", "venus":
 			v: [3]i32
 			if !ints(args, v[:]) {
 				return data, fail(line_no, "%s: expected x y h", fields[0])
@@ -627,6 +666,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			case "exit": data.exit, data.has_exit = v, true
 			case "prologue": data.prologue, data.has_prologue, data.scene = v, true, .Oracle
 			case "flight": data.prologue, data.has_prologue, data.scene = v, true, .Flight
+			case "venus": data.prologue, data.has_prologue, data.scene = v, true, .Venus
 			}
 			max_z = max(max_z, v.z)
 
@@ -717,6 +757,19 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 		if !check(p.cell, data.size, data.height) {
 			return data, fail(0, "prop %v outside the grid", p.cell)
 		}
+	}
+	for c in data.seeds {
+		if !check(c, data.size, data.height) {
+			return data, fail(0, "seed %v outside the grid", c)
+		}
+	}
+	for c in data.hollows {
+		if !check(c, data.size, data.height) {
+			return data, fail(0, "hollow %v outside the grid", c)
+		}
+	}
+	if len(data.seeds) > 0 && len(data.hollows) == 0 {
+		return data, fail(0, "seed: a level with seeds needs a hollow")
 	}
 	// a part must stay inside the grid in all four positions
 	for e in data.blocks {

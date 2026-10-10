@@ -1,0 +1,151 @@
+# The Trial of Psyche - level III.1: "The House of Venus"
+# The first of Act III: it opens with the Venus cutscene (the goddess pours
+# the seeds and leaves on her doves; an ant takes pity on Psyche) and teaches
+# the ants (skill 3). Evening on Venus's house above the clouds: an atrium, a
+# bridge over her pool, a rose garden, walks round the pool up to her terrace.
+#   - the atrium: the first seed, carried round Psyche into the bridge's hollow;
+#   - the garden: two seeds; the walk above has a hollow, reached by stairs,
+#     which the ants never climb: only view 1 shows a flat way to it (an
+#     illusion), and either seed goes there;
+#   - the north walk: a seed lies across it, the ants carry it on into the
+#     hollow at its end; from there view 0 joins Venus's terrace.
+# Solution (solver: 24 steps, 2 turns, 3 ants, 0 dead ends).
+# Fragment (VI.7-8) in the rose bower: the other garden seed carried there in
+# view 0, across the illusion from the garden's south-west corner.
+# Commands for the ants: `seed x y h` (a stone of seeds resting on surface
+# x y h), `hollow x y z` (an empty block cell in a floor where a seed drops in).
+# Format: see level_04.txt.
+size 13
+setting venus_evening
+mechanic ants
+water 5 3 8 10
+
+# A: the atrium where Psyche starts (h1), the heap Venus poured out
+column 9 9 0 0
+column 10 9 0 0
+column 11 9 0 0
+column 9 10 0 0
+column 10 10 0 0
+column 11 10 0 0
+column 9 11 0 0
+column 10 11 0 0
+column 11 11 0 0
+seed 11 9 1
+prop heap 9 11 1
+prop rail 9 9 1 my
+prop rail 10 9 1 my
+prop rail 9 10 1 mx
+prop rail 11 10 1 px
+prop rail 11 11 1 px
+prop rail 11 11 1 py
+prop rail 10 11 1 py
+prop rose 9 10 1 my
+candelabrum 11 10 1 px lit
+
+# the bridge west over the pool, broken by the first hollow (h1)
+hollow 8 9 0
+column 7 9 0 0
+column 6 9 0 0
+prop rail 7 9 1 my
+prop rail 7 9 1 py
+prop rail 6 9 1 my
+prop rail 6 9 1 py
+
+# B: the rose garden (h1), two seeds
+column 5 9 0 0
+column 5 8 0 0
+column 4 8 0 0
+column 3 8 0 0
+column 2 8 0 0
+column 4 9 0 0
+column 3 9 0 0
+column 2 9 0 0
+seed 2 8 1
+seed 4 9 1
+stairs 5 7 1 my
+column 5 7 0 0
+prop rail 2 9 1 mx
+prop rail 4 8 1 my
+prop rail 3 9 1 py
+prop rose 5 8 1 px
+prop rose 2 9 1 mx
+prop rose 3 9 1 py
+
+# the rose bower (h2): a hollow, and the fragment beyond
+column 3 11 0 1
+hollow 2 11 1
+column 1 11 0 1
+prop rail 1 11 2 my
+prop rail 1 11 2 mx
+prop rail 1 11 2 py
+prop rail 3 11 2 py
+prop rail 3 11 2 px
+prop rose 3 11 2 px
+prop myrtle 1 11 2 mx
+
+# C: the west walk (h2), broken by the second hollow
+column 5 6 0 1
+column 4 6 0 1
+column 4 5 0 1
+hollow 4 4 1
+column 4 3 0 1
+column 4 2 0 1
+prop rail 4 6 2 mx
+prop rail 5 6 2 my
+prop rail 5 6 2 px
+prop rail 4 5 2 mx
+prop rail 4 5 2 px
+prop rail 4 3 2 mx
+prop rail 4 3 2 px
+prop rail 4 2 2 mx
+prop rail 4 2 2 my
+prop myrtle 5 6 2 px
+prop myrtle 4 2 2 mx
+prop sconce 4 6 1 mx
+prop sconce 4 3 1 mx
+
+# D: the north walk (h2): a seed lies across it, a hollow at its end
+column 5 2 0 1
+column 6 2 0 1
+column 7 2 0 1
+column 8 2 0 1
+seed 6 2 2
+hollow 9 2 1
+prop rail 5 2 2 my
+prop rail 7 2 2 my
+prop rail 8 2 2 my
+prop rail 5 2 2 py
+prop rail 7 2 2 py
+prop rail 8 2 2 py
+
+# E: Venus's terrace (h3), joined to the end of the walk in the first view
+column 10 4 0 2
+column 11 4 0 2
+column 10 5 0 2
+column 11 5 0 2
+prop rail 11 5 3 px
+prop rail 11 5 3 py
+prop rail 10 5 3 py
+prop rail 10 5 3 mx
+prop rail 11 4 3 px
+prop rail 11 4 3 my
+prop rail 10 4 3 mx
+prop pillar 10 5 3
+candelabrum 11 4 3 my lit
+prop myrtle 10 4 3 px
+prop sconce 11 5 1 px
+prop sconce 11 4 1 px
+
+# the pool: Venus in marble among the water
+column 7 6 0 0
+prop statue 7 6 1 px
+
+start 11 11 1
+rest 11 11 1
+rest 5 9 1
+exit 11 5 3
+venus 11 4 3
+fragment 1 11 2
+intro intro_iii_1
+outro outro_iii_1
+hint 11 11 1 hint_ants

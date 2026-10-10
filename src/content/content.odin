@@ -60,7 +60,7 @@ LEVELS := [?]Level_Info {
 	{"II.2", .II, .Level_II_2, #load("../../assets/levels/level_06.txt", string)},
 	{"II.3", .II, .Level_II_3, #load("../../assets/levels/level_07.txt", string)},
 	{"II.4", .II, .Level_II_4, #load("../../assets/levels/level_08.txt", string)},
-	{"III.1", .III, .Level_III_1, ""},
+	{"III.1", .III, .Level_III_1, #load("../../assets/levels/level_09.txt", string)},
 	{"III.2", .III, .Level_III_2, ""},
 	{"III.3", .III, .Level_III_3, ""},
 	{"III.4", .III, .Level_III_4, ""},
@@ -159,16 +159,18 @@ SHADER_RIDGES_FS :: #load("../../assets/shaders/ridges.fs", cstring)
 SHADER_POST_BLUR_FS :: #load("../../assets/shaders/post_blur.fs", cstring)
 SHADER_VEIL_FS :: #load("../../assets/shaders/veil.fs", cstring)
 
-// The skills Psyche learns along the way, one or two per act, each on its
+// The skills Psyche learns along the way, one per act, each on its
 // number key (1, 2...): the HUD's slots. Each is known from a level on.
 Skill :: enum u8 {
 	Lamp, // 1
 	Handle, // 2
+	Ants, // 3
 }
 
 SKILL_FROM := [Skill]string {
 	.Lamp   = "I.4",
 	.Handle = "II.3",
+	.Ants   = "III.1",
 }
 
 MAX_SKILLS :: 4 // the slots of the HUD: the ones still to learn show locked
