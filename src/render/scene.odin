@@ -1569,6 +1569,16 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 			c := game.fragment_world(g, i) + {0, 0, lift}
 			glow(v, c, 58, {1.0, 0.86, 0.55, a * (0.3 + 0.08 * math.sin(t * 2.1 + f32(i)))})
 			glow(v, c, 16, {1.0, 0.95, 0.8, a * 0.45})
+			// a shaft of soft light rising over it, fading upward, seen from afar
+			base := pl.node_world(&g.palace, g.data.fragments[i])
+			breath := 0.8 + 0.2 * math.sin(t * 1.3 + f32(i) * 1.7)
+			for n in 0 ..< 6 {
+				h := f32(n) * 0.38
+				fall := 1 - f32(n) / 6
+				glow(v, base + {0, 0, 0.35 + h}, 20 - f32(n) * 1.5, {1.0, 0.88, 0.6, a * 0.26 * fall * fall * breath}, 2.4)
+			}
+			glow(v, base + {0, 0, 1.1}, 9, {1.0, 0.95, 0.82, a * 0.34 * breath}, 9)
+			glow(v, base + {0, 0, 0.02}, 40, {1.0, 0.85, 0.5, a * 0.25 * breath}, 0.5)
 		}
 	}
 	// the exit: a pale breath of wind on the stone

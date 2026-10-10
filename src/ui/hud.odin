@@ -58,11 +58,16 @@ draw_hud :: proc(u: ^Ui, g: ^game.Game, input: Hud_Input = {}) -> (act: Hud_Acti
 		rule_label(u, caps(i18n.tr(content.ACT_LABEL[content.LEVELS[g.level_index].act])), {w * 0.5, 100 * s}, 20, 100 * s, a)
 	}
 	if a := game.fade_alpha(hud.voice); a > 0 {
-		st := Style{size = 38, color = TITLE, face = .Italic, shadow = true}
+		st := Style{size = 40, color = TITLE, face = .Italic, shadow = true}
 		msg := i18n.tr(hud.voice.key)
 		bh := block_height(u, msg, st, 1300 * s)
-		// centred in the band above the hints
+		// centred in the band above the hints, on a card of the interface
 		top := h - 250 * s - bh * 0.5
+		lw: f32 = 0
+		for line in wrap(u, msg, st, 1300 * s) {
+			lw = max(lw, measure(u, line, st).x)
+		}
+		warm_card(u, {w * 0.5 - lw * 0.5 - 44 * s, top - 18 * s, lw + 88 * s, bh + 30 * s}, a, 0.3)
 		paragraph(u, msg, {w * 0.5, top}, st, 1300 * s, a)
 	}
 	if !hud.visible {
@@ -71,6 +76,7 @@ draw_hud :: proc(u: ^Ui, g: ^game.Game, input: Hud_Input = {}) -> (act: Hud_Acti
 	if a := game.keys_badge_alpha(g); a > 0 && !u.toast_visible {
 		keys_badge(u, a)
 	}
+	draw_fragment_count(u, g)
 	teaching := hud.hint.active && game.is_tutorial(hud.hint.key) && hud.hint.hide_t < 0
 	if hud.hint.active && game.is_tutorial(hud.hint.key) {
 		draw_tutorial(u, g)
@@ -582,6 +588,50 @@ draw_place :: proc(u: ^Ui, g: ^game.Game, hud: Hud_Input, act: ^Hud_Action) {
 key_cap_width :: proc(u: ^Ui, key: string, k: f32) -> f32 {
 	m := measure(u, key, {size = 21 * k / u.scale, face = .Semi})
 	return max(m.x + 14 * k, 28 * k)
+}
+
+// Top right: the fragments of the tale in this level, found and in all, beside
+// a little scroll; it brightens a moment when one is found.
+@(private)
+draw_fragment_count :: proc(u: ^Ui, g: ^game.Game) {
+	total := len(g.data.fragments)
+	if total == 0 || g.phase == .Prologue {
+		return
+	}
+	k := hud_k(u)
+	found := card(g.fragments_taken + g.fragments_known)
+	flash: f32 = 0
+	for t, i in g.fragment_t[:total] {
+		if t >= 0 && i in g.fragments_taken {
+			flash = max(flash, 1 - fx.clamp01(t / 2.5))
+		}
+	}
+	st := Style{size = 30 * k / u.scale, color = found == total ? BRIGHT : TEXT, face = .Semi, shadow = true}
+	label := fmt.tprintf("%d / %d", found, total)
+	m := measure(u, label, st)
+	right := u.width - 40 * k
+	y := 36 * k
+	text(u, label, {right, y + (28 * k - m.y) * 0.5 - k}, st, .Right)
+	c := Vec2{right - m.x - 30 * k, y + 14 * k}
+	if flash > 0 {
+		glow_dot(c, 34 * k, {255, 214, 140, 255}, flash * 0.9)
+	}
+	scroll_icon(c, k * 1.3, fade(found == total ? BRIGHT : GOLD, 1), found > 0)
+}
+
+// A rolled papyrus, its two ends round; filled when a fragment has been found.
+@(private)
+scroll_icon :: proc(c: Vec2, k: f32, col: rl.Color, filled: bool) {
+	body := rl.Rectangle{c.x - 9 * k, c.y - 7 * k, 18 * k, 14 * k}
+	if filled {
+		rl.DrawRectangleRec(body, fade(col, 0.35))
+	}
+	rl.DrawRectangleLinesEx(body, max(1.6 * k, 1), col)
+	for x in ([2]f32{body.x, body.x + body.width}) {
+		rl.DrawEllipse(i32(x), i32(c.y), 3 * k, 9 * k, col)
+	}
+	rl.DrawLineEx({c.x - 5 * k, c.y - 2 * k}, {c.x + 5 * k, c.y - 2 * k}, max(1.2 * k, 1), col)
+	rl.DrawLineEx({c.x - 5 * k, c.y + 2.5 * k}, {c.x + 3 * k, c.y + 2.5 * k}, max(1.2 * k, 1), col)
 }
 
 // Top left, quiet: the key for the pause (with the controls).
