@@ -201,6 +201,7 @@ Key :: enum u16 {
 	Set_Restart_Twice,
 	Set_Reduce_Motion,
 	Set_Endless_Oil,
+	Set_See_Through,
 	Controls,
 	Controls_Dark,
 
@@ -613,6 +614,7 @@ IT := [Key]string {
 	.Set_Restart_Twice = "R due volte invece di tenere",
 	.Set_Reduce_Motion = "Riduci il movimento",
 	.Set_Endless_Oil = "L'olio non finisce",
+	.Set_See_Through = "Psiche visibile tra le pareti",
 	.Controls       = "Clic: cammina  ·  Q / E: ruota il palazzo  ·  1 / tasto destro: lampada  ·  2: manovella  ·  Spazio: azione del luogo  ·  R: braciere (tieni premuto: ricomincia)  ·  Esc: pausa",
 	.Controls_Dark  = "Clic: cammina  ·  Q / E: ruota il palazzo  ·  Spazio: azione del luogo  ·  R: braciere (tieni premuto: ricomincia)  ·  Esc: pausa",
 
@@ -899,6 +901,7 @@ EN := [Key]string {
 	.Set_Restart_Twice = "R twice instead of holding",
 	.Set_Reduce_Motion = "Reduce motion",
 	.Set_Endless_Oil = "Endless oil",
+	.Set_See_Through = "Psyche seen through walls",
 	.Controls       = "Click: walk  ·  Q / E: turn the palace  ·  1 / right click: lamp  ·  2: handle  ·  Space: action of the place  ·  R: brazier (hold: start again)  ·  Esc: pause",
 	.Controls_Dark  = "Click: walk  ·  Q / E: turn the palace  ·  Space: action of the place  ·  R: brazier (hold: start again)  ·  Esc: pause",
 

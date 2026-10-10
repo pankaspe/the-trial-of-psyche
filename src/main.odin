@@ -533,6 +533,7 @@ frame :: proc(app: ^App) {
 	paused := app.screen == .Pause || app.screen == .Fragment || app.screen == .Mechanic || (app.screen == .Settings && app.settings_from == .Pause)
 	if !paused {
 		game.update(g, dt)
+		app.scene.see_through = app.cfg.see_through
 		render.scene_update(&app.scene, g, dt)
 	}
 	if app.menu_fade >= 0 {

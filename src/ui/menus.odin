@@ -914,6 +914,12 @@ settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, na
 		}
 		line(u, left, right, y)
 		y += row
+		if step := option_row(u, i18n.tr(.Set_See_Through), on_off(cfg.see_through), y, left, right); step != 0 {
+			cfg.see_through = !cfg.see_through
+			changes += {.Access}
+		}
+		line(u, left, right, y)
+		y += row
 		if step := option_row(u, i18n.tr(.Set_Endless_Oil), on_off(cfg.endless_oil), y, left, right); step != 0 {
 			cfg.endless_oil = !cfg.endless_oil
 			changes += {.Access}

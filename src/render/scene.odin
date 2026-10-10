@@ -227,6 +227,8 @@ Piece :: struct {
 
 Scene :: struct {
 	pieces:     [dynamic]Piece,
+	see:        []f32, // per piece: 0 .. 1 faded, standing between the camera and Psyche
+	see_through: bool, // the accessibility setting (fade them)
 	fit:        Rect, // proto pixels that hold the palace from every view
 	motes:      fx.Pool(64), // drifting in front of everything (proto px)
 	sparks:     fx.Pool(64), // around Cupid (world)
@@ -354,6 +356,7 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 			}
 		}
 	}
+	s.see = make([]f32, len(s.pieces), allocator)
 	// a tall level: each band of heights framed from every view (the pieces of
 	// the band, a little of the rock under it and the figure over it)
 	for t, i in g.data.tiers {
@@ -477,6 +480,7 @@ emit_mote :: proc(s: ^Scene, aged: bool) {
 }
 
 scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
+	update_see_through(s, g, dt)
 	if len(g.data.tiers) > 0 {
 		s.pan_t += dt
 		if t := camera_tier(g); t != s.tier {
@@ -915,6 +919,54 @@ piece_state :: proc(g: ^game.Game, p: Piece, i: int) -> (lift, alpha: f32, visib
 	return
 }
 
+// Accessibility: the pieces that stand between the camera and Psyche fade to
+// a faint ghost (and back when she has passed), so she is never lost behind
+// a wall. A piece hides her when its cube, seen from the camera, covers a
+// point of her figure and is nearer; her own column (the floor, the stair
+// under her) never fades.
+@(private)
+update_see_through :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
+	if len(s.see) != len(s.pieces) {
+		return
+	}
+	psy := g.psyche
+	on := s.see_through && g.phase != .Prologue
+	k := fx.clamp01(dt * 7)
+	for p, i in s.pieces {
+		target: f32 = 0
+		c := piece_cell(g, p)
+		mine := (c.x == psy.cell.x && c.y == psy.cell.y) || (psy.walking && c.x == psy.step_to.x && c.y == psy.step_to.y)
+		if on && !mine {
+			center := iso.view_point({f32(c.x) + 0.5, f32(c.y) + 0.5, f32(c.z) + 0.5}, g.angle, g.data.size)
+			sc := iso.project(center)
+			// her figure: three heights, each with her width on either side (proto px)
+			test: for h in ([3]f32{0.1, 0.32, 0.55}) {
+				q := iso.view_point(psy.pos + {0, 0, h}, g.angle, g.data.size)
+				if iso.depth(center) < iso.depth(q) + 0.3 {
+					continue // behind her
+				}
+				for side in ([3]f32{-10, 0, 10}) {
+					d := iso.project(q) + {side, 0} - sc
+					if abs(d.x) <= 64 && abs(d.y) <= 64 - abs(d.x) * 0.5 {
+						target = 1
+						break test
+					}
+				}
+			}
+		}
+		s.see[i] += (target - s.see[i]) * k
+	}
+}
+
+// What is left of a piece faded by the see-through: a faint ghost.
+@(private)
+see_alpha :: proc(s: ^Scene, i: int) -> f32 {
+	if i >= len(s.see) {
+		return 1
+	}
+	return 1 - 0.82 * s.see[i]
+}
+
 // Opaque pieces first (transparent = false), then the see-through ones, far to near.
 @(private)
 draw_pieces :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, transparent: bool) {
@@ -925,6 +977,7 @@ draw_pieces :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, transparent: bool) {
 	order := make([dynamic]Drawn, 0, len(s.pieces), context.temp_allocator)
 	for p, i in s.pieces {
 		_, alpha, visible, ghost, hidden := piece_state(g, p, i)
+		alpha *= see_alpha(s, i)
 		if visible && (alpha < 1 || hidden || ghost) == transparent {
 			c := piece_cell(g, p)
 			d := iso.depth(iso.view_point({f32(c.x) + 0.5, f32(c.y) + 0.5, f32(c.z) + 0.5}, g.angle, g.data.size))
@@ -938,6 +991,7 @@ draw_pieces :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, transparent: bool) {
 		i := o.index
 		p := s.pieces[i]
 		lift, alpha, _, _, hidden := piece_state(g, p, i)
+		alpha *= see_alpha(s, i)
 		material := p.material
 		detail: f32 = 0
 		if p.cube {
