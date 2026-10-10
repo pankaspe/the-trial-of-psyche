@@ -893,11 +893,12 @@ place :: proc(g: ^game.Game) -> bool {
 	return game.at_seed(g) && game.call_ants(g)
 }
 
-// The pad in play: the stick (or the d-pad) steers Psyche; West the lamp,
-// North the handle, LT the ants, South the action of the place (or the
-// handle she stands on); the shoulders or a flick of the right stick turn the
-// palace (RT waits for the last skill). East, the brazier, is read with the
-// HUD (update_rest).
+// The pad in play: the stick (or the d-pad) steers Psyche; each skill on its
+// own button, as its slot shows (West the lamp, North the handle, LT the
+// ants; RT waits for the last skill), South into the cave at her feet; the
+// shoulders or a flick of the right stick turn the palace. East, the brazier,
+// is read with the HUD (update_rest). One button, one thing: South does not
+// stand in for a skill, so a button never does what another one shows.
 pad_play :: proc(app: ^App) {
 	g := &app.game
 	dir, fresh := input.steer()
@@ -912,9 +913,7 @@ pad_play :: proc(app: ^App) {
 		game.call_ants(g)
 	}
 	if input.take(.South) {
-		if !place(g) && game.on_handle(g) && game.has_skill(g, .Handle) {
-			game.use_handle(g)
-		}
+		game.enter_cave(g)
 	}
 	turn := input.flick()
 	if input.take(.LB) {

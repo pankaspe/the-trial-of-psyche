@@ -115,8 +115,13 @@ pad_texts_name_its_buttons :: proc(t: ^testing.T) {
 		s := i18n.tr(.Controls)
 		testing.expectf(t, strings.contains(s, "LB") && !strings.contains(s, "{"), "%v: the pad's controls name LB: %s", l, s)
 		testing.expectf(t, strings.contains(i18n.tr(.Hint_Lamp), "X"), "%v: the lamp is X", l)
+		for k in ([]i18n.Key{.Hint_Ants, .Mech_Ants}) {
+			// the ants are LT, the button their slot shows, not A
+			testing.expectf(t, strings.contains(i18n.tr(k), "LT") && !strings.contains(i18n.tr(k), " A:"), "%v: the ants are LT: %s", l, i18n.tr(k))
+		}
 		i18n.set_pad(i18n.pad_playstation())
 		testing.expectf(t, strings.contains(i18n.tr(.Hint_Turn), "L1"), "%v: PlayStation shoulders", l)
+		testing.expectf(t, strings.contains(i18n.tr(.Hint_Ants), "L2"), "%v: PlayStation triggers", l)
 		i18n.set_pad(nil)
 		testing.expectf(t, strings.contains(i18n.tr(.Controls), "Q / E"), "%v: the keyboard's controls again", l)
 	}

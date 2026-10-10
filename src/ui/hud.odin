@@ -8,8 +8,8 @@
 //   over Psyche the action of the place (Space), when there is one: into a
 //              cave, or the ants called to the seed beside her.
 // With a pad in hand the keys give way to its buttons (`control`): West the
-// lamp, North the handle, LT the ants, LB / RB turn, East the brazier, South
-// the place, Start the pause.
+// lamp, North the handle, LT the ants (also on the card over Psyche), LB / RB
+// turn, East the brazier, South the cave, Start the pause.
 // Titles, Cupid's voice, hints and tutorials as before. Everything but the
 // titles follows the HUD size of the accessibility settings.
 package ui
@@ -566,7 +566,9 @@ draw_place :: proc(u: ^Ui, g: ^game.Game, hud: Hud_Input, act: ^Hud_Action) {
 	st := Style{size = 22 * k / u.scale, color = TEXT, face = .Semi}
 	msg := i18n.tr(u.place_key)
 	m := measure(u, msg, st)
-	cap_w := u.pad ? pad_button_width(u, .South, k) : key_cap_width(u, i18n.tr(.Key_Space), k)
+	// with a pad the ants are LT, their skill's button (South only enters caves)
+	button: input.Button = u.place_key == .Place_Ants ? SKILL_PAD[2] : .South
+	cap_w := u.pad ? pad_button_width(u, button, k) : key_cap_width(u, i18n.tr(.Key_Space), k)
 	wd := cap_w + m.x + 40 * k
 	ht := 46 * k
 	lift := (1 - fx.cubic_out(a)) * 10 * k
@@ -575,7 +577,7 @@ draw_place :: proc(u: ^Ui, g: ^game.Game, hud: Hud_Input, act: ^Hud_Action) {
 	add_hot(u, box)
 	hover := here && mouse_over(u, box)
 	warm_card(u, box, a, hover ? 0.8 : 0.4, k)
-	control(u, i18n.tr(.Key_Space), .South, {box.x + 12 * k, box.y + (ht - 28 * k) * 0.5}, a, k)
+	control(u, i18n.tr(.Key_Space), button, {box.x + 12 * k, box.y + (ht - 28 * k) * 0.5}, a, k)
 	text(u, msg, {box.x + 24 * k + cap_w, box.y + (ht - m.y) * 0.5 - k}, {size = st.size, color = hover ? BRIGHT : TEXT, face = .Semi}, .Left, a)
 	tip := Vec2{p.x, box.y + ht + 10 * k}
 	tri(tip, tip + {-8 * k, -10 * k}, tip + {8 * k, -10 * k}, fade(GOLD, a))

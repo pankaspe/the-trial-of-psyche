@@ -227,12 +227,11 @@ Key :: enum u16 {
 	Hint_Veiled,
 	Hint_Handle,
 	Hint_Ants,
-	Hint_Ants_Find,
 	Hint_Ants_No_Way,
 	Hint_Rest,
 
 	// with a pad in hand: the texts that name keys, in `pad_text` (buttons as
-	// {S} {E} {W} {N} {LB} {RB} {START}, named by the pad's layout)
+	// {S} {E} {W} {N} {LB} {RB} {LT} {RT} {START}, named by the pad's layout)
 	Card_Continue_Pad,
 	Pro_Start_Pad,
 	Fragment_Continue_Pad,
@@ -342,18 +341,18 @@ tr :: proc(k: Key) -> string {
 	return TABLES[current][k]
 }
 
-// The names of a pad's buttons, by place: {S} {E} {W} {N} {LB} {RB} {START}.
+// The names of a pad's buttons, by place: {S} {E} {W} {N} {LB} {RB} {LT} {RT} {START}.
 Pad_Names :: struct {
-	south, east, west, north, lb, rb, start: string,
+	south, east, west, north, lb, rb, lt, rt, start: string,
 }
 
-PAD_XBOX :: Pad_Names{"A", "B", "X", "Y", "LB", "RB", "Start"}
-PAD_NINTENDO :: Pad_Names{"B", "A", "Y", "X", "L", "R", "+"}
+PAD_XBOX :: Pad_Names{"A", "B", "X", "Y", "LB", "RB", "LT", "RT", "Start"}
+PAD_NINTENDO :: Pad_Names{"B", "A", "Y", "X", "L", "R", "ZL", "ZR", "+"}
 
 // The PlayStation's face buttons have names, in the current language.
 pad_playstation :: proc() -> Pad_Names {
 	t := TABLES[current]
-	return {t[.Pad_Cross], t[.Pad_Circle], t[.Pad_Square], t[.Pad_Triangle], "L1", "R1", "Options"}
+	return {t[.Pad_Cross], t[.Pad_Circle], t[.Pad_Square], t[.Pad_Triangle], "L1", "R1", "L2", "R2", "Options"}
 }
 
 @(private)
@@ -404,6 +403,8 @@ pad_text :: proc(s: string) -> string {
 	out, _ = strings.replace_all(out, "{N}", n.north, context.temp_allocator)
 	out, _ = strings.replace_all(out, "{LB}", n.lb, context.temp_allocator)
 	out, _ = strings.replace_all(out, "{RB}", n.rb, context.temp_allocator)
+	out, _ = strings.replace_all(out, "{LT}", n.lt, context.temp_allocator)
+	out, _ = strings.replace_all(out, "{RT}", n.rt, context.temp_allocator)
 	out, _ = strings.replace_all(out, "{START}", n.start, context.temp_allocator)
 	return out
 }
@@ -630,14 +631,13 @@ IT := [Key]string {
 	.Hint_Veiled    = "La lampada mostra in oro ciò che il buio nasconde: avvicinati con la luce, e diventa vero per sempre",
 	.Hint_Handle    = "Sei su una manovella: premi 2 (o clicca su Psiche) per ruotare la parte che muove",
 	.Hint_Ants      = "Accanto alla pietra di semi, premi 3 (o Spazio): le formiche la porteranno nella cavità",
-	.Hint_Ants_Find = "Le formiche aspettano accanto a una pietra di semi",
 	.Hint_Ants_No_Way = "Da qui le formiche non vedono una strada fino a una cavità: prova un'altra vista",
 	.Hint_Rest      = "Un braciere acceso: se ti perdi, R ti riporta qui (tenuto premuto, ricomincia il livello)",
 	.Card_Continue_Pad = "Premi {S} per continuare",
 	.Pro_Start_Pad  = "Premi un pulsante per iniziare",
 	.Fragment_Continue_Pad = "Premi {S} per continuare",
 	.Mech_Handle_Pad = "Una manovella muove la parte segnata dall'intarsio di bronzo.\nStando sulla manovella, premi {N}: la parte ruota di un quarto.",
-	.Mech_Ants_Pad  = "Accanto a una pietra di semi, premi {S}: le formiche la portano alla cavità più vicina, per la strada che vedi.\nAnche sulle illusioni: e lì la pietra resta vera, da ogni lato.",
+	.Mech_Ants_Pad  = "Accanto a una pietra di semi, premi {LT}: le formiche la portano alla cavità più vicina, per la strada che vedi.\nAnche sulle illusioni: e lì la pietra resta vera, da ogni lato.",
 	.Hint_No_Rest_Pad = "Nessun braciere acceso: tieni premuto {E} per ricominciare il livello",
 	.Hint_No_Rest_Twice_Pad = "Nessun braciere acceso: premi due volte {E} per ricominciare il livello",
 	.Hint_Again_Twice_Pad = "Premi di nuovo {E} per ricominciare il livello",
@@ -649,7 +649,7 @@ IT := [Key]string {
 	.Hint_Oil_Pad   = "La lampada consuma olio finché è accesa (le tacche nel suo riquadro, a sinistra): premi di nuovo {W} per spegnerla",
 	.Hint_Turn_Pad  = "Il monte non si mostra mai tutto da un lato. Premi {LB} o {RB} per girargli intorno: da un'altra parte le rocce lontane si toccano, e affiorano i frammenti del racconto.",
 	.Hint_Handle_Pad = "Sei su una manovella: premi {N} per ruotare la parte che muove",
-	.Hint_Ants_Pad  = "Accanto alla pietra di semi, premi {S}: le formiche la porteranno nella cavità",
+	.Hint_Ants_Pad  = "Accanto alla pietra di semi, premi {LT}: le formiche la porteranno nella cavità",
 	.Hint_Rest_Pad  = "Un braciere acceso: se ti perdi, {E} ti riporta qui (tenuto premuto, ricomincia il livello)",
 	.Pad_Cross      = "Croce",
 	.Pad_Circle     = "Cerchio",
@@ -911,14 +911,13 @@ EN := [Key]string {
 	.Hint_Veiled    = "The lamp shows in gold what the dark hides: come near with the light, and it becomes real for good",
 	.Hint_Handle    = "You stand on a handle: press 2 (or click Psyche) to turn the part it moves",
 	.Hint_Ants      = "Beside the stone of seeds, press 3 (or Space): the ants will carry it into the hollow",
-	.Hint_Ants_Find = "The ants wait beside a stone of seeds",
 	.Hint_Ants_No_Way = "From here the ants see no way to a hollow: try another view",
 	.Hint_Rest      = "A lit brazier: if you lose your way, R brings you back here (held down, it restarts the level)",
 	.Card_Continue_Pad = "Press {S} to continue",
 	.Pro_Start_Pad  = "Press any button to begin",
 	.Fragment_Continue_Pad = "Press {S} to continue",
 	.Mech_Handle_Pad = "A handle moves the part marked by the bronze inlay.\nStanding on the handle, press {N}: the part turns a quarter.",
-	.Mech_Ants_Pad  = "Beside a stone of seeds, press {S}: the ants carry it to the nearest hollow, along the way you see.\nAcross illusions too: and there the stone stays real, from every side.",
+	.Mech_Ants_Pad  = "Beside a stone of seeds, press {LT}: the ants carry it to the nearest hollow, along the way you see.\nAcross illusions too: and there the stone stays real, from every side.",
 	.Hint_No_Rest_Pad = "No brazier lit: hold {E} to start the level again",
 	.Hint_No_Rest_Twice_Pad = "No brazier lit: press {E} twice to start the level again",
 	.Hint_Again_Twice_Pad = "Press {E} again to start the level again",
@@ -930,7 +929,7 @@ EN := [Key]string {
 	.Hint_Oil_Pad   = "The lamp burns oil while it is lit (the notches in its slot, on the left): press {W} again to put it out",
 	.Hint_Turn_Pad  = "The mountain never shows itself whole from one side. Press {LB} or {RB} to walk around it: from elsewhere, distant rocks touch, and fragments of the tale come to light.",
 	.Hint_Handle_Pad = "You stand on a handle: press {N} to turn the part it moves",
-	.Hint_Ants_Pad  = "Beside the stone of seeds, press {S}: the ants will carry it into the hollow",
+	.Hint_Ants_Pad  = "Beside the stone of seeds, press {LT}: the ants will carry it into the hollow",
 	.Hint_Rest_Pad  = "A lit brazier: if you lose your way, {E} brings you back here (held down, it restarts the level)",
 	.Pad_Cross      = "Cross",
 	.Pad_Circle     = "Circle",

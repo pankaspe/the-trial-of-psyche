@@ -1211,7 +1211,8 @@ at_seed :: proc(g: ^Game) -> bool {
 }
 
 // Call the ants to the seed beside her. True if they carry it away (phase
-// Carry); with no way in this view they come and go back.
+// Carry); with no way in this view they come and go back. No seed beside
+// her: nothing happens (a skill that cannot be used does nothing).
 call_ants :: proc(g: ^Game) -> bool {
 	if !g.active || g.phase != .Play || g.turning || g.psyche.walking || !has_skill(g, .Ants) {
 		return false
@@ -1219,8 +1220,6 @@ call_ants :: proc(g: ^Game) -> bool {
 	p := &g.palace
 	i := pl.seed_beside(p, g.psyche.cell)
 	if i < 0 {
-		audio.play(.Blocked, -10)
-		hint(g, .Hint_Ants_Find, 4, true)
 		return false
 	}
 	c := &g.carry
