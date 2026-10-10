@@ -11,12 +11,18 @@
 // turn) are also solved move by move: the tool prints the plan with the
 // fewest decisions, how many states can be reached and how many of them are
 // dead ends (the level must be restarted), and checks that no part turns
-// into the palace.
+// into the palace. For the designer, two more reports: where the ants take
+// each seed from every side, by day and at evening in each view (the traps);
+// and which pieces the level could do without (each reed, ram, seed, handle,
+// pair of caves taken out in turn: a level still solved without one has a
+// piece that does nothing, or a way round it).
 package level_check
 
+import sa "core:container/small_array"
 import "core:fmt"
 import "core:mem/virtual"
 import "core:os"
+import "core:strconv"
 import "core:strings"
 import "base:runtime"
 
@@ -48,6 +54,10 @@ main :: proc() {
 	}
 	p: pl.Palace
 	pl.init(&p, &data, alloc)
+	if len(os.args) > 2 && os.args[2] == "--brief" {
+		brief(&p, &data, alloc)
+		return
+	}
 
 	fmt.printfln("%s: %d x %d grid, %d blocks, %d props, %d rising", path, data.size, data.size, len(data.blocks), len(data.props), len(data.rise))
 	for k in 0 ..< 4 {
@@ -112,7 +122,9 @@ main :: proc() {
 	}
 
 	if pl.is_dynamic(&data) {
+		ants_report(&p, &data)
 		solve_report(&p, &data, alloc)
+		needed_report(string(text))
 		return
 	}
 	for c, i in data.fragments {
@@ -531,6 +543,7 @@ print_plan :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Alloca
 		return false
 	}
 	fmt.printfln("plan: %d steps (%d in the light), %d turns, %d lightings, %d handles, %d ants, %d times turned", sol.steps, sol.light_steps, sol.turns, sol.lightings, sol.handles, sol.ants, sol.times)
+	fmt.printfln("decisions: %d (turns, lightings, handles, ants, reeds)", sol.turns + sol.lightings + sol.handles + sol.ants + sol.times)
 	if data.has_lamp {
 		rules := game.oil_rules(data)
 		least := pl.oil_left(p, sol.plan[:], rules)
@@ -579,4 +592,148 @@ print_plan :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Alloca
 	}
 	flush(&walk, &illusions, last)
 	return true
+}
+
+// Where the ants take each seed with the palace as loaded: from every surface
+// beside it where she can stand, by day (real ways only) and at evening in
+// each view (illusions too). A seed going to a hollow the level does not want
+// in some view or time is a trap: worth knowing it is there.
+ants_report :: proc(p: ^pl.Palace, data: ^level.Level_Data) {
+	if len(data.seeds) == 0 {
+		return
+	}
+	has_time := len(data.reeds) > 0
+	fmt.println("\nants, palace as loaded: standing at -> hollow (cells carried), - = no way")
+	for s, i in data.seeds {
+		for d in iso.Dir {
+			v := iso.DIR_VEC[d]
+			at := s + {v.x, v.y, 0}
+			fmt.printf("  seed %v from %v:", s, at)
+			any := false
+			for evening in ([2]bool{false, true}) {
+				if !has_time && !evening {
+					continue
+				}
+				p.day = has_time && !evening
+				pl.rebuild_graph(p)
+				if !pl.is_node(p, at) {
+					continue
+				}
+				for r in 0 ..< (evening ? 4 : 1) {
+					pl.set_view(p, r)
+					route: pl.Path
+					k := pl.seed_route(p, i, at, evening, &route)
+					label := evening ? fmt.tprintf("%s v%d", has_time ? "eve" : "dark", r) : "day"
+					any = true
+					if k < 0 {
+						fmt.printf("  %s -", label)
+					} else {
+						fmt.printf("  %s %v(%d)", label, data.hollows[k], sa.len(route) - 1)
+					}
+				}
+			}
+			if !any {
+				fmt.print("  (no floor)")
+			}
+			fmt.println()
+		}
+	}
+	p.day = has_time
+	pl.set_view(p, 0)
+	pl.rebuild_graph(p)
+}
+
+// Take out each piece of the puzzle in turn (a reed, a seed, a handle, a pair
+// of caves; a ram's step: a block of rock takes its place, solid as the ram
+// lying, with a boulder on it, as nobody passes the ram standing) and solve
+// again: a level still solved without it
+// has a piece that is not needed (a way round it, or a decoy: say which in
+// the level's notes).
+needed_report :: proc(text: string) {
+	lines := strings.split_lines(text, context.temp_allocator)
+	caves := make([dynamic]int, 0, 8, context.temp_allocator)
+	tests := make([dynamic][2]int, 0, 32, context.temp_allocator)
+	for line, i in lines {
+		f := strings.fields(line, context.temp_allocator)
+		if len(f) == 0 {
+			continue
+		}
+		switch f[0] {
+		case "reed", "ram", "seed", "handle":
+			append(&tests, [2]int{i, -1})
+		case "cave":
+			append(&caves, i)
+		}
+	}
+	for k := 0; k + 1 < len(caves); k += 2 {
+		append(&tests, [2]int{caves[k], caves[k + 1]})
+	}
+	if len(tests) == 0 {
+		return
+	}
+	fmt.println("\nwithout each piece:")
+	for t in tests {
+		arena: virtual.Arena
+		alloc := virtual.arena_allocator(&arena)
+		b := strings.builder_make(alloc)
+		for line, i in lines {
+			if i == t[0] && strings.has_prefix(line, "ram ") {
+				f := strings.fields(line, context.temp_allocator)
+				h, _ := strconv.parse_int(f[3])
+				fmt.sbprintfln(&b, "column %s %s %d %d\nprop boulder %s %s %d", f[1], f[2], h, h, f[1], f[2], h + 1)
+			} else if i != t[0] && i != t[1] {
+				strings.write_string(&b, line)
+				strings.write_byte(&b, '\n')
+			}
+		}
+		what := strings.trim_space(lines[t[0]])
+		if t[1] >= 0 {
+			what = fmt.tprintf("%s + %s", what, strings.trim_space(lines[t[1]]))
+		}
+		data, err := level.parse(strings.to_string(b), alloc)
+		switch {
+		case err != nil:
+			fmt.printfln("  %-36s needed (the level does not load: %s)", what, err.?.message)
+		case:
+			p: pl.Palace
+			pl.init(&p, &data, alloc)
+			sol := pl.solve(&p, pl.goal_cell(&p), nil, alloc)
+			if sol.solved {
+				fmt.printfln("  %-36s NOT needed: solved in %d steps, %d decisions", what, sol.steps, sol.turns + sol.lightings + sol.handles + sol.ants + sol.times)
+			} else {
+				fmt.printfln("  %-36s needed", what)
+			}
+		}
+		virtual.arena_destroy(&arena)
+	}
+}
+
+// `--brief`: one line for the plan and one per fragment (scripts that try
+// many variants of a design read these).
+brief :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Allocator) {
+	line :: proc(tag: string, sol: pl.Solution) {
+		if !sol.solved {
+			fmt.printfln("%s unsolved states %d", tag, sol.states)
+			return
+		}
+		// visits: runs of handle turns in one place (turning a part three
+		// quarters is one decision, not three)
+		visits := 0
+		for st, i in sol.plan {
+			visits += int(st.move == .Handle && (i == 0 || sol.plan[i - 1].move != .Handle))
+		}
+		fmt.printfln("%s steps %d turns %d handles %d visits %d ants %d times %d decisions %d states %d dead %d", tag, sol.steps, sol.turns, sol.handles, visits, sol.ants, sol.times, sol.turns + sol.lightings + sol.handles + sol.ants + sol.times, sol.states, sol.dead)
+	}
+	sol := pl.solve(p, pl.goal_cell(p), nil, alloc)
+	line("exit", sol)
+	if len(os.args) > 3 && os.args[3] == "--steps" {
+		for st in sol.plan {
+			fmt.printf(" %v%v%s", st.move == .Step ? "" : fmt.tprintf("%v@", st.move), st.cell, st.illusion ? fmt.tprintf("~v%d", st.view) : "")
+		}
+		fmt.println()
+	}
+	for c, i in data.fragments {
+		line(fmt.tprintf("fragment%d", i), pl.solve(p, c, data.exit, alloc))
+		line(fmt.tprintf("without%d", i), pl.solve(p, data.exit, c, alloc))
+	}
 }

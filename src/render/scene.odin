@@ -1049,12 +1049,13 @@ draw_figures :: proc(r: ^Renderer, g: ^game.Game) {
 	}
 }
 
-// The Sun's golden rams. Each is built of the unit sphere (body, head, the
-// curls of the horns, the tail) and thin blocks (legs), in the frame of its
-// cell turned toward `dir`. Standing by day (big, taller than Psyche, the head
-// dipping now and then to graze); lying at evening, a long mound of fleece
-// whose back rises from the cell's tail end to the head on the next ledge:
-// the step she climbs (its height follows the stairs' treads).
+// The Sun's golden rams, carved like the palace (shapes.odin): a quilted block
+// of golden fleece for the body (the neck and the tail smaller ones), the face
+// and the legs in dark bronze, horns curling in gold; in the frame of the
+// cell turned toward `dir`. Standing by day (as tall as Psyche's head, the
+// head dipping now and then to graze); lying at evening, the legs folded, a
+// broad flat block of fleece, the head laid forward against the next ledge:
+// the step she climbs.
 @(private)
 draw_rams :: proc(r: ^Renderer, g: ^game.Game) {
 	if len(g.data.rams) == 0 {
@@ -1081,44 +1082,51 @@ draw_rams :: proc(r: ^Renderer, g: ^game.Game) {
 			}
 		}
 	}
+	Ram_Pose :: struct {
+		frame: rl.Matrix, // the cell, turned toward dir
+		body, neck, tail, head: rl.Matrix,
+		leg_h, leg_z: f32,
+	}
+	poses := make([]Ram_Pose, len(g.data.rams), context.temp_allocator)
+	mix :: proc(a, b: Vec3, t: f32) -> Vec3 {return a + (b - a) * t}
+	place :: proc(at, size: Vec3) -> rl.Matrix {return rl.MatrixTranslate(at.x, at.y, at.z) * rl.MatrixScale(size.x, size.y, size.z)}
 	for m, i in g.data.rams {
 		c := m.cell
 		d := iso.DIR_VEC[m.dir]
 		yaw := math.atan2(f32(d.y), f32(d.x))
-		frame := rl.MatrixTranslate(f32(c.x) + 0.5, f32(c.y) + 0.5, f32(c.z)) * rl.MatrixRotateZ(yaw)
+		pose := &poses[i]
+		pose.frame = rl.MatrixTranslate(f32(c.x) + 0.5, f32(c.y) + 0.5, f32(c.z)) * rl.MatrixRotateZ(yaw)
 		// grazing (by day): now and then the head goes down to the grass
 		ph := g.time * 0.35 + f32(i) * 1.7
 		graze := (1 - lie) * fx.sine_in_out(fx.clamp01((math.sin(ph) - 0.55) / 0.3))
-		breath := 1 + 0.015 * math.sin(g.time * 1.3 + f32(i))
-		ell :: proc(r: ^Renderer, frame: rl.Matrix, at, radii: Vec3) {
-			rl.DrawMesh(r.meshes[.Head], r.material, frame * rl.MatrixTranslate(at.x, at.y, at.z) * rl.MatrixScale(radii.x, radii.y, radii.z))
+		breath := 1 + 0.02 * math.sin(g.time * 1.3 + f32(i))
+		// the legs fold under the fleece as it settles on the stone
+		pose.leg_h = 0.24 * (1 - lie)
+		body_at := mix({-0.05, 0, 0.47}, {-0.04, 0, 0.21}, lie)
+		body_size := mix({0.68, 0.5, 0.46}, {0.86, 0.66, 0.44}, lie) * Vec3{1, 1, breath}
+		pose.body = place(body_at, body_size)
+		head_at := mix(Vec3{0.27, 0, 0.68} + Vec3{0.06, 0, -0.42} * graze, {0.33, 0, 0.42}, lie)
+		pitch := 0.35 + 0.9 * graze - 0.15 * lie
+		pose.head = rl.MatrixTranslate(head_at.x, head_at.y, head_at.z) * rl.MatrixRotateY(pitch) * rl.MatrixScale(1.3, 1.3, 1.3)
+		neck_at := mix(body_at + {0.26, 0, 0.1}, head_at, 0.35)
+		pose.neck = place(neck_at, {0.2, 0.2, 0.24})
+		pose.tail = place(body_at + mix({-0.36, 0, 0.04}, {-0.45, 0, -0.06}, lie), {0.1, 0.1, 0.12})
+	}
+	// the wool and the horns in gold...
+	for pose in poses {
+		for part in ([3]rl.Matrix{pose.body, pose.neck, pose.tail}) {
+			rl.DrawMesh(r.meshes[.Ram_Fleece], r.material, pose.frame * part)
 		}
-		mix :: proc(a, b: Vec3, t: f32) -> Vec3 {return a + (b - a) * t}
-		// the body (local x toward the head)
-		body_at := mix({-0.02, 0, 0.56}, {0, 0, 0.24}, lie)
-		body_r := mix({0.36, 0.2, 0.21}, {0.5, 0.3, 0.52}, lie) * breath
-		ell(r, frame, body_at, body_r)
-		// the neck and the head
-		head_at := mix(Vec3{0.38, 0, 0.82} + Vec3{0.06, 0, -0.38} * graze, {0.46, 0, 0.86}, lie)
-		ell(r, frame, (body_at + head_at) * 0.5 + {0.04, 0, 0.04}, mix({0.12, 0.1, 0.12}, {0.14, 0.13, 0.16}, lie))
-		ell(r, frame, head_at, {0.12, 0.085, 0.095})
-		ell(r, frame, head_at + {0.1, 0, -0.03}, {0.06, 0.055, 0.05}) // the muzzle
-		// the horns: a curl on each side of the head, three beads winding back and down
-		for side in ([2]f32{-1, 1}) {
-			for k in 0 ..< 4 {
-				a := f32(k) / 3 * math.PI * 1.3
-				hp := head_at + {-0.03 - 0.06 * math.sin(a), side * (0.08 + 0.012 * f32(k)), 0.05 + 0.06 * math.cos(a)}
-				ell(r, frame, hp, Vec3{0.032, 0.03, 0.032} * (1 - 0.12 * f32(k)))
-			}
-		}
-		// the tail
-		ell(r, frame, body_at + mix({-0.36, 0, 0.02}, {-0.48, 0, -0.12}, lie), {0.06, 0.05, 0.06})
-		// the legs: four posts under the body, folded away when it lies down
-		leg_h := 0.4 * (1 - lie)
-		if leg_h > 0.01 {
-			for lx in ([2]f32{-0.2, 0.2}) {
-				for ly in ([2]f32{-0.1, 0.1}) {
-					rl.DrawMesh(r.meshes[.Block], r.material, frame * rl.MatrixTranslate(lx - 0.025, ly - 0.025, 0) * rl.MatrixScale(0.05, 0.05, leg_h))
+		rl.DrawMesh(r.meshes[.Ram_Horns], r.material, pose.frame * pose.head)
+	}
+	// ...the face and the legs in dark bronze
+	set_piece_uniforms(r, .Bronze, 0, 0, 1, 0.9, 0)
+	for pose in poses {
+		rl.DrawMesh(r.meshes[.Ram_Head], r.material, pose.frame * pose.head)
+		if pose.leg_h > 0.01 {
+			for lx in ([2]f32{-0.24, 0.16}) {
+				for ly in ([2]f32{-0.13, 0.13}) {
+					rl.DrawMesh(r.meshes[.Ram_Leg], r.material, pose.frame * rl.MatrixTranslate(lx, ly, 0) * rl.MatrixScale(1.3, 1.3, pose.leg_h + 0.06))
 				}
 			}
 		}

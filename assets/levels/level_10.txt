@@ -4,124 +4,209 @@
 # evening. The level starts by day. Stepping onto a reed turns the time: by
 # day the sun shows the truth (no illusions, every stair works) and the golden
 # rams stand in the way; at evening the illusions are back and the rams lie
-# down, each a step up toward its `dir`. A core of rock in a river, climbed
-# in three stages:
-#   the river (h1-h3): the start bank; a ram bars the step up to the bridge
-#     (the first reed, two cells away, brings the evening); a seed lies on the
-#     bridge in the way of the cave: in view 0 the ants carry it across an
-#     illusion to a rock in the river and into the gap beside it; the cave
-#     takes her up through the core;
-#   the north ledge and the pasture (h5-h6): she comes out at evening; the
-#     second reed brings the day, and only by day the stair cut in the rock
-#     under its roof leads up to the pasture (never seen in the dark); a handle
-#     turns a bar of rock across the pasture's walk; the second seed, carried
-#     by day along the real way, fills the gap before the rams' stair;
-#   the rams' stair and the summit (h9): the third reed brings the evening
-#     back, the three rams lie down: a golden stair up to the briars, where the
-#     wool is caught (the exit).
-# Solution (solver: 35 steps, 2 turns, 1 handle, 2 ants, 3 times turned, 0
-# dead ends). Fragments: III.2 (VI.11, Cupid shut away) on a spur under the
-# summit, down a stair under an overhang: by day only (the fourth reed, on
-# the summit); III.2b (VI.12, the reed's advice) on a rock in the river, past
-# the gap the first seed fills (view 0 from the bridge, at evening).
+# down, each a step up toward its `dir`. A stair under an overhang is never
+# seen at evening: a way only by day.
+# A crag in a river, too tall for the screen: four bands climbing round the
+# core (south, east, north, west), the first three joined by caves; the
+# shelves away from the core hang from it, a few blocks thick.
+#   the river (h1-h3), the lesson: the first reed brings the evening, the ram
+#     lies down, a step up to the ledge; the stair under the overhang needs
+#     the day again: the second reed, on a spur; the cave at the top;
+#   the east shelf (h7-h8), the ants and the time: a ram (evening) up to the
+#     grove, where a seed waits; the ants carry it to the gap of the north
+#     walk, but at evening, in the first view, an illusion leads them nearer,
+#     to a hollow on the pillar by the river (lost: back to the brazier). By
+#     day they go the true way (the reed of the grove), or at evening from
+#     another view; the cave at the end of the walk;
+#   the turning steps (h12-h15): four steps of rock, each turned by a handle;
+#     up, turn the second, down again, turn the first: up to the top. The
+#     fourth step (handle at the top) turns toward the needle of the fragment;
+#   the flock (h16-h19): a reed and a ram (evening) to the pasture; another
+#     ram, the reed on its back brings the day. A seed lies on a ledge: only
+#     at evening, from the first view, the ants carry it up across an
+#     illusion into the gap of the high terrace, and the gap filled hides the
+#     illusion: Psyche goes up by the stair under the overhang (day), onto the
+#     reed at its top (evening), across the filled gap and up the last ram to
+#     the summit, where the wool is caught on the briars (the exit). Climb
+#     before the ants are called and there is no way back (the brazier).
+# Solution (solver: 69 steps, 4 turns, 5 handles, 2 ants, 9 times turned, 20
+# decisions). Fragments: III.2 (VI.11, Cupid shut away) on the needle at the
+# north-west corner of the turning steps: the fourth step turned from the
+# top, then the first two set back the other way (11 handles); III.2b (VI.12,
+# the reed's advice) on the pillar by the river: the reed of the grove
+# stepped on twice, the illusion of the first view at evening.
 # Format: see level_04.txt.
 size 11
 setting pasture_day
 evening pasture_evening
 mechanic time
+tier 1 3
+tier 7 9
+tier 12 15
+tier 16 19
 water 0 0 10 10
-ground 4 4 0 8
-ground 4 5 0 8
-ground 4 6 0 8
-ground 5 4 0 8
-ground 5 5 0 8
-ground 5 6 0 8
-ground 6 4 0 8
-ground 6 5 0 8
-ground 6 6 0 8
-ground 8 6 0 0
-ground 9 6 0 0
-ground 8 7 0 0
-ground 9 7 0 0
+
+# the core of the crag, its top the summit pasture (h19)
+ground 4 4 0 18
+ground 4 5 0 18
+ground 4 6 0 18
+ground 5 4 0 18
+ground 5 5 0 18
+ground 5 6 0 18
+ground 6 4 0 18
+ground 6 5 0 18
+ground 6 6 0 18
+
+# --- the river (h1-h3) -------------------------------------------------------
+# the bank (h1), the first reed
 ground 8 8 0 0
 ground 9 8 0 0
-ground 9 5 0 0
-rock 7 8 0 0
-ram 7 8 1 mx
-ground 6 8 0 1
+ground 8 9 0 0
+ground 9 9 0 0
+ground 9 7 0 0
+start 9 9 1
+rest 9 9 1
+hint 9 9 1 hint_reed
+reed 9 7 1
+prop reeds 9 7 1 px
+prop shrub 8 8 1 mx
+# the ram at the foot of the ledge
+ground 7 9 0 0
+ram 7 9 1 mx
+# the ledge (h2), the second reed on a spur
+rock 6 9 0 1
+rock 5 9 0 1
+rock 4 9 0 1
+rock 3 9 0 1
 rock 5 8 0 1
-seed 5 8 2
-ground 4 8 0 1
-ground 4 7 0 1
-cave 4 7 2 my
-rock 7 9 0 2
-hollow 8 9 2
-rock 9 9 0 2
-reed 9 5 1
-start 9 7 1
-rest 9 7 1
-ground 4 3 0 4
-cave 4 3 5 py
-ground 3 3 0 4
-reed 3 3 5
-prop rail 3 3 5 my
-prop rail 4 3 5 my
-rock 2 3 0 4
-stairs 2 3 5 mx
-rock 2 3 6 6
-prop boulder 2 3 7 px
-ground 1 3 0 5
-ground 1 2 0 5
-ground 1 1 0 5
-ground 2 1 0 5
-ground 3 1 0 5
-ground 8 1 0 5
-rock 5 1 0 4
-part 5 1
-rock 5 0 5 5
-rock 5 1 5 5
-rock 5 2 5 5
-prop rail 5 2 6 mx
+reed 5 8 2
+prop reeds 5 8 2 py
+# the stair under the overhang (by day), the cave
+rock 3 8 0 1
+stairs 3 8 2 my
+rock 3 8 3 3
+rock 3 7 0 2
+rock 4 7 0 2
+cave 4 7 3 my
+prop rail 4 7 3 py
+
+# --- the east shelf (h7-h8) --------------------------------------------------
+rock 7 6 0 6
+cave 7 6 7 mx
+rest 7 6 7
+ground 8 6 3 6
+ground 9 6 3 6
+reed 9 6 7
+prop reeds 9 6 7 px
+rock 7 5 0 6
+ram 7 5 7 my
+# the grove (h8): the seed, the reed, the gap of the north walk
+ground 7 4 0 7
+ground 8 4 4 7
+ground 7 3 4 7
+ground 8 3 4 7
+ground 9 3 4 7
+seed 8 4 8
+reed 9 3 8
+prop reeds 9 3 8 px
+rock 7 2 3 6
+hollow 7 2 7
+rock 7 1 4 7
+rock 8 1 4 7
+rock 6 1 4 7
+cave 6 1 8 mx
+prop shrub 8 1 8 py
+# the pillar by the river and its hollow (where the ants should not go)
+rock 10 5 0 8
+rock 10 4 0 7
+hollow 10 4 8
+
+# --- the turning steps (h12-h15) ---------------------------------------------
+rock 5 1 4 13
+rock 5 2 10 13
+rock 6 2 8 11
+cave 6 2 12 mx
+rock 6 3 0 11
+rock 5 3 0 11
+rock 4 3 0 11
+rock 3 3 8 11
+rock 4 2 8 11
+rest 4 3 12
+rock 3 1 9 12
+rock 2 2 9 12
+rock 2 0 10 13
+rock 1 1 10 13
+rock 0 2 10 13
+rock 1 3 11 14
+rock 2 3 11 14
+# the needle of the fragment
+rock 0 0 11 14
+# the four steps (handles: part 0 from the first landing, 1 from the second,
+# 2 from the arrival, 3 from the top)
+rock 3 2 8 11
+part 3 2
+stairs 3 2 12 py
 end
-handle 1 1 6
-seed 3 1 6
-hollow 7 1 5
-rest 1 3 6
-reed 8 0 6
-ground 8 0 0 5
-rock 8 2 0 5
-ram 8 2 6 py
-ground 8 3 0 6
-rock 8 4 0 6
-ram 8 4 7 py
-ground 8 5 0 7
-ground 7 5 0 7
-ram 7 5 8 mx
-reed 5 6 9
-rock 3 6 0 7
-stairs 3 6 8 px
-rock 3 6 9 9
-prop boulder 3 6 10 mx
-prop rail 5 4 9 my
-rock 2 6 0 7
-exit 4 4 9
-fragment 2 6 8
-fragment 9 9 3
-prop reeds 9 5 1 my
-prop reeds 3 3 5 mx
-prop reeds 8 0 6 px
-prop reeds 5 6 9 py
-prop reeds 8 8 1 py
-prop reeds 9 6 1 px
-prop shrub 1 2 6 mx
-prop shrub 2 1 6 my
-prop shrub 8 1 6 mx
-prop shrub 4 4 9 mx
-prop shrub 4 5 9 py
-prop shrub 5 4 9 my
-prop shrub 6 4 9 px
-prop shrub 4 6 9 mx
-rest 4 3 5
+rock 2 1 9 12
+part 2 1
+stairs 2 1 13 my
+end
+rock 1 2 10 13
+part 1 2
+stairs 1 2 14 py
+end
+rock 1 0 10 13
+part 1 0
+stairs 1 0 14 px
+end
+handle 3 3 12 0
+handle 2 2 13 1
+handle 4 2 12 2
+handle 1 3 15 3
+
+# --- the flock (h16-h19) -----------------------------------------------------
+# the reed at the top of the steps, the ram up to the pasture
+reed 2 3 15
+prop reeds 2 3 15 mx
+prop rail 1 3 15 py
+ground 2 4 11 14
+ram 2 4 15 py
+ground 2 5 12 15
+ground 1 5 12 15
+ground 0 5 12 15
+rest 2 5 16
+# the second ram, the reed on its back
+ground 0 6 12 15
+ram 0 6 16 py
+ground 0 7 13 16
+ground 1 7 13 16
+ground 0 8 13 16
+reed 0 7 17
+prop reeds 0 7 17 mx
+# the seed on its ledge; the gap of the high terrace
+ground 1 6 13 16
+seed 1 6 17
+ground 2 7 13 16
+hollow 2 7 17
+# the stair under the overhang, the reed at its top
+rock 1 8 13 16
+stairs 1 8 17 px
+rock 1 8 18 18
+ground 2 8 14 17
+reed 2 8 18
+prop reeds 2 8 18 py
+ground 2 6 14 17
+prop rail 2 6 18 mx
+# the last ram, up to the summit; the briars hold the wool
+ground 3 6 0 17
+ram 3 6 18 px
+exit 5 5 19
+prop shrub 4 4 19 mx
+prop shrub 6 4 19 my
+prop shrub 6 6 19 px
+prop shrub 5 4 19 py
+
+fragment 0 0 15
+fragment 10 5 9
 intro intro_iii_2
 outro outro_iii_2
-hint 9 7 1 hint_reed

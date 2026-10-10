@@ -214,7 +214,11 @@ find_resolutions :: proc(app: ^App) {
 // (Re)load a level; the palace sleeps (attract mode) until game.begin.
 new_level :: proc(app: ^App, index: int) -> bool {
 	g := &app.game
-	if err, failed := game.load(g, index).?; failed {
+	source := content.LEVELS[index].source
+	if app.shooting && app.shots.file != "" && index == app.shots.level {
+		source = app.shots.file
+	}
+	if err, failed := game.load_text(g, index, source).?; failed {
 		fmt.eprintfln("level %s, line %d: %s", content.LEVELS[index].id, err.line, err.message)
 		return false
 	}

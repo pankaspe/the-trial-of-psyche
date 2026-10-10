@@ -284,7 +284,7 @@ MAX_SEALS :: 4
 Seals :: bit_set[0 ..< MAX_SEALS; u8] // which seals have been lit
 MAX_SEEDS :: 4
 MAX_HOLLOWS :: 6
-MAX_REEDS :: 6
+MAX_REEDS :: 8
 MAX_RAMS :: 12
 
 // The cell of a part's block after `r` quarter turns.

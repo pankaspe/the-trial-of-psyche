@@ -88,6 +88,7 @@ Palace :: struct {
 	view_node:  []i32,
 	view_solid: []bool,
 	stair_seen: []bool, // per node: stairs fully visible in the current view
+	edge_seen:  []iso.Dirs, // per node: the view sides whose top edge shows (illusions)
 	nodes:      [dynamic]Node,
 	real:       Graph,
 	illusion:   Graph,
@@ -114,6 +115,7 @@ init :: proc(p: ^Palace, data: ^level.Level_Data, allocator := context.allocator
 	p.view_node = make([]i32, n)
 	p.view_solid = make([]bool, n)
 	p.stair_seen = make([]bool, n) // one per grid cell: enough for any node count
+	p.edge_seen = make([]iso.Dirs, n)
 	p.nodes = make([dynamic]Node, 0, 256)
 	for g in ([]^Graph{&p.real, &p.illusion}) {
 		g.pairs = make([dynamic][2]i32, 0, 256)
@@ -253,6 +255,13 @@ turn_part :: proc(p: ^Palace, n: int) {
 }
 
 rebuild_graph :: proc(p: ^Palace) {
+	rebuild_real(p)
+	rebuild_illusions(p)
+}
+
+// The grid and the real walk graph only (the solver asks for a view's
+// illusions when it needs them: never by day).
+rebuild_real :: proc(p: ^Palace) {
 	slice.zero(p.solid)
 	slice.zero(p.blocked)
 	slice.zero(p.fences)
@@ -278,6 +287,9 @@ rebuild_graph :: proc(p: ^Palace) {
 			ci := cell_index(p, c)
 			p.overlap ||= p.solid[ci].kind != .None
 			p.solid[ci] = {kind = .Block}
+			if over := c + {0, 0, 1}; p.seed_at[i] < 0 && in_grid(p, over) {
+				p.blocked[cell_index(p, over)] = true // a heap of seeds is no floor (set in its hollow, it is)
+			}
 		}
 	}
 	for m in p.data.rams {
@@ -347,7 +359,6 @@ rebuild_graph :: proc(p: ^Palace) {
 		}
 	}
 	graph_build(&p.real, len(p.nodes))
-	rebuild_illusions(p)
 }
 
 // --- Act III: the seeds and the ants ---------------------------------------------------
@@ -555,14 +566,27 @@ rebuild_illusions :: proc(p: ^Palace) {
 
 	clear(&p.illusion.pairs)
 	back := 4 - p.rot
-	for node, a in p.nodes {
+	// which edges of each top show: once per node, not once per pair tried
+	for node, i in p.nodes {
+		p.edge_seen[i] = {}
 		if node.stair {
 			continue
 		}
 		v := iso.to_view(node.cell, p.rot, p.size)
 		for d in Dir {
+			if edge_visible(p, v, d) {
+				p.edge_seen[i] += {d}
+			}
+		}
+	}
+	for node, a in p.nodes {
+		if node.stair {
+			continue
+		}
+		v := iso.to_view(node.cell, p.rot, p.size)
+		for d in p.edge_seen[a] {
 			wd := iso.rot_dir(d, back) // the side of `a` in world terms
-			if !open(p, node.cell, wd) || !edge_visible(p, v, d) {
+			if !open(p, node.cell, wd) {
 				continue
 			}
 			dv := iso.DIR_VEC[d]
@@ -575,7 +599,7 @@ rebuild_illusions :: proc(p: ^Palace) {
 					continue
 				}
 				b := p.view_node[cell_index(p, bv)]
-				if b >= 0 && open(p, p.nodes[b].cell, iso.opposite(wd)) && edge_visible(p, bv, iso.opposite(d)) {
+				if b >= 0 && iso.opposite(d) in p.edge_seen[b] && open(p, p.nodes[b].cell, iso.opposite(wd)) {
 					add_pair(&p.illusion, i32(a), b)
 				}
 			}

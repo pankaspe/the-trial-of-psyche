@@ -107,9 +107,10 @@ Config_Graph :: struct {
 	index:      map[Cell]i32,
 	real_start: []i32,
 	real_list:  []i32,
-	ill_start:  [4][]i32,
+	ill_start:  [4][]i32, // per view, filled when first needed (`view_of`)
 	ill_list:   [4][]i32,
 	stair_seen: [4][]bool,
+	views:      bit_set[0 ..< 4],
 }
 
 @(private = "file")
@@ -150,7 +151,7 @@ configure :: proc(s: ^Solver, cfg: Config) {
 	p.seed_lifted = -1
 	p.risen = cfg.risen
 	p.day = cfg.day
-	rebuild_graph(p)
+	rebuild_real(p)
 }
 
 // The ants called by Psyche at `cell` in configuration cfg, view `view`: the
@@ -158,24 +159,32 @@ configure :: proc(s: ^Solver, cfg: Config) {
 // a way.
 @(private = "file")
 call_ants :: proc(s: ^Solver, cfg: Config, cell: Cell, view: u8, lamp: bool) -> Ants_Result {
-	key := Ants_Key{cfg, cell, view, lamp}
+	// most places have no seed beside them: said without touching the palace
+	near := false
+	for c, i in s.p.data.seeds {
+		lying := (cfg.seeds >> (3 * u16(i))) & 7 == 0
+		near ||= lying && c.z == cell.z && abs(c.x - cell.x) + abs(c.y - cell.y) == 1
+	}
+	if !near {
+		return {}
+	}
+	dark := !lamp && !cfg.day
+	key := Ants_Key{cfg, cell, dark ? view : 0, dark} // in the light every view is the same
 	if r, ok := s.ants[key]; ok {
 		return r
 	}
 	p := s.p
-	saved := p.rot
 	configure(s, cfg)
 	set_view(p, int(view))
 	r: Ants_Result
 	if i := seed_beside(p, cell); i >= 0 {
 		path: Path
-		if k := seed_route(p, i, cell, !lamp && !cfg.day, &path); k >= 0 {
+		if k := seed_route(p, i, cell, dark, &path); k >= 0 {
 			r.ok, r.hollow, r.carry = true, k, sa.len(path)
 			r.cfg = cfg
 			r.cfg.seeds = (cfg.seeds & ~(7 << (3 * u16(i)))) | (u16(k + 1) << (3 * u16(i)))
 		}
 	}
-	set_view(p, saved)
 	s.ants[key] = r
 	return r
 }
@@ -195,16 +204,24 @@ graph_of :: proc(s: ^Solver, cfg: Config) -> ^Config_Graph {
 	}
 	g.real_start = slice.clone(p.real.start[:])
 	g.real_list = slice.clone(p.real.list[:])
-	view := p.rot
-	for r in 0 ..< 4 {
-		set_view(p, r)
-		g.ill_start[r] = slice.clone(p.illusion.start[:])
-		g.ill_list[r] = slice.clone(p.illusion.list[:])
-		g.stair_seen[r] = slice.clone(p.stair_seen[:len(p.nodes)])
-	}
-	set_view(p, view)
 	s.cache[cfg] = g
 	return g
+}
+
+// The illusions and the stairs seen of view r in configuration cfg (in the
+// dark only: by day and in the lamp's light they are never asked for).
+@(private = "file")
+view_of :: proc(s: ^Solver, cfg: Config, g: ^Config_Graph, r: int) {
+	if r in g.views {
+		return
+	}
+	p := s.p
+	configure(s, cfg)
+	set_view(p, r)
+	g.ill_start[r] = slice.clone(p.illusion.start[:])
+	g.ill_list[r] = slice.clone(p.illusion.list[:])
+	g.stair_seen[r] = slice.clone(p.stair_seen[:len(p.nodes)])
+	g.views += {r}
 }
 
 @(private = "file")
@@ -351,6 +368,9 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 
 			// steps
 			dark := !st.lamp && !st.cfg.day
+			if dark {
+				view_of(&s, st.cfg, g, int(st.view))
+			}
 			for pass in 0 ..< 2 {
 				if pass == 1 && !dark {
 					break
@@ -454,7 +474,7 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 
 	// leave the palace as loaded
 	configure(&s, start_cfg)
-	set_view(p, saved_view)
+	set_view(p, saved_view) // (the view's illusions too)
 	return
 }
 

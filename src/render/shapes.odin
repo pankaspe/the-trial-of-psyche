@@ -3,6 +3,7 @@
 // they are designed facing +x and rotated about the cell centre.
 package render
 
+import "core:math"
 import rl "vendor:raylib"
 
 import "../iso"
@@ -59,6 +60,10 @@ Mesh_Id :: enum u8 {
 	Altar, // a small brazier in the (-x, -y) corner: a resting place
 	Cave_PX, Cave_MX, Cave_PY, Cave_MY, // the stones framing a cave's mouth on the +x side...
 	Cave_Dark_PX, Cave_Dark_MX, Cave_Dark_PY, Cave_Dark_MY, // ...and the dark inside it
+	Ram_Fleece, // a ram's wool: a cloud of puffs in a unit box about the origin...
+	Ram_Head, // ...its face in bronze (x forward from the back of the skull)...
+	Ram_Horns, // ...its horns curling beside the face...
+	Ram_Leg, // ...and a leg, one unit tall
 }
 
 // Where the resting brazier's flame burns, in cell space.
@@ -633,7 +638,77 @@ build_meshes :: proc(meshes: ^[Mesh_Id]rl.Mesh) {
 	b := builder_make()
 	sphere(&b, {}, 1, 7, 12)
 	meshes[.Head] = upload(&b)
+	meshes[.Ram_Fleece] = ram_fleece()
+	meshes[.Ram_Head] = ram_head()
+	meshes[.Ram_Horns] = ram_horns()
+	meshes[.Ram_Leg] = lathe_mesh(RAM_LEG[:], 8)
 }
+
+// The rams of the Sun, smooth and abstract like the other figures. The
+// fleece is a cloud of spheres filling the unit box about the origin (scaled
+// to the body, the neck, the tail when drawn).
+@(private)
+ram_fleece :: proc() -> rl.Mesh {
+	PUFFS :: [?][4]f32 {
+		{0, 0, 0, 0.4}, // x y z radius
+		{-0.22, -0.1, 0.2, 0.26}, {0.04, 0.12, 0.23, 0.26}, {0.24, -0.08, 0.17, 0.24},
+		{-0.24, 0.2, -0.02, 0.26}, {0.2, 0.22, 0.0, 0.25}, {-0.2, -0.22, 0.02, 0.26}, {0.22, -0.2, -0.04, 0.25},
+		{-0.34, 0, 0.04, 0.22}, {0.33, 0.02, 0.08, 0.21},
+	}
+	b := builder_make()
+	for p in PUFFS {
+		sphere(&b, {p.x, p.y, p.z}, p.w, 8, 14)
+	}
+	return upload(&b)
+}
+
+// The face in bronze: a long head tapering to the nose (x forward, the back
+// of the skull at the origin) and the ears.
+@(private)
+ram_head :: proc() -> rl.Mesh {
+	HEAD :: [?][2]f32{{0, 0}, {0.06, 0.01}, {0.08, 0.05}, {0.078, 0.1}, {0.062, 0.16}, {0.048, 0.21}, {0.03, 0.24}, {0, 0.25}}
+	b := builder_make()
+	profile := HEAD
+	lathe(&b, profile[:], 12)
+	lay_along_x(&b, 0)
+	for side in ([2]f32{-1, 1}) {
+		from := len(b.verts)
+		EAR :: [?][2]f32{{0, 0}, {0.025, 0.01}, {0.03, 0.05}, {0.018, 0.1}, {0, 0.11}}
+		ear := EAR
+		lathe(&b, ear[:], 8)
+		// out and down from behind the eyes
+		for i := from; i < len(b.verts); i += 3 {
+			x, y, z := b.verts[i], b.verts[i + 1], b.verts[i + 2]
+			b.verts[i], b.verts[i + 1], b.verts[i + 2] = 0.05 + x, side * (0.05 + z * 0.9), 0.02 + y * 0.6 - z * 0.45
+		}
+	}
+	return upload(&b)
+}
+
+// The horns: on each side of the head a curl from the crown, back, down and
+// forward again round the ear, thinning to its tip.
+@(private)
+ram_horns :: proc() -> rl.Mesh {
+	N :: 16
+	b := builder_make()
+	for side in ([2]f32{-1, 1}) {
+		path: [N]Vec3
+		radius: [N]f32
+		for k in 0 ..< N {
+			t := f32(k) / (N - 1)
+			a := t * math.PI * 1.7
+			r := 0.1 * (1 - 0.45 * t)
+			path[k] = {0.04 - r * math.sin(a), side * (0.07 + 0.06 * t), 0.02 + r * math.cos(a)}
+			radius[k] = 0.034 * (1 - 0.6 * t)
+		}
+		tube(&b, path[:], radius[:], 9)
+	}
+	return upload(&b)
+}
+
+// A leg, one unit tall (scaled to the pose), with a narrow fetlock.
+@(private)
+RAM_LEG := [?][2]f32{{0, 0}, {0.032, 0}, {0.03, 0.12}, {0.024, 0.2}, {0.034, 0.6}, {0.04, 1}, {0, 1}}
 
 unload_meshes :: proc(meshes: ^[Mesh_Id]rl.Mesh) {
 	for &m in meshes {

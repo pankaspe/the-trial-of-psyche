@@ -226,6 +226,7 @@ Shots :: struct {
 	dir:  string,
 	size: [2]i32, // offscreen canvas size (--size WxH), 0 = the window
 	level: int, // --level ID: the slot to tour, -1 = the full script
+	file:  string, // --file PATH: that slot's level read from this file instead (a design in progress)
 	quality: settings.Quality, // --quality NAME: the graphics quality (low, medium, high, ultra)
 	has_quality: bool,
 	plan:  bool, // --plan: play the solver's plan of the level, a shot after every decision
@@ -276,6 +277,12 @@ shots_from_args :: proc(args: []string) -> (s: Shots, ok: bool) {
 			}
 		case "--plan":
 			s.plan = true
+		case "--file":
+			if text, err := os.read_entire_file_from_path(args[i + 1], context.allocator); err == nil {
+				s.file = string(text)
+			} else {
+				fmt.eprintfln("cannot read %s: %v", args[i + 1], err)
+			}
 		case "--quality":
 			for name, q in settings.QUALITY_CODE {
 				if name == args[i + 1] {

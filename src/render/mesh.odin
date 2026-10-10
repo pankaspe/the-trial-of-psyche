@@ -102,6 +102,56 @@ sphere :: proc(b: ^Mesh_Builder, center: Vec3, radius: f32, rings, segments: int
 	lathe(b, profile, segments, center)
 }
 
+// A tube swept along `path` (at least two points), its radius at each point
+// from `radius`; smooth around, faceted along, the ends left open.
+tube :: proc(b: ^Mesh_Builder, path: []Vec3, radius: []f32, sides: int) {
+	ring :: proc(path: []Vec3, radius: []f32, i, sides: int) -> (pts, nrm: [16]Vec3) {
+		t := path[min(i + 1, len(path) - 1)] - path[max(i - 1, 0)]
+		t /= math.sqrt(t.x * t.x + t.y * t.y + t.z * t.z)
+		// any vector not along the tangent makes the ring's frame
+		up := abs(t.z) < 0.9 ? Vec3{0, 0, 1} : Vec3{1, 0, 0}
+		u := linalg_cross(t, up)
+		u /= math.sqrt(u.x * u.x + u.y * u.y + u.z * u.z)
+		v := linalg_cross(t, u)
+		for s in 0 ..< sides {
+			a := f32(s) / f32(sides) * math.TAU
+			n := u * math.cos(a) + v * math.sin(a)
+			pts[s], nrm[s] = path[i] + n * radius[i], n
+		}
+		return
+	}
+	assert(sides <= 16)
+	for i in 0 ..< len(path) - 1 {
+		p0, n0 := ring(path, radius, i, sides)
+		p1, n1 := ring(path, radius, i + 1, sides)
+		for s in 0 ..< sides {
+			k := (s + 1) % sides
+			vertex(b, p0[s], n0[s])
+			vertex(b, p0[k], n0[k])
+			vertex(b, p1[k], n1[k])
+			vertex(b, p0[s], n0[s])
+			vertex(b, p1[k], n1[k])
+			vertex(b, p1[s], n1[s])
+		}
+	}
+}
+
+@(private)
+linalg_cross :: proc(a, b: Vec3) -> Vec3 {
+	return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x}
+}
+
+// Turn what was built since vertex `from` (counted in floats) from +z onto +x
+// (a quarter about y): a lathe laid on its side.
+lay_along_x :: proc(b: ^Mesh_Builder, from: int) {
+	for i := from; i < len(b.verts); i += 3 {
+		x, z := b.verts[i], b.verts[i + 2]
+		b.verts[i], b.verts[i + 2] = z, -x
+		nx, nz := b.norms[i], b.norms[i + 2]
+		b.norms[i], b.norms[i + 2] = nz, -nx
+	}
+}
+
 // Send the builder's triangles to the GPU.
 upload :: proc(b: ^Mesh_Builder) -> rl.Mesh {
 	m: rl.Mesh
