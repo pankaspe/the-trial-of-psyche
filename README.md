@@ -80,7 +80,8 @@ appear, the palace stops lying — and the oil runs out.
   the story. All texts are written anew from the Latin, in **Italian and English**.
 - **Two new mechanics per act, never more.** Act I: turning the diorama (and the
   stairs that work only while seen), then the lamp. Act II: veiled stones the
-  light makes real, and handles that turn whole parts of the world. The other
+  light makes real, and handles that turn whole parts of the world. Act III: the
+  ants, who carry stones along the way you see. The other
   levels go deeper, not wider; the last levels of an act are real puzzles.
 - **Fragments of the tale.** Hidden on hard-to-reach spots, optional, gathered in
   the Book in the order of Apuleius' text. The last one reveals who is telling
@@ -95,8 +96,9 @@ appear, the palace stops lying — and the oil runs out.
   the way: braziers bring you back, a held key restarts the level, and there are
   accessibility options (HUD size, labels, reduced motion, endless oil).
 
-**Status:** Acts I and II are playable (eight levels). Acts III, IV and the
-epilogue are being built, one level at a time.
+**Status:** Acts I and II are playable (eight levels), and the first level of
+Act III. The rest of Act III, Act IV and the epilogue are being built, one level
+at a time. Keyboard and mouse or a gamepad.
 
 <br>
 
