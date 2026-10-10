@@ -969,13 +969,21 @@ draw_pieces :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, transparent: bool) {
 	}
 }
 
+// How much the dark around Psyche asks for her own light: the night
+// settings fully, the lit ones little, less while she holds the lamp lit.
+@(private)
+psyche_dark :: proc(g: ^game.Game) -> f32 {
+	lk := look(g.data.setting)
+	return (1 - lk.daylight) * (0.75 + 0.25 * lk.gloom) * (1 - 0.6 * g.light)
+}
+
 @(private)
 draw_figures :: proc(r: ^Renderer, g: ^game.Game) {
 	psy := g.psyche
 	bob: f32 = psy.walking ? math.abs(math.sin(psy.walk_anim * 11)) * 0.02 : 0
 	base := psy.pos + {0, 0, bob}
 	rot := rl.MatrixRotateZ(psy.yaw)
-	set_piece_uniforms(r, .Psyche, 0, 0, game.psyche_alpha(g), 0.9, 0.04)
+	set_piece_uniforms(r, .Psyche, 0, 0, game.psyche_alpha(g), 0.9, 0.04 + 0.07 * psyche_dark(g))
 	rl.DrawMesh(r.meshes[.Robe], r.material, rl.MatrixTranslate(base.x, base.y, base.z) * rot)
 	rl.DrawMesh(r.meshes[.Head], r.material, rl.MatrixTranslate(base.x, base.y, base.z + 0.548) * rl.MatrixScale(0.046, 0.046, 0.05))
 	if g.data.has_lamp && g.phase != .Prologue {
@@ -1522,8 +1530,12 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	rlgl.Begin(rlgl.QUADS)
 	psy := g.psyche
 	t := g.time
-	// Psyche's faint inner light
+	// Psyche's faint inner light; in the dark a pale silver halo shows where
+	// she is (cool, so it is never taken for the lamp, and fainter in its light)
 	glow(v, psy.pos + {0, 0, 0.42}, 46, {0.55, 0.6, 1.0, (0.18 + 0.06 * math.sin(t * 1.7)) * game.psyche_alpha(g)})
+	if dark := psyche_dark(g); dark > 0.01 {
+		glow(v, psy.pos + {0, 0, 0.32}, 92, {0.62, 0.7, 1.0, 0.14 * dark * game.psyche_alpha(g)}, 1.25)
+	}
 	// the procession's torches, and their smoke once put out
 	if game.procession(g) {
 		for i in 0 ..< game.MOURNERS {
