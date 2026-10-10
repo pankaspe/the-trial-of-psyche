@@ -19,55 +19,38 @@ from Apuleius' tale of Cupid and Psyche (Metamorphoses IV–VI).*
 
 <br>
 
+<p align="center"><a href="https://github.com/pankaspe/the-trial-of-psyche/releases"><img src="https://img.shields.io/github/v/release/pankaspe/the-trial-of-psyche?include_prereleases&style=for-the-badge&label=download%20for%20linux&labelColor=e8792b&color=e8792b&logo=linux&logoColor=white" alt="Download for Linux" height="44"></a></p>
+
 An oracle sends Psyche to a lonely crag, dressed for a wedding of death. The wind
 carries her to an invisible palace, where a husband she must never see comes to
-her every night. Then come the jealous sisters, a lamp, a razor, a drop of oil —
-and the long road to win him back.
+her every night. Then come the sisters, a lamp, a drop of oil — and the long road
+to win him back.
 
-**The Trial of Psyche** follows that road, level by level, in Apuleius' own order.
-It is a puzzle game in the family of *Monument Valley*, built on one idea:
+**The Trial of Psyche** follows that road in Apuleius' own order: a puzzle game in
+the family of *Monument Valley*, built on one idea:
 
 > **In the dark, what looks joined *is* joined.**
 
-Turn the diorama and two stones that only *seem* to touch become a bridge. A
-flight of stairs leads up only while you can see every step of it. Then Psyche
-takes the lamp, and the light shows the truth: the illusions crack, hidden things
-appear, the palace stops lying — and the oil runs out.
+Turn the diorama and two stones that only *seem* to touch become a bridge; a stair
+leads up only while you can see every step of it. Then Psyche takes the lamp, and
+the light shows the truth — until the oil runs out.
 
 <br>
 
-## Screenshots
-
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/zephyrs-crag.jpg" alt="I.1, Zephyr's crag at sunset"></td>
-    <td width="50%"><img src="docs/screenshots/invisible-palace.jpg" alt="I.2, the invisible palace at dusk"></td>
+    <td width="50%"><img src="docs/screenshots/temple-of-ceres-and-juno.jpg" alt="II.4, the temple of Ceres and Juno, the lamp lit"></td>
+    <td width="50%"><img src="docs/screenshots/house-of-venus.jpg" alt="III.1, the house of Venus at evening"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>I.1 · Zephyr's Crag</b> — the prologue ends here, at sunset</sub></td>
-    <td align="center"><sub><b>I.2 · The Invisible Palace</b> — the first illusions, at dusk</sub></td>
+    <td align="center"><sub><b>II.4 · The Temple of Ceres and Juno</b> — the lamp lit: the illusions crack</sub></td>
+    <td align="center"><sub><b>III.1 · The House of Venus</b> — the ants carry the seeds along the way you see</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/night-of-the-lamp.jpg" alt="I.4, the night of the lamp"></td>
-    <td><img src="docs/screenshots/cupids-flight.jpg" alt="II.1, the cutscene of Cupid's flight"></td>
+    <td colspan="2"><img src="docs/screenshots/the-book.jpg" alt="The Book, with the fragments of the tale found"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>I.4 · The Lamp and the Razor</b> — the seal, lit, has raised a bridge</sub></td>
-    <td align="center"><sub><b>Act II opens</b> — Cupid flies away, Psyche clinging to him</sub></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/river-and-pan.jpg" alt="II.2, Pan's river at dawn"></td>
-    <td><img src="docs/screenshots/sisters-crag.jpg" alt="II.3, the sisters' crag by day"></td>
-  </tr>
-  <tr>
-    <td align="center"><sub><b>II.2 · The River and Pan</b> — two banks joined by a cave</sub></td>
-    <td align="center"><sub><b>II.3 · The Sisters' Crag</b> — a spiral climb, turned by handles</sub></td>
-  </tr>
-  <tr>
-    <td colspan="2"><img src="docs/screenshots/temple-of-ceres-and-juno.jpg" alt="II.4, the temple of Ceres and Juno"></td>
-  </tr>
-  <tr>
-    <td colspan="2" align="center"><sub><b>II.4 · The Temple of Ceres and Juno</b> — two rings that turn about the altar: it looks easy</sub></td>
+    <td colspan="2" align="center"><sub><b>The Book</b> — the fragments of the tale, gathered act by act</sub></td>
   </tr>
 </table>
 
@@ -75,48 +58,34 @@ appear, the palace stops lying — and the oil runs out.
 
 ## The game
 
-- **The tale, in order.** Four acts and an epilogue, from the oracle to the wedding
-  on Olympus. Each act opens with a short cutscene; each level ends with a page of
-  the story. All texts are written anew from the Latin, in **Italian and English**.
-- **Two new mechanics per act, never more.** Act I: turning the diorama (and the
-  stairs that work only while seen), then the lamp. Act II: veiled stones the
-  light makes real, and handles that turn whole parts of the world. Act III: the
-  ants, who carry stones along the way you see. The other
-  levels go deeper, not wider; the last levels of an act are real puzzles.
-- **Fragments of the tale.** Hidden on hard-to-reach spots, optional, gathered in
-  the Book, an open book with an index of every act. The last one reveals who is telling
-  the story.
-- **A place for every level.** A crag at sunset, a palace at dusk, a forest of
-  rock at the dead of night, a river at dawn, a temple over a sacred pool: each
-  with its own sky, mountains, light and sound.
-- **Dreamlike sound.** The music is generative and never repeats: slow pads, a
-  lyre, a flute, far bells, a different voice for each act. The effects are
-  synthesised, soft, in a vast space.
-- **Room to experiment.** Some changes are for good, so a wrong move can cost
-  the way: braziers bring you back, a held key restarts the level, and there are
+- **The tale, in order**: four acts and an epilogue, from the oracle to Olympus;
+  each act opens with a short cutscene. Texts written anew from the Latin, in
+  **Italian and English**.
+- **Two new mechanics per act**: turning the diorama and the lamp (Act I), veiled
+  stones and handles (Act II), the ants (Act III)… The other levels go deeper, not
+  wider; the last ones of an act are real puzzles.
+- **Fragments of the tale**, hidden and optional, gathered in the Book.
+- **A place for every level**, with its own sky, light and sound; generative,
+  dreamlike music that never repeats.
+- **Room to experiment**: braziers bring you back, a held key restarts the level;
   accessibility options (HUD size, labels, reduced motion, endless oil).
 
-**Status:** Acts I and II are playable (eight levels), and the first level of
-Act III. The rest of Act III, Act IV and the epilogue are being built, one level
-at a time. Keyboard and mouse or a gamepad.
+**Status:** Acts I and II (eight levels) and the first level of Act III are
+playable; the rest is being built, one level at a time.
 
 <br>
 
 ## Everything is made in code
 
-There are no image files in the game. The palace, the rocks, the trees, the
-figures, the sky and the mountains are built from code at startup; so is almost
-all of the sound.
+No image files: the palace, the figures, the sky and the mountains are built from
+code at startup, and so is almost all of the sound.
 
 | | |
 |---|---|
-| **Language** | [Odin](https://odin-lang.org) |
-| **Graphics, input, audio device** | [raylib 6](https://www.raylib.com), from Odin's vendor collection; OpenGL 3.3 |
-| **Rendering** | true 3D with a hand-made isometric projection (so every illusion of the 2D design survives); meshes from lists of boxes; GLSL shaders for the stones' light (moon, sunset, lamp, candles), the sky, the parallax ranges, clouds, water and the veil between levels |
-| **Graphics quality** | Low (drawn smaller), Medium, High (MSAA 4×), Ultra (2× supersampling), switchable live |
-| **Sound** | synthesised at startup and in real time: a generative score per act (additive pads, Karplus–Strong lyre, flute, glass bells), effects from modal and filtered-noise synthesis, an 8-line FDN reverb; recorded footsteps (CC0) |
-| **Levels** | plain text files, embedded in the binary; a solver plays every level move by move to prove it can be finished, find shortcuts and dead ends, and check that every fragment stays optional |
-| **Tests** | headless: rules, illusions, every level solved and played through the game, saves, settings, sound |
+| **Language** | [Odin](https://odin-lang.org), with [raylib 6](https://www.raylib.com) (OpenGL 3.3) |
+| **Rendering** | true 3D with a hand-made isometric projection, so every illusion survives; meshes from lists of boxes; GLSL for light, sky, clouds and water |
+| **Sound** | synthesised: a generative score per act (pads, Karplus–Strong lyre, flute, bells), soft effects, an FDN reverb; recorded footsteps (CC0) |
+| **Levels** | text files; a solver plays each one through to prove it can be finished and that every fragment stays optional |
 
 Developed with [Claude Code](https://claude.com/claude-code) (Anthropic) as a coding copilot.
 
@@ -124,44 +93,33 @@ Developed with [Claude Code](https://claude.com/claude-code) (Anthropic) as a co
 
 ## Play it
 
-The game is in development and builds on **Linux** for now (Windows and macOS
-should follow: raylib and Odin support them, but they are not tested yet at the moment).
+**Download** the Linux build (x86_64, glibc 2.29+) from the
+[Releases](https://github.com/pankaspe/the-trial-of-psyche/releases) page, unpack it
+and run `./trial-of-psyche`. Windows and macOS are not tested yet.
 
-<p align="center"><a href="https://github.com/pankaspe/the-trial-of-psyche/releases"><img src="https://img.shields.io/github/v/release/pankaspe/the-trial-of-psyche?include_prereleases&style=for-the-badge&label=download%20for%20linux&labelColor=e8792b&color=e8792b&logo=linux&logoColor=white" alt="Download for Linux" height="44"></a></p>
-
-**Download:** a ready-to-run Linux build (x86_64, glibc 2.29 or newer) is on the
-[Releases](https://github.com/pankaspe/the-trial-of-psyche/releases) page: unpack it
-and run `./trial-of-psyche`.
-
-**From source:** you need the [Odin compiler](https://odin-lang.org/docs/install/) (a recent `dev`
-build; raylib comes with it) and a GPU with OpenGL 3.3.
+**From source**, with the [Odin compiler](https://odin-lang.org/docs/install/) (a recent `dev` build):
 
 ```bash
 git clone https://github.com/pankaspe/the-trial-of-psyche.git
 cd the-trial-of-psyche
-./build.sh release            # optimised build: build/trial-of-psyche
-./build/trial-of-psyche
+./build.sh release && ./build/trial-of-psyche
 ```
 
-Other commands: `./build.sh` (debug build and run), `./build.sh test` (the
-headless tests), `./build.sh check assets/levels/level_04.txt` (a level's
-analysis: illusions per view, the solver's plan).
-
-### Controls
+`./build.sh test` runs the headless tests; `./build.sh check assets/levels/level_04.txt`
+analyses a level.
 
 | | Keyboard and mouse | Gamepad |
 |---|---|---|
 | walk | click | left stick or d-pad |
-| turn the diorama | Q / E (or ← / →) | LB / RB |
+| turn the diorama | Q / E | LB / RB |
 | the lamp | 1, L or right click | X |
 | turn a handle (standing on it) | 2 or F | Y |
-| the action of the place (into a cave) | Space | A |
-| tap: back to the last brazier · hold: restart the level | R | B |
-| pause and controls | Esc · F11 fullscreen | Start |
+| call the ants (beside a seed) | 3 or Space | LT |
+| into a cave | Space | A |
+| back to the last brazier · hold: restart | R | B |
+| pause | Esc | Start |
 
-The game is fully playable with a gamepad: the HUD shows the buttons of the
-device used last (Xbox, PlayStation or Nintendo marks, or chosen in the
-settings), and the menus are walked with the d-pad, A to choose, B to go back.
+The HUD shows the buttons of the device used last (Xbox, PlayStation or Nintendo).
 
 <br>
 
