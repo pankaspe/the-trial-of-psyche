@@ -46,6 +46,7 @@ Screen :: enum u8 {
 }
 
 Ending_Info :: ui.Ending_Info
+Book_State :: ui.Book_State
 
 // The card before an act, over the sleeping palace.
 Act_Card :: struct {
@@ -68,7 +69,7 @@ App :: struct {
 	card_t:          f32, // time on the ending card
 	ending:          Ending_Info,
 	act_card:        Act_Card,
-	book_page:       int,
+	book:            Book_State,
 	fragment_t:      f32, // time on the fragment card
 	mechanic_t:      f32, // time on the mechanic card
 	toasts:          [MAX_TOASTS]progress.Achievement, // achievements waiting to be announced
@@ -763,16 +764,6 @@ pad_keys :: proc(app: ^App) {
 			app.east_block = true
 		}
 	}
-	if app.screen == .Book {
-		step := input.nav().x
-		if input.take(.LB) {
-			step = -1
-		}
-		if input.take(.RB) {
-			step = 1
-		}
-		app.book_page = clamp(app.book_page + step, 0, ui.BOOK_PAGES - 1)
-	}
 }
 
 global_keys :: proc(app: ^App) {
@@ -802,14 +793,6 @@ global_keys :: proc(app: ^App) {
 		case .Mechanic:
 			close_mechanic(app)
 		case .Title, .Ending:
-		}
-	}
-	if app.screen == .Book {
-		if rl.IsKeyPressed(.LEFT) {
-			app.book_page = max(app.book_page - 1, 0)
-		}
-		if rl.IsKeyPressed(.RIGHT) {
-			app.book_page = min(app.book_page + 1, ui.BOOK_PAGES - 1)
 		}
 	}
 	if app.screen == .Card && (rl.IsKeyPressed(.ENTER) || rl.IsKeyPressed(.SPACE)) {
@@ -967,6 +950,7 @@ draw_screens :: proc(app: ^App) {
 		case .Levels:
 			app.screen = .Levels
 		case .Book:
+			ui.book_open(&app.book)
 			app.screen = .Book
 		case .Settings:
 			open_settings(app)
@@ -982,7 +966,7 @@ draw_screens :: proc(app: ^App) {
 			app.screen = .Title
 		}
 	case .Book:
-		if ui.book(u, app.prog, &app.book_page) {
+		if ui.book(u, app.prog, &app.book) {
 			app.screen = .Title
 		}
 	case .Card:

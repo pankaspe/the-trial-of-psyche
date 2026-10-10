@@ -137,6 +137,8 @@ Key :: enum u16 {
 	Book_Missing,
 	Book_Achievements,
 	Book_Hidden,
+	Book_Turn,
+	Book_Choose,
 
 	// achievements: name and condition
 	Achievement,
@@ -542,6 +544,8 @@ IT := [Key]string {
 	.Book_Missing   = "frammento non ancora trovato",
 	.Book_Achievements = "Traguardi",
 	.Book_Hidden    = "Traguardo segreto",
+	.Book_Turn      = "sfoglia",
+	.Book_Choose    = "scegli il livello",
 
 	.Achievement    = "Traguardo",
 	.Ach_Tale_1     = "La favola · Atto I",
@@ -821,6 +825,8 @@ EN := [Key]string {
 	.Book_Missing   = "fragment not found yet",
 	.Book_Achievements = "Achievements",
 	.Book_Hidden    = "Secret achievement",
+	.Book_Turn      = "turn the page",
+	.Book_Choose    = "choose the level",
 
 	.Achievement    = "Achievement",
 	.Ach_Tale_1     = "The Tale · Act I",

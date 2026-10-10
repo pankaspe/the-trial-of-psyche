@@ -313,74 +313,326 @@ level_select :: proc(u: ^Ui, prog: progress.Progress) -> (chosen: int, back: boo
 
 // --- the Book -------------------------------------------------------------------------
 
-FRAGMENTS_PER_PAGE :: 4
-BOOK_PAGES :: (content.FRAGMENT_COUNT + FRAGMENTS_PER_PAGE - 1) / FRAGMENTS_PER_PAGE + 1 // + achievements
+// An open book of dark glass, like the cards of the interface. Tabs on the
+// right edge open each act and, last, the achievements. In an act the left
+// page is its index (each level, a diamond for every fragment it hides, lit
+// once found) and the right page reads the fragments of the level chosen.
+// ← → (LB RB) change the tab, a page turning; ↑ ↓ choose the level; a click
+// does both.
+Book_State :: struct {
+	tab:    int, // an act (content.Act), or BOOK_ACHIEVEMENTS
+	level:  int, // the level read on the right page (LEVELS index)
+	flip_t: f32, // since the page turned (< 0: none)
+	flip:   int, // the way it turned: +1 forward, -1 back
+	read_t: f32, // since the level on the right page was chosen
+}
 
-// The fragments in Apuleius' order, a few per page, then the achievements.
-// `page` is changed by the arrows.
-book :: proc(u: ^Ui, prog: progress.Progress, page: ^int) -> (back: bool) {
+BOOK_ACHIEVEMENTS :: len(content.Act) // the last tab
+@(private)
+BOOK_TABS :: BOOK_ACHIEVEMENTS + 1
+@(private)
+FLIP_TIME :: 0.5
+
+// The first level of an act.
+@(private)
+act_first :: proc(act: content.Act) -> int {
+	for info, i in content.LEVELS {
+		if info.act == act {
+			return i
+		}
+	}
+	return 0
+}
+
+// Open the Book at an act's first level (or keep where it was).
+book_open :: proc(b: ^Book_State) {
+	if b.tab == 0 && b.level == 0 {
+		b.flip_t = -1
+	}
+	b.read_t = 1
+}
+
+book :: proc(u: ^Ui, prog: progress.Progress, b: ^Book_State) -> (back: bool) {
 	s := u.scale
 	shade(u, 0.86)
 	cx := u.width * 0.5
-	top := u.height * 0.5 - 450 * s
-	text(u, i18n.tr(.Book), {cx, top - 20 * s}, {size = 84, color = TITLE, face = .Display, glow = true, shadow = true})
-	achievements := page^ == BOOK_PAGES - 1
-	sub := achievements ? i18n.tr(.Book_Achievements) : i18n.tr(.Book_Fragments)
-	rule_label(u, caps(sub), {cx, top + 84 * s}, 20, 80 * s, 0.9)
-	y := top + 160 * s
+	cy := u.height * 0.5
+	if b.flip_t >= 0 {
+		b.flip_t += u.dt
+		if b.flip_t >= FLIP_TIME {
+			b.flip_t = -1
+		}
+	}
+	b.read_t += u.dt
 
-	if !achievements {
-		cite := Style{size = 21, color = GOLD, face = .Semi, track = 0.12, shadow = true}
-		body := Style{size = 31, color = TEXT, face = .Italic, shadow = true}
-		first := page^ * FRAGMENTS_PER_PAGE
-		for k in first ..< min(first + FRAGMENTS_PER_PAGE, content.FRAGMENT_COUNT) {
-			i := content.BOOK_ORDER[k]
-			info := content.FRAGMENTS[i]
-			text(u, fmt.tprintf("%d  ·  %s", k + 1, info.cite), {cx, y}, cite, .Center, 0.8)
-			y += 34 * s
-			if i in prog.fragments {
-				y += paragraph(u, i18n.tr(info.key), {cx, y}, body, 1000 * s, 1, 1.3)
-			} else {
-				text(u, fmt.tprintf("—  %s  —", i18n.tr(.Book_Missing)), {cx, y}, {size = 26, color = FAINT, face = .Italic, shadow = true})
-				y += 34 * s
+	turn :: proc(b: ^Book_State, want: int) {
+		to := clamp(want, 0, BOOK_TABS - 1)
+		if to == b.tab {
+			return
+		}
+		b.flip = to > b.tab ? 1 : -1
+		b.flip_t = 0
+		b.tab = to
+		if to < BOOK_ACHIEVEMENTS {
+			b.level = act_first(content.Act(to))
+			b.read_t = 0
+		}
+	}
+	choose :: proc(b: ^Book_State, level: int) {
+		if level != b.level {
+			b.level = level
+			b.read_t = 0
+		}
+	}
+	// the keys and the pad
+	step := 0
+	if rl.IsKeyPressed(.LEFT) || input.take(.LB) {
+		step = -1
+	}
+	if rl.IsKeyPressed(.RIGHT) || input.take(.RB) {
+		step = 1
+	}
+	if step != 0 {
+		turn(b, b.tab + step)
+	}
+	if b.tab < BOOK_ACHIEVEMENTS {
+		act := content.Act(b.tab)
+		dy := input.nav().y
+		if rl.IsKeyPressed(.UP) {
+			dy = -1
+		}
+		if rl.IsKeyPressed(.DOWN) {
+			dy = 1
+		}
+		next := b.level + dy
+		if dy != 0 && next >= 0 && next < content.LEVEL_COUNT && content.LEVELS[next].act == act {
+			choose(b, next)
+		}
+	}
+
+	// the title over the book
+	text(u, i18n.tr(.Book), {cx, cy - 515 * s}, {size = 72, color = TITLE, face = .Display, glow = true, shadow = true})
+
+	// the book: two pages of dark glass, the spine in shadow
+	W :: 1500
+	H :: 780
+	book_r := rl.Rectangle{cx - W * 0.5 * s, cy - 410 * s, W * s, H * s}
+	left := rl.Rectangle{book_r.x, book_r.y, book_r.width * 0.5, book_r.height}
+	right := rl.Rectangle{cx, book_r.y, book_r.width * 0.5, book_r.height}
+	rl.DrawRectangleRec({book_r.x + 10 * s, book_r.y + 16 * s, book_r.width, book_r.height}, fade({0, 0, 0, 255}, 0.45))
+	for pg in ([2]rl.Rectangle{left, right}) {
+		rl.DrawRectangleGradientV(i32(pg.x), i32(pg.y), i32(pg.width), i32(pg.height), {28, 21, 33, 250}, {18, 13, 24, 250})
+		rl.DrawRectangleLinesEx(pg, max(s, 1), fade(GOLD, 0.16))
+	}
+	sh := 70 * s
+	rl.DrawRectangleGradientH(i32(cx - sh), i32(book_r.y), i32(sh), i32(book_r.height), {0, 0, 0, 0}, {0, 0, 0, 150})
+	rl.DrawRectangleGradientH(i32(cx), i32(book_r.y), i32(sh), i32(book_r.height), {0, 0, 0, 150}, {0, 0, 0, 0})
+	rl.DrawRectangleGradientV(i32(cx - s), i32(book_r.y), i32(2 * s), i32(book_r.height * 0.5), fade(GOLD, 0.6), fade(GOLD, 0))
+	rl.DrawRectangleGradientV(i32(cx - s), i32(book_r.y + book_r.height * 0.5), i32(2 * s), i32(book_r.height * 0.5), fade(GOLD, 0), fade(GOLD, 0.6))
+	corner_frame(u, {book_r.x - 6 * s, book_r.y - 6 * s, book_r.width + 12 * s, book_r.height + 12 * s}, 1)
+
+	// the tabs, out of the right page's edge
+	labels := [BOOK_TABS]string{"I", "II", "III", "IV", "E", ""}
+	for i in 0 ..< BOOK_TABS {
+		r := rl.Rectangle{right.x + right.width, right.y + 50 * s + f32(i) * 66 * s, 60 * s, 54 * s}
+		add_hot(u, r)
+		hover := mouse_over(u, r)
+		on := i == b.tab
+		rl.DrawRectangleRec(r, on ? GOLD : fade({26, 20, 32, 255}, hover ? 1 : 0.95))
+		rl.DrawRectangleLinesEx(r, max(s, 1), fade(GOLD, on ? 1 : (hover ? 0.8 : 0.4)))
+		ink := on ? rl.Color{26, 20, 32, 255} : (hover ? BRIGHT : DIM)
+		c := Vec2{r.x + r.width * 0.5 + 3 * s, r.y + r.height * 0.5}
+		if i == BOOK_ACHIEVEMENTS {
+			diamond(u, c, 10 * s, ink, true)
+		} else {
+			st := Style{size = 24, color = ink, face = .Semi}
+			text(u, labels[i], {c.x, c.y - measure(u, labels[i], st).y * 0.5}, st)
+		}
+		if hover && u.pressed {
+			turn(b, i)
+		}
+	}
+
+	PAD :: 70
+	if b.tab < BOOK_ACHIEVEMENTS {
+		act := content.Act(b.tab)
+		// the left page: the act and its index
+		lx := left.x + PAD * s
+		lw := left.width - 2 * PAD * s
+		y := left.y + 56 * s
+		rule_label(u, caps(i18n.tr(content.ACT_LABEL[act])), {left.x + left.width * 0.5, y}, 20, 70 * s)
+		y += 34 * s
+		text(u, i18n.tr(content.ACT_TITLE[act]), {left.x + left.width * 0.5, y}, {size = 48, color = TITLE, face = .Display, glow = true})
+		y += 100 * s
+		for info, i in content.LEVELS {
+			if info.act != act {
+				continue
 			}
-			y += 34 * s
+			row := rl.Rectangle{lx - 16 * s, y - 8 * s, lw + 32 * s, 58 * s}
+			add_hot(u, row)
+			hover := mouse_over(u, row)
+			sel := i == b.level
+			if sel {
+				rl.DrawRectangleRec(row, fade(GOLD, 0.12))
+				rl.DrawRectangleLinesEx(row, max(s, 1), fade(GOLD, 0.55))
+			} else if hover {
+				rl.DrawRectangleRec(row, fade(GOLD, 0.06))
+			}
+			built := content.is_built(i)
+			ink := sel ? BRIGHT : (built ? TEXT : FAINT)
+			text(u, level_label(i), {lx, y + 6 * s}, {size = 22, color = GOLD, face = .Semi, track = 0.08}, .Left, built ? 1 : 0.6)
+			text(u, i18n.tr(info.title), {lx + 76 * s, y}, {size = 32, color = ink, face = built ? .Body : .Italic}, .Left)
+			// a diamond for each fragment it hides, lit once found
+			first, count := content.level_fragments(i)
+			for k in 0 ..< count {
+				found := (first + k) in prog.fragments
+				c := Vec2{lx + lw - f32(count - 1 - k) * 26 * s - 8 * s, y + 21 * s}
+				if found {
+					glow_dot(c, 9 * s, {255, 176, 77, 255}, 0.6)
+				}
+				diamond(u, c, 9 * s, found ? BRIGHT : fade(FAINT, 0.8), found)
+			}
+			if hover && u.pressed {
+				choose(b, i)
+			}
+			y += 66 * s
+		}
+		// the count, at the foot of the page
+		total := fmt.tprintf("%s  %d / %d", caps(i18n.tr(.Fragments_Label)), progress.fragment_count(prog), content.FRAGMENT_COUNT)
+		text(u, total, {left.x + left.width * 0.5, left.y + left.height - 56 * s}, {size = 18, color = DIM, face = .Semi, track = 0.16})
+
+		// the right page: the fragments of the level chosen
+		a := clamp(b.read_t / 0.3, 0, 1)
+		rx := right.x + PAD * s
+		rw := right.width - 2 * PAD * s
+		ry := right.y + 62 * s
+		text(u, level_label(b.level), {right.x + right.width * 0.5, ry}, {size = 20, color = GOLD, face = .Semi, track = 0.18}, .Center, a)
+		ry += 30 * s
+		ry += paragraph(u, i18n.tr(content.LEVELS[b.level].title), {right.x + right.width * 0.5, ry}, {size = 44, color = TITLE, face = .Display, glow = true}, rw, a, 1.1)
+		ornament(u, {right.x + right.width * 0.5, ry + 22 * s}, 60 * s, a)
+		ry += 56 * s
+		first, count := content.level_fragments(b.level)
+		cite := Style{size = 20, color = GOLD, face = .Semi, track = 0.12}
+		body := Style{size = 29, color = TEXT, face = .Italic}
+		for k in 0 ..< count {
+			i := first + k
+			info := content.FRAGMENTS[i]
+			found := i in prog.fragments
+			diamond(u, {rx + 6 * s, ry + 11 * s}, 7 * s, found ? BRIGHT : fade(FAINT, 0.8), found)
+			text(u, fmt.tprintf("Met. %s", info.cite), {rx + 24 * s, ry}, cite, .Left, a * 0.9)
+			ry += 32 * s
+			if found {
+				ry += paragraph(u, i18n.tr(info.key), {rx, ry}, body, rw, a, 1.3, .Left)
+			} else {
+				text(u, i18n.tr(.Book_Missing), {rx, ry}, {size = 26, color = FAINT, face = .Italic}, .Left, a)
+				ry += 34 * s
+			}
+			ry += 26 * s
+		}
+		if !content.is_built(b.level) {
+			text(u, i18n.tr(.Level_Unbuilt), {rx, ry}, {size = 24, color = FAINT, face = .Italic}, .Left, a)
 		}
 	} else {
-		for a in progress.Achievement {
-			got := a in prog.achievements
-			secret := a in progress.SECRET && !got
-			name := i18n.tr(secret ? .Book_Hidden : progress.ACHIEVEMENT_NAME[a])
-			desc := i18n.tr(secret ? .Ach_Trust_Secret : progress.ACHIEVEMENT_DESC[a])
+		// the achievements, half on each page
+		list := make([dynamic]progress.Achievement, 0, 16, context.temp_allocator)
+		for ach in progress.Achievement {
+			append(&list, ach)
+		}
+		half := (len(list) + 1) / 2
+		rule_label(u, caps(i18n.tr(.Book_Achievements)), {left.x + left.width * 0.5, left.y + 56 * s}, 20, 70 * s)
+		for ach, n in list {
+			pg := n < half ? left : right
+			row := n < half ? n : n - half
+			x := pg.x + PAD * s
+			y := pg.y + 130 * s + f32(row) * 150 * s
+			got := ach in prog.achievements
+			secret := ach in progress.SECRET && !got
+			name := i18n.tr(secret ? .Book_Hidden : progress.ACHIEVEMENT_NAME[ach])
+			desc := i18n.tr(secret ? .Ach_Trust_Secret : progress.ACHIEVEMENT_DESC[ach])
 			alpha: f32 = got ? 1 : 0.55
-			nst := Style{size = 32, color = got ? BRIGHT : DIM, face = .Semi, shadow = true}
-			w := measure(u, name, nst).x
-			text(u, name, {cx, y}, nst, .Center, alpha)
-			diamond(u, {cx - w * 0.5 - 24 * s, y + 18 * s}, 8 * s, fade(GOLD, alpha), got)
-			text(u, desc, {cx, y + 40 * s}, {size = 24, color = DIM, face = .Italic, shadow = true}, .Center, alpha)
-			y += 82 * s
+			if got {
+				glow_dot({x + 10 * s, y + 18 * s}, 12 * s, {255, 176, 77, 255}, 0.7)
+			}
+			diamond(u, {x + 10 * s, y + 18 * s}, 10 * s, fade(GOLD, alpha), got)
+			text(u, name, {x + 38 * s, y}, {size = 32, color = got ? BRIGHT : DIM, face = .Semi}, .Left, alpha)
+			paragraph(u, desc, {x + 38 * s, y + 44 * s}, {size = 24, color = DIM, face = .Italic}, pg.width - 2 * PAD * s - 38 * s, alpha, 1.25, .Left)
 		}
 	}
 
-	ny := u.height * 0.5 + 370 * s
-	text(u, fmt.tprintf("%d / %d", page^ + 1, BOOK_PAGES), {cx, ny}, {size = 24, color = DIM, face = .Semi, shadow = true})
-	// the pad turns the pages with left and right (read by the app)
-	if page^ > 0 && button(u, "‹", {cx - 110 * s, ny + 14 * s}, 40, focus = false) {
-		page^ -= 1
+	// a page turning over the spine
+	if b.flip_t >= 0 {
+		k := b.flip_t / FLIP_TIME
+		e := k * k * (3 - 2 * k)
+		w := right.width * abs(math.cos(e * math.PI))
+		fwd := b.flip > 0
+		on_right := fwd ? e < 0.5 : e >= 0.5
+		x := on_right ? cx : cx - w
+		sheet := rl.Rectangle{x, right.y - 4 * s, w, right.height + 8 * s}
+		lit := u8(40 + 50 * math.sin(e * math.PI))
+		inner := rl.Color{lit, u8(f32(lit) * 0.78), u8(f32(lit) * 0.95), 255}
+		outer := rl.Color{30, 23, 36, 255}
+		if on_right {
+			rl.DrawRectangleGradientH(i32(sheet.x), i32(sheet.y), i32(sheet.width), i32(sheet.height), inner, outer)
+		} else {
+			rl.DrawRectangleGradientH(i32(sheet.x), i32(sheet.y), i32(sheet.width), i32(sheet.height), outer, inner)
+		}
+		edge := on_right ? sheet.x + sheet.width : sheet.x
+		rl.DrawRectangleRec({edge - s, sheet.y, 2 * s, sheet.height}, fade(GOLD, 0.7))
 	}
-	if page^ < BOOK_PAGES - 1 && button(u, "›", {cx + 110 * s, ny + 14 * s}, 40, focus = false) {
-		page^ += 1
-	}
+
+	// how to move about it
+	hint_y := book_r.y + book_r.height + 26 * s
+	st := Style{size = 22, color = DIM, face = .Semi, track = 0.1}
 	if u.pad {
-		if page^ > 0 {
-			pad_button(u, .Left, {cx - 110 * s - 14 * s, ny + 44 * s}, 0.8)
+		x := cx - 260 * s
+		x += pad_button(u, .LB, {x, hint_y}, 0.9) + 6 * s
+		x += pad_button(u, .RB, {x, hint_y}, 0.9) + 12 * s
+		text(u, i18n.tr(.Book_Turn), {x, hint_y + 2 * s}, st, .Left)
+	} else {
+		// key caps with drawn arrows (the fonts have none)
+		turn_w := measure(u, i18n.tr(.Book_Turn), st).x
+		choose_w := measure(u, i18n.tr(.Book_Choose), st).x
+		cap := 30 * s
+		reading := b.tab < BOOK_ACHIEVEMENTS
+		total := reading ? 4 * cap + 3 * 6 * s + 2 * 12 * s + turn_w + choose_w + 50 * s : 2 * cap + 12 * s + turn_w
+		x := cx - total * 0.5
+		for d in ([4]int{0, 1, 2, 3}) {
+			if d == 2 && !reading {
+				break
+			}
+			arrow_cap(u, {x, hint_y}, cap, d)
+			x += cap + 6 * s
+			if d == 1 {
+				x += 6 * s
+				text(u, i18n.tr(.Book_Turn), {x, hint_y + 2 * s}, st, .Left)
+				x += turn_w + 50 * s
+			}
 		}
-		if page^ < BOOK_PAGES - 1 {
-			pad_button(u, .Right, {cx + 110 * s - 14 * s, ny + 44 * s}, 0.8)
+		if reading {
+			x += 6 * s
+			text(u, i18n.tr(.Book_Choose), {x, hint_y + 2 * s}, st, .Left)
 		}
 	}
-	back = button(u, i18n.tr(.Back), {cx, u.height * 0.5 + 460 * s}, 30)
+	back = button(u, i18n.tr(.Back), {cx, cy + 470 * s}, 30)
 	return
+}
+
+// A key cap with an arrow drawn in it: 0 left, 1 right, 2 up, 3 down.
+@(private)
+arrow_cap :: proc(u: ^Ui, pos: Vec2, size: f32, dir: int) {
+	r := rl.Rectangle{pos.x, pos.y, size, size}
+	rl.DrawRectangleRec(r, fade({21, 18, 29, 255}, 0.9))
+	rl.DrawRectangleLinesEx(r, max(u.scale, 1), DIM)
+	c := Vec2{r.x + size * 0.5, r.y + size * 0.5}
+	h := size * 0.22
+	pts: [3]Vec2
+	switch dir {
+	case 0: pts = {c + {-h, 0}, c + {h, -h}, c + {h, h}}
+	case 1: pts = {c + {h, 0}, c + {-h, h}, c + {-h, -h}}
+	case 2: pts = {c + {0, -h}, c + {h, h}, c + {-h, h}}
+	case: pts = {c + {0, h}, c + {-h, -h}, c + {h, -h}}
+	}
+	tri(pts[0], pts[1], pts[2], DIM)
 }
 
 // A short notice in the top left corner: an achievement just unlocked.

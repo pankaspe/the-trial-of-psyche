@@ -84,7 +84,7 @@ appear, the palace stops lying — and the oil runs out.
   ants, who carry stones along the way you see. The other
   levels go deeper, not wider; the last levels of an act are real puzzles.
 - **Fragments of the tale.** Hidden on hard-to-reach spots, optional, gathered in
-  the Book in the order of Apuleius' text. The last one reveals who is telling
+  the Book, an open book with an index of every act. The last one reveals who is telling
   the story.
 - **A place for every level.** A crag at sunset, a palace at dusk, a forest of
   rock at the dead of night, a river at dawn, a temple over a sacred pool: each
