@@ -68,6 +68,8 @@ Bed :: enum u8 {
 	Forest, // the night wind in the trees, crickets in the grass
 	River, // a wide river flowing, a breeze, the first birds of the morning
 	Garden, // the house of Venus at evening: a breeze, a fountain, doves far off
+	Pasture_Day, // the Sun's pastures at noon: a slow river, a warm breeze, cicadas far off
+	Pasture_Evening, // the same at evening: the river, crickets, the reeds stirring
 }
 
 BED_SECONDS :: 24
@@ -499,6 +501,11 @@ synthesize_bed :: proc(bed: Bed, allocator := context.allocator) -> []f32 {
 	case .Garden:
 		wind = {0.11, 200, 620, 0.45}
 		crickets, cricket_level = 2, 0.014
+	case .Pasture_Day:
+		wind = {0.12, 240, 760, 0.5}
+	case .Pasture_Evening:
+		wind = {0.1, 200, 600, 0.45}
+		crickets, cricket_level = 4, 0.022
 	}
 	for ch in 0 ..< 2 {
 		pk: Pink
@@ -551,6 +558,9 @@ synthesize_bed :: proc(bed: Bed, allocator := context.allocator) -> []f32 {
 	}
 	if bed == .Garden {
 		garden(raw, m, &rng)
+	}
+	if bed == .Pasture_Day || bed == .Pasture_Evening {
+		pasture(raw, m, &rng, bed == .Pasture_Day)
 	}
 	// the wrap: the last XF seconds fade into the first, equal power
 	out := make([]f32, n * 2, allocator)
@@ -694,6 +704,92 @@ garden :: proc(raw: []f32, m: int, rng: ^fx.Rng) {
 				v := lp * env * 0.016
 				raw[2 * i] += v * left
 				raw[2 * i + 1] += v * right
+			}
+		}
+	}
+}
+
+// The Sun's pastures: a slow river under the bank (a softer wash than Pan's,
+// fewer bubbles); by day cicadas far off, each a soft high buzz that swells
+// and fades in long phrases; at evening the reeds stir now and then.
+@(private)
+pasture :: proc(raw: []f32, m: int, rng: ^fx.Rng, day: bool) {
+	for ch in 0 ..< 2 {
+		pk: Pink
+		f: Svf
+		ph := fx.rand_range(rng, 0, 10)
+		for i in 0 ..< m {
+			t := time_of(i)
+			sway := 0.5 + 0.5 * math.sin(0.23 * t + ph) * math.sin(0.09 * t + 2 * ph)
+			_, bp, _ := svf(&f, pink(&pk, rng), 430 + 260 * sway, 0.9)
+			raw[2 * i + ch] += bp * 0.15
+		}
+	}
+	for b := 0; b < int(f32(m) / RATE * 11); b += 1 {
+		start := int(fx.randf(rng) * f32(m))
+		hz := fx.rand_range(rng, 340, 1000)
+		dur := fx.rand_range(rng, 0.014, 0.035)
+		level := fx.rand_range(rng, 0.003, 0.011)
+		pan := fx.rand_range(rng, -0.9, 0.9)
+		left, right := math.sqrt(0.5 * (1 - pan)), math.sqrt(0.5 * (1 + pan))
+		length := int(dur * RATE)
+		phase: f32 = 0
+		for k in 0 ..< length {
+			i := start + k
+			if i >= m {
+				break
+			}
+			u := f32(k) / f32(length)
+			phase += math.TAU * hz * (1 + 0.8 * u) / RATE
+			v := math.sin(phase) * math.sin(math.PI * u) * (1 - u) * level
+			raw[2 * i] += v * left
+			raw[2 * i + 1] += v * right
+		}
+	}
+	if day {
+		// cicadas: a tone near 4.5 kHz, pulsed fast, through a soft band; each
+		// sings a phrase of a few seconds, rests, sings again, far and to one side
+		for _ in 0 ..< 3 {
+			pan := fx.rand_range(rng, -0.85, 0.85)
+			left, right := math.sqrt(0.5 * (1 - pan)), math.sqrt(0.5 * (1 + pan))
+			hz := fx.rand_range(rng, 4100, 5200)
+			pulse := fx.rand_range(rng, 140, 210)
+			level := fx.rand_range(rng, 0.004, 0.008)
+			f: Svf
+			for start := fx.rand_range(rng, 0, 4); start < f32(m) / RATE - 1; {
+				dur := fx.rand_range(rng, 3, 7)
+				s0 := int(start * RATE)
+				length := int(dur * RATE)
+				phase: f32 = 0
+				for k in 0 ..< length {
+					i := s0 + k
+					if i >= m {
+						break
+					}
+					u := f32(k) / f32(length)
+					env := math.sin(math.PI * u) // swells and fades: never a hard edge
+					env *= env
+					phase += math.TAU * hz / RATE
+					am := 0.5 + 0.5 * math.sin(math.TAU * pulse * time_of(i))
+					_, bp, _ := svf(&f, math.sin(phase) * am * am, hz, 1.4)
+					v := bp * env * level
+					raw[2 * i] += v * left
+					raw[2 * i + 1] += v * right
+				}
+				start += dur + fx.rand_range(rng, 2, 6)
+			}
+		}
+	} else {
+		// the reeds: now and then a breath through them, a soft high rustle
+		for ch in 0 ..< 2 {
+			pk: Pink
+			f: Svf
+			ph := fx.rand_range(rng, 0, 10)
+			for i in 0 ..< m {
+				t := time_of(i)
+				g := math.max(math.sin(0.17 * t + ph) * math.sin(0.41 * t + 2 * ph), 0)
+				_, _, hp := svf(&f, pink(&pk, rng), 2400, 0.7)
+				raw[2 * i + ch] += hp * g * g * 0.03
 			}
 		}
 	}

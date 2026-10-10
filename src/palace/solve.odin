@@ -4,7 +4,9 @@
 // hidden-stairs rule), a turn of the view, lighting or putting out the lamp,
 // a handle, the ants called beside a seed (it goes to the hollow its way in
 // this view leads to). The lamp's light makes veiled blocks real within its
-// reach; the lamp lit on a seal raises its `rise` blocks.
+// reach; the lamp lit on a seal raises its `rise` blocks. A step onto a reed
+// turns the time (by day the sun shows the truth and the rams stand in the
+// way; at evening the illusions are back and the rams lie down, steps).
 // A state is her cell, the view, the lamp and the palace's configuration
 // (which blocks changed, how each part is turned, where each seed is). The search is a cheapest
 // path (steps cost least; turns, lightings and handles more, so the plan it
@@ -26,6 +28,7 @@ Config :: struct {
 	rots:  u32, // 2 bits per part
 	seeds: u16, // 3 bits per seed: 0 where it lay, k + 1 in hollow k
 	risen: level.Seals, // the seals that have been lit
+	day:   bool, // the sun is up (a level with reeds)
 }
 
 @(private = "file")
@@ -77,6 +80,7 @@ Plan_Step :: struct {
 	cell:     Cell, // where Psyche is after the move
 	view:     int,
 	illusion: bool, // a step across an illusion
+	time:     bool, // a step onto a reed: the time turned
 	changed:  int, // blocks that changed with this move
 	carry:    int, // the ants: cells the seed was carried over
 	hollow:   int, // the ants: the hollow it dropped into
@@ -91,6 +95,7 @@ Solution :: struct {
 	lightings:   int,
 	handles:     int,
 	ants:        int,
+	times:       int, // the time turned (steps onto a reed)
 	states:      int, // states reached from the start
 	dead:        int, // ...of which cannot reach the goal any more (R restarts)
 }
@@ -144,6 +149,7 @@ configure :: proc(s: ^Solver, cfg: Config) {
 	}
 	p.seed_lifted = -1
 	p.risen = cfg.risen
+	p.day = cfg.day
 	rebuild_graph(p)
 }
 
@@ -163,7 +169,7 @@ call_ants :: proc(s: ^Solver, cfg: Config, cell: Cell, view: u8, lamp: bool) -> 
 	r: Ants_Result
 	if i := seed_beside(p, cell); i >= 0 {
 		path: Path
-		if k := seed_route(p, i, cell, !lamp, &path); k >= 0 {
+		if k := seed_route(p, i, cell, !lamp && !cfg.day, &path); k >= 0 {
 			r.ok, r.hollow, r.carry = true, k, sa.len(path)
 			r.cfg = cfg
 			r.cfg.seeds = (cfg.seeds & ~(7 << (3 * u16(i)))) | (u16(k + 1) << (3 * u16(i)))
@@ -268,7 +274,7 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 		append(&buckets[e.cost], id)
 	}
 
-	start_cfg := Config{}
+	start_cfg := Config{day = len(p.data.reeds) > 0}
 	push(&entries, &seen, &buckets, &edges, Entry{state = {start_cfg, p.data.start, 0, false}, parent = -1, move = .Start})
 	goal_id: i32 = -1
 	for cost := 0; cost < len(buckets); cost += 1 {
@@ -344,7 +350,7 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 			}
 
 			// steps
-			dark := !st.lamp
+			dark := !st.lamp && !st.cfg.day
 			for pass in 0 ..< 2 {
 				if pass == 1 && !dark {
 					break
@@ -371,6 +377,9 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 						n := 0
 						moved.cfg, n = touch(&s, moved.cfg, to)
 						moved.cfg, changed = seal(p, moved.cfg, to, changed + n)
+					}
+					if reed_at(p, to) >= 0 {
+						moved.cfg.day = !moved.cfg.day // a reed turns the time
 					}
 					if _, still := graph_of(&s, moved.cfg).index[to]; still {
 						extra := is_passage(p, g.nodes[a].cell, to) ? LIT_PASSAGE_COST : -1
@@ -424,10 +433,12 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 		slice.reverse(chain[:])
 		for id in chain[1:] {
 			e := entries[id]
-			append(&sol.plan, Plan_Step{e.move, e.state.cell, int(e.state.view), e.illusion, e.changed, e.carry, e.hollow})
+			turned := e.move == .Step && e.state.cfg.day != entries[e.parent].state.cfg.day
+			append(&sol.plan, Plan_Step{e.move, e.state.cell, int(e.state.view), e.illusion, turned, e.changed, e.carry, e.hollow})
 			#partial switch e.move {
 			case .Step:
 				sol.steps += 1
+				sol.times += int(turned)
 				sol.light_steps += int(e.state.lamp)
 			case .Turn_Left, .Turn_Right:
 				sol.turns += 1
@@ -442,7 +453,7 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 	}
 
 	// leave the palace as loaded
-	configure(&s, {})
+	configure(&s, start_cfg)
 	set_view(p, saved_view)
 	return
 }
@@ -526,7 +537,7 @@ check_dynamic_fragment :: proc(p: ^Palace, i: int, allocator := context.allocato
 
 // Does the level have blocks that change or parts that turn?
 is_dynamic :: proc(d: ^level.Level_Data) -> bool {
-	if len(d.parts) > 0 || len(d.seeds) > 0 {
+	if len(d.parts) > 0 || len(d.seeds) > 0 || len(d.reeds) > 0 {
 		return true
 	}
 	if d.has_sigil && len(d.rise) > 0 && !d.has_amore {

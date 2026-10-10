@@ -1,0 +1,127 @@
+# The Trial of Psyche - level III.2: "The Flock of the Sun"
+# Day and evening (the act's passive mechanic). Venus sends Psyche for the
+# golden wool of the Sun's flock; a reed of the river tells her to wait for
+# evening. The level starts by day. Stepping onto a reed turns the time: by
+# day the sun shows the truth (no illusions, every stair works) and the golden
+# rams stand in the way; at evening the illusions are back and the rams lie
+# down, each a step up toward its `dir`. A core of rock in a river, climbed
+# in three stages:
+#   the river (h1-h3): the start bank; a ram bars the step up to the bridge
+#     (the first reed, two cells away, brings the evening); a seed lies on the
+#     bridge in the way of the cave: in view 0 the ants carry it across an
+#     illusion to a rock in the river and into the gap beside it; the cave
+#     takes her up through the core;
+#   the north ledge and the pasture (h5-h6): she comes out at evening; the
+#     second reed brings the day, and only by day the stair cut in the rock
+#     under its roof leads up to the pasture (never seen in the dark); a handle
+#     turns a bar of rock across the pasture's walk; the second seed, carried
+#     by day along the real way, fills the gap before the rams' stair;
+#   the rams' stair and the summit (h9): the third reed brings the evening
+#     back, the three rams lie down: a golden stair up to the briars, where the
+#     wool is caught (the exit).
+# Solution (solver: 35 steps, 2 turns, 1 handle, 2 ants, 3 times turned, 0
+# dead ends). Fragments: III.2 (VI.11, Cupid shut away) on a spur under the
+# summit, down a stair under an overhang: by day only (the fourth reed, on
+# the summit); III.2b (VI.12, the reed's advice) on a rock in the river, past
+# the gap the first seed fills (view 0 from the bridge, at evening).
+# Format: see level_04.txt.
+size 11
+setting pasture_day
+evening pasture_evening
+mechanic time
+water 0 0 10 10
+ground 4 4 0 8
+ground 4 5 0 8
+ground 4 6 0 8
+ground 5 4 0 8
+ground 5 5 0 8
+ground 5 6 0 8
+ground 6 4 0 8
+ground 6 5 0 8
+ground 6 6 0 8
+ground 8 6 0 0
+ground 9 6 0 0
+ground 8 7 0 0
+ground 9 7 0 0
+ground 8 8 0 0
+ground 9 8 0 0
+ground 9 5 0 0
+rock 7 8 0 0
+ram 7 8 1 mx
+ground 6 8 0 1
+rock 5 8 0 1
+seed 5 8 2
+ground 4 8 0 1
+ground 4 7 0 1
+cave 4 7 2 my
+rock 7 9 0 2
+hollow 8 9 2
+rock 9 9 0 2
+reed 9 5 1
+start 9 7 1
+rest 9 7 1
+ground 4 3 0 4
+cave 4 3 5 py
+ground 3 3 0 4
+reed 3 3 5
+prop rail 3 3 5 my
+prop rail 4 3 5 my
+rock 2 3 0 4
+stairs 2 3 5 mx
+rock 2 3 6 6
+prop boulder 2 3 7 px
+ground 1 3 0 5
+ground 1 2 0 5
+ground 1 1 0 5
+ground 2 1 0 5
+ground 3 1 0 5
+ground 8 1 0 5
+rock 5 1 0 4
+part 5 1
+rock 5 0 5 5
+rock 5 1 5 5
+rock 5 2 5 5
+prop rail 5 2 6 mx
+end
+handle 1 1 6
+seed 3 1 6
+hollow 7 1 5
+rest 1 3 6
+reed 8 0 6
+ground 8 0 0 5
+rock 8 2 0 5
+ram 8 2 6 py
+ground 8 3 0 6
+rock 8 4 0 6
+ram 8 4 7 py
+ground 8 5 0 7
+ground 7 5 0 7
+ram 7 5 8 mx
+reed 5 6 9
+rock 3 6 0 7
+stairs 3 6 8 px
+rock 3 6 9 9
+prop boulder 3 6 10 mx
+prop rail 5 4 9 my
+rock 2 6 0 7
+exit 4 4 9
+fragment 2 6 8
+fragment 9 9 3
+prop reeds 9 5 1 my
+prop reeds 3 3 5 mx
+prop reeds 8 0 6 px
+prop reeds 5 6 9 py
+prop reeds 8 8 1 py
+prop reeds 9 6 1 px
+prop shrub 1 2 6 mx
+prop shrub 2 1 6 my
+prop shrub 8 1 6 mx
+prop shrub 4 4 9 mx
+prop shrub 4 5 9 py
+prop shrub 5 4 9 my
+prop shrub 6 4 9 px
+prop shrub 4 6 9 mx
+rest 4 3 5
+intro intro_iii_2
+outro outro_iii_2
+hint 9 7 1 hint_reed

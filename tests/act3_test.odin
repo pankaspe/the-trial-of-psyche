@@ -128,3 +128,66 @@ ants_solved_and_played :: proc(t: ^testing.T) {
 	testing.expectf(t, g.phase == .Finished && g.ending == .Exit, "the plan reaches the exit (Psyche at %v)", g.psyche.cell)
 	_ = iso.Cell{}
 }
+
+// Day and evening: a row at h1 with a reed near the start; a ram stands in
+// the way by day; lying at evening it is a step up to the ledge of the exit.
+@(private)
+TIME_PALACE :: `size 8
+setting pasture_day
+evening pasture_evening
+column 0 2 0 0
+column 1 2 0 0
+column 2 2 0 0
+column 3 2 0 0
+column 4 2 0 1
+column 5 2 0 1
+reed 1 2 1
+ram 3 2 1 px
+start 0 2 1
+rest 0 2 1
+exit 5 2 2
+`
+
+@(test)
+reeds_turn_the_time :: proc(t: ^testing.T) {
+	g: game.Game
+	defer game.destroy(&g)
+	if !load_ants(t, &g, TIME_PALACE) {
+		return
+	}
+	testing.expect(t, g.palace.day && !game.dark(&g), "the level starts by day: the sun shows the truth")
+	testing.expect(t, !game.walk_to(&g, {5, 2, 2}), "by day the ram stands in the way")
+	testing.expect(t, !palace.is_node(&g.palace, {3, 2, 1}), "nobody stands where the ram is")
+
+	// a walk never passes over a reed: it ends there
+	path: palace.Path
+	testing.expect(t, !palace.find_path(&g.palace, {0, 2, 1}, {2, 2, 1}, false, &path), "no way over the reed")
+
+	testing.expect(t, walk(t, &g, {1, 2, 1}), "onto the reed")
+	testing.expect(t, g.phase == .Time && !g.palace.day, "the reed turns the time: evening")
+	run(&g, game.TIME_TURN + 0.2)
+	testing.expect(t, g.phase == .Play && g.evening > 0.99, "the sun is down")
+	testing.expect(t, palace.is_stair(&g.palace, {3, 2, 1}), "the ram lies down: a step")
+	testing.expect(t, walk(t, &g, {2, 2, 1}), "off the reed (the time stays)")
+	testing.expect(t, !g.palace.day, "stepping off does not turn it back")
+
+	// the brazier remembers the day
+	testing.expect(t, game.return_to_rest(&g), "R: back to the brazier")
+	testing.expect(t, g.palace.day && g.evening == 0, "back at the brazier it is day again")
+
+	// the solver plays the same rules
+	arena: virtual.Arena
+	defer virtual.arena_destroy(&arena)
+	sol := palace.solve(&g.palace, {5, 2, 2}, nil, virtual.arena_allocator(&arena))
+	testing.expect(t, sol.solved && sol.times == 1, "the solver turns the time once")
+	testing.expect(t, g.palace.day, "the solver leaves the palace as loaded (by day)")
+	for st in sol.plan {
+		ok := game.apply_move(&g, st)
+		testing.expectf(t, ok, "the game takes the move %v to %v", st.move, st.cell)
+		for i := 0; !game.idle(&g) && i < 2000; i += 1 {
+			game.update(&g, DT)
+			free_all(context.temp_allocator)
+		}
+	}
+	testing.expect(t, game.is_over(&g), "the plan reaches the exit")
+}

@@ -255,6 +255,8 @@ SETTING_BED := [level.Setting]audio.Bed {
 	.Crag_Day      = .Mountain,
 	.Temple_Dusk   = .Dusk,
 	.Venus_Evening = .Garden,
+	.Pasture_Day   = .Pasture_Day,
+	.Pasture_Evening = .Pasture_Evening,
 }
 
 // What the mixer plays: the act's music (silent while the screen goes
@@ -269,7 +271,7 @@ update_sound :: proc(app: ^App) {
 	mood := g.active ? ACT_MOOD[act] : audio.Mood_Id.Title
 	audio.set_mood(going_black ? .None : mood)
 	audio.set_key(ACT_KEY[act])
-	audio.set_bed(going_black ? .None : SETTING_BED[g.data.setting])
+	audio.set_bed(going_black ? .None : SETTING_BED[game.setting_now(g)])
 	duck: f32 = 0
 	#partial switch app.screen {
 	case .Fragment, .Mechanic, .Pause, .Settings, .Ending, .Card, .Levels, .Book:
@@ -819,6 +821,7 @@ MECHANIC_CARD := [level.Mechanic][2]i18n.Key {
 	.Veiled  = {.Mech_Veiled_Title, .Mech_Veiled},
 	.Handle  = {.Mech_Handle_Title, .Mech_Handle},
 	.Ants    = {.Mech_Ants_Title, .Mech_Ants},
+	.Time    = {.Mech_Time_Title, .Mech_Time},
 }
 
 @(private)

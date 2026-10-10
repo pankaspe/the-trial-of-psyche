@@ -21,6 +21,12 @@
 // illusions too, in the dark) to the nearest hollow in a floor, and it drops
 // in for good. With no way in this view they come, and go back.
 //
+// Day and evening (Act III, a level with reeds): stepping onto a reed turns
+// the time, the walk stops there and the sky goes down (or up) while the game
+// waits. By day the sun shows the truth as the lamp does (`dark` is false) and
+// the Sun's golden rams stand in the way; at evening the illusions are back and
+// the rams lie down, each a step up.
+//
 // Caves come in pairs. Standing at the mouth of one, Space (or the card the
 // HUD shows over her) takes her through the rock, a step longer than the
 // others: she walks into the dark and out of the other. Walks never go
@@ -81,12 +87,14 @@ ANTS_SINK :: 0.55 // ...and down into it
 SORT_TIME :: 1.6 // the seeds settle into their layers once it is set
 ANTS_SCATTER :: 1.4 // the ants go back into the cracks
 ANTS_FAIL :: 2.2 // no way: they gather, mill about and go back
+TIME_TURN :: 2.4 // a reed turns the time: the sun goes down (or comes up)
 
 Phase :: enum u8 {
 	Play,
 	Sigil, // the seal is lit: blocks rise, input waits
 	Mechanism, // a handle turns a part of the palace: input waits
 	Carry, // the ants carry a seed to its hollow: input waits
+	Time, // a reed turns the time: the sky changes, the rams stand up or lie down; input waits
 	Prologue, // the opening cutscene (prologue.odin): input only skips or starts
 	Arrival, // coming from the last level: the palace rises, Psyche comes down; input waits
 	Ending_Oil,
@@ -198,6 +206,7 @@ Game :: struct {
 	part_turning:   int, // the part a handle is turning (phase Mechanism)
 	carry:          Carry,
 	seed_t:         [level.MAX_SEEDS]f32, // time since each seed dropped into its hollow, < 0 before
+	evening:        f32, // 0 day .. 1 evening, follows palace.day (the sky, the rams' pose)
 	rest:           Rest, // the last brazier Psyche lit
 	rests_lit:      []bool, // per data.rests entry
 	teach_pending:  bool, // the level's new mechanic is still to be presented
@@ -259,6 +268,7 @@ Rest :: struct {
 	flipped:   []bool,
 	part_rot:  [level.MAX_PARTS]int,
 	seed_at:   [level.MAX_SEEDS]i8,
+	day:       bool,
 	oil:       f32,
 	activated: level.Seals,
 	lightings: int,
@@ -334,6 +344,7 @@ load_text :: proc(g: ^Game, index: int, text: string) -> (err: Maybe(Load_Error)
 	g.psyche.yaw = math.PI * 0.75 // facing the camera
 	g.psyche.target_yaw = g.psyche.yaw
 	g.rng = fx.rng_init(u32(index) * 7919 + 17)
+	g.evening = g.palace.day || len(g.data.reeds) == 0 ? 0 : 1
 	for c, i in g.data.rests {
 		if c == g.data.start {
 			light_rest(g, i, quiet = true) // a brazier where she starts is lit already
@@ -423,6 +434,27 @@ is_over :: proc(g: ^Game) -> bool {
 	return g.phase >= .Ending_Oil
 }
 
+// Do the illusions hold now? In the dark: the lamp out, and no sun up.
+dark :: proc(g: ^Game) -> bool {
+	return !g.lamp_on && !g.palace.day
+}
+
+// The place as it looks now: the evening's setting once the sun is down.
+setting_now :: proc(g: ^Game) -> level.Setting {
+	return has_time(g) && g.evening > 0.5 ? g.data.evening : g.data.setting
+}
+
+// How much the truth shows now (the cracks where the illusions were): the
+// lamp's light, or the sun up.
+truth :: proc(g: ^Game) -> f32 {
+	return max(g.light, has_time(g) ? 1 - g.evening : 0)
+}
+
+// Does the level turn between day and evening (it has reeds)?
+has_time :: proc(g: ^Game) -> bool {
+	return len(g.data.reeds) > 0
+}
+
 // The level's fragments, by their index in data.fragments.
 Fragment_Set :: bit_set[0 ..< level.MAX_FRAGMENTS]
 
@@ -486,6 +518,9 @@ update :: proc(g: ^Game, dt: f32) {
 		}
 	}
 
+	if has_time(g) {
+		g.evening = fx.move_toward(g.evening, g.palace.day ? 0 : 1, dt / TIME_TURN)
+	}
 	update_turn(g, dt)
 	update_walk(g, dt)
 	update_effects(g, dt)
@@ -535,6 +570,10 @@ update :: proc(g: ^Game, dt: f32) {
 		}
 	case .Carry:
 		update_carry(g, dt)
+	case .Time:
+		if g.phase_t >= TIME_TURN {
+			set_phase(g, .Play)
+		}
 	case .Ending_Oil:
 		update_ending_oil(g, dt)
 	case .Ending_Trust:
@@ -579,7 +618,7 @@ request_turn :: proc(g: ^Game, step: int) {
 start_turn :: proc(g: ^Game, step: int) {
 	audio.play(.Turn, -11)
 	learn(g, .Hint_Turn)
-	pl.reachable(&g.palace, g.psyche.cell, !g.lamp_on, g.reach_before[:len(g.palace.nodes)])
+	pl.reachable(&g.palace, g.psyche.cell, dark(g), g.reach_before[:len(g.palace.nodes)])
 	g.turning = true
 	g.turn_from = math.round(g.angle)
 	g.turn_step = step
@@ -601,7 +640,7 @@ update_turn :: proc(g: ^Game, dt: f32) {
 	g.turning = false
 	pl.set_view(&g.palace, int(math.round(g.angle)))
 	after := make([]bool, len(g.palace.nodes), context.temp_allocator)
-	pl.reachable(&g.palace, g.psyche.cell, !g.lamp_on, after)
+	pl.reachable(&g.palace, g.psyche.cell, dark(g), after)
 	for ok, i in after {
 		if ok && !g.reach_before[i] {
 			// a new way has opened in this view
@@ -704,14 +743,14 @@ click :: proc(g: ^Game, point: Vec2) {
 	// while a step is under way, plan from where that step will end
 	from := g.psyche.walking ? g.psyche.step_to : g.psyche.cell
 	path: pl.Path
-	found := pl.find_path(&g.palace, from, target, !g.lamp_on, &path)
+	found := pl.find_path(&g.palace, from, target, dark(g), &path)
 	if !found && target != from {
 		add_marker(g, target, false)
 		audio.play(.Blocked, -10)
 		other: pl.Path
-		if g.lamp_on && pl.find_path(&g.palace, from, target, true, &other) {
+		if !dark(g) && pl.find_path(&g.palace, from, target, true, &other) {
 			hint(g, .Hint_Seam, 3, true)
-		} else if !g.lamp_on && pl.find_path(&g.palace, from, target, false, &other) && crosses_hidden_stairs(g, from, other) {
+		} else if dark(g) && pl.find_path(&g.palace, from, target, false, &other) && crosses_hidden_stairs(g, from, other) {
 			hint(g, .Hint_Hidden_Stairs, 4, true)
 		}
 		return
@@ -766,7 +805,7 @@ enter_cave :: proc(g: ^Game) -> bool {
 // Start walking to `target` as a click on it would (tests, scripted scenes).
 walk_to :: proc(g: ^Game, target: Cell) -> bool {
 	from := g.psyche.walking ? g.psyche.step_to : g.psyche.cell
-	if !pl.find_path(&g.palace, from, target, !g.lamp_on, &g.path) {
+	if !pl.find_path(&g.palace, from, target, dark(g), &g.path) {
 		return false
 	}
 	if !g.psyche.walking {
@@ -795,7 +834,7 @@ steer :: proc(g: ^Game, dir: Vec2, fresh: bool) {
 		return
 	}
 	from := psy.walking ? psy.step_to : psy.cell
-	next, ok := step_toward(g, from, dir, !g.lamp_on)
+	next, ok := step_toward(g, from, dir, dark(g))
 	if !ok {
 		if g.steering {
 			sa.clear(&g.path)
@@ -803,9 +842,9 @@ steer :: proc(g: ^Game, dir: Vec2, fresh: bool) {
 		}
 		if fresh && !psy.walking {
 			audio.play(.Blocked, -12)
-			if _, seam := step_toward(g, from, dir, true); seam && g.lamp_on {
+			if _, seam := step_toward(g, from, dir, true); seam && !dark(g) {
 				hint(g, .Hint_Seam, 3, true)
-			} else if _, hidden := step_toward(g, from, dir, false); hidden && !g.lamp_on {
+			} else if _, hidden := step_toward(g, from, dir, false); hidden && dark(g) {
 				hint(g, .Hint_Hidden_Stairs, 4, true)
 			}
 		}
@@ -889,21 +928,21 @@ next_step :: proc(g: ^Game) {
 	next := sa.get(g.path, 0)
 	illusion := pl.is_illusion(&g.palace, psy.cell, next)
 	passage := pl.is_passage(&g.palace, psy.cell, next)
-	if !pl.is_real_edge(&g.palace, psy.cell, next) && !(illusion && !g.lamp_on) {
+	if !pl.is_real_edge(&g.palace, psy.cell, next) && !(illusion && dark(g)) {
 		// the way has changed under her (a part turned away)
 		sa.clear(&g.path)
 		audio.play(.Blocked, -8)
 		stop_walking(g)
 		return
 	}
-	if illusion && g.lamp_on {
+	if illusion && !dark(g) && !pl.is_real_edge(&g.palace, psy.cell, next) {
 		sa.clear(&g.path)
 		audio.play(.Blocked, -8)
 		hint(g, .Hint_Seam, 3, true)
 		stop_walking(g)
 		return
 	}
-	if !g.lamp_on && !pl.step_allowed(&g.palace, pl.node_index(&g.palace, psy.cell), pl.node_index(&g.palace, next), true) {
+	if dark(g) && !pl.step_allowed(&g.palace, pl.node_index(&g.palace, psy.cell), pl.node_index(&g.palace, next), true) {
 		// the lamp went out on the way: stairs hidden in this view are gone
 		sa.clear(&g.path)
 		audio.play(.Blocked, -8)
@@ -1117,6 +1156,10 @@ arrive :: proc(g: ^Game, n: Cell) {
 	if g.phase != .Play {
 		return
 	}
+	if pl.reed_at(&g.palace, n) >= 0 {
+		turn_time(g)
+		return
+	}
 	if g.data.has_exit && n == g.data.exit {
 		start_ending(g, .Ending_Exit)
 	} else if !g.lamp_on && g.data.has_amore && adjacent_to_amore(g, n) {
@@ -1224,7 +1267,7 @@ call_ants :: proc(g: ^Game) -> bool {
 	}
 	c := &g.carry
 	c^ = {seed = i, view = p.rot}
-	c.hollow = pl.seed_route(p, i, g.psyche.cell, !g.lamp_on, &c.path)
+	c.hollow = pl.seed_route(p, i, g.psyche.cell, dark(g), &c.path)
 	face_point(g, seed_rest(g, i) + {0.5, 0.5, 0})
 	sa.clear(&g.path)
 	audio.play(.Rustle, -6)
@@ -1346,6 +1389,27 @@ carry_point :: proc(g: ^Game, t: f32) -> Vec3 {
 	return over + lift * (1 - k) - {0, 0, fx.quad_in(k)}
 }
 
+// --- day and evening ------------------------------------------------------------------
+
+// Psyche has stepped onto a reed: the time turns. The palace changes at once
+// (the rams stand up or lie down while the sky goes); the game waits.
+@(private)
+turn_time :: proc(g: ^Game) {
+	sa.clear(&g.path)
+	g.steering = false
+	g.pending_turn = 0
+	pl.set_day(&g.palace, !g.palace.day)
+	set_phase(g, .Time)
+	audio.play(.Wind, -12, g.palace.day ? 1.1 : 0.7)
+	audio.play(.Good, -12, audio.semitones(g.palace.day ? 7 : -5))
+	learn(g, .Hint_Reed)
+}
+
+// How far the rams have lain down: 0 standing (day) .. 1 lying (evening).
+ram_lie :: proc(g: ^Game) -> f32 {
+	return fx.sine_in_out(g.evening)
+}
+
 // --- braziers -----------------------------------------------------------------------
 
 @(private)
@@ -1364,6 +1428,7 @@ light_rest :: proc(g: ^Game, i: int, quiet := false) {
 	copy(r.flipped, g.palace.flipped)
 	r.part_rot = g.palace.part_rot
 	r.seed_at = g.palace.seed_at
+	r.day = g.palace.day
 	r.oil = g.oil
 	r.activated = g.activated
 	r.lightings = g.lightings
@@ -1381,7 +1446,7 @@ return_to_rest :: proc(g: ^Game) -> bool {
 		return false
 	}
 	r := &g.rest
-	if g.psyche.cell == r.cell && !g.psyche.walking && slice.equal(g.palace.flipped, r.flipped) && g.palace.part_rot == r.part_rot && g.palace.seed_at == r.seed_at && g.activated == r.activated {
+	if g.psyche.cell == r.cell && !g.psyche.walking && slice.equal(g.palace.flipped, r.flipped) && g.palace.part_rot == r.part_rot && g.palace.seed_at == r.seed_at && g.palace.day == r.day && g.activated == r.activated {
 		return false
 	}
 	set_lamp(g, false)
@@ -1391,6 +1456,8 @@ return_to_rest :: proc(g: ^Game) -> bool {
 	copy(g.palace.flipped, r.flipped)
 	g.palace.part_rot = r.part_rot
 	g.palace.seed_at = r.seed_at
+	g.palace.day = r.day
+	g.evening = r.day || !has_time(g) ? 0 : 1
 	for &t, i in g.seed_t {
 		t = g.palace.seed_at[i] >= 0 ? 1e3 : -1
 	}
@@ -1508,7 +1575,7 @@ start_ending :: proc(g: ^Game, p: Phase) {
 		audio.play(.Good, -2)
 	case .Ending_Exit:
 		audio.play(.Wind, -4)
-	case .Play, .Sigil, .Mechanism, .Carry, .Prologue, .Arrival, .Finished:
+	case .Play, .Sigil, .Mechanism, .Carry, .Time, .Prologue, .Arrival, .Finished:
 	}
 }
 
@@ -1863,7 +1930,7 @@ candelabrum_flame :: proc(g: ^Game, i: int) -> f32 {
 is_tutorial :: proc(key: Key) -> bool {
 	#partial switch key {
 	case .Hint_Move, .Hint_Turn, .Hint_Lamp, .Hint_Illusion, .Hint_Sigil, .Hint_Oil,
-	     .Hint_Veiled, .Hint_Handle, .Hint_Ants:
+	     .Hint_Veiled, .Hint_Handle, .Hint_Ants, .Hint_Reed:
 		return true
 	}
 	return false

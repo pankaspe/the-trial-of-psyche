@@ -27,6 +27,11 @@
 // free hollow beside a floor, and it drops in, a block there for good
 // (`seed_at`).
 //
+// Day and evening (Act III): stepping onto a reed turns the time. By day the
+// sun shows the truth, as the lamp does (callers pass `dark` false), and the
+// Sun's golden rams stand on their cells: nobody passes. At evening the
+// illusions come back and the rams lie down, each a step up (stairs).
+//
 // Memory: every array is allocated once from the allocator given to `init`
 // (the level arena) and reused; rebuilding the graph or the illusions does not
 // allocate again once the arrays have grown. Scratch work uses the temp allocator.
@@ -72,6 +77,7 @@ Palace :: struct {
 	overlap:    bool, // two blocks share a cell (a part turned into the palace)
 	seed_at:    [level.MAX_SEEDS]i8, // where each seed is: -1 where it lay, k: set in hollow k for good
 	seed_lifted: int, // a seed held up by the ants while its way is sought (-1: none)
+	day:        bool, // a level with reeds: the sun is up (the rams stand)
 	// world grid, indexed by cell_index
 	solid:      []level.Solid,
 	blocked:    []bool,
@@ -97,6 +103,7 @@ init :: proc(p: ^Palace, data: ^level.Level_Data, allocator := context.allocator
 		at = -1
 	}
 	p.seed_lifted = -1
+	p.day = len(data.reeds) > 0 // a level with reeds starts by day
 	n := int(p.size * p.size * p.height)
 	p.solid = make([]level.Solid, n)
 	p.blocked = make([]bool, n)
@@ -271,6 +278,14 @@ rebuild_graph :: proc(p: ^Palace) {
 			ci := cell_index(p, c)
 			p.overlap ||= p.solid[ci].kind != .None
 			p.solid[ci] = {kind = .Block}
+		}
+	}
+	for m in p.data.rams {
+		i := cell_index(p, m.cell)
+		if p.day {
+			p.blocked[i] = true // standing: nobody passes
+		} else if p.solid[i].kind == .None {
+			p.solid[i] = {.Stairs, m.dir} // lying down: its back is a step
 		}
 	}
 	for prop in p.data.props {
@@ -471,6 +486,29 @@ seed_route :: proc(p: ^Palace, i: int, avoid: Cell, dark: bool, out: ^Path) -> (
 set_seed :: proc(p: ^Palace, i, k: int) {
 	p.seed_at[i] = i8(k)
 	rebuild_graph(p)
+}
+
+// The reed at surface c, or -1: stepping onto it turns the time.
+reed_at :: proc(p: ^Palace, c: Cell) -> int {
+	for r, i in p.data.reeds {
+		if r == c {
+			return i
+		}
+	}
+	return -1
+}
+
+// Is the sun up? It shows the truth as the lamp does: no illusions.
+is_day :: proc(p: ^Palace) -> bool {
+	return p.day
+}
+
+// Turn the time: day to evening or back.
+set_day :: proc(p: ^Palace, day: bool) {
+	if p.day != day {
+		p.day = day
+		rebuild_graph(p)
+	}
 }
 
 // The cave whose mouth is at surface c, or -1.
@@ -696,7 +734,8 @@ is_illusion :: proc(p: ^Palace, a, b: Cell) -> bool {
 // --- search --------------------------------------------------------------------
 
 // Breadth-first path from `from` to `to` (excluding `from`) into `out`; it
-// never goes through a cave (that is entered on purpose).
+// never goes through a cave (that is entered on purpose) nor over a reed (it
+// turns the time: only as the end of the walk).
 // Returns false (and an empty path) when unreachable.
 find_path :: proc(p: ^Palace, from, to: Cell, dark: bool, out: ^Path) -> bool {
 	sa.clear(out)
@@ -727,6 +766,9 @@ find_path :: proc(p: ^Palace, from, to: Cell, dark: bool, out: ^Path) -> bool {
 					parent[nb] = cur
 					if nb == goal {
 						break search
+					}
+					if reed_at(p, p.nodes[nb].cell) >= 0 {
+						continue // a reed is a walk's end, never a way through
 					}
 					queue[tail] = nb
 					tail += 1

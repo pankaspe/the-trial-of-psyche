@@ -5,6 +5,8 @@ package render
 
 import "core:math"
 
+import "../fx"
+import "../game"
 import "../level"
 
 Look :: struct {
@@ -249,6 +251,58 @@ LOOKS := [level.Setting]Look {
 		candles = true,
 		mote = {1.0, 0.76, 0.82, 0.45},
 	},
+	// the Sun's pastures at noon: a high hot sky, the sun overhead, green-blue
+	// ranges in the haze, white clouds gilded below; pollen drifting
+	.Pasture_Day = {
+		sky_top = {0.18, 0.36, 0.68},
+		sky_mid = {0.46, 0.62, 0.84},
+		sky_horizon = {0.93, 0.89, 0.78},
+		orb_pos = {0.72, 0.13},
+		orb_radius = 0.034,
+		orb_color = {1.0, 0.98, 0.88},
+		halo_color = {0.72, 0.64, 0.46},
+		halo_width = 4,
+		stars = 0,
+		haze = {0.82, 0.82, 0.74},
+		islands = false,
+		ridges = 1,
+		ridge_color = {{0.60, 0.68, 0.66}, {0.46, 0.56, 0.48}, {0.33, 0.43, 0.32}},
+		ridge_rim = {1.0, 0.93, 0.72},
+		cloud_back = {0.86, 0.85, 0.82},
+		cloud_front = {0.94, 0.93, 0.89},
+		cloud_crest = {0.24, 0.19, 0.08},
+		mist = {0.76, 0.78, 0.72},
+		water = {0.24, 0.46, 0.60, 0.85},
+		glint = {1.0, 0.96, 0.78, 0.6},
+		daylight = 1,
+		mote = {1.0, 0.94, 0.6, 0.35},
+	},
+	// the same at evening: the sun low on the far ranges, amber and violet, the
+	// first stars; the rams' fleece burns gold in the last light
+	.Pasture_Evening = {
+		sky_top = {0.08, 0.08, 0.24},
+		sky_mid = {0.44, 0.27, 0.42},
+		sky_horizon = {1.0, 0.60, 0.34},
+		orb_pos = {0.74, 0.78},
+		orb_radius = 0.046,
+		orb_color = {1.0, 0.82, 0.52},
+		halo_color = {0.78, 0.40, 0.18},
+		halo_width = 5,
+		stars = 0.3,
+		haze = {0.44, 0.26, 0.32},
+		islands = false,
+		ridges = 1,
+		ridge_color = {{0.56, 0.38, 0.48}, {0.38, 0.25, 0.37}, {0.22, 0.15, 0.25}},
+		ridge_rim = {0.98, 0.56, 0.30},
+		cloud_back = {0.60, 0.38, 0.46},
+		cloud_front = {0.70, 0.48, 0.54},
+		cloud_crest = {0.58, 0.30, 0.12},
+		mist = {0.42, 0.29, 0.39},
+		water = {0.30, 0.24, 0.40, 0.85},
+		glint = {1.0, 0.76, 0.52, 0.6},
+		daylight = 0.9,
+		mote = {1.0, 0.8, 0.5, 0.45},
+	},
 	// the palace of voices at twilight: the sun is gone, its last light low on
 	// the clouds, the first stars, the moon rising; the candles are lit
 	.Dusk = {
@@ -316,4 +370,49 @@ moon_cover :: proc(lk: ^Look, time, angle, aspect: f32) -> f32 {
 
 look :: proc(s: level.Setting) -> ^Look {
 	return &LOOKS[s]
+}
+
+// The look of the level now: in a level that turns between day and evening,
+// the two settings blended as the sun goes down (or comes up).
+look_of :: proc(g: ^game.Game) -> ^Look {
+	if !game.has_time(g) {
+		return &LOOKS[g.data.setting]
+	}
+	@(static) blended: Look
+	blended = blend(LOOKS[g.data.setting], LOOKS[g.data.evening], fx.sine_in_out(g.evening))
+	return &blended
+}
+
+// Two looks mixed: t = 0 is a, 1 is b (the switches flip half way).
+blend :: proc(a, b: Look, t: f32) -> (o: Look) {
+	mix3 :: proc(x, y: Vec3, t: f32) -> Vec3 {return x + (y - x) * t}
+	mix4 :: proc(x, y: Color4, t: f32) -> Color4 {return x + (y - x) * t}
+	mixf :: proc(x, y: f32, t: f32) -> f32 {return x + (y - x) * t}
+	o = t < 0.5 ? a : b
+	o.sky_top = mix3(a.sky_top, b.sky_top, t)
+	o.sky_mid = mix3(a.sky_mid, b.sky_mid, t)
+	o.sky_horizon = mix3(a.sky_horizon, b.sky_horizon, t)
+	o.orb_pos = a.orb_pos + (b.orb_pos - a.orb_pos) * t
+	o.orb_radius = mixf(a.orb_radius, b.orb_radius, t)
+	o.orb_color = mix3(a.orb_color, b.orb_color, t)
+	o.halo_color = mix3(a.halo_color, b.halo_color, t)
+	o.halo_width = mixf(a.halo_width, b.halo_width, t)
+	o.stars = mixf(a.stars, b.stars, t)
+	o.haze = mix3(a.haze, b.haze, t)
+	o.ridges = mixf(a.ridges, b.ridges, t)
+	for k in 0 ..< 3 {
+		o.ridge_color[k] = mix3(a.ridge_color[k], b.ridge_color[k], t)
+	}
+	o.ridge_rim = mix3(a.ridge_rim, b.ridge_rim, t)
+	o.cloud_back = mix3(a.cloud_back, b.cloud_back, t)
+	o.cloud_front = mix3(a.cloud_front, b.cloud_front, t)
+	o.cloud_crest = mix3(a.cloud_crest, b.cloud_crest, t)
+	o.mist = mix3(a.mist, b.mist, t)
+	o.water = mix4(a.water, b.water, t)
+	o.glint = mix4(a.glint, b.glint, t)
+	o.daylight = mixf(a.daylight, b.daylight, t)
+	o.gloom = mixf(a.gloom, b.gloom, t)
+	o.moon_clouds = mixf(a.moon_clouds, b.moon_clouds, t)
+	o.mote = mix4(a.mote, b.mote, t)
+	return
 }

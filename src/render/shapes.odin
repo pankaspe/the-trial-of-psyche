@@ -86,6 +86,7 @@ Material :: enum u8 {
 	Seeds, // grains of five kinds, mixed (detail: how far up they are sorted into layers)
 	Blossom, // roses
 	Venus, // the goddess: a figure of rose light
+	Fleece, // the Sun's rams: golden wool
 }
 
 PROP_MESH := [level.Prop_Kind]Mesh_Id {

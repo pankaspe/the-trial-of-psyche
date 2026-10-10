@@ -50,13 +50,26 @@ main :: proc() {
 	pl.init(&p, &data, alloc)
 
 	fmt.printfln("%s: %d x %d grid, %d blocks, %d props, %d rising", path, data.size, data.size, len(data.blocks), len(data.props), len(data.rise))
-	for risen in ([2]bool{false, true}) {
-		if risen && len(data.rise) == 0 {
-			break
+	for k in 0 ..< 4 {
+		risen, evening := k % 2 == 1, k >= 2
+		if risen && len(data.rise) == 0 || evening && len(data.reeds) == 0 {
+			continue
 		}
 		p.risen = risen ? pl.all_seals(&data) : {}
+		p.day = len(data.reeds) > 0 && !evening
 		pl.rebuild_graph(&p)
 		tag := risen ? "risen" : "base "
+		if len(data.reeds) > 0 {
+			tag = fmt.tprintf("%s %s", tag, evening ? "evening" : "day    ")
+		}
+		if p.day {
+			// by day the sun shows the truth: no illusions
+			fmt.printfln("\n%s: %d surfaces and stairs", tag, len(p.nodes))
+			reached := make([]bool, len(p.nodes), alloc)
+			pl.reachable(&p, data.start, false, reached)
+			report(&p, &data, fmt.tprintf("%s sun  ", tag), reached)
+			continue
+		}
 		fmt.printfln("\n%s: %d surfaces and stairs", tag, len(p.nodes))
 		reached := make([]bool, len(p.nodes), alloc)
 
@@ -71,6 +84,7 @@ main :: proc() {
 		report(&p, &data, fmt.tprintf("%s dark  turning", tag), reached)
 	}
 	p.risen = {}
+	p.day = false // the illusions below are those of the dark (at evening)
 	pl.rebuild_graph(&p)
 
 	for r in 0 ..< 4 {
@@ -90,6 +104,8 @@ main :: proc() {
 	if pl.is_dynamic(&data) {
 		whole_illusions(&p, &data, alloc)
 	}
+	p.day = len(data.reeds) > 0
+	pl.rebuild_graph(&p)
 
 	if !check_screen(&p, &data) || !check_props(&p, &data) {
 		os.exit(1)
@@ -242,6 +258,7 @@ check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 	for c in data.caves {
 		append(&needed, c.cell)
 	}
+	append(&needed, ..data.reeds[:])
 	for prop in data.props {
 		if prop.kind not_in level.BLOCKING_PROPS {
 			continue
@@ -320,6 +337,53 @@ check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 			if e.cell == h.cell - {0, 0, 1} && e.part != 0 {
 				say(&said, &ok, true, "the handle at %v stands on a part", h.cell)
 			}
+		}
+	}
+	// a ram stands on a floor, its cell free, never where the level needs her;
+	// lying, it is a step from the floor behind it to the ledge it faces
+	for m, i in data.rams {
+		for c in needed {
+			if c == m.cell {
+				say(&said, &ok, true, "the ram at %v stands on a cell the level needs", m.cell)
+			}
+		}
+		for o, j in data.rams {
+			if o.cell == m.cell && j != i {
+				say(&said, &ok, true, "two rams at %v", m.cell)
+			}
+		}
+		for e in data.blocks {
+			if e.cell == m.cell {
+				say(&said, &ok, true, "the ram at %v is inside a block", m.cell)
+			}
+		}
+		has_floor := false
+		for e in data.blocks {
+			has_floor ||= e.cell == m.cell - {0, 0, 1} && e.part == 0 && e.trait == .Stone
+		}
+		if !has_floor {
+			say(&said, &ok, true, "the ram at %v does not stand on a fixed floor", m.cell)
+		}
+		for prop in data.props {
+			if prop.cell == m.cell && prop.kind not_in level.EDGE_PROPS {
+				say(&said, &ok, true, "%v at %v stands where a ram is", prop.kind, m.cell)
+			}
+		}
+		v := iso.DIR_VEC[m.dir]
+		p.day = false
+		pl.rebuild_graph(p)
+		if !pl.is_surface(p, m.cell + {v.x, v.y, 1}) {
+			say(&said, &ok, false, "the ram at %v lying leads up to no floor at %v", m.cell, m.cell + {v.x, v.y, 1})
+		}
+		if !pl.is_surface(p, m.cell - {v.x, v.y, 0}) {
+			say(&said, &ok, false, "the ram at %v lying is climbed from no floor at %v", m.cell, m.cell - {v.x, v.y, 0})
+		}
+		p.day = true
+		pl.rebuild_graph(p)
+	}
+	for c in data.reeds {
+		if !pl.is_surface(p, c) {
+			say(&said, &ok, true, "the reed at %v is not on a floor", c)
 		}
 	}
 	// the seeds rest on a floor, alone in their cell; a hollow is an empty
@@ -442,7 +506,7 @@ solve_report :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Allo
 		optional := pl.solve(p, data.exit, c, alloc)
 		fmt.printfln("\nfragment %v: reachable %v, optional %v", c, reach.solved, optional.solved)
 		if reach.solved {
-			fmt.printfln("  fragment plan: %d steps, %d turns, %d lightings, %d handles, %d ants", reach.steps, reach.turns, reach.lightings, reach.handles, reach.ants)
+			fmt.printfln("  fragment plan: %d steps, %d turns, %d lightings, %d handles, %d ants, %d times turned", reach.steps, reach.turns, reach.lightings, reach.handles, reach.ants, reach.times)
 		}
 		if !reach.solved || !optional.solved {
 			fmt.eprintln("error: the fragment must be reachable and never required")
@@ -466,7 +530,7 @@ print_plan :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Alloca
 		fmt.eprintln("error: the exit cannot be reached")
 		return false
 	}
-	fmt.printfln("plan: %d steps (%d in the light), %d turns, %d lightings, %d handles, %d ants", sol.steps, sol.light_steps, sol.turns, sol.lightings, sol.handles, sol.ants)
+	fmt.printfln("plan: %d steps (%d in the light), %d turns, %d lightings, %d handles, %d ants, %d times turned", sol.steps, sol.light_steps, sol.turns, sol.lightings, sol.handles, sol.ants, sol.times)
 	if data.has_lamp {
 		rules := game.oil_rules(data)
 		least := pl.oil_left(p, sol.plan[:], rules)
@@ -485,6 +549,7 @@ print_plan :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Alloca
 		walk^, illusions^ = 0, 0
 	}
 	last := data.start
+	day := len(data.reeds) > 0
 	for st, i in sol.plan {
 		if st.move == .Step {
 			walk += 1
@@ -493,6 +558,11 @@ print_plan :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Alloca
 			if st.changed > 0 {
 				flush(&walk, &illusions, last)
 				fmt.printfln("        %d blocks change", st.changed)
+			}
+			if st.time {
+				day = !day
+				flush(&walk, &illusions, last)
+				fmt.printfln("        the reed: %s", day ? "day (the rams stand)" : "evening (the rams lie down)")
 			}
 			continue
 		}

@@ -30,6 +30,7 @@ Mechanic :: enum u8 {
 	Veiled,
 	Handle,
 	Ants,
+	Time, // day and evening, turned by the reeds
 }
 
 MECHANIC_NAME := [Mechanic]string {
@@ -37,6 +38,7 @@ MECHANIC_NAME := [Mechanic]string {
 	.Veiled  = "veiled",
 	.Handle  = "handle",
 	.Ants    = "ants",
+	.Time    = "time",
 }
 
 // The cutscene that opens a level (the first of each act has one).
@@ -59,6 +61,8 @@ Setting :: enum u8 {
 	Crag_Day, // a crag of bare rock by day, the wind, the plain far below
 	Temple_Dusk, // a temple at dusk among the ranges: the afterglow, the first stars, its candles lit
 	Venus_Evening, // the house of Venus above the clouds at evening: rose light, her star bright
+	Pasture_Day, // the Sun's pastures by a river at noon: a hot clear sky, the sun high
+	Pasture_Evening, // the same at evening: the sun gone down, amber and violet, the first star
 }
 
 SETTING_NAME := [Setting]string {
@@ -72,6 +76,8 @@ SETTING_NAME := [Setting]string {
 	.Crag_Day     = "crag_day",
 	.Temple_Dusk  = "temple_dusk",
 	.Venus_Evening = "venus_evening",
+	.Pasture_Day   = "pasture_day",
+	.Pasture_Evening = "pasture_evening",
 }
 
 // How a block behaves (Act II): fixed stone, or one that changes for good.
@@ -91,6 +97,14 @@ Solid_Entry :: struct {
 	trait: Trait,
 	part:  u8, // 0: fixed; n: turns with part n-1
 	seal:  u8, // `rise` entries: the seal (data.sigils index) that raises it
+}
+
+// A golden ram of the Sun (Act III), on the surface `cell` (x, y, h): by day
+// it stands there and nobody passes; at evening it lies down, and its back is
+// a step up toward `dir` (stairs from h to h + 1).
+Ram :: struct {
+	cell: Cell,
+	dir:  Dir,
 }
 
 // A part of the palace that a handle turns a quarter at a time, about the
@@ -254,7 +268,10 @@ Level_Data :: struct {
 	seeds:        [dynamic]Cell, // Act III: stones of seeds, each resting on the surface (x, y, h): the ants carry them
 	hollows:      [dynamic]Cell, // the hollows where seeds belong: empty block cells (x, y, z) in a floor
 	mechanic:     Mechanic, // the new mechanic this level introduces (a card at the start)
-	setting:      Setting, // the sky, the backdrop, the light on the stones
+	setting:      Setting, // the sky, the backdrop, the light on the stones (by day, in a level with reeds)
+	evening:      Setting, // a level with reeds: the look at evening
+	reeds:        [dynamic]Cell, // Act III: stepping onto one turns the time (day <-> evening); the level starts by day
+	rams:         [dynamic]Ram, // the Sun's rams: standing by day, lying (a step) at evening
 }
 
 MAX_PARTS :: 8
@@ -267,6 +284,8 @@ MAX_SEALS :: 4
 Seals :: bit_set[0 ..< MAX_SEALS; u8] // which seals have been lit
 MAX_SEEDS :: 4
 MAX_HOLLOWS :: 6
+MAX_REEDS :: 6
+MAX_RAMS :: 12
 
 // The cell of a part's block after `r` quarter turns.
 part_cell :: proc(c: Cell, pivot: [2]i32, r: int) -> Cell {
@@ -306,6 +325,9 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	data.rests = make([dynamic]Cell, 0, 4)
 	data.seeds = make([dynamic]Cell, 0, MAX_SEEDS)
 	data.hollows = make([dynamic]Cell, 0, MAX_HOLLOWS)
+	data.reeds = make([dynamic]Cell, 0, MAX_REEDS)
+	data.rams = make([dynamic]Ram, 0, MAX_RAMS)
+	has_evening := false
 	has_start := false
 	part: u8 = 0 // the part being described (between `part` and `end`)
 	dynamic_count := 0
@@ -441,7 +463,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 			}
 			if !found {
-				return data, fail(line_no, "mechanic: expected veiled, handle or ants")
+				return data, fail(line_no, "mechanic: expected veiled, handle, ants or time")
 			}
 
 		case "rest":
@@ -471,6 +493,38 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 				append(&data.hollows, v)
 			}
+			max_z = max(max_z, v.z + 1)
+
+		case "reed":
+			v: [3]i32
+			if !ints(args, v[:]) {
+				return data, fail(line_no, "reed: expected x y h")
+			}
+			if part != 0 {
+				return data, fail(line_no, "reed: not inside a part")
+			}
+			if len(data.reeds) == MAX_REEDS {
+				return data, fail(line_no, "reed: at most %d per level", MAX_REEDS)
+			}
+			append(&data.reeds, v)
+			max_z = max(max_z, v.z + 1)
+
+		case "ram":
+			v: [3]i32
+			if !ints(args, v[:]) || len(args) < 4 {
+				return data, fail(line_no, "ram: expected x y h dir")
+			}
+			d, ok := iso.dir_from_name(args[3])
+			if !ok {
+				return data, fail(line_no, "ram: unknown direction '%s'", args[3])
+			}
+			if part != 0 {
+				return data, fail(line_no, "ram: not inside a part")
+			}
+			if len(data.rams) == MAX_RAMS {
+				return data, fail(line_no, "ram: at most %d per level", MAX_RAMS)
+			}
+			append(&data.rams, Ram{v, d})
 			max_z = max(max_z, v.z + 1)
 
 		case "oil":
@@ -504,15 +558,24 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			}
 			max_z = max(max_z, v[3])
 
-		case "setting":
+		case "setting", "evening":
 			found := false
 			for name, st in SETTING_NAME {
 				if len(args) == 1 && name == args[0] {
-					data.setting, found = st, true
+					found = true
+					if fields[0] == "setting" {
+						data.setting = st
+					} else {
+						data.evening, has_evening = st, true
+					}
 				}
 			}
 			if !found {
-				return data, fail(line_no, "setting: expected one of night, crag_sunset, dusk, night_candles, deep_night, forest_night, river_dawn, crag_day, temple_dusk, venus_evening")
+				names := make([dynamic]string, 0, len(Setting), context.temp_allocator)
+				for name in SETTING_NAME {
+					append(&names, name)
+				}
+				return data, fail(line_no, "%s: expected one of %s", fields[0], strings.join(names[:], ", ", context.temp_allocator))
 			}
 
 		case "tier":
@@ -766,6 +829,22 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	for c in data.hollows {
 		if !check(c, data.size, data.height) {
 			return data, fail(0, "hollow %v outside the grid", c)
+		}
+	}
+	if len(data.reeds) > 0 && !has_evening {
+		return data, fail(0, "reed: a level with reeds needs its 'evening' setting")
+	}
+	if len(data.rams) > 0 && len(data.reeds) == 0 {
+		return data, fail(0, "ram: the rams lie down only at evening: the level needs a reed")
+	}
+	for c in data.reeds {
+		if !check(c, data.size, data.height) {
+			return data, fail(0, "reed %v outside the grid", c)
+		}
+	}
+	for m in data.rams {
+		if !check(m.cell, data.size, data.height) {
+			return data, fail(0, "ram %v outside the grid", m.cell)
 		}
 	}
 	if len(data.seeds) > 0 && len(data.hollows) == 0 {

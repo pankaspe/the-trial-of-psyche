@@ -24,6 +24,7 @@ uniform float screen_height;
 uniform vec3 mist_color;
 uniform float daylight;      // 0 the moonlit palette .. 1 the low sun of a setting (no lamp needed)
 uniform float moonlight;     // the moon's light on the stones: < 1 in a darker night, or behind a cloud
+uniform float sun_truth;     // 0..1: the sun is up and shows true depth (a level with day and evening)
 #define MAX_CANDLES 16
 uniform vec4 candles[MAX_CANDLES]; // lit candles and candelabra: world position, strength
 uniform float candle_reach[MAX_CANDLES]; // how far each lights the stones
@@ -32,7 +33,7 @@ uniform int candle_count;
 // per piece
 uniform float material;      // 0 marble, 1 masonry, 2 foliage, 3 bronze, 4 psyche, 5 cupid, 6 mourner, 7 lawn,
                              // 8 rock, 9 wood, 10 the dark of a cave (palette 7 grass, 8 earth, 9 wood),
-                             // 11 seeds, 12 blossom, 13 Venus
+                             // 11 seeds, 12 blossom, 13 Venus, 14 golden fleece
 uniform float detail;        // 0 none, 1 marble block, 2 masonry block; seeds: how far up they are sorted (0..1)
 uniform float hidden;        // 1: visible only in the lamp light, glowing gold; 2: the same, a faint ghost
 uniform float alpha;
@@ -83,8 +84,11 @@ void palette(float m, float t, out vec3 night, out vec3 warm) {
     } else if (m < 12.5) {  // blossom: roses, pale under the moon
         night = mix(vec3(0.22, 0.12, 0.26), vec3(0.86, 0.62, 0.86), t);
         warm = mix(vec3(0.48, 0.12, 0.20), vec3(1.0, 0.66, 0.74), t);
-    } else {                // Venus: a figure of rose light
+    } else if (m < 13.5) {  // Venus: a figure of rose light
         night = mix(vec3(0.62, 0.26, 0.36), vec3(1.0, 0.86, 0.90), t);
+        warm = night;
+    } else {                // the Sun's rams: golden fleece, bright in any light
+        night = ramp(vec3(0.42, 0.22, 0.06), vec3(0.86, 0.58, 0.18), vec3(1.0, 0.88, 0.50), t);
         warm = night;
     }
 }
@@ -357,6 +361,8 @@ void main() {
         // true depth, visible only in the light
         float dn = clamp((dot(fragWorld, depth_axis) - depth_min) / max(depth_max - depth_min, 1.0), 0.0, 1.0);
         col *= mix(1.0, mix(0.42, 1.08, dn), light_amount);
+        // the sun shows it too, gently
+        col *= mix(1.0, mix(0.8, 1.04, dn), sun_truth * (1.0 - light_amount));
     } else {
         col += vec3(0.98, 0.93, 0.90) * glow;
     }

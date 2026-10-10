@@ -48,6 +48,7 @@ Uniform :: enum u8 {
 	Candles,
 	Candle_Reach,
 	Candle_Count,
+	Sun_Truth,
 }
 
 @(private)
@@ -72,6 +73,7 @@ UNIFORM_NAME := [Uniform]cstring {
 	.Mist_Color    = "mist_color",
 	.Daylight      = "daylight",
 	.Moonlight     = "moonlight",
+	.Sun_Truth     = "sun_truth",
 	.Candles       = "candles",
 	.Candle_Reach  = "candle_reach",
 	.Candle_Count  = "candle_count",
@@ -249,7 +251,7 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 	s^ = {}
 	s.pieces = make([dynamic]Piece, 0, len(g.data.blocks) + 2 * len(g.data.props) + 2 * len(g.data.candelabra) + 2 * len(g.data.caves) + len(g.data.rise) + len(g.data.handles) + 2 * len(g.data.sigils) + len(g.data.seeds), allocator)
 	s.rng = fx.rng_init(1234)
-	s.mote = look(g.data.setting).mote
+	s.mote = look_of(g).mote
 	for e, i in g.data.blocks {
 		p := solid_piece(e.cell, e.solid, -1)
 		p.block = i32(i)
@@ -641,7 +643,7 @@ seam_edge :: proc(g: ^game.Game, e: [2]i32) -> (p0, p1, inward: Vec3) {
 // --- drawing -----------------------------------------------------------------------
 
 draw_world :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
-	lk := look(g.data.setting)
+	lk := look_of(g)
 	draw_sky(r, s, g, v, time)
 	if lk.islands {
 		draw_islands(g, v, time)
@@ -723,9 +725,10 @@ set_frame_uniforms :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	set_f(r, .Mist_Top, proto_to_screen(v, {0, s.fit.y + s.fit.h - 330}).y)
 	set_f(r, .Mist_Bottom, proto_to_screen(v, {0, s.fit.y + s.fit.h + 60}).y)
 	set_f(r, .Screen_Height, v.height)
-	lk := look(g.data.setting)
+	lk := look_of(g)
 	set_v3(r, .Mist_Color, lk.mist)
 	set_f(r, .Daylight, lk.daylight)
+	set_f(r, .Sun_Truth, game.has_time(g) ? 1 - g.evening : 0)
 	set_f(r, .Moonlight, (1 - lk.gloom) * (1 - 0.45 * s.moon_cover))
 	list, n := candle_lights(g)
 	reach: [MAX_CANDLES]f32
@@ -767,7 +770,7 @@ candelabrum_world :: proc(g: ^game.Game, i: int) -> Vec3 {
 // in the world and how bright each burns now (flickering; during the arrival,
 // once its wall has risen into place).
 candle_lights :: proc(g: ^game.Game) -> (list: [MAX_CANDLES][4]f32, n: int) {
-	if !look(g.data.setting).candles {
+	if !look_of(g).candles {
 		return
 	}
 	t := g.time
@@ -973,7 +976,7 @@ draw_pieces :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, transparent: bool) {
 // settings fully, the lit ones little, less while she holds the lamp lit.
 @(private)
 psyche_dark :: proc(g: ^game.Game) -> f32 {
-	lk := look(g.data.setting)
+	lk := look_of(g)
 	return (1 - lk.daylight) * (0.75 + 0.25 * lk.gloom) * (1 - 0.6 * g.light)
 }
 
@@ -993,6 +996,7 @@ draw_figures :: proc(r: ^Renderer, g: ^game.Game) {
 	}
 
 	draw_fragments(r, g)
+	draw_rams(r, g)
 
 	// the prologue's procession: veiled mourners, a little taller than Psyche
 	if game.procession(g) {
@@ -1041,6 +1045,82 @@ draw_figures :: proc(r: ^Renderer, g: ^game.Game) {
 			set_piece_uniforms(r, .Cupid, 0, 0, alpha, 0.9, 0.12)
 			rl.DrawMesh(r.meshes[.Robe_Cupid], r.material, rl.MatrixTranslate(c.x, c.y, c.z - 0.15))
 			rl.DrawMesh(r.meshes[.Head], r.material, rl.MatrixTranslate(c.x, c.y, c.z + 0.455) * rl.MatrixScale(0.05, 0.05, 0.055))
+		}
+	}
+}
+
+// The Sun's golden rams. Each is built of the unit sphere (body, head, the
+// curls of the horns, the tail) and thin blocks (legs), in the frame of its
+// cell turned toward `dir`. Standing by day (big, taller than Psyche, the head
+// dipping now and then to graze); lying at evening, a long mound of fleece
+// whose back rises from the cell's tail end to the head on the next ledge:
+// the step she climbs (its height follows the stairs' treads).
+@(private)
+draw_rams :: proc(r: ^Renderer, g: ^game.Game) {
+	if len(g.data.rams) == 0 {
+		return
+	}
+	lie := game.ram_lie(g)
+	set_piece_uniforms(r, .Fleece, 0, 0, 1, 0.9, 0.05 + 0.04 * (1 - lie))
+	// the golden wool left on the briars at the exit's height: tufts on the bushes
+	if g.data.has_exit {
+		for prop, n in g.data.props {
+			if prop.kind != .Shrub || prop.cell.z != g.data.exit.z {
+				continue
+			}
+			k := [2]f32{0.8, 0.8}
+			#partial switch prop.dir {
+			case .PY: k = {1 - k.y, k.x}
+			case .MX: k = {1 - k.x, 1 - k.y}
+			case .MY: k = {k.y, 1 - k.x}
+			}
+			for j in 0 ..< 3 {
+				h := u32(n * 7 + j)
+				p := Vec3{f32(prop.cell.x) + k.x + (fx.hash01(h * 3 + 1) - 0.5) * 0.22, f32(prop.cell.y) + k.y + (fx.hash01(h * 3 + 2) - 0.5) * 0.22, f32(prop.cell.z) + 0.12 + 0.12 * fx.hash01(h * 3 + 3)}
+				rl.DrawMesh(r.meshes[.Head], r.material, rl.MatrixTranslate(p.x, p.y, p.z) * rl.MatrixScale(0.045, 0.04, 0.035))
+			}
+		}
+	}
+	for m, i in g.data.rams {
+		c := m.cell
+		d := iso.DIR_VEC[m.dir]
+		yaw := math.atan2(f32(d.y), f32(d.x))
+		frame := rl.MatrixTranslate(f32(c.x) + 0.5, f32(c.y) + 0.5, f32(c.z)) * rl.MatrixRotateZ(yaw)
+		// grazing (by day): now and then the head goes down to the grass
+		ph := g.time * 0.35 + f32(i) * 1.7
+		graze := (1 - lie) * fx.sine_in_out(fx.clamp01((math.sin(ph) - 0.55) / 0.3))
+		breath := 1 + 0.015 * math.sin(g.time * 1.3 + f32(i))
+		ell :: proc(r: ^Renderer, frame: rl.Matrix, at, radii: Vec3) {
+			rl.DrawMesh(r.meshes[.Head], r.material, frame * rl.MatrixTranslate(at.x, at.y, at.z) * rl.MatrixScale(radii.x, radii.y, radii.z))
+		}
+		mix :: proc(a, b: Vec3, t: f32) -> Vec3 {return a + (b - a) * t}
+		// the body (local x toward the head)
+		body_at := mix({-0.02, 0, 0.56}, {0, 0, 0.24}, lie)
+		body_r := mix({0.36, 0.2, 0.21}, {0.5, 0.3, 0.52}, lie) * breath
+		ell(r, frame, body_at, body_r)
+		// the neck and the head
+		head_at := mix(Vec3{0.38, 0, 0.82} + Vec3{0.06, 0, -0.38} * graze, {0.46, 0, 0.86}, lie)
+		ell(r, frame, (body_at + head_at) * 0.5 + {0.04, 0, 0.04}, mix({0.12, 0.1, 0.12}, {0.14, 0.13, 0.16}, lie))
+		ell(r, frame, head_at, {0.12, 0.085, 0.095})
+		ell(r, frame, head_at + {0.1, 0, -0.03}, {0.06, 0.055, 0.05}) // the muzzle
+		// the horns: a curl on each side of the head, three beads winding back and down
+		for side in ([2]f32{-1, 1}) {
+			for k in 0 ..< 4 {
+				a := f32(k) / 3 * math.PI * 1.3
+				hp := head_at + {-0.03 - 0.06 * math.sin(a), side * (0.08 + 0.012 * f32(k)), 0.05 + 0.06 * math.cos(a)}
+				ell(r, frame, hp, Vec3{0.032, 0.03, 0.032} * (1 - 0.12 * f32(k)))
+			}
+		}
+		// the tail
+		ell(r, frame, body_at + mix({-0.36, 0, 0.02}, {-0.48, 0, -0.12}, lie), {0.06, 0.05, 0.06})
+		// the legs: four posts under the body, folded away when it lies down
+		leg_h := 0.4 * (1 - lie)
+		if leg_h > 0.01 {
+			for lx in ([2]f32{-0.2, 0.2}) {
+				for ly in ([2]f32{-0.1, 0.1}) {
+					rl.DrawMesh(r.meshes[.Block], r.material, frame * rl.MatrixTranslate(lx - 0.025, ly - 0.025, 0) * rl.MatrixScale(0.05, 0.05, leg_h))
+				}
+			}
 		}
 	}
 }
@@ -1172,7 +1252,7 @@ draw_water :: proc(g: ^game.Game, time: f32) {
 	rlgl.SetTexture(rlgl.GetTextureIdDefault())
 	lamp := game.lamp_world(g)
 	warm := g.data.has_lamp ? g.light : 0
-	lk := look(g.data.setting)
+	lk := look_of(g)
 	surface := lk.water.a > 0 ? lk.water : Color4{0.08, 0.12, 0.27, 0.8}
 	glint := lk.glint.a > 0 ? lk.glint : Color4{0.65, 0.75, 1.0, 0.4}
 	for w in g.data.water {
@@ -1259,6 +1339,16 @@ draw_decals :: proc(g: ^game.Game) {
 		}
 	}
 
+	// the reeds that turn the time: a soft ring of light on their stone,
+	// golden by day, rose at evening, breathing slowly
+	for c, n in g.data.reeds {
+		k := 0.6 + 0.4 * math.sin(g.time * 1.4 + f32(n))
+		col := fx.lerp(Color4{1.0, 0.92, 0.55, 0.32}, Color4{1.0, 0.62, 0.72, 0.32}, g.evening)
+		col.a *= k
+		floor_ring(pl.node_world(&g.palace, c) + {0, 0, 0.007}, 0.32, 0.05, col)
+		floor_ellipse(pl.node_world(&g.palace, c) + {0, 0, 0.006}, 0.3, 0.3, {col.r, col.g, col.b, col.a * 0.25})
+	}
+
 	// a bronze inlay on the parts that turn
 	for e, i in g.data.blocks {
 		if e.part == 0 || !pl.block_present(&g.palace, i) || g.flip_t[i] >= 0 {
@@ -1292,19 +1382,19 @@ draw_decals :: proc(g: ^game.Game) {
 		}
 	}
 
-	if g.light > 0.01 && !g.turning && g.collapse_t < 0 {
+	if truth := game.truth(g); truth > 0.01 && !g.turning && g.collapse_t < 0 {
 		for e, n in g.palace.illusion.pairs {
 			p0, p1, inward := seam_edge(g, e)
 			lift := Vec3{0, 0, 0.005}
 			// a dark band in the stone...
-			floor_strip(p0 + lift, p1 + lift, inward, 0.1, {0.02, 0.01, 0.04, 0.35 * g.light})
+			floor_strip(p0 + lift, p1 + lift, inward, 0.1, {0.02, 0.01, 0.04, 0.35 * truth})
 			// ...and a jagged crack along the joint
 			prev := p0 + lift
 			for k in 1 ..= 6 {
 				t := f32(k) / 6
 				jitter: f32 = k < 6 ? (fx.hash01(u32(n * 7 + k)) - 0.5) * 0.05 : 0
 				next := fx.lerp(p0, p1, t) + lift + inward * (0.012 + jitter * 0.5)
-				floor_strip(prev, next, inward, 0.028, {0.03, 0.02, 0.05, 0.9 * g.light})
+				floor_strip(prev, next, inward, 0.028, {0.03, 0.02, 0.05, 0.9 * truth})
 				prev = next
 			}
 		}
@@ -1833,7 +1923,7 @@ set_bv3 :: proc(b: Backdrop, u: Backdrop_Uniform, value: Vec3) {
 // screen when the setting has no ranges: the night sky as it always was).
 @(private)
 horizon_uv :: proc(s: ^Scene, g: ^game.Game, view: View) -> f32 {
-	if look(g.data.setting).ridges == 0 {
+	if look_of(g).ridges == 0 {
 		return 1
 	}
 	v := backdrop_view(s, g, view, 0.25)
@@ -1843,7 +1933,7 @@ horizon_uv :: proc(s: ^Scene, g: ^game.Game, view: View) -> f32 {
 // The sky and the far ranges share the orb, the horizon and the turn.
 @(private)
 set_sky_uniforms :: proc(b: Backdrop, s: ^Scene, g: ^game.Game, v: View) {
-	lk := look(g.data.setting)
+	lk := look_of(g)
 	set_bf(b, .Shift, g.angle)
 	set_bf(b, .Aspect, v.width / v.height)
 	set_bf(b, .Horizon, horizon_uv(s, g, v))
@@ -1872,7 +1962,7 @@ draw_veil :: proc(r: ^Renderer, g: ^game.Game, width, height, time: f32) {
 @(private)
 draw_sky :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 	b := r.sky
-	lk := look(g.data.setting)
+	lk := look_of(g)
 	set_sky_uniforms(b, s, g, v)
 	set_bf(b, .Light_Amount, g.light * 0.8)
 	set_bf(b, .Time, time)
@@ -1893,7 +1983,7 @@ draw_sky :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 @(private)
 draw_ridges :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	b := r.ridges
-	lk := look(g.data.setting)
+	lk := look_of(g)
 	set_sky_uniforms(b, s, g, v)
 	set_bf(b, .Light_Amount, g.light * 0.8)
 	set_bv3(b, .Color_Far, lk.ridge_color[0])
@@ -1921,7 +2011,7 @@ backdrop_view :: proc(s: ^Scene, g: ^game.Game, v: View, k: f32) -> View {
 draw_clouds :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, view: View, time: f32, front: bool) {
 	v := backdrop_view(s, g, view, 0.5)
 	b := r.clouds
-	lk := look(g.data.setting)
+	lk := look_of(g)
 	top := s.fit.y + s.fit.h - (front ? 330 : 520)
 	a := proto_to_screen(v, {s.fit.x - 1400, top})
 	c := proto_to_screen(v, {s.fit.x + s.fit.w + 1400, top + 700})
@@ -2095,7 +2185,7 @@ draw_teach :: proc(g: ^game.Game, v: View, time: f32) {
 		case .None:
 		case .Veiled: want = e.trait == .Veiled && !g.palace.flipped[i]
 		case .Handle: want = e.part > 0
-		case .Ants:
+		case .Ants, .Time:
 		}
 		if !want || pl.solid_at(&g.palace, pl.block_cell(&g.palace, i) + {0, 0, 1}).kind != .None {
 			continue
@@ -2119,6 +2209,13 @@ draw_teach :: proc(g: ^game.Game, v: View, time: f32) {
 			}
 			c := Vec3{f32(h.x), f32(h.y), f32(h.z) + 1.01}
 			outline(v, c + {0.06, 0.06, 0}, c + {0.94, 0.06, 0}, c + {0.94, 0.94, 0}, c + {0.06, 0.94, 0}, col, width)
+		}
+	}
+	if mech == .Time {
+		// the reeds that turn the time
+		for c in g.data.reeds {
+			p := Vec3{f32(c.x), f32(c.y), f32(c.z) + 0.01}
+			outline(v, p + {0.06, 0.06, 0}, p + {0.94, 0.06, 0}, p + {0.94, 0.94, 0}, p + {0.06, 0.94, 0}, col, width)
 		}
 	}
 	if mech == .Handle {

@@ -111,6 +111,7 @@ Key :: enum u16 {
 	Fragment_08d, // Psyche's prayer to Juno
 	Fragment_10,
 	Fragment_11,
+	Fragment_11b, // the reed's advice
 	Fragment_12,
 	Fragment_13,
 	Fragment_14,
@@ -131,6 +132,8 @@ Key :: enum u16 {
 	Mech_Handle,
 	Mech_Ants_Title,
 	Mech_Ants,
+	Mech_Time_Title,
+	Mech_Time,
 
 	// the Book
 	Book_Fragments,
@@ -210,6 +213,7 @@ Key :: enum u16 {
 	Intro_II_3,
 	Intro_II_4,
 	Intro_III_1,
+	Intro_III_2,
 	// beside Cupid in the dark, before the end of the game
 	V_Doubt,
 
@@ -228,6 +232,7 @@ Key :: enum u16 {
 	Hint_Handle,
 	Hint_Ants,
 	Hint_Ants_No_Way,
+	Hint_Reed,
 	Hint_Rest,
 
 	// with a pad in hand: the texts that name keys, in `pad_text` (buttons as
@@ -269,6 +274,7 @@ Key :: enum u16 {
 	Outro_II_3,
 	Outro_II_4,
 	Outro_III_1,
+	Outro_III_2,
 
 	// endings
 	End_Trust_Title,
@@ -490,7 +496,7 @@ IT := [Key]string {
 	.Level_II_3     = "La rupe delle sorelle",
 	.Level_II_4     = "Il tempio di Cerere e Giunone",
 	.Level_III_1    = "La casa di Venere",
-	.Level_III_2    = "I semi",
+	.Level_III_2    = "Il gregge del Sole",
 	.Level_III_3    = "Il vello d'oro",
 	.Level_III_4    = "L'acqua dello Stige",
 	.Level_III_5    = "L'ordine del vaso",
@@ -522,6 +528,7 @@ IT := [Key]string {
 	.Fragment_08d   = "Psiche prega davanti all'altare di Giunone: «Sorella e sposa del grande Giove, che tu abiti gli antichi santuari di Samo, o le sedi beate dell'alta Cartagine, o vegli sulle mura di Argo lungo l'Inaco: l'Oriente ti onora come Zigia, l'Occidente ti chiama Lucina. Sii per me, nella mia ultima sventura, Giunone che salva, e liberami da questa paura. So che soccorri le donne che aspettano un figlio.»",
 	.Fragment_10    = "Mercurio grida il bando per tutte le strade: «a chi riporta la fuggitiva, Venere darà sette baci.»",
 	.Fragment_11    = "Amore è chiuso in una stanza in fondo alla casa, lontano da tutti. La ferita della lampada guarisce piano.",
+	.Fragment_11b   = "Una canna verde, nutrice di musica soave, mossa da un soffio di vento: «Psiche, non macchiare con la tua morte le mie acque sante. E non andare tra le pecore finché il sole brucia: il suo calore le rende feroci, con le corna aguzze e i morsi velenosi. Aspetta la sera, quando si placano, e raccogli la lana d'oro rimasta tra i rovi.»",
 	.Fragment_12    = "Venere va a un banchetto di nozze, profumata e coronata di rose. Lascia Psiche sola, davanti al lavoro impossibile.",
 	.Fragment_13    = "L'acqua nera scende da una rupe altissima, tra rocce lisce. Draghi senza sonno la custodiscono, e le acque stesse gridano: «Vattene!»",
 	.Fragment_14    = "«Va' da Proserpina» dice Venere, «e chiedile un po' della sua bellezza, quanto basta per un giorno.»",
@@ -539,6 +546,8 @@ IT := [Key]string {
 	.Mech_Handle_Title = "Le manovelle",
 	.Mech_Handle    = "Una manovella muove la parte segnata dall'intarsio di bronzo.\nStando sulla manovella, premi 2 (o clicca su Psiche): la parte ruota di un quarto.",
 	.Mech_Ants_Title = "Le formiche",
+	.Mech_Time_Title = "Il giorno e la sera",
+	.Mech_Time      = "Sali su una canna del fiume: il tempo cambia.\nDi giorno il sole mostra la verità, ma i montoni d'oro sbarrano la strada. A sera tornano le illusioni, e i montoni si sdraiano: un gradino per salire.",
 	.Mech_Ants      = "Accanto a una pietra di semi, premi 3 (o Spazio): le formiche la portano alla cavità più vicina, per la strada che vedi.\nAnche sulle illusioni: e lì la pietra resta vera, da ogni lato.",
 
 	.Book_Fragments = "Frammenti del racconto",
@@ -615,6 +624,7 @@ IT := [Key]string {
 	.Intro_II_3     = "Psiche va dalla sorella maggiore e le dice: «Il mio sposo ora vuole te.» La sorella corre alla rupe, senza dirlo a nessuno.",
 	.Intro_II_4     = "Psiche vaga giorno e notte in cerca dello sposo. Al tramonto trova un tempio di Cerere e di Giunone: spighe e falci in disordine, doni appesi alle colonne.",
 	.Intro_III_1    = "Scende la sera sulla casa di Venere. Ogni seme deve tornare al suo posto.",
+	.Intro_III_2    = "Lungo il fiume pascola il gregge d'oro del Sole. Una canna sussurra: aspetta la sera.",
 	.V_Doubt        = "Dorme. Ti tornano in mente le parole delle sorelle: e se fosse un mostro? La lampada è nella tua mano.",
 
 	.Tutorial_Label = "Come si gioca",
@@ -632,6 +642,7 @@ IT := [Key]string {
 	.Hint_Handle    = "Sei su una manovella: premi 2 (o clicca su Psiche) per ruotare la parte che muove",
 	.Hint_Ants      = "Accanto alla pietra di semi, premi 3 (o Spazio): le formiche la porteranno nella cavità",
 	.Hint_Ants_No_Way = "Da qui le formiche non vedono una strada fino a una cavità: prova un'altra vista",
+	.Hint_Reed      = "Sali sulla canna: il sole tramonterà",
 	.Hint_Rest      = "Un braciere acceso: se ti perdi, R ti riporta qui (tenuto premuto, ricomincia il livello)",
 	.Card_Continue_Pad = "Premi {S} per continuare",
 	.Pro_Start_Pad  = "Premi un pulsante per iniziare",
@@ -668,6 +679,7 @@ IT := [Key]string {
 	.Outro_II_2     = "Sull'alto ciglio del fiume siede Pan, il dio dei campi. «Smetti di piangere» le dice con dolcezza.\n«Prega Amore, il più grande degli dèi, e conquistalo con la devozione.»",
 	.Outro_II_3     = "«Zefiro, prendimi!» grida la sorella, e si getta. Ma il vento non viene, e lei cade tra le rocce.\nPresto la stessa sorte tocca all'altra.",
 	.Outro_II_4     = "Cerere ne ha pietà, ma non può mettersi contro Venere. Giunone le appare, ma la legge vieta di accogliere la serva fuggita di un'altra.\nNon c'è più rifugio. Psiche andrà da Venere.",
+	.Outro_III_2    = "Psiche torna da Venere con il grembo pieno di lana d'oro. Ma nemmeno questo la placa: «So bene chi ti ha aiutata.»",
 	.Outro_III_1    = "A notte Venere torna dal banchetto, accaldata dal vino e profumata di rose. Vede il lavoro compiuto.\n«Non è opera tua», dice, e le getta un tozzo di pane.",
 
 	.End_Trust_Title = "Fiducia",
@@ -770,7 +782,7 @@ EN := [Key]string {
 	.Level_II_3     = "The Sisters' Crag",
 	.Level_II_4     = "The Temple of Ceres and Juno",
 	.Level_III_1    = "The House of Venus",
-	.Level_III_2    = "The Seeds",
+	.Level_III_2    = "The Flock of the Sun",
 	.Level_III_3    = "The Golden Fleece",
 	.Level_III_4    = "The Water of the Styx",
 	.Level_III_5    = "The Order of the Box",
@@ -802,6 +814,7 @@ EN := [Key]string {
 	.Fragment_08d   = "Psyche prays before the altar of Juno: “Sister and wife of great Jupiter, whether you dwell in your ancient shrines at Samos, or in the blessed seats of lofty Carthage, or guard the walls of Argos by the Inachus: the East honours you as Zygia, the West calls you Lucina. Be Juno the Saviour to me in my last distress, and free me from this fear. I know you help the women who are waiting for a child.”",
 	.Fragment_10    = "Mercury cries the proclamation through every street: whoever brings back the runaway will have seven kisses from Venus.",
 	.Fragment_11    = "Cupid is shut in a room at the back of the house, far from everyone. The wound of the lamp heals slowly.",
+	.Fragment_11b   = "A green reed, nurse of sweet music, stirred by a breath of wind: “Psyche, do not stain my holy waters with your death. And do not go among the sheep while the sun burns: its heat makes them wild, their horns sharp, their bites poisonous. Wait for evening, when they grow calm, and gather the golden wool left on the briars.”",
 	.Fragment_12    = "Venus goes off to a wedding feast, perfumed and crowned with roses. She leaves Psyche alone with the impossible task.",
 	.Fragment_13    = "Black water falls from a towering crag, between smooth rocks. Sleepless dragons guard it, and the waters themselves cry out: “Go away!”",
 	.Fragment_14    = "“Go to Proserpina,” says Venus, “and ask her for a little of her beauty, enough for a single day.”",
@@ -819,6 +832,8 @@ EN := [Key]string {
 	.Mech_Handle_Title = "Handles",
 	.Mech_Handle    = "A handle moves the part marked by the bronze inlay.\nStanding on the handle, press 2 (or click Psyche): the part turns a quarter.",
 	.Mech_Ants_Title = "The ants",
+	.Mech_Time_Title = "Day and evening",
+	.Mech_Time      = "Step onto a reed of the river: the time turns.\nBy day the sun shows the truth, but the golden rams bar the way. At evening the illusions return, and the rams lie down: a step to climb.",
 	.Mech_Ants      = "Beside a stone of seeds, press 3 (or Space): the ants carry it to the nearest hollow, along the way you see.\nAcross illusions too: and there the stone stays real, from every side.",
 
 	.Book_Fragments = "Fragments of the Tale",
@@ -895,6 +910,7 @@ EN := [Key]string {
 	.Intro_II_3     = "Psyche goes to her eldest sister and tells her: “My husband wants you now.” The sister runs to the crag, telling no one.",
 	.Intro_II_4     = "Psyche wanders day and night in search of her husband. At dusk she finds a temple of Ceres and Juno: wheat and sickles in disorder, gifts hung on the columns.",
 	.Intro_III_1    = "Evening falls on the house of Venus. Every seed must go back to its place.",
+	.Intro_III_2    = "Along the river grazes the golden flock of the Sun. A reed whispers: wait for evening.",
 	.V_Doubt        = "He sleeps. Your sisters' words come back to you: what if he is a monster? The lamp is in your hand.",
 
 	.Tutorial_Label = "How to play",
@@ -912,6 +928,7 @@ EN := [Key]string {
 	.Hint_Handle    = "You stand on a handle: press 2 (or click Psyche) to turn the part it moves",
 	.Hint_Ants      = "Beside the stone of seeds, press 3 (or Space): the ants will carry it into the hollow",
 	.Hint_Ants_No_Way = "From here the ants see no way to a hollow: try another view",
+	.Hint_Reed      = "Step onto the reed: the sun will set",
 	.Hint_Rest      = "A lit brazier: if you lose your way, R brings you back here (held down, it restarts the level)",
 	.Card_Continue_Pad = "Press {S} to continue",
 	.Pro_Start_Pad  = "Press any button to begin",
@@ -948,6 +965,7 @@ EN := [Key]string {
 	.Outro_II_2     = "On the river's high brow sits Pan, the god of the fields. “Stop weeping,” he tells her gently.\n“Pray to Cupid, the greatest of the gods, and win him with devotion.”",
 	.Outro_II_3     = "“Zephyr, take me!” the sister cries, and leaps. But no wind comes, and she falls among the rocks.\nSoon the other meets the same end.",
 	.Outro_II_4     = "Ceres pities her, but cannot set herself against Venus. Juno appears, but the law forbids sheltering another's runaway servant.\nThere is no refuge left. Psyche will go to Venus.",
+	.Outro_III_2    = "Psyche comes back to Venus with her lap full of golden wool. But not even this appeases her: “I know well who helped you.”",
 	.Outro_III_1    = "At night Venus comes back from the feast, flushed with wine and fragrant with roses. She sees the work done.\n“This is not your doing,” she says, and throws her a crust of bread.",
 
 	.End_Trust_Title = "Trust",
