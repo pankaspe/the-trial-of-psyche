@@ -1720,25 +1720,32 @@ teach_fragments :: proc(g: ^Game) {
 	}
 }
 
-// Every state of the loaded level from which the goal cannot be reached any
-// more (in `allocator`; the search is long in a big level: the app keeps the
-// answer for the session); none for a level with more than DEAD_END_LIMIT
-// states, it is not searched.
-find_dead_ends :: proc(g: ^Game, allocator := context.allocator) -> []pl.State {
+// Every state of a level (its text) from which the goal cannot be reached
+// any more, in `allocator`; none for a level with more than DEAD_END_LIMIT
+// states, it is not searched. Long in a big level: the app runs it on a
+// worker thread, on its own copy of the level.
+search_dead_ends :: proc(text: string, allocator := context.allocator) -> []pl.State {
 	scratch: virtual.Arena
 	if virtual.arena_init_growing(&scratch) != nil {
 		return nil
 	}
 	defer virtual.arena_destroy(&scratch)
-	dead := make([dynamic]pl.State, virtual.arena_allocator(&scratch))
-	sol := pl.solve(&g.palace, pl.goal_cell(&g.palace), nil, virtual.arena_allocator(&scratch), DEAD_END_LIMIT, &dead)
+	alloc := virtual.arena_allocator(&scratch)
+	data, err := level.parse(text, alloc)
+	if err != nil {
+		return nil
+	}
+	p: pl.Palace
+	pl.init(&p, &data, alloc)
+	dead := make([dynamic]pl.State, alloc)
+	sol := pl.solve(&p, pl.goal_cell(&p), nil, alloc, DEAD_END_LIMIT, &dead)
 	if sol.given_up || !sol.solved || len(dead) == 0 {
 		return nil
 	}
 	return slice.clone(dead[:], allocator)
 }
 
-// The level's dead ends (`find_dead_ends`): Psyche is told when she stands in one.
+// The level's dead ends (`search_dead_ends`): Psyche is told when she stands in one.
 know_dead_ends :: proc(g: ^Game, dead: []pl.State) {
 	g.dead_ends = make(map[pl.State]struct {}, len(dead), level_allocator(g))
 	for st in dead {

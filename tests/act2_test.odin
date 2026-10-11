@@ -66,7 +66,7 @@ lamp
 	if !load_text(t, &g, LEVEL) {
 		return
 	}
-	game.know_dead_ends(&g, game.find_dead_ends(&g, game.level_allocator(&g)))
+	game.know_dead_ends(&g, game.search_dead_ends(LEVEL, game.level_allocator(&g)))
 	testing.expect(t, len(g.dead_ends) > 0, "the level has dead ends")
 	run(&g, 1)
 	testing.expect(t, !g.dead_end, "the start is not one")
@@ -263,7 +263,7 @@ act2_levels_solve_and_play :: proc(t: ^testing.T) {
 			testing.expectf(t, left >= 0, "%s: the lamp's oil lasts the plan (%.1f s left)", info.id, left)
 		}
 
-		game.know_dead_ends(&g, game.find_dead_ends(&g, alloc))
+		game.know_dead_ends(&g, game.search_dead_ends(info.source, alloc))
 		game.begin(&g, prologue = false)
 		run(&g, game.start_cues_time(&g) + 0.5)
 		if !play_plan(t, &g, sol.plan[:]) {

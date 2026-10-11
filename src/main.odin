@@ -22,7 +22,6 @@ import "game"
 import "i18n"
 import "input"
 import "level"
-import "palace"
 import "progress"
 import "render"
 import "settings"
@@ -94,7 +93,7 @@ App :: struct {
 	rest_tap_t:      f32, // time since the last tap of R (pressed twice: the level again)
 	east_block:      bool, // the pad's East closed a menu: it is not the brazier until let go
 	lamp_down:       bool, // the lamp's key, button or slot was held last frame
-	dead_ends:       [content.LEVEL_COUNT]Maybe([]palace.State), // per level, once searched (game.find_dead_ends)
+	dead_ends:       Dead_Ends,
 	focus_screen:    Screen, // the screen the UI's focus belongs to
 }
 
@@ -194,6 +193,7 @@ shutdown :: proc(app: ^App) {
 	render.post_shutdown(&app.post)
 	render.shutdown(&app.renderer)
 	audio.shutdown()
+	drop_dead_ends(&app.dead_ends)
 	rl.CloseWindow()
 }
 
@@ -231,15 +231,7 @@ new_level :: proc(app: ^App, index: int) -> bool {
 			g.fragments_known += {i}
 		}
 	}
-	// the dead ends, searched once per level (a level read from a file each time)
-	if app.shots.file != "" && index == app.shots.level {
-		game.know_dead_ends(g, game.find_dead_ends(g, game.level_allocator(g)))
-	} else {
-		if app.dead_ends[index] == nil {
-			app.dead_ends[index] = game.find_dead_ends(g)
-		}
-		game.know_dead_ends(g, app.dead_ends[index].?)
-	}
+	want_dead_ends(app, index, source)
 	render.scene_build(&app.scene, g, game.level_allocator(g))
 	return true
 }
@@ -545,6 +537,7 @@ frame :: proc(app: ^App) {
 	}
 	paused := app.screen == .Pause || app.screen == .Fragment || app.screen == .Mechanic || (app.screen == .Settings && app.settings_from == .Pause)
 	if !paused {
+		poll_dead_ends(app)
 		game.update(g, dt)
 		app.scene.see_through = app.cfg.see_through
 		render.scene_update(&app.scene, g, dt)
