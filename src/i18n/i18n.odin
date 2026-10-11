@@ -112,6 +112,7 @@ Key :: enum u16 {
 	Fragment_10,
 	Fragment_11,
 	Fragment_11b, // the reed's advice
+	Fragment_11c, // Psyche goes to the river to die
 	Fragment_12,
 	Fragment_13,
 	Fragment_14,
@@ -588,6 +589,7 @@ IT := [Key]string {
 	.Fragment_10    = "Mercurio grida il bando per tutte le strade: «a chi riporta la fuggitiva, Venere darà sette baci.»",
 	.Fragment_11    = "Amore è chiuso in una stanza in fondo alla casa, lontano da tutti. La ferita della lampada guarisce piano.",
 	.Fragment_11b   = "Una canna verde, nutrice di musica soave, mossa da un soffio di vento: «Psiche, non macchiare con la tua morte le mie acque sante. E non andare tra le pecore finché il sole brucia: il suo calore le rende feroci, con le corna aguzze e i morsi velenosi. Aspetta la sera, quando si placano, e raccogli la lana d'oro rimasta tra i rovi.»",
+	.Fragment_11c   = "All'alba Venere le indica un bosco lungo il fiume, dove pascolano pecore splendenti d'oro. Psiche ci va volentieri, ma non per obbedire: vuole gettarsi da una rupe nel fiume e trovare finalmente pace.",
 	.Fragment_12    = "Venere va a un banchetto di nozze, profumata e coronata di rose. Lascia Psiche sola, davanti al lavoro impossibile.",
 	.Fragment_13    = "L'acqua nera scende da una rupe altissima, tra rocce lisce. Draghi senza sonno la custodiscono, e le acque stesse gridano: «Vattene!»",
 	.Fragment_14    = "«Va' da Proserpina» dice Venere, «e chiedile un po' della sua bellezza, quanto basta per un giorno.»",
@@ -892,6 +894,7 @@ EN := [Key]string {
 	.Fragment_10    = "Mercury cries the proclamation through every street: whoever brings back the runaway will have seven kisses from Venus.",
 	.Fragment_11    = "Cupid is shut in a room at the back of the house, far from everyone. The wound of the lamp heals slowly.",
 	.Fragment_11b   = "A green reed, nurse of sweet music, stirred by a breath of wind: “Psyche, do not stain my holy waters with your death. And do not go among the sheep while the sun burns: its heat makes them wild, their horns sharp, their bites poisonous. Wait for evening, when they grow calm, and gather the golden wool left on the briars.”",
+	.Fragment_11c   = "At dawn Venus points her to a grove along the river, where sheep shining with gold are grazing. Psyche goes willingly, but not to obey: she means to throw herself from a rock into the river and find rest at last.",
 	.Fragment_12    = "Venus goes off to a wedding feast, perfumed and crowned with roses. She leaves Psyche alone with the impossible task.",
 	.Fragment_13    = "Black water falls from a towering crag, between smooth rocks. Sleepless dragons guard it, and the waters themselves cry out: “Go away!”",
 	.Fragment_14    = "“Go to Proserpina,” says Venus, “and ask her for a little of her beauty, enough for a single day.”",

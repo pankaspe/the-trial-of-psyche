@@ -1,211 +1,170 @@
 # The Trial of Psyche - level III.2: "The Flock of the Sun"
-# Day and evening (the act's passive mechanic). Venus sends Psyche for the
-# golden wool of the Sun's flock; a reed of the river tells her to wait for
-# evening. The level starts by day. Stepping onto a reed turns the time: by
-# day the sun shows the truth (no illusions, every stair works) and the golden
-# rams stand in the way; at evening the illusions are back and the rams lie
-# down, each a step up toward its `dir`. A stair under an overhang is never
-# seen at evening: a way only by day.
-# A crag in a river, too tall for the screen: four bands climbing round the
-# core (south, east, north, west), the first three joined by caves; the
-# shelves away from the core hang from it, a few blocks thick.
-#   the river (h1-h3), the lesson: the first reed brings the evening, the ram
-#     lies down, a step up to the ledge; the stair under the overhang needs
-#     the day again: the second reed, on a spur; the cave at the top;
-#   the east shelf (h7-h8), the ants and the time: a ram (evening) up to the
-#     grove, where a seed waits; the ants carry it to the gap of the north
-#     walk, but at evening, in the first view, an illusion leads them nearer,
-#     to a hollow on the pillar by the river (lost: back to the brazier). By
-#     day they go the true way (the reed of the grove), or at evening from
-#     another view; the cave at the end of the walk;
-#   the turning steps (h12-h15): four steps of rock, each turned by a handle;
-#     up, turn the second, down again, turn the first: up to the top. The
-#     fourth step (handle at the top) turns toward the needle of the fragment;
-#   the flock (h16-h19): a reed and a ram (evening) to the pasture; another
-#     ram, the reed on its back brings the day. A seed lies on a ledge: only
-#     at evening, from the first view, the ants carry it up across an
-#     illusion into the gap of the high terrace, and the gap filled hides the
-#     illusion: Psyche goes up by the stair under the overhang (day), onto the
-#     reed at its top (evening), across the filled gap and up the last ram to
-#     the summit, where the wool is caught on the briars (the exit). Climb
-#     before the ants are called and there is no way back (the brazier).
-# Solution (solver: 69 steps, 4 turns, 5 handles, 2 ants, 9 times turned, 20
-# decisions). Fragments: III.2 (VI.11, Cupid shut away) on the needle at the
-# north-west corner of the turning steps: the fourth step turned from the
-# top, then the first two set back the other way (11 handles); III.2b (VI.12,
-# the reed's advice) on the pillar by the river: the reed of the grove
-# stepped on twice, the illusion of the first view at evening.
+# Venus sends Psyche for the golden wool of the Sun's flock; a reed tells her
+# to wait for evening. A pasture in the river and its islands, joined by three
+# swing bridges of planks and ropes, each turned a quarter by its handles
+# (the spindle); the level starts by day. By day the rams stand and nobody
+# passes them; at evening they lie down, a step up; the stairs of the sun
+# stand only by day.
+#   - the pasture (h2): the start, the crossroads' handle. The crossroads is
+#     an L of planks east of it: each quarter joins two of four places (the
+#     pasture, the north-east islet, the east island, the south-east islet),
+#     and it has a second handle on the south-east islet;
+#   - the east island: a sundial (the evening), a ram up to its ledge, the
+#     handle of the west bridge;
+#   - the west island: a sundial, a stair of the sun up to its ledge (by
+#     day), the handle of the north bridge;
+#   - the north island: the last ram (evening), up to the briars where the
+#     wool is caught (the exit).
+# Solution (solver: 59 steps, 7 handles, 3 times turned, 10 decisions): the
+# crossroads to the south-east islet, then to the east island; evening, up the
+# ram, the west bridge; back across the crossroads; the west island by day,
+# up the stair, the north bridge; evening again; the north bridge, the ram,
+# the wool.
+# Fragments: III.2 (VI.11, Cupid shut away) on the north-west islet, across
+# the north bridge while it still lies across the water, from the north-east
+# islet; III.2b (VI.12, the reed's advice) on the south-east rock, up a ram
+# (evening); III.2c (VI.11, Psyche goes to the river to die) on the west
+# bridge's north landing: turned back from the west ledge, down a stair of
+# the sun to the south landing, across (by day).
 # Format: see level_04.txt.
 size 11
 setting pasture_day
 evening pasture_evening
-tier 1 3
-tier 7 9
-tier 12 15
-tier 16 19
 water 0 0 10 10
 
-# the core of the crag, its top the summit pasture (h19)
-ground 4 4 0 18
-ground 4 5 0 18
-ground 4 6 0 18
-ground 5 4 0 18
-ground 5 5 0 18
-ground 5 6 0 18
-ground 6 4 0 18
-ground 6 5 0 18
-ground 6 6 0 18
+# --- the pasture (the central island, h2) ------------------------------------
+ground 4 5 0 1
+ground 5 5 0 1
+ground 6 5 0 1
+ground 4 6 0 1
+ground 5 6 0 1
+ground 6 6 0 1
+ground 4 7 0 1
+ground 5 7 0 1
+ground 6 7 0 1
+ground 4 8 0 1
+ground 5 8 0 1
+ground 6 8 0 1
+ground 4 9 0 1
+ground 5 9 0 1
+ground 6 9 0 1
+start 5 9 2
+rest 5 9 2
+prop shrub 4 9 2 py
+prop reeds 6 9 2 px
+prop reeds 4 5 2 mx
 
-# --- the river (h1-h3) -------------------------------------------------------
-# the bank (h1), the first reed
-ground 8 8 0 0
-ground 9 8 0 0
-ground 8 9 0 0
-ground 9 9 0 0
-ground 9 7 0 0
-start 9 9 1
-rest 9 9 1
-hint 9 9 1 hint_sundial
-sundial 9 7 1
-prop reeds 9 7 1 px
-prop shrub 8 8 1 mx
-# the ram at the foot of the ledge
-ground 7 9 0 0
-ram 7 9 1 mx
-# the ledge (h2), the second reed on a spur
-rock 6 9 0 1
-rock 5 9 0 1
-rock 4 9 0 1
-rock 3 9 0 1
-rock 5 8 0 1
-sundial 5 8 2
-prop reeds 5 8 2 py
-# the stair under the overhang (by day), the cave
-rock 3 8 0 1
-stairs 3 8 2 my
-rock 3 8 3 3
-rock 3 7 0 2
-rock 4 7 0 2
-cave 4 7 3 my
-prop rail 4 7 3 py
+# --- the north island: the briars and the wool (the exit) --------------------
+ground 4 0 0 1
+ground 4 1 0 1
+ground 6 0 0 1
+ground 6 1 0 1
+ground 5 1 0 1
+ram 5 1 2 my
+ground 5 0 0 2
+exit 5 0 3
+# the briars where the wool is caught
+prop shrub 5 0 3 my
+prop shrub 4 0 2 mx
+prop shrub 6 0 2 my
+prop shrub 4 1 2 py
 
-# --- the east shelf (h7-h8) --------------------------------------------------
-rock 7 6 0 6
-cave 7 6 7 mx
-rest 7 6 7
-ground 8 6 3 6
-ground 9 6 3 6
-sundial 9 6 7
-prop reeds 9 6 7 px
-rock 7 5 0 6
-ram 7 5 7 my
-# the grove (h8): the seed, the reed, the gap of the north walk
-ground 7 4 0 7
-ground 8 4 4 7
-ground 7 3 4 7
-ground 8 3 4 7
-ground 9 3 4 7
+# --- the east island: a sundial, a ram up to the ledge -----------------------
+ground 10 7 0 1
+ground 10 8 0 1
+sundial 10 8 2
+ground 10 6 0 1
+ram 10 6 2 my
+ground 10 5 0 2
+ground 10 4 0 2
+prop fence 10 4 3 mx
+prop fence 10 5 3 mx
 
-sundial 9 3 8
-prop reeds 9 3 8 px
-rock 7 2 3 6
-rock 7 2 7 7
-rock 7 1 4 7
-rock 8 1 4 7
-rock 6 1 4 7
-cave 6 1 8 mx
-prop shrub 8 1 8 py
-# the pillar by the river and its hollow (where the ants should not go)
-rock 10 5 0 8
-rock 10 4 0 7
+# --- the west island: a sundial, a stair of the sun up to the ledge ----------
+ground 0 7 0 1
+ground 0 6 0 1
+sundial 0 6 2
+ground 0 8 0 1
+sunlit 0 8 2 py
+ground 0 9 0 2
+ground 0 10 0 2
+# down to the islet of the west bridge's south landing (by day)
+sunlit 1 9 2 mx
+ground 1 9 0 1
+ground 2 9 0 1
 
+# --- the islets --------------------------------------------------------------
+# north-east: a chain to the north bridge's east landing
+ground 8 5 0 1
+ground 8 4 0 1
+ground 8 3 0 1
+ground 7 3 0 1
+# north-west: across the north bridge turned aside
+ground 3 3 0 1
+prop reeds 3 3 2 mx
+# the west bridge's north landing
+ground 2 5 0 1
+prop reeds 2 5 2 my
+# south-east: the crossroads' second handle, a ram up to a rock
+ground 8 9 0 1
+ground 8 10 0 1
+ground 7 10 0 1
+ram 7 10 2 mx
+ground 6 10 0 2
+prop fence 6 10 3 my
+prop fence 6 10 3 mx
+prop reeds 6 10 3 py
 
-# --- the turning steps (h12-h15) ---------------------------------------------
-rock 5 1 4 13
-rock 5 2 10 13
-rock 6 2 8 11
-cave 6 2 12 mx
-rock 6 3 0 11
-rock 5 3 0 11
-rock 4 3 0 11
-rock 3 3 8 11
-rock 4 2 8 11
-rest 4 3 12
-rock 3 1 9 12
-rock 2 2 9 12
-rock 2 0 10 13
-rock 1 1 10 13
-rock 0 2 10 13
-rock 1 3 11 14
-rock 2 3 11 14
-# the needle of the fragment
-rock 0 0 11 14
-# the four steps (handles: part 0 from the first landing, 1 from the second,
-# 2 from the arrival, 3 from the top)
-rock 3 2 8 11
-part 3 2
-stairs 3 2 12 py
+# --- the bridges -------------------------------------------------------------
+# 0: the north bridge, turned aside (east-west)
+part 5 3
+block 4 3 1 plank
+block 5 3 1 plank
+block 6 3 1 plank
+prop rope 4 3 2 my
+prop rope 4 3 2 py
+prop rope 5 3 2 my
+prop rope 5 3 2 py
+prop rope 6 3 2 my
+prop rope 6 3 2 py
 end
-rock 2 1 9 12
-part 2 1
-stairs 2 1 13 my
+# 1: the crossroads east of the pasture: two arms
+part 8 7
+block 8 8 1 plank_y
+block 8 7 1 plank
+block 9 7 1 plank
+prop rope 8 8 2 mx
+prop rope 8 8 2 px
+prop rope 8 7 2 mx
+prop rope 8 7 2 my
+prop rope 9 7 2 my
+prop rope 9 7 2 py
 end
-rock 1 2 10 13
-part 1 2
-stairs 1 2 14 py
+# 2: the west bridge, turned aside (north-south)
+part 2 7
+block 2 6 1 plank_y
+block 2 7 1 plank_y
+block 2 8 1 plank_y
+prop rope 2 6 2 mx
+prop rope 2 6 2 px
+prop rope 2 7 2 mx
+prop rope 2 7 2 px
+prop rope 2 8 2 mx
+prop rope 2 8 2 px
 end
-rock 1 0 10 13
-part 1 0
-stairs 1 0 14 px
-end
-handle 3 3 12 0
-handle 2 2 13 1
-handle 4 2 12 2
-handle 1 3 15 3
 
-# --- the flock (h16-h19) -----------------------------------------------------
-# the reed at the top of the steps, the ram up to the pasture
-sundial 2 3 15
-prop reeds 2 3 15 mx
-prop rail 1 3 15 py
-ground 2 4 11 14
-ram 2 4 15 py
-ground 2 5 12 15
-ground 1 5 12 15
-ground 0 5 12 15
-rest 2 5 16
-# the second ram, the reed on its back
-ground 0 6 12 15
-ram 0 6 16 py
-ground 0 7 13 16
-ground 1 7 13 16
-ground 0 8 13 16
-sundial 0 7 17
-prop reeds 0 7 17 mx
-# the seed on its ledge; the gap of the high terrace
-ground 1 6 13 16
+# the handles: the north bridge from the west ledge, the crossroads from the
+# pasture and from the south-east islet, the west bridge from the east ledge
+# and from the west ledge
+handle 0 10 3 0
+handle 6 5 2 1
+handle 8 9 2 1
+handle 10 4 3 2
+handle 0 9 3 2
 
-ground 2 7 13 16
-ground 2 7 17 17
-# the stair under the overhang, the reed at its top
-rock 1 8 13 16
-stairs 1 8 17 px
-rock 1 8 18 18
-ground 2 8 14 17
-sundial 2 8 18
-prop reeds 2 8 18 py
-ground 2 6 14 17
-prop rail 2 6 18 mx
-# the last ram, up to the summit; the briars hold the wool
-ground 3 6 0 17
-ram 3 6 18 px
-exit 5 5 19
-prop shrub 4 4 19 mx
-prop shrub 6 4 19 my
-prop shrub 6 6 19 px
-prop shrub 5 4 19 py
-
-fragment 0 0 15
-fragment 10 5 9
+# III.2, III.2b, III.2c
+fragment 3 3 2
+fragment 6 10 3
+fragment 2 5 2
 intro intro_iii_2
 outro outro_iii_2
