@@ -221,6 +221,8 @@ Game :: struct {
 	hinted:         [Key]bool,
 	learned:        [Key]bool, // tutorial hints whose action has been done
 	begin_t:        f32, // time since begin(), < 0 before
+	pointer_on:     bool, // an arrow points at Psyche (the level begins, or she was asked for) until she walks
+	pointer:        f32, // the arrow's fade, 0..1
 	cine_out:       f32, // time since the prologue gave way to play, < 0 before (the bars withdraw)
 	arrive_t:       f32, // time since the arrival from the last level began, < 0 without one
 	rise_t:         [level.MAX_SEALS]f32, // per seal: time since it was lit, < 0 before
@@ -384,6 +386,7 @@ start_play :: proc(g: ^Game, prologue: bool) {
 	g.hud.visible = true
 	show(&g.hud.title, title_key(g), 1.5, 3.5, 2.0)
 	g.begin_t = 0
+	g.pointer_on = true
 	// a restart (prologue = false) does not present the mechanic again
 	g.teach_pending = prologue && g.data.mechanic != .None
 }
@@ -499,6 +502,7 @@ update :: proc(g: ^Game, dt: f32) {
 	update_walk(g, dt)
 	update_effects(g, dt)
 	update_hud(g, dt)
+	update_pointer(g, dt)
 	// in the dark the music is veiled; her light opens it
 	audio.set_veil(g.data.has_lamp ? 1 - g.light : 0)
 
@@ -1672,6 +1676,22 @@ update_hud :: proc(g: ^Game, dt: f32) {
 	if !g.hud.voice.active && sa.len(g.hud.queued) > 0 {
 		speak(g, sa.pop_front(&g.hud.queued))
 	}
+}
+
+// Where is Psyche? An arrow over her, until she walks.
+point_at_psyche :: proc(g: ^Game) {
+	if g.active && g.phase == .Play {
+		g.pointer_on = true
+	}
+}
+
+@(private)
+update_pointer :: proc(g: ^Game, dt: f32) {
+	if g.psyche.walking {
+		g.pointer_on = false
+	}
+	shown := g.pointer_on && g.phase == .Play && g.hud.visible
+	g.pointer = fx.move_toward(g.pointer, shown ? 1 : 0, dt * (shown ? 2 : 1.5))
 }
 
 // Cupid's voice: each line is spoken once per level.

@@ -6,10 +6,11 @@
 //   bottom     right: the diorama's own buttons (Q, E turn it; R the brazier,
 //              held: the level again, a ring filling);
 //   over Psyche the action of the place (Space), when there is one: into a
-//              cave.
+//              cave; above it a golden arrow when the level begins or Tab
+//              asks where she is, until she walks.
 // With a pad in hand the keys give way to its buttons (`control`): LT the
 // lamp, RT the spindle, LB / RB turn, East the brazier, South the action of
-// the place, Start the pause.
+// the place, North the arrow over Psyche, Start the pause.
 // Titles, Cupid's voice, hints and tutorials as before. Everything but the
 // titles follows the HUD size of the accessibility settings.
 package ui
@@ -86,6 +87,7 @@ draw_hud :: proc(u: ^Ui, g: ^game.Game, input: Hud_Input = {}) -> (act: Hud_Acti
 	draw_skills(u, g, &act)
 	draw_diorama(u, g, input, &act)
 	draw_place(u, g, input, &act)
+	draw_pointer(u, g, input)
 
 	// the control a tutorial is about breathes until it is used
 	if teaching {
@@ -547,6 +549,30 @@ draw_place :: proc(u: ^Ui, g: ^game.Game, hud: Hud_Input, act: ^Hud_Action) {
 	tri(tip, tip + {-8 * k, -10 * k}, tip + {8 * k, -10 * k}, fade(GOLD, a))
 	if hover && u.pressed {
 		act.place = true
+	}
+}
+
+// A golden arrow over Psyche's head, pointing down at her, breathing slowly;
+// above the card of the action of the place when that one shows.
+@(private)
+draw_pointer :: proc(u: ^Ui, g: ^game.Game, hud: Hud_Input) {
+	a := fx.cubic_out(g.pointer)
+	if a <= 0.003 {
+		return
+	}
+	k := hud_k(u) * 1.25
+	bob: f32 = u.reduce_motion ? 0 : (0.5 + 0.5 * math.sin(g.time * 2.4)) * 8 * k
+	tip := hud.psyche_screen - {0, 12 * k + u.place_reveal * 50 * k + bob + (1 - a) * 12 * k}
+	glow_dot(tip - {0, 16 * k}, 22 * k, {255, 214, 140, 255}, a * 0.8)
+	// a soft shadow first, so the gold reads on a bright sky too
+	for pass in 0 ..< 2 {
+		off := pass == 0 ? Vec2{1.5, 2} * k : {}
+		col := pass == 0 ? fade(rl.Color{20, 12, 30, 255}, a * 0.45) : fade(GOLD, a)
+		head := 15 * k
+		p := tip + off
+		rl.DrawLineEx(p - {0, head + 34 * k}, p - {0, head - 1}, max(3 * k, 1), col)
+		tri(p, p + {-11 * k, -head}, p + {11 * k, -head}, col)
+		rl.DrawCircleV(p - {0, head + 38 * k}, 3.2 * k, col)
 	}
 }
 

@@ -857,6 +857,9 @@ play_input :: proc(app: ^App) {
 	if rl.IsKeyPressed(.SPACE) {
 		place(g)
 	}
+	if rl.IsKeyPressed(.TAB) {
+		game.point_at_psyche(g)
+	}
 	if rl.IsKeyPressed(.Q) || rl.IsKeyPressed(.LEFT) {
 		game.request_turn(g, -1)
 	}
@@ -896,8 +899,8 @@ place :: proc(g: ^game.Game) -> bool {
 
 // The pad in play: the stick (or the d-pad) steers Psyche; the two tools on
 // the triggers, as their slots show (LT the lamp, read with the HUD:
-// update_lamp; RT the spindle), South the
-// action of the place (into the cave at her feet); the shoulders or a flick
+// update_lamp; RT the spindle), South the action of the place (into the cave
+// at her feet), North the arrow over Psyche; the shoulders or a flick
 // of the right stick turn the palace. East, the brazier, is read with the HUD
 // (update_rest). One button, one thing: South does not stand in for a tool,
 // so a button never does what another one shows.
@@ -910,6 +913,9 @@ pad_play :: proc(app: ^App) {
 	}
 	if input.take(.South) {
 		place(g)
+	}
+	if input.take(.North) {
+		game.point_at_psyche(g)
 	}
 	turn := input.flick()
 	if input.take(.LB) {
