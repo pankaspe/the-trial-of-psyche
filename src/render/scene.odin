@@ -1581,6 +1581,21 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	if dark := psyche_dark(g); dark > 0.01 {
 		glow(v, psy.pos + {0, 0, 0.32}, 92, {0.62, 0.7, 1.0, 0.14 * dark * game.psyche_alpha(g)}, 1.25)
 	}
+	// where she is (game.point_at_psyche): a shaft of soft light coming down
+	// on her, as over a fragment, motes drifting down it, a pool at her feet
+	if a := fx.cubic_out(g.pointer); a > 0.003 {
+		breath := 0.8 + 0.2 * math.sin(t * 1.3)
+		for n in 0 ..< 7 {
+			h := 1.1 + f32(n) * 0.42
+			rise := f32(n) / 7
+			glow(v, psy.pos + {0, 0, h}, 16 + f32(n) * 1.5, {1.0, 0.88, 0.6, a * 0.3 * (1 - rise) * (1 - rise) * breath}, 2.4)
+		}
+		for m in 0 ..< 4 {
+			k := math.mod(t * 0.3 + f32(m) * 0.25, 1)
+			glow(v, psy.pos + {0, 0, 3.4 - k * 2.3}, 5, {1.0, 0.95, 0.82, a * 0.75 * math.sin(k * math.PI)}, 1.4)
+		}
+		glow(v, psy.pos + {0, 0, 0.02}, 44, {1.0, 0.85, 0.5, a * 0.3 * breath}, 0.5)
+	}
 	// the procession's torches, and their smoke once put out
 	if game.procession(g) {
 		for i in 0 ..< game.MOURNERS {

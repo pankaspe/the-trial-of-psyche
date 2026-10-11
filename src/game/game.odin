@@ -221,8 +221,9 @@ Game :: struct {
 	hinted:         [Key]bool,
 	learned:        [Key]bool, // tutorial hints whose action has been done
 	begin_t:        f32, // time since begin(), < 0 before
-	pointer_on:     bool, // an arrow points at Psyche (the level begins, or she was asked for) until she walks
-	pointer:        f32, // the arrow's fade, 0..1
+	pointer_on:     bool, // a light points at Psyche (the level begins, or she was asked for) until she walks
+	pointer_title:  bool, // ...once the level's title is gone (at the start, not when asked for)
+	pointer:        f32, // its fade, 0..1
 	dead_ends:      map[pl.State]struct {}, // the states that cannot reach the goal any more (`find_dead_ends`)
 	dead_end:       bool, // Psyche is in one
 	cine_out:       f32, // time since the prologue gave way to play, < 0 before (the bars withdraw)
@@ -389,6 +390,7 @@ start_play :: proc(g: ^Game, prologue: bool) {
 	show(&g.hud.title, title_key(g), 1.5, 3.5, 2.0)
 	g.begin_t = 0
 	g.pointer_on = true
+	g.pointer_title = true
 	// a restart (prologue = false) does not present the mechanic again
 	g.teach_pending = prologue && g.data.mechanic != .None
 }
@@ -1689,10 +1691,11 @@ update_hud :: proc(g: ^Game, dt: f32) {
 	}
 }
 
-// Where is Psyche? An arrow over her, until she walks.
+// Where is Psyche? A light comes down on her, until she walks.
 point_at_psyche :: proc(g: ^Game) {
 	if g.active && g.phase == .Play {
 		g.pointer_on = true
+		g.pointer_title = false
 	}
 }
 
@@ -1701,8 +1704,8 @@ update_pointer :: proc(g: ^Game, dt: f32) {
 	if g.psyche.walking {
 		g.pointer_on = false
 	}
-	shown := g.pointer_on && g.phase == .Play && g.hud.visible
-	g.pointer = fx.move_toward(g.pointer, shown ? 1 : 0, dt * (shown ? 2 : 1.5))
+	shown := g.pointer_on && g.phase == .Play && g.hud.visible && !(g.pointer_title && g.hud.title.active)
+	g.pointer = fx.move_toward(g.pointer, shown ? 1 : 0, dt * (shown ? 0.8 : 1.2))
 }
 
 // The level that teaches the turn teaches the fragments once its card is

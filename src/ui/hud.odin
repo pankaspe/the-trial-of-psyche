@@ -554,28 +554,35 @@ draw_place :: proc(u: ^Ui, g: ^game.Game, hud: Hud_Input, act: ^Hud_Action) {
 	}
 }
 
-// A golden arrow over Psyche's head, pointing down at her, breathing slowly;
-// above the card of the action of the place when that one shows.
+// Over Psyche, where the light comes down on her (render: the shaft), a
+// soft point of light shaped as a chevron, breathing; above the card of the
+// action of the place when that one shows.
 @(private)
 draw_pointer :: proc(u: ^Ui, g: ^game.Game, hud: Hud_Input) {
 	a := fx.cubic_out(g.pointer)
 	if a <= 0.003 {
 		return
 	}
-	k := hud_k(u) * 1.25
-	bob: f32 = u.reduce_motion ? 0 : (0.5 + 0.5 * math.sin(g.time * 2.4)) * 8 * k
-	tip := hud.psyche_screen - {0, 12 * k + u.place_reveal * 50 * k + bob + (1 - a) * 12 * k}
-	glow_dot(tip - {0, 16 * k}, 22 * k, {255, 214, 140, 255}, a * 0.8)
-	// a soft shadow first, so the gold reads on a bright sky too
-	for pass in 0 ..< 2 {
-		off := pass == 0 ? Vec2{1.5, 2} * k : {}
-		col := pass == 0 ? fade(rl.Color{20, 12, 30, 255}, a * 0.45) : fade(GOLD, a)
-		head := 15 * k
-		p := tip + off
-		rl.DrawLineEx(p - {0, head + 34 * k}, p - {0, head - 1}, max(3 * k, 1), col)
-		tri(p, p + {-11 * k, -head}, p + {11 * k, -head}, col)
-		rl.DrawCircleV(p - {0, head + 38 * k}, 3.2 * k, col)
+	k := hud_k(u)
+	breath: f32 = u.reduce_motion ? 1 : 0.75 + 0.25 * math.sin(g.time * 1.3)
+	drift: f32 = u.reduce_motion ? 0 : (0.5 + 0.5 * math.sin(g.time * 1.3)) * 6 * k
+	tip := hud.psyche_screen - {0, 22 * k + u.place_reveal * 50 * k - drift}
+	glow_dot(tip - {0, 8 * k}, 18 * k, {255, 214, 140, 255}, a * breath)
+	// the chevron in light: wide and faint, then narrower and brighter
+	rl.BeginBlendMode(.ADDITIVE)
+	for layer in 0 ..< 4 {
+		w := f32(10 - layer * 3) * k
+		col := fade(rl.Color{255, 214, 150, 255}, a * breath * (0.1 + f32(layer) * 0.12))
+		if layer == 3 {
+			w = 2 * k
+			col = fade(rl.Color{255, 244, 220, 255}, a * breath * 0.9)
+		}
+		for side in ([2]f32{-1, 1}) {
+			rl.DrawLineEx(tip + {side * 11 * k, -11 * k}, tip, w, col)
+			rl.DrawCircleV(tip, w * 0.5, col)
+		}
 	}
+	rl.EndBlendMode()
 }
 
 @(private)
