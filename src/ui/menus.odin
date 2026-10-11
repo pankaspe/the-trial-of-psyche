@@ -924,6 +924,12 @@ settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, na
 			cfg.endless_oil = !cfg.endless_oil
 			changes += {.Access}
 		}
+		line(u, left, right, y)
+		y += row
+		if step := option_row(u, i18n.tr(.Set_Lamp_Toggle), on_off(cfg.lamp_toggle), y, left, right); step != 0 {
+			cfg.lamp_toggle = !cfg.lamp_toggle
+			changes += {.Access}
+		}
 	}
 	back = back_key(u, {left, u.height - 100 * s})
 	return

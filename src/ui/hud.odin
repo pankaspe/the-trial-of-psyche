@@ -32,7 +32,7 @@ Hud_Input :: struct {
 }
 
 Hud_Action :: struct {
-	lamp:      bool,
+	lamp_down: bool, // the lamp's slot is held down with the mouse
 	spindle:   bool,
 	place:     bool, // the action of the place (into the cave)
 	turn:      int,
@@ -233,10 +233,10 @@ draw_skills :: proc(u: ^Ui, g: ^game.Game, act: ^Hud_Action) {
 		sl := slot_of(g, i)
 		add_hot(u, r)
 		hover := mouse_over(u, r)
-		if hover && u.pressed && sl.action {
+		if hover && sl.action {
 			switch i {
-			case 0: act.lamp = true
-			case 1: act.spindle = true
+			case 0: act.lamp_down = u.down
+			case 1: act.spindle = u.pressed
 			}
 		}
 

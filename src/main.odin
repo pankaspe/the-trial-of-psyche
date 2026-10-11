@@ -92,6 +92,7 @@ App :: struct {
 	rest_fired:      bool, // this hold has already restarted the level
 	rest_tap_t:      f32, // time since the last tap of R (pressed twice: the level again)
 	east_block:      bool, // the pad's East closed a menu: it is not the brazier until let go
+	lamp_down:       bool, // the lamp's key, button or slot was held last frame
 	focus_screen:    Screen, // the screen the UI's focus belongs to
 }
 
@@ -848,10 +849,8 @@ play_input :: proc(app: ^App) {
 		return
 	}
 	// R (the brazier, held: the level again) is read with the HUD: update_rest
-	// the two tools on their number keys, Space for the action of the place
-	if rl.IsKeyPressed(.ONE) || rl.IsKeyPressed(.KP_1) || rl.IsKeyPressed(.L) || rl.IsMouseButtonPressed(.RIGHT) {
-		game.toggle_lamp(g)
-	}
+	// the two tools on their number keys (the lamp is read with the HUD:
+	// update_lamp), Space for the action of the place
 	if rl.IsKeyPressed(.TWO) || rl.IsKeyPressed(.KP_2) || rl.IsKeyPressed(.F) {
 		game.use_spindle(g)
 	}
@@ -872,13 +871,32 @@ play_input :: proc(app: ^App) {
 	}
 }
 
+// The lamp burns while its key (1, L, the right button), the pad's LT or its
+// slot is held, and goes out when let go; in the accessibility setting a
+// press lights it and the next one puts it out.
+update_lamp :: proc(app: ^App, slot_down: bool) {
+	g := &app.game
+	down := rl.IsKeyDown(.ONE) || rl.IsKeyDown(.KP_1) || rl.IsKeyDown(.L) || rl.IsMouseButtonDown(.RIGHT) || input.down(.LT) || slot_down
+	was := app.lamp_down
+	app.lamp_down = down
+	if app.menu_fade >= 0 || g.phase == .Prologue {
+		return
+	}
+	if down && !was && (app.cfg.lamp_toggle || !g.lamp_on) {
+		game.toggle_lamp(g)
+	} else if !down && was && !app.cfg.lamp_toggle && g.lamp_on {
+		game.toggle_lamp(g)
+	}
+}
+
 // The action of the place: into the cave at her feet.
 place :: proc(g: ^game.Game) -> bool {
 	return game.enter_cave(g)
 }
 
 // The pad in play: the stick (or the d-pad) steers Psyche; the two tools on
-// the triggers, as their slots show (LT the lamp, RT the spindle), South the
+// the triggers, as their slots show (LT the lamp, read with the HUD:
+// update_lamp; RT the spindle), South the
 // action of the place (into the cave at her feet); the shoulders or a flick
 // of the right stick turn the palace. East, the brazier, is read with the HUD
 // (update_rest). One button, one thing: South does not stand in for a tool,
@@ -887,9 +905,6 @@ pad_play :: proc(app: ^App) {
 	g := &app.game
 	dir, fresh := input.steer()
 	game.steer(g, dir, fresh)
-	if input.take(.LT) {
-		game.toggle_lamp(g)
-	}
 	if input.take(.RT) {
 		game.use_spindle(g)
 	}
@@ -916,6 +931,7 @@ draw_screens :: proc(app: ^App) {
 	u.labels_always = app.cfg.skill_labels == .Always
 	u.reduce_motion = app.cfg.reduce_motion
 	g.endless_oil = app.cfg.endless_oil
+	i18n.set_lamp_toggle(app.cfg.lamp_toggle)
 	g.reduce_motion = app.cfg.reduce_motion
 	u.toast_visible = app.toast_count > 0
 	switch app.screen {
@@ -957,9 +973,7 @@ draw_screens :: proc(app: ^App) {
 		}
 	case .Play:
 		act := ui.draw_hud(u, g, hud_input(app))
-		if act.lamp {
-			game.toggle_lamp(g)
-		}
+		update_lamp(app, act.lamp_down)
 		if act.spindle {
 			game.use_spindle(g)
 		}

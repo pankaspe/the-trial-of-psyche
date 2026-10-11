@@ -81,6 +81,7 @@ Settings :: struct {
 	restart_twice: bool, // R pressed twice restarts, instead of held
 	reduce_motion: bool, // no pulsing or breathing in the HUD, no screen shake
 	endless_oil:   bool, // the lamp never runs dry
+	lamp_toggle:   bool, // the lamp is pressed to light and pressed again to put out, instead of held
 	see_through:   bool, // the stones between the camera and Psyche fade: she is never lost behind a wall
 }
 
@@ -168,6 +169,7 @@ serialize :: proc(s: Settings, allocator := context.allocator) -> string {
 	fmt.sbprintfln(&b, "restart_twice = %v", s.restart_twice)
 	fmt.sbprintfln(&b, "reduce_motion = %v", s.reduce_motion)
 	fmt.sbprintfln(&b, "endless_oil = %v", s.endless_oil)
+	fmt.sbprintfln(&b, "lamp_toggle = %v", s.lamp_toggle)
 	fmt.sbprintfln(&b, "see_through = %v", s.see_through)
 	return strings.to_string(b)
 }
@@ -264,6 +266,8 @@ parse :: proc(text: string, s: ^Settings) {
 			boolean(value, &s.reduce_motion)
 		case "endless_oil":
 			boolean(value, &s.endless_oil)
+		case "lamp_toggle":
+			boolean(value, &s.lamp_toggle)
 		case "see_through":
 			boolean(value, &s.see_through)
 		}

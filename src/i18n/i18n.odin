@@ -199,6 +199,7 @@ Key :: enum u16 {
 	Set_Reduce_Motion,
 	Set_Endless_Oil,
 	Set_See_Through,
+	Set_Lamp_Toggle,
 	Controls,
 	Controls_Dark,
 
@@ -223,6 +224,8 @@ Key :: enum u16 {
 	Hint_Illusion,
 	Hint_Sigil,
 	Hint_Oil,
+	Hint_Lamp_Toggle, // the lamp pressed, not held (accessibility)
+	Hint_Oil_Toggle,
 	Hint_Seam,
 	Hint_No_Oil,
 	Hint_Hidden_Stairs,
@@ -248,6 +251,8 @@ Key :: enum u16 {
 	Hint_Move_Pad,
 	Hint_Lamp_Pad,
 	Hint_Oil_Pad,
+	Hint_Lamp_Toggle_Pad,
+	Hint_Oil_Toggle_Pad,
 	Hint_Turn_Pad,
 	Hint_Handle_Pad,
 	Hint_Sundial_Pad,
@@ -332,6 +337,12 @@ set_language :: proc(l: Language) {
 }
 
 tr :: proc(k: Key) -> string {
+	k := k
+	if lamp_toggle {
+		if t := TOGGLE_TEXT[k]; t != .Title {
+			k = t
+		}
+	}
 	if pad != nil {
 		if p := PAD_TEXT[k]; p != .Title {
 			return pad_text(TABLES[current][p])
@@ -370,6 +381,21 @@ set_pad :: proc(names: Maybe(Pad_Names)) {
 	}
 }
 
+// The lamp pressed to light and pressed again to put out (accessibility)
+// instead of held: the texts that teach it.
+@(private)
+lamp_toggle: bool
+
+set_lamp_toggle :: proc(on: bool) {
+	lamp_toggle = on
+}
+
+@(private)
+TOGGLE_TEXT := #partial [Key]Key {
+	.Hint_Lamp = .Hint_Lamp_Toggle,
+	.Hint_Oil  = .Hint_Oil_Toggle,
+}
+
 // The texts that name keys, and their pad version (.Title: none).
 @(private)
 PAD_TEXT := #partial [Key]Key {
@@ -387,6 +413,8 @@ PAD_TEXT := #partial [Key]Key {
 	.Hint_Move          = .Hint_Move_Pad,
 	.Hint_Lamp          = .Hint_Lamp_Pad,
 	.Hint_Oil           = .Hint_Oil_Pad,
+	.Hint_Lamp_Toggle   = .Hint_Lamp_Toggle_Pad,
+	.Hint_Oil_Toggle    = .Hint_Oil_Toggle_Pad,
 	.Hint_Turn          = .Hint_Turn_Pad,
 	.Hint_Handle        = .Hint_Handle_Pad,
 	.Hint_Sundial       = .Hint_Sundial_Pad,
@@ -605,6 +633,7 @@ IT := [Key]string {
 	.Set_Reduce_Motion = "Riduci il movimento",
 	.Set_Endless_Oil = "L'olio non finisce",
 	.Set_See_Through = "Psiche visibile tra le pareti",
+	.Set_Lamp_Toggle = "Lucerna: premi invece di tenere",
 	.Controls       = "Clic: cammina  ·  Q / E: ruota il palazzo  ·  1 / tasto destro: lucerna  ·  2: fuso  ·  Spazio: azione del luogo  ·  R: braciere (tieni premuto: ricomincia)  ·  Esc: pausa",
 	.Controls_Dark  = "Clic: cammina  ·  Q / E: ruota il palazzo  ·  Spazio: azione del luogo  ·  R: braciere (tieni premuto: ricomincia)  ·  Esc: pausa",
 
@@ -621,8 +650,10 @@ IT := [Key]string {
 
 	.Tutorial_Label = "Come si gioca",
 	.Hint_Move      = "Clicca su una casella per muovere Psiche",
-	.Hint_Lamp      = "Un candelabro spento aspetta la tua fiamma: premi 1 (o il tasto destro) per accendere la lampada e si accenderà. La luce mostra la realtà: qui il portico nasconde una scala",
-	.Hint_Oil       = "La lampada consuma olio finché è accesa (le tacche nel suo riquadro, a sinistra): premi di nuovo 1 per spegnerla",
+	.Hint_Lamp      = "Un candelabro spento aspetta la tua fiamma: tieni premuto 1 (o il tasto destro) e la lampada arde finché non lasci; il candelabro si accenderà. La luce mostra la realtà: qui il portico nasconde una scala",
+	.Hint_Lamp_Toggle = "Un candelabro spento aspetta la tua fiamma: premi 1 (o il tasto destro) per accendere la lampada e si accenderà. La luce mostra la realtà: qui il portico nasconde una scala",
+	.Hint_Oil       = "La lampada consuma olio finché arde (le tacche nel suo riquadro, a sinistra): lascia 1 e si spegne",
+	.Hint_Oil_Toggle = "La lampada consuma olio finché è accesa (le tacche nel suo riquadro, a sinistra): premi di nuovo 1 per spegnerla",
 	.Hint_Illusion  = "Al buio, ciò che sembra unito è unito: cammina dove le pietre sembrano toccarsi",
 	.Hint_Sigil     = "Un altro candelabro spento, sul sigillo: accendi qui la lampada e la luce farà salire il ponte",
 	.Hint_Turn      = "Il monte non si mostra mai tutto da un lato. Premi Q o E per girargli intorno: da un'altra parte le rocce lontane si toccano, e affiorano i frammenti del racconto.",
@@ -646,8 +677,10 @@ IT := [Key]string {
 	.Controls_Pad   = "Levetta sinistra o frecce: cammina  ·  {LB} / {RB}: ruota il palazzo  ·  {LT}: lucerna  ·  {RT}: fuso  ·  {S}: azione del luogo  ·  {E}: braciere (tieni premuto: ricomincia)  ·  {START}: pausa",
 	.Controls_Dark_Pad = "Levetta sinistra o frecce: cammina  ·  {LB} / {RB}: ruota il palazzo  ·  {S}: azione del luogo  ·  {E}: braciere (tieni premuto: ricomincia)  ·  {START}: pausa",
 	.Hint_Move_Pad  = "Muovi Psiche con la levetta sinistra (o con le frecce)",
-	.Hint_Lamp_Pad  = "Un candelabro spento aspetta la tua fiamma: premi {LT} per accendere la lampada e si accenderà. La luce mostra la realtà: qui il portico nasconde una scala",
-	.Hint_Oil_Pad   = "La lampada consuma olio finché è accesa (le tacche nel suo riquadro, a sinistra): premi di nuovo {LT} per spegnerla",
+	.Hint_Lamp_Pad  = "Un candelabro spento aspetta la tua fiamma: tieni premuto {LT} e la lampada arde finché non lasci; il candelabro si accenderà. La luce mostra la realtà: qui il portico nasconde una scala",
+	.Hint_Lamp_Toggle_Pad = "Un candelabro spento aspetta la tua fiamma: premi {LT} per accendere la lampada e si accenderà. La luce mostra la realtà: qui il portico nasconde una scala",
+	.Hint_Oil_Pad   = "La lampada consuma olio finché arde (le tacche nel suo riquadro, a sinistra): lascia {LT} e si spegne",
+	.Hint_Oil_Toggle_Pad = "La lampada consuma olio finché è accesa (le tacche nel suo riquadro, a sinistra): premi di nuovo {LT} per spegnerla",
 	.Hint_Turn_Pad  = "Il monte non si mostra mai tutto da un lato. Premi {LB} o {RB} per girargli intorno: da un'altra parte le rocce lontane si toccano, e affiorano i frammenti del racconto.",
 	.Hint_Handle_Pad = "Sei su una manovella: premi {RT} per ruotare la parte che muove",
 	.Hint_Sundial_Pad = "Sei sulla meridiana: premi {RT} e il sole tramonterà",
@@ -888,6 +921,7 @@ EN := [Key]string {
 	.Set_Reduce_Motion = "Reduce motion",
 	.Set_Endless_Oil = "Endless oil",
 	.Set_See_Through = "Psyche seen through walls",
+	.Set_Lamp_Toggle = "Lamp: press instead of hold",
 	.Controls       = "Click: walk  ·  Q / E: turn the palace  ·  1 / right click: lamp  ·  2: spindle  ·  Space: action of the place  ·  R: brazier (hold: start again)  ·  Esc: pause",
 	.Controls_Dark  = "Click: walk  ·  Q / E: turn the palace  ·  Space: action of the place  ·  R: brazier (hold: start again)  ·  Esc: pause",
 
@@ -904,8 +938,10 @@ EN := [Key]string {
 
 	.Tutorial_Label = "How to play",
 	.Hint_Move      = "Click a tile to move Psyche",
-	.Hint_Lamp      = "An unlit candelabrum waits for your flame: press 1 (or right click) to light the lamp and it will catch. The light shows what is real: here the portico hides a stair",
-	.Hint_Oil       = "The lamp burns oil while it is lit (the notches in its slot, on the left): press 1 again to put it out",
+	.Hint_Lamp      = "An unlit candelabrum waits for your flame: hold 1 (or the right button) and the lamp burns until you let go; the candelabrum will catch. The light shows what is real: here the portico hides a stair",
+	.Hint_Lamp_Toggle = "An unlit candelabrum waits for your flame: press 1 (or right click) to light the lamp and it will catch. The light shows what is real: here the portico hides a stair",
+	.Hint_Oil       = "The lamp burns oil while it is lit (the notches in its slot, on the left): let go of 1 and it goes out",
+	.Hint_Oil_Toggle = "The lamp burns oil while it is lit (the notches in its slot, on the left): press 1 again to put it out",
 	.Hint_Illusion  = "In the dark, what seems joined is joined: walk where the stones seem to touch",
 	.Hint_Sigil     = "Another unlit candelabrum, on the seal: light the lamp here and the light will raise the bridge",
 	.Hint_Turn      = "The mountain never shows itself whole from one side. Press Q or E to walk around it: from elsewhere, distant rocks touch, and fragments of the tale come to light.",
@@ -929,8 +965,10 @@ EN := [Key]string {
 	.Controls_Pad   = "Left stick or d-pad: walk  ·  {LB} / {RB}: turn the palace  ·  {LT}: lamp  ·  {RT}: spindle  ·  {S}: action of the place  ·  {E}: brazier (hold: start again)  ·  {START}: pause",
 	.Controls_Dark_Pad = "Left stick or d-pad: walk  ·  {LB} / {RB}: turn the palace  ·  {S}: action of the place  ·  {E}: brazier (hold: start again)  ·  {START}: pause",
 	.Hint_Move_Pad  = "Move Psyche with the left stick (or the d-pad)",
-	.Hint_Lamp_Pad  = "An unlit candelabrum waits for your flame: press {LT} to light the lamp and it will catch. The light shows what is real: here the portico hides a stair",
-	.Hint_Oil_Pad   = "The lamp burns oil while it is lit (the notches in its slot, on the left): press {LT} again to put it out",
+	.Hint_Lamp_Pad  = "An unlit candelabrum waits for your flame: hold {LT} and the lamp burns until you let go; the candelabrum will catch. The light shows what is real: here the portico hides a stair",
+	.Hint_Lamp_Toggle_Pad = "An unlit candelabrum waits for your flame: press {LT} to light the lamp and it will catch. The light shows what is real: here the portico hides a stair",
+	.Hint_Oil_Pad   = "The lamp burns oil while it is lit (the notches in its slot, on the left): let go of {LT} and it goes out",
+	.Hint_Oil_Toggle_Pad = "The lamp burns oil while it is lit (the notches in its slot, on the left): press {LT} again to put it out",
 	.Hint_Turn_Pad  = "The mountain never shows itself whole from one side. Press {LB} or {RB} to walk around it: from elsewhere, distant rocks touch, and fragments of the tale come to light.",
 	.Hint_Handle_Pad = "You stand on a handle: press {RT} to turn the part it moves",
 	.Hint_Sundial_Pad = "You stand on the sundial: press {RT} and the sun will set",
