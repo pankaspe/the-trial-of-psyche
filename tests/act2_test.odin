@@ -214,8 +214,7 @@ act2_levels_solve_and_play :: proc(t: ^testing.T) {
 			testing.expectf(t, false, "%s does not load: %v", info.id, err)
 			continue
 		}
-		// III.1 waits to be rebuilt without the ants (a plain walk until then)
-		testing.expectf(t, palace.is_dynamic(&g.data) || info.id == "III.1", "%s uses the act's mechanics", info.id)
+		testing.expectf(t, palace.is_dynamic(&g.data), "%s uses the act's mechanics", info.id)
 		arena: virtual.Arena
 		testing.expect(t, virtual.arena_init_growing(&arena) == nil)
 		defer virtual.arena_destroy(&arena)

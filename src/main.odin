@@ -261,6 +261,7 @@ SETTING_BED := [level.Setting]audio.Bed {
 	.Venus_Evening = .Garden,
 	.Pasture_Day   = .Pasture_Day,
 	.Pasture_Evening = .Pasture_Evening,
+	.Venus_Day     = .Garden,
 }
 
 // What the mixer plays: the act's music (silent while the screen goes

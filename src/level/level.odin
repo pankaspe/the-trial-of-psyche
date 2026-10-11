@@ -61,6 +61,7 @@ Setting :: enum u8 {
 	Venus_Evening, // the house of Venus above the clouds at evening: rose light, her star bright
 	Pasture_Day, // the Sun's pastures by a river at noon: a hot clear sky, the sun high
 	Pasture_Evening, // the same at evening: the sun gone down, amber and violet, the first star
+	Venus_Day, // the house of Venus above the clouds by day: a pale gold morning, the sun in a rose haze
 }
 
 SETTING_NAME := [Setting]string {
@@ -76,6 +77,7 @@ SETTING_NAME := [Setting]string {
 	.Venus_Evening = "venus_evening",
 	.Pasture_Day   = "pasture_day",
 	.Pasture_Evening = "pasture_evening",
+	.Venus_Day     = "venus_day",
 }
 
 // How a block behaves (Act II): fixed stone, or one that changes for good.

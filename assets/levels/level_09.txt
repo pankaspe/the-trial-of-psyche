@@ -1,144 +1,131 @@
 # The Trial of Psyche - level III.1: "The House of Venus"
-# TO REBUILD (2026-10-11): the ants are gone; this is the old layout with its
-# hollows filled, waiting for the new III.1 (the sundial and the lamp).
 # The first of Act III: it opens with the Venus cutscene (the goddess pours
-# the seeds and leaves on her doves; an ant takes pity on Psyche). Evening on Venus's house above the clouds: an atrium, a
-# bridge over her pool, a rose garden, walks round the pool up to her terrace.
-#   - the atrium: the first seed, carried round Psyche into the bridge's hollow;
-#   - the garden: two seeds; the walk above has a hollow, reached by stairs,
-#     which the ants never climb: only view 1 shows a flat way to it (an
-#     illusion), and either seed goes there;
-#   - the north walk: a seed lies across it, the ants carry it on into the
-#     hollow at its end; from there view 0 joins Venus's terrace.
-# Solution (solver: 24 steps, 2 turns, 3 ants, 0 dead ends).
-# Fragment (VI.7-8) in the rose bower: the other garden seed carried there in
-# view 0, across the illusion from the garden's south-west corner.
+# the seeds and leaves on her doves; an ant takes pity on Psyche) and teaches
+# the sundial: standing on one, the spindle turns the time. The sun shows,
+# only the flame makes real: by day the hidden stairs are there but the lamp
+# stays dark; at evening the illusions come back and the lamp lights the
+# seals, but it also wakes the veiled stones of the court.
+#   - the court (h1): Venus in marble, a sundial in its corner, three veiled
+#     stones along its north side. From them, at evening in view 1, the north
+#     walk (h3) looks joined: the only way there. Light the lamp in the court
+#     (the hidden stair to the west asks for it at evening) and the stones
+#     wake: the way north is gone (back to the brazier);
+#   - the west walk (h2): up its hidden stair by day, a second sundial, the
+#     first seal (it raises the end of the north walk); down again by day;
+#   - the north walk: the second seal raises two stones to the east, the
+#     third (on the last of them) the stair to Venus's terrace, from a pillar
+#     beside the court that nothing joins;
+#   - the end: the lamp lit in the court wakes the stones; in view 2 the
+#     court joins their tops, a bridge to the pillar, up to the terrace.
+# Solution (solver: 30 steps, 2 turns, 2 lightings, 3 times turned, 7
+# decisions; the time turned at both sundials). Fragment (VI.7-8) on the east
+# pillar, joined in view 1 to the third seal's stone.
 # Format: see level_04.txt.
-size 13
-setting venus_evening
-water 5 3 8 10
+size 11
+setting venus_day
+evening venus_evening
+mechanic time
+lamp 2
+water 0 0 10 10
 
-# A: the atrium where Psyche starts (h1), the heap Venus poured out
-column 9 9 0 0
-column 10 9 0 0
-column 11 9 0 0
-column 9 10 0 0
-column 10 10 0 0
-column 11 10 0 0
-column 9 11 0 0
-column 10 11 0 0
-column 11 11 0 0
-prop heap 9 11 1
-prop rail 9 9 1 my
-prop rail 10 9 1 my
-prop rail 9 10 1 mx
-prop rail 11 10 1 px
-prop rail 11 11 1 px
-prop rail 11 11 1 py
-prop rail 10 11 1 py
-prop rose 9 10 1 my
-candelabrum 11 10 1 px lit
+# the court (h1): Venus in marble, the sundial, the veiled stones
+column 4 4 0 0
+column 5 4 0 0
+column 6 4 0 0
+column 4 5 0 0
+column 5 5 0 0
+column 6 5 0 0
+column 4 6 0 0
+column 5 6 0 0
+column 6 6 0 0
+prop statue 5 5 1 py
+sundial 4 6 1
+hint 4 6 1 hint_sundial
+start 6 6 1
+rest 6 6 1
+veiled 4 4 1
+veiled 5 4 1
+veiled 6 4 1
+prop rail 6 5 1 px
+prop rail 6 6 1 px
+candelabrum 5 6 1 py
+# the heap Venus poured out, by the start
+column 6 7 0 0
+prop heap 6 7 1
+prop rose 5 6 1 mx
 
-# the bridge west over the pool, broken by the first hollow (h1)
-block 8 9 0
-column 7 9 0 0
-column 6 9 0 0
-prop rail 7 9 1 my
-prop rail 7 9 1 py
-prop rail 6 9 1 my
-prop rail 6 9 1 py
+# the west walk (h2): its hidden stair, the second sundial, the first seal
+column 3 5 0 0
+stairs 3 5 1 mx
+block 3 5 2
+prop urn 3 5 3
+column 2 5 0 1
+column 2 6 0 1
+column 1 5 0 1
+column 1 6 0 1
+sundial 1 6 2
+rest 2 6 2
+prop rail 1 5 2 mx
+prop rail 1 6 2 mx
+prop rail 1 6 2 py
+prop rail 2 6 2 py
+prop myrtle 2 6 2 px
+prop sconce 2 6 1 py
 
-# B: the rose garden (h1), two seeds
-column 5 9 0 0
-column 5 8 0 0
-column 4 8 0 0
-column 3 8 0 0
-column 2 8 0 0
-column 4 9 0 0
-column 3 9 0 0
-column 2 9 0 0
-stairs 5 7 1 my
-column 5 7 0 0
-prop rail 2 9 1 mx
-prop rail 4 8 1 my
-prop rail 3 9 1 py
-prop rose 5 8 1 px
-prop rose 2 9 1 mx
-prop rose 3 9 1 py
+# the pillar at the foot of Venus's terrace (h2): only the woken stones reach it
+column 3 4 0 1
+column 2 4 0 1
+prop rail 3 4 2 my
+prop rail 2 4 2 py
+prop rail 2 4 2 mx
 
-# the rose bower (h2): a hollow, and the fragment beyond
-column 3 11 0 1
-block 2 11 1
-column 1 11 0 1
-prop rail 1 11 2 my
-prop rail 1 11 2 mx
-prop rail 1 11 2 py
-prop rail 3 11 2 py
-prop rail 3 11 2 px
-prop rose 3 11 2 px
-prop myrtle 1 11 2 mx
+# the north walk (h3): the first seal raises its end, the second the two
+# stones to the east
+column 5 1 0 2
+column 6 1 0 2
+column 7 1 0 2
+prop rail 5 1 3 mx
+prop rail 6 1 3 my
+prop rail 7 1 3 my
+prop myrtle 5 1 3 my
+rise 8 1 0 1
+rise 8 1 1 1
+rise 8 1 2 1
+rise 9 1 0 2
+rise 9 1 1 2
+rise 9 1 2 2
+rise 9 2 0 2
+rise 9 2 1 2
+rise 9 2 2 2
 
-# C: the west walk (h2), broken by the second hollow
-column 5 6 0 1
-column 4 6 0 1
-column 4 5 0 1
-block 4 4 1
-column 4 3 0 1
-column 4 2 0 1
-prop rail 4 6 2 mx
-prop rail 5 6 2 my
-prop rail 5 6 2 px
-prop rail 4 5 2 mx
-prop rail 4 5 2 px
-prop rail 4 3 2 mx
-prop rail 4 3 2 px
-prop rail 4 2 2 mx
-prop rail 4 2 2 my
-prop myrtle 5 6 2 px
-prop myrtle 4 2 2 mx
-prop sconce 4 6 1 mx
-prop sconce 4 3 1 mx
+# the east pillar (h2): the fragment
+column 8 4 0 1
+fragment 8 4 2
 
-# D: the north walk (h2): a seed lies across it, a hollow at its end
-column 5 2 0 1
-column 6 2 0 1
-column 7 2 0 1
-column 8 2 0 1
-block 9 2 1
-prop rail 5 2 2 my
-prop rail 7 2 2 my
-prop rail 8 2 2 my
-prop rail 5 2 2 py
-prop rail 7 2 2 py
-prop rail 8 2 2 py
+# Venus's terrace (h3): the third seal raises its stair
+column 2 1 0 2
+column 3 1 0 2
+column 2 2 0 2
+column 3 2 0 2
+rise 2 3 0 3
+rise 2 3 1 3
+rise 2 3 2 my 3
+prop rail 2 1 3 mx
+prop rail 2 1 3 my
+prop rail 3 1 3 my
+prop rail 3 1 3 px
+prop rail 3 2 3 px
+prop rail 3 2 3 py
+prop rail 2 2 3 mx
+candelabrum 3 2 3 px lit
+prop rose 2 1 3 mx
 
-# E: Venus's terrace (h3), joined to the end of the walk in the first view
-column 10 4 0 2
-column 11 4 0 2
-column 10 5 0 2
-column 11 5 0 2
-prop rail 11 5 3 px
-prop rail 11 5 3 py
-prop rail 10 5 3 py
-prop rail 10 5 3 mx
-prop rail 11 4 3 px
-prop rail 11 4 3 my
-prop rail 10 4 3 mx
-prop pillar 10 5 3
-candelabrum 11 4 3 my lit
-prop myrtle 10 4 3 px
-prop sconce 11 5 1 px
-prop sconce 11 4 1 px
+# the seals, in order: the west walk, the north walk, the last stone
+sigil 1 5 2
+sigil 8 1 3
+sigil 9 2 3
 
-# the pool: Venus in marble among the water
-column 7 6 0 0
-prop statue 7 6 1 px
-
-start 11 11 1
-rest 11 11 1
-rest 5 9 1
-exit 11 5 3
-venus 11 4 3
-fragment 1 11 2
+venus 3 1 3
+exit 2 2 3
 intro intro_iii_1
 outro outro_iii_1

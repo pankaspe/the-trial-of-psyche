@@ -621,7 +621,7 @@ IT := [Key]string {
 	.Intro_II_2     = "Disperata, Psiche si getta nel fiume. Ma il fiume teme il dio che brucia perfino le acque, e con un'onda gentile la posa sulla riva.",
 	.Intro_II_3     = "Psiche va dalla sorella maggiore e le dice: «Il mio sposo ora vuole te.» La sorella corre alla rupe, senza dirlo a nessuno.",
 	.Intro_II_4     = "Psiche vaga giorno e notte in cerca dello sposo. Al tramonto trova un tempio di Cerere e di Giunone: spighe e falci in disordine, doni appesi alle colonne.",
-	.Intro_III_1    = "Scende la sera sulla casa di Venere. Ogni seme deve tornare al suo posto.",
+	.Intro_III_1    = "È ancora giorno nella casa di Venere. Nel cortile, una meridiana segna le ore.",
 	.Intro_III_2    = "Lungo il fiume pascola il gregge d'oro del Sole. Una canna sussurra: aspetta la sera.",
 	.V_Doubt        = "Dorme. Ti tornano in mente le parole delle sorelle: e se fosse un mostro? La lampada è nella tua mano.",
 
@@ -905,7 +905,7 @@ EN := [Key]string {
 	.Intro_II_2     = "In despair, Psyche throws herself into the river. But the river fears the god who burns even the waters, and with a gentle wave it sets her on the bank.",
 	.Intro_II_3     = "Psyche goes to her eldest sister and tells her: “My husband wants you now.” The sister runs to the crag, telling no one.",
 	.Intro_II_4     = "Psyche wanders day and night in search of her husband. At dusk she finds a temple of Ceres and Juno: wheat and sickles in disorder, gifts hung on the columns.",
-	.Intro_III_1    = "Evening falls on the house of Venus. Every seed must go back to its place.",
+	.Intro_III_1    = "It is still day in the house of Venus. In the court, a sundial tells the hours.",
 	.Intro_III_2    = "Along the river grazes the golden flock of the Sun. A reed whispers: wait for evening.",
 	.V_Doubt        = "He sleeps. Your sisters' words come back to you: what if he is a monster? The lamp is in your hand.",
 

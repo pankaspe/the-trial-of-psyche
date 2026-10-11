@@ -303,6 +303,32 @@ LOOKS := [level.Setting]Look {
 		daylight = 0.9,
 		mote = {1.0, 0.8, 0.5, 0.45},
 	},
+	// the house of Venus by day: a pale gold sky warming to rose low down, the
+	// sun high in a soft halo, the clouds below white and pink, her candles out
+	.Venus_Day = {
+		sky_top = {0.30, 0.42, 0.72},
+		sky_mid = {0.66, 0.66, 0.84},
+		sky_horizon = {1.0, 0.86, 0.80},
+		orb_pos = {0.28, 0.14},
+		orb_radius = 0.03,
+		orb_color = {1.0, 0.97, 0.90},
+		halo_color = {0.80, 0.66, 0.62},
+		halo_width = 4,
+		stars = 0,
+		haze = {0.92, 0.82, 0.84},
+		islands = false,
+		ridges = 1,
+		ridge_color = {{0.76, 0.70, 0.80}, {0.64, 0.56, 0.70}, {0.52, 0.44, 0.60}},
+		ridge_rim = {1.0, 0.92, 0.84},
+		cloud_back = {0.90, 0.84, 0.88},
+		cloud_front = {0.97, 0.92, 0.93},
+		cloud_crest = {0.20, 0.14, 0.12},
+		mist = {0.84, 0.78, 0.84},
+		water = {0.34, 0.48, 0.66, 0.85},
+		glint = {1.0, 0.94, 0.90, 0.6},
+		daylight = 1,
+		mote = {1.0, 0.86, 0.90, 0.4},
+	},
 	// the palace of voices at twilight: the sun is gone, its last light low on
 	// the clouds, the first stars, the moon rising; the candles are lit
 	.Dusk = {
