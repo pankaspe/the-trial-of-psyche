@@ -100,6 +100,8 @@ draw_hud :: proc(u: ^Ui, g: ^game.Game, input: Hud_Input = {}) -> (act: Hud_Acti
 			point_at(u, g, skill_slot(u, 0))
 		case .Hint_Handle, .Hint_Sundial:
 			point_at(u, g, skill_slot(u, 1))
+		case .Hint_Fragment:
+			point_at(u, g, fragment_count_rect(u, g))
 		}
 	}
 	_ = k
@@ -598,8 +600,8 @@ draw_fragment_count :: proc(u: ^Ui, g: ^game.Game) {
 			flash = max(flash, 1 - fx.clamp01(t / 2.5))
 		}
 	}
-	st := Style{size = 30 * k / u.scale, color = found == total ? BRIGHT : TEXT, face = .Semi, shadow = true}
-	label := fmt.tprintf("%d / %d", found, total)
+	st := fragment_count_style(u, g)
+	label := fragment_count_label(g)
 	m := measure(u, label, st)
 	right := u.width - 40 * k
 	y := 36 * k
@@ -609,6 +611,27 @@ draw_fragment_count :: proc(u: ^Ui, g: ^game.Game) {
 		glow_dot(c, 34 * k, {255, 214, 140, 255}, flash * 0.9)
 	}
 	scroll_icon(c, k * 1.3, fade(found == total ? BRIGHT : GOLD, 1), found > 0)
+}
+
+// Where the count of the fragments stands (the tutorial on them points at it).
+@(private)
+fragment_count_rect :: proc(u: ^Ui, g: ^game.Game) -> rl.Rectangle {
+	k := hud_k(u)
+	m := measure(u, fragment_count_label(g), fragment_count_style(u, g))
+	right := u.width - 40 * k
+	left := right - m.x - 44 * k
+	return {left, 36 * k, right - left, 28 * k}
+}
+
+@(private)
+fragment_count_label :: proc(g: ^game.Game) -> string {
+	return fmt.tprintf("%d / %d", card(g.fragments_taken + g.fragments_known), len(g.data.fragments))
+}
+
+@(private)
+fragment_count_style :: proc(u: ^Ui, g: ^game.Game) -> Style {
+	full := card(g.fragments_taken + g.fragments_known) == len(g.data.fragments)
+	return {size = 30 * hud_k(u) / u.scale, color = full ? BRIGHT : TEXT, face = .Semi, shadow = true}
 }
 
 // A rolled papyrus, its two ends round; filled when a fragment has been found.
@@ -835,6 +858,10 @@ tutorial_sign :: proc(u: ^Ui, g: ^game.Game, key: i18n.Key, c: Vec2, col: rl.Col
 		rl.EndScissorMode()
 		rl.DrawLineEx(c + Vec2{-24, 6} * s, c + Vec2{24, 6} * s, 2.5 * s, col)
 		rl.DrawLineEx(c + Vec2{-14, 13} * s, c + Vec2{14, 13} * s, 2 * s, col)
+	case .Hint_Fragment:
+		// the scroll of the count, glowing
+		glow_dot(c, 22 * s, {255, 214, 140, 255}, 0.5 + 0.3 * breathe(u, g.time, 3))
+		scroll_icon(c, 2 * s, col, false)
 	case:
 		diamond(u, c, 14 * s, col, true)
 	}

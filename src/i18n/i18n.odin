@@ -239,6 +239,7 @@ Key :: enum u16 {
 	Hint_Veiled,
 	Hint_Handle,
 	Hint_Sundial,
+	Hint_Fragment,
 	Hint_Lamp_Day,
 	Hint_Rest,
 
@@ -697,6 +698,7 @@ IT := [Key]string {
 	.Hint_Oil_Toggle = "La lampada consuma olio finché è accesa (le tacche nel suo riquadro, a sinistra): premi di nuovo 1 per spegnerla",
 	.Hint_Illusion  = "Al buio, ciò che sembra unito è unito: cammina dove le pietre sembrano toccarsi",
 	.Hint_Sigil     = "Un altro candelabro spento, sul sigillo: accendi qui la lampada e la luce farà salire il ponte",
+	.Hint_Fragment  = "Quella luce lassù è un frammento del racconto. Non serve per proseguire, ma ognuno ricompone la storia nel Libro: il conto è in alto a destra",
 	.Hint_Turn      = "Il monte non si mostra mai tutto da un lato. Premi Q o E per girargli intorno: da un'altra parte le rocce lontane si toccano, e affiorano i frammenti del racconto.",
 	.Badge_Pause    = "Pausa e comandi",
 	.Hint_Seam      = "Alla luce, il passaggio non c'è",
@@ -1000,6 +1002,7 @@ EN := [Key]string {
 	.Hint_Oil_Toggle = "The lamp burns oil while it is lit (the notches in its slot, on the left): press 1 again to put it out",
 	.Hint_Illusion  = "In the dark, what seems joined is joined: walk where the stones seem to touch",
 	.Hint_Sigil     = "Another unlit candelabrum, on the seal: light the lamp here and the light will raise the bridge",
+	.Hint_Fragment  = "That light up there is a fragment of the tale. You don't need it to go on, but each one brings the story back together in the Book: the count is at the top right",
 	.Hint_Turn      = "The mountain never shows itself whole from one side. Press Q or E to walk around it: from elsewhere, distant rocks touch, and fragments of the tale come to light.",
 	.Badge_Pause    = "Pause and controls",
 	.Hint_Seam      = "In the light, there is no passage",

@@ -506,6 +506,7 @@ update :: proc(g: ^Game, dt: f32) {
 	update_hud(g, dt)
 	update_pointer(g, dt)
 	update_dead_end(g)
+	teach_fragments(g)
 	// in the dark the music is veiled; her light opens it
 	audio.set_veil(g.data.has_lamp ? 1 - g.light : 0)
 
@@ -1164,6 +1165,7 @@ take_fragment :: proc(g: ^Game, i: int) {
 	g.fragment_last = i
 	g.fragment_t[i] = 0
 	sa.clear(&g.path) // she stops to read
+	learn(g, .Hint_Fragment)
 	audio.play(.Good, -8, audio.semitones(7))
 }
 
@@ -1703,6 +1705,18 @@ update_pointer :: proc(g: ^Game, dt: f32) {
 	g.pointer = fx.move_toward(g.pointer, shown ? 1 : 0, dt * (shown ? 2 : 1.5))
 }
 
+// The level that teaches the turn teaches the fragments once its card is
+// gone (turning shows them): a card of their own until one is taken.
+@(private)
+teach_fragments :: proc(g: ^Game) {
+	if g.hinted[.Hint_Fragment] || !g.learned[.Hint_Turn] || g.hud.hint.active || g.phase != .Play {
+		return
+	}
+	if teaches(g, .Hint_Turn) && card(g.fragments_taken + g.fragments_known) < len(g.data.fragments) {
+		hint(g, .Hint_Fragment, 0)
+	}
+}
+
 // Every state of the loaded level from which the goal cannot be reached any
 // more (in `allocator`; the search is long in a big level: the app keeps the
 // answer for the session); none for a level with more than DEAD_END_LIMIT
@@ -1825,7 +1839,7 @@ candelabrum_flame :: proc(g: ^Game, i: int) -> f32 {
 is_tutorial :: proc(key: Key) -> bool {
 	#partial switch key {
 	case .Hint_Move, .Hint_Turn, .Hint_Lamp, .Hint_Illusion, .Hint_Sigil, .Hint_Oil,
-	     .Hint_Veiled, .Hint_Handle, .Hint_Sundial:
+	     .Hint_Veiled, .Hint_Handle, .Hint_Sundial, .Hint_Fragment:
 		return true
 	}
 	return false
