@@ -186,7 +186,7 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 	s := Solver{p = p}
 	s.cache = make(map[Config]^Config_Graph)
 	for e, i in p.data.blocks {
-		if e.trait != .Stone {
+		if e.trait == .Veiled {
 			append(&s.changing, i)
 		}
 	}

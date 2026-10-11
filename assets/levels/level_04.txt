@@ -92,6 +92,8 @@
 #   sundial x y h           standing there, the spindle (2 / F / a click on
 #                           Psyche) turns the time; a level with sundials starts
 #                           by day and needs `evening SETTING`
+#   sunlit x y z [dir]      a block (or stairs toward dir) standing only by day:
+#                           at evening it crumbles away, the lamp does not bring it back
 #   evening name            the level's look at evening
 #   ram x y h dir           a golden ram of the Sun: by day it stands on the cell
 #                           (nobody passes), at evening it lies down, a step up

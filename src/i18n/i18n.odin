@@ -544,8 +544,8 @@ IT := [Key]string {
 	.Mech_Handle_Title = "Le manovelle",
 	.Mech_Handle    = "Una manovella muove la parte segnata dall'intarsio di bronzo.\nStando sulla manovella, premi 2 (o clicca su Psiche): il fuso la gira, e la parte ruota di un quarto.",
 	.Mech_Time_Title = "Il giorno e la sera",
-	.Mech_Time      = "Sulla meridiana, premi 2 (o clicca su Psiche): il fuso fa girare il tempo.\nDi giorno il sole mostra la verità, ma i montoni d'oro sbarrano la strada e la lucerna resta spenta. A sera tornano le illusioni, la lucerna si accende, e i montoni si sdraiano: un gradino per salire.",
-	.Mech_Time_Pad  = "Sulla meridiana, premi {RT}: il fuso fa girare il tempo.\nDi giorno il sole mostra la verità, ma i montoni d'oro sbarrano la strada e la lucerna resta spenta. A sera tornano le illusioni, la lucerna si accende, e i montoni si sdraiano: un gradino per salire.",
+	.Mech_Time      = "Sulla meridiana, premi 2 (o clicca su Psiche): il fuso fa girare il tempo.\nDi giorno il sole mostra la verità e le sue scale reggono, ma la lucerna resta spenta. A sera le scale del sole crollano, tornano le illusioni e la lucerna si accende.",
+	.Mech_Time_Pad  = "Sulla meridiana, premi {RT}: il fuso fa girare il tempo.\nDi giorno il sole mostra la verità e le sue scale reggono, ma la lucerna resta spenta. A sera le scale del sole crollano, tornano le illusioni e la lucerna si accende.",
 
 	.Book_Fragments = "Frammenti del racconto",
 	.Book_Missing   = "frammento non ancora trovato",
@@ -828,8 +828,8 @@ EN := [Key]string {
 	.Mech_Handle_Title = "Handles",
 	.Mech_Handle    = "A handle moves the part marked by the bronze inlay.\nStanding on the handle, press 2 (or click Psyche): the spindle turns it, and the part turns a quarter.",
 	.Mech_Time_Title = "Day and evening",
-	.Mech_Time      = "On the sundial, press 2 (or click Psyche): the spindle turns the time.\nBy day the sun shows the truth, but the golden rams bar the way and the lamp stays dark. At evening the illusions return, the lamp can be lit, and the rams lie down: a step to climb.",
-	.Mech_Time_Pad  = "On the sundial, press {RT}: the spindle turns the time.\nBy day the sun shows the truth, but the golden rams bar the way and the lamp stays dark. At evening the illusions return, the lamp can be lit, and the rams lie down: a step to climb.",
+	.Mech_Time      = "On the sundial, press 2 (or click Psyche): the spindle turns the time.\nBy day the sun shows the truth and its stairs stand, but the lamp stays dark. At evening the stairs of the sun crumble, the illusions return and the lamp can be lit.",
+	.Mech_Time_Pad  = "On the sundial, press {RT}: the spindle turns the time.\nBy day the sun shows the truth and its stairs stand, but the lamp stays dark. At evening the stairs of the sun crumble, the illusions return and the lamp can be lit.",
 
 	.Book_Fragments = "Fragments of the Tale",
 	.Book_Missing   = "fragment not found yet",

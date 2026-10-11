@@ -306,7 +306,7 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 		append(&s.pieces, Piece{cell = h.cell, mesh = .Crank_Post, material = .Bronze, rise_index = -1, block = -1, handle = i32(i)})
 	}
 	for c in g.data.sundials {
-		append(&s.pieces, Piece{cell = c, mesh = .Crank_Post, material = .Bronze, rise_index = -1, block = -1, handle = -1, sundial = true})
+		append(&s.pieces, Piece{cell = c, mesh = .Crank_Post, material = .Fleece, rise_index = -1, block = -1, handle = -1, sundial = true})
 	}
 	for c in g.data.rests {
 		append(&s.pieces, Piece{cell = c, mesh = .Altar, material = .Bronze, rise_index = -1, block = -1, handle = -1})
@@ -535,6 +535,23 @@ scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
 					color = {1.0, 0.85, 0.6, 0.7},
 				})
 			}
+		}
+	}
+	// the stones that stand only by day crumble at evening: dust pours from them
+	if g.evening > 0.02 && g.evening < 0.98 {
+		for e in g.data.blocks {
+			if e.trait != .Sunlit || fx.randf(&s.rng) > dt * 30 {
+				continue
+			}
+			c := Vec3{f32(e.cell.x), f32(e.cell.y), f32(e.cell.z)}
+			fx.emit(&s.dust, {
+				pos   = c + {fx.randf(&s.rng), fx.randf(&s.rng), fx.rand_range(&s.rng, 0.2, 1.0)},
+				vel   = {fx.rand_range(&s.rng, -0.2, 0.2), fx.rand_range(&s.rng, -0.2, 0.2), fx.rand_range(&s.rng, -0.4, 0)},
+				accel = {0, 0, -1.4},
+				life  = 1.3,
+				size  = 32 * fx.rand_range(&s.rng, 0.08, 0.18),
+				color = {0.95, 0.82, 0.66, 0.75},
+			})
 		}
 	}
 	// the stones the seal raises: a trail of gold as they come up, a burst of dust as they land
@@ -878,6 +895,12 @@ piece_state :: proc(g: ^game.Game, p: Piece, i: int) -> (lift, alpha: f32, visib
 				alpha = fx.progress(t, 0, game.DISSOLVE_TIME)
 				lift -= 0.3 * (1 - fx.cubic_out(fx.clamp01(t / game.DISSOLVE_TIME)))
 			}
+		case .Sunlit:
+			// at evening it crumbles: each stone sinks and fades a little after
+			// the one above it; by day it rises back
+			k := sunlit_fall(g, p)
+			lift -= 1.4 * fx.quad_in(k)
+			alpha *= 1 - k * k * k
 		}
 	}
 	if g.arrive_t >= 0 && g.phase == .Arrival {
@@ -899,6 +922,14 @@ piece_state :: proc(g: ^game.Game, p: Piece, i: int) -> (lift, alpha: f32, visib
 	}
 	visible = visible && alpha > 0.003
 	return
+}
+
+// How far a stone standing only by day has crumbled (0 by day .. 1 at evening),
+// the higher ones first.
+@(private)
+sunlit_fall :: proc(g: ^game.Game, p: Piece) -> f32 {
+	delay := 0.25 * fx.hash01(u32(p.cell.x * 73 + p.cell.y * 31)) + 0.08 * f32(p.cell.z % 4)
+	return fx.clamp01((g.evening - delay) / 0.55)
 }
 
 // Accessibility: the pieces that stand between the camera and Psyche fade to
@@ -990,12 +1021,17 @@ draw_pieces :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, transparent: bool) {
 		ghost_veil := hidden && p.block >= 0
 		set_piece_uniforms(r, material, detail, hidden ? (ghost_veil ? 2 : 1) : 0, alpha, 0.25, 0)
 		m := piece_matrix(g, p, lift)
+		if p.sundial {
+			// the sundial's crank: the handle's, in the Sun's gold and larger
+			m = m * rl.MatrixTranslate(CRANK_AXIS.x, CRANK_AXIS.y, 0) * rl.MatrixScale(SUNDIAL_SCALE, SUNDIAL_SCALE, SUNDIAL_SCALE) * rl.MatrixTranslate(-CRANK_AXIS.x, -CRANK_AXIS.y, 0)
+		}
 		rl.DrawMesh(r.meshes[p.mesh], r.material, m)
 		if p.handle >= 0 || p.sundial {
 			// the wheel turns while the handle works its part (or the sundial the time)
 			spin := p.sundial ? g.evening * 2 * math.PI : game.part_angle(g, g.data.handles[p.handle].part) * math.PI
 			ax := CRANK_AXIS
-			wm := rl.MatrixTranslate(f32(p.cell.x) + ax.x, f32(p.cell.y) + ax.y, f32(p.cell.z) + ax.z) * rl.MatrixRotateZ(spin)
+			size: f32 = p.sundial ? SUNDIAL_SCALE : 1
+			wm := rl.MatrixTranslate(f32(p.cell.x) + ax.x, f32(p.cell.y) + ax.y, f32(p.cell.z) + ax.z * size) * rl.MatrixRotateZ(spin) * rl.MatrixScale(size, size, size)
 			rl.DrawMesh(r.meshes[.Crank_Wheel], r.material, wm)
 		}
 	}

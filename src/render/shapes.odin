@@ -71,6 +71,7 @@ ALTAR_FLAME :: [3]f32{0.2, 0.2, 0.42}
 
 // Where the crank's wheel turns, in cell space.
 CRANK_AXIS :: [3]f32{0.8, 0.8, 0.42}
+SUNDIAL_SCALE :: 1.4 // a sundial's crank against a handle's
 
 oriented_mesh :: proc(base: Mesh_Id, d: iso.Dir) -> Mesh_Id {
 	return Mesh_Id(u8(base) + u8(d))

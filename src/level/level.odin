@@ -84,11 +84,13 @@ SETTING_NAME := [Setting]string {
 Trait :: enum u8 {
 	Stone,
 	Veiled, // hidden in the dark: the lamp's light makes it real
+	Sunlit, // there only by day: at evening it crumbles away (a level with sundials)
 }
 
 TRAIT_NAME := [Trait]string {
 	.Stone  = "block",
 	.Veiled = "veiled",
+	.Sunlit = "sunlit",
 }
 
 Solid_Entry :: struct {
@@ -387,7 +389,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 					trait = t
 				}
 			}
-			if trait != .Stone {
+			if trait == .Veiled {
 				dynamic_count += 1
 				if dynamic_count > MAX_DYNAMIC {
 					return data, fail(line_no, "too many changing blocks (max %d)", MAX_DYNAMIC)
@@ -579,6 +581,23 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			}
 			append(&data.caves, Cave{v, d})
 			max_z = max(max_z, v.z + 1)
+
+		case "sunlit":
+			// a block, or stairs toward dir, standing only by day
+			v: [3]i32
+			if !ints(args, v[:]) {
+				return data, fail(line_no, "sunlit: expected x y z [stairs_dir]")
+			}
+			s := Solid{kind = .Block}
+			if len(args) > 3 {
+				d, ok := iso.dir_from_name(args[3])
+				if !ok {
+					return data, fail(line_no, "sunlit: unknown direction '%s'", args[3])
+				}
+				s = {.Stairs, d}
+			}
+			append(&data.blocks, Solid_Entry{v, s, .Sunlit, part, 0})
+			max_z = max(max_z, v.z)
 
 		case "stairs", "steps":
 			v: [3]i32
@@ -796,6 +815,11 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	}
 	if len(data.sundials) > 0 && !has_evening {
 		return data, fail(0, "sundial: a level with sundials needs its 'evening' setting")
+	}
+	for e in data.blocks {
+		if e.trait == .Sunlit && len(data.sundials) == 0 {
+			return data, fail(0, "sunlit: stands only by day: the level needs a sundial")
+		}
 	}
 	if len(data.rams) > 0 && len(data.sundials) == 0 {
 		return data, fail(0, "ram: the rams lie down only at evening: the level needs a sundial")

@@ -2,16 +2,16 @@
 # The first of Act III: it opens with the Venus cutscene (the goddess pours
 # the seeds and leaves on her doves; an ant takes pity on Psyche) and teaches
 # the sundial: standing on one, the spindle turns the time. The sun shows,
-# only the flame makes real: by day the hidden stairs are there but the lamp
-# stays dark; at evening the illusions come back and the lamp lights the
-# seals, but it also wakes the veiled stones of the court.
+# only the flame makes real: by day the stairs of the sun stand but the lamp
+# stays dark; at evening they crumble, the illusions come back and the lamp
+# lights the seals, but it also wakes the veiled stones of the court.
 #   - the court (h1): Venus in marble, a sundial in its corner, three veiled
 #     stones along its north side. From them, at evening in view 1, the north
 #     walk (h3) looks joined: the only way there. Light the lamp in the court
-#     (the hidden stair to the west asks for it at evening) and the stones
-#     wake: the way north is gone (back to the brazier);
-#   - the west walk (h2): up its hidden stair by day, a second sundial, the
-#     first seal (it raises the end of the north walk); down again by day;
+#     and the stones wake: the way north is gone (back to the brazier);
+#   - the west walk (h2): up its stair of the sun by day (at evening it is
+#     gone), a second sundial, the first seal (it raises the end of the north
+#     walk); down again by day;
 #   - the north walk: the second seal raises two stones to the east, the
 #     third (on the last of them) the stair to Venus's terrace, from a pillar
 #     beside the court that nothing joins;
@@ -48,17 +48,16 @@ veiled 5 4 1
 veiled 6 4 1
 prop rail 6 5 1 px
 prop rail 6 6 1 px
+prop rail 4 6 1 mx
 candelabrum 5 6 1 py
 # the heap Venus poured out, by the start
 column 6 7 0 0
 prop heap 6 7 1
 prop rose 5 6 1 mx
 
-# the west walk (h2): its hidden stair, the second sundial, the first seal
+# the west walk (h2): its stair of the sun, the second sundial, the first seal
 column 3 5 0 0
-stairs 3 5 1 mx
-block 3 5 2
-prop urn 3 5 3
+sunlit 3 5 1 mx
 column 2 5 0 1
 column 2 6 0 1
 column 1 5 0 1
@@ -69,6 +68,7 @@ prop rail 1 5 2 mx
 prop rail 1 6 2 mx
 prop rail 1 6 2 py
 prop rail 2 6 2 py
+prop rail 2 6 2 px
 prop myrtle 2 6 2 px
 prop sconce 2 6 1 py
 
@@ -76,6 +76,7 @@ prop sconce 2 6 1 py
 column 3 4 0 1
 column 2 4 0 1
 prop rail 3 4 2 my
+prop rail 3 4 2 py
 prop rail 2 4 2 py
 prop rail 2 4 2 mx
 

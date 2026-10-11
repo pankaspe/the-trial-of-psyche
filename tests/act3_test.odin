@@ -141,3 +141,48 @@ the_flame_waits_for_evening :: proc(t: ^testing.T) {
 	run(&h, game.EXIT_END + 0.5)
 	testing.expect(t, game.is_over(&h), "the plan reaches the exit")
 }
+
+// A stair of the sun stands by day and crumbles at evening; the lamp does not
+// bring it back.
+@(test)
+stairs_of_the_sun :: proc(t: ^testing.T) {
+	g: game.Game
+	defer game.destroy(&g)
+	LEVEL :: `size 8
+setting pasture_day
+evening pasture_evening
+lamp
+column 0 2 0 0
+column 1 2 0 0
+column 2 2 0 0
+column 3 2 0 1
+sunlit 2 2 1 px
+sundial 0 2 1
+start 1 2 1
+exit 3 2 2
+`
+	if !load_time(t, &g, LEVEL) {
+		return
+	}
+	testing.expect(t, palace.is_stair(&g.palace, {2, 2, 1}), "by day the stair stands")
+	testing.expect(t, walk(t, &g, {0, 2, 1}), "to the sundial")
+	game.use_spindle(&g)
+	run(&g, game.TIME_TURN + 0.2)
+	testing.expect(t, !palace.is_stair(&g.palace, {2, 2, 1}), "at evening it is gone")
+	game.toggle_lamp(&g)
+	run(&g, 0.5)
+	testing.expect(t, g.lamp_on && !game.walk_to(&g, {3, 2, 2}), "the lamp does not bring it back")
+	game.use_spindle(&g)
+	run(&g, game.TIME_TURN + 0.2)
+	testing.expect(t, game.walk_to(&g, {3, 2, 2}), "by day it stands again")
+
+	h: game.Game
+	defer game.destroy(&h)
+	if !load_time(t, &h, LEVEL) {
+		return
+	}
+	arena: virtual.Arena
+	defer virtual.arena_destroy(&arena)
+	sol := palace.solve(&h.palace, h.data.exit, nil, virtual.arena_allocator(&arena))
+	testing.expect(t, sol.solved && sol.times == 0, "the solver climbs it by day")
+}

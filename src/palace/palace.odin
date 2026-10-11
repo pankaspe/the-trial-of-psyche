@@ -152,7 +152,12 @@ open :: proc(p: ^Palace, c: Cell, d: Dir) -> bool {
 
 // Is block entry i there now?
 block_present :: proc(p: ^Palace, i: int) -> bool {
-	return (p.data.blocks[i].trait == .Veiled) == p.flipped[i]
+	switch p.data.blocks[i].trait {
+	case .Stone: return true
+	case .Veiled: return p.flipped[i]
+	case .Sunlit: return p.day
+	}
+	return true
 }
 
 // Where block entry i is now (parts turn).

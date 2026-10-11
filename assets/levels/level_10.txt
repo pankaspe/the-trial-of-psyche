@@ -39,7 +39,6 @@
 size 11
 setting pasture_day
 evening pasture_evening
-mechanic time
 tier 1 3
 tier 7 9
 tier 12 15
