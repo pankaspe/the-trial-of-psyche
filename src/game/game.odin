@@ -223,6 +223,8 @@ Game :: struct {
 	begin_t:        f32, // time since begin(), < 0 before
 	pointer_on:     bool, // an arrow points at Psyche (the level begins, or she was asked for) until she walks
 	pointer:        f32, // the arrow's fade, 0..1
+	dead_ends:      map[pl.State]struct {}, // the states that cannot reach the goal any more (`find_dead_ends`)
+	dead_end:       bool, // Psyche is in one
 	cine_out:       f32, // time since the prologue gave way to play, < 0 before (the bars withdraw)
 	arrive_t:       f32, // time since the arrival from the last level began, < 0 without one
 	rise_t:         [level.MAX_SEALS]f32, // per seal: time since it was lit, < 0 before
@@ -503,6 +505,7 @@ update :: proc(g: ^Game, dt: f32) {
 	update_effects(g, dt)
 	update_hud(g, dt)
 	update_pointer(g, dt)
+	update_dead_end(g)
 	// in the dark the music is veiled; her light opens it
 	audio.set_veil(g.data.has_lamp ? 1 - g.light : 0)
 
@@ -1692,6 +1695,54 @@ update_pointer :: proc(g: ^Game, dt: f32) {
 	}
 	shown := g.pointer_on && g.phase == .Play && g.hud.visible
 	g.pointer = fx.move_toward(g.pointer, shown ? 1 : 0, dt * (shown ? 2 : 1.5))
+}
+
+// Every state of the loaded level from which the goal cannot be reached any
+// more (in `allocator`; the search is long in a big level: the app keeps the
+// answer for the session); none for a level with more than DEAD_END_LIMIT
+// states, it is not searched.
+find_dead_ends :: proc(g: ^Game, allocator := context.allocator) -> []pl.State {
+	scratch: virtual.Arena
+	if virtual.arena_init_growing(&scratch) != nil {
+		return nil
+	}
+	defer virtual.arena_destroy(&scratch)
+	dead := make([dynamic]pl.State, virtual.arena_allocator(&scratch))
+	sol := pl.solve(&g.palace, pl.goal_cell(&g.palace), nil, virtual.arena_allocator(&scratch), DEAD_END_LIMIT, &dead)
+	if sol.given_up || !sol.solved || len(dead) == 0 {
+		return nil
+	}
+	return slice.clone(dead[:], allocator)
+}
+
+// The level's dead ends (`find_dead_ends`): Psyche is told when she stands in one.
+know_dead_ends :: proc(g: ^Game, dead: []pl.State) {
+	g.dead_ends = make(map[pl.State]struct {}, len(dead), level_allocator(g))
+	for st in dead {
+		g.dead_ends[st] = {}
+	}
+}
+
+DEAD_END_LIMIT :: 100_000
+
+// Standing still in a dead end: the way out is the brazier, or the level
+// again; said each time she walks into one, gone when she is out.
+@(private)
+update_dead_end :: proc(g: ^Game) {
+	if len(g.dead_ends) == 0 || g.phase != .Play || g.psyche.walking || g.turning {
+		return
+	}
+	st := pl.state_of(&g.palace, g.psyche.cell, g.lamp_on)
+	dead := st in g.dead_ends
+	if dead == g.dead_end {
+		return
+	}
+	g.dead_end = dead
+	if dead {
+		hint(g, has_rest(g) ? .Hint_Dead_End : .Hint_Dead_End_No_Rest, 0, true)
+	} else if g.hud.hint.key == .Hint_Dead_End || g.hud.hint.key == .Hint_Dead_End_No_Rest {
+		hide(&g.hud.hint)
+	}
 }
 
 // Cupid's voice: each line is spoken once per level.

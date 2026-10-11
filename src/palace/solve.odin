@@ -29,8 +29,8 @@ Config :: struct {
 	day:   bool, // the sun is up (a level with sundials)
 }
 
-@(private = "file")
-Search_State :: struct {
+// A state of the search: her cell, the view, the lamp, the palace's configuration.
+State :: struct {
 	cfg:  Config,
 	cell: Cell,
 	view: u8,
@@ -92,6 +92,7 @@ Solution :: struct {
 	times:       int, // the time turned (at a sundial)
 	states:      int, // states reached from the start
 	dead:        int, // ...of which cannot reach the goal any more (R restarts)
+	given_up:    bool, // more than `limit` states: the search stopped, nothing is known
 }
 
 // The palace in one configuration, in every view.
@@ -126,6 +127,29 @@ configure :: proc(s: ^Solver, cfg: Config) {
 	p.risen = cfg.risen
 	p.day = cfg.day
 	rebuild_real(p)
+}
+
+// The state the palace is in now, with Psyche at `cell` and the lamp as given
+// (the inverse of `configure`, for the game to look its state up).
+state_of :: proc(p: ^Palace, cell: Cell, lamp: bool) -> (st: State) {
+	k := 0
+	for e, b in p.data.blocks {
+		if e.trait == .Veiled {
+			if p.flipped[b] {
+				st.cfg.flips |= 1 << u64(k)
+			}
+			k += 1
+		}
+	}
+	for n in 0 ..< len(p.data.parts) {
+		st.cfg.rots |= u32(p.part_rot[n] & 3) << (2 * u32(n))
+	}
+	st.cfg.risen = p.risen
+	st.cfg.day = p.day
+	st.cell = cell
+	st.view = u8(p.rot)
+	st.lamp = lamp
+	return
 }
 
 @(private = "file")
@@ -165,7 +189,7 @@ view_of :: proc(s: ^Solver, cfg: Config, g: ^Config_Graph, r: int) {
 
 @(private = "file")
 Entry :: struct {
-	state:    Search_State,
+	state:    State,
 	parent:   i32,
 	move:     Move,
 	illusion: bool,
@@ -180,8 +204,10 @@ Edge :: struct {
 }
 
 // Search from the start to `goal`; `avoid` is never entered (to prove the
-// fragment optional). The palace is left as loaded (nothing changed, view 0).
-solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := context.allocator) -> (sol: Solution) {
+// fragment optional). `limit` > 0: give up past that many states. `dead`:
+// filled with the states that cannot reach the goal any more. The palace is
+// left as loaded (nothing changed, view 0).
+solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := context.allocator, limit := 0, dead: ^[dynamic]State = nil) -> (sol: Solution) {
 	context.allocator = allocator
 	s := Solver{p = p}
 	s.cache = make(map[Config]^Config_Graph)
@@ -194,11 +220,11 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 	saved_view := p.rot
 
 	entries := make([dynamic]Entry, 0, 4096)
-	seen := make(map[Search_State]i32)
+	seen := make(map[State]i32)
 	edges := make([dynamic]Edge, 0, 16384)
 	buckets := make([dynamic][dynamic]i32, 0, 256)
 
-	push :: proc(entries: ^[dynamic]Entry, seen: ^map[Search_State]i32, buckets: ^[dynamic][dynamic]i32, edges: ^[dynamic]Edge, e: Entry) {
+	push :: proc(entries: ^[dynamic]Entry, seen: ^map[State]i32, buckets: ^[dynamic][dynamic]i32, edges: ^[dynamic]Edge, e: Entry) {
 		if e.parent >= 0 {
 			if id, ok := seen[e.state]; ok {
 				append(edges, Edge{e.parent, id})
@@ -229,13 +255,17 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 	start_cfg := Config{day = len(p.data.sundials) > 0}
 	push(&entries, &seen, &buckets, &edges, Entry{state = {start_cfg, p.data.start, 0, false}, parent = -1, move = .Start})
 	goal_id: i32 = -1
-	for cost := 0; cost < len(buckets); cost += 1 {
+	search: for cost := 0; cost < len(buckets); cost += 1 {
 		for k := 0; k < len(buckets[cost]); k += 1 {
 			id := buckets[cost][k]
 			if entries[id].done || entries[id].cost != cost {
 				continue
 			}
 			entries[id].done = true
+			if limit > 0 && len(entries) > limit {
+				sol.given_up = true
+				break search
+			}
 			st := entries[id].state
 			if st.cell == goal && goal_id < 0 {
 				goal_id = id
@@ -245,7 +275,7 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 			if !ok {
 				continue
 			}
-			next :: proc(entries: ^[dynamic]Entry, seen: ^map[Search_State]i32, buckets: ^[dynamic][dynamic]i32, edges: ^[dynamic]Edge, from: i32, st: Search_State, move: Move, illusion := false, changed := 0, lit_extra := -1) {
+			next :: proc(entries: ^[dynamic]Entry, seen: ^map[State]i32, buckets: ^[dynamic][dynamic]i32, edges: ^[dynamic]Edge, from: i32, st: State, move: Move, illusion := false, changed := 0, lit_extra := -1) {
 				e := Entry{state = st, parent = from, move = move, illusion = illusion, changed = changed}
 				e.cost = entries[from].cost + COST[move]
 				if entries[from].state.lamp && st.lamp {
@@ -342,6 +372,11 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 	}
 
 	sol.states = len(entries)
+	if sol.given_up {
+		configure(&s, start_cfg)
+		set_view(p, saved_view)
+		return
+	}
 	// states that can still reach the goal: backwards from every goal state
 	alive := make([]bool, len(entries))
 	back_start := make([]i32, len(entries) + 1)
@@ -374,6 +409,13 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 		}
 	}
 	sol.dead = slice.count(alive, false)
+	if dead != nil {
+		for e, i in entries {
+			if !alive[i] {
+				append(dead, e.state)
+			}
+		}
+	}
 
 	if goal_id >= 0 {
 		sol.solved = true

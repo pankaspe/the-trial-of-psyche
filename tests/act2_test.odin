@@ -34,6 +34,7 @@ play_plan :: proc(t: ^testing.T, g: ^game.Game, plan: []palace.Plan_Step) -> boo
 		if game.is_over(g) {
 			return true
 		}
+		testing.expectf(t, !g.dead_end, "move %d (%v to %v): the plan never stands in a dead end", i, st.move, st.cell)
 		if !game.apply_move(g, st) {
 			testing.expectf(t, false, "move %d (%v to %v) refused", i, st.move, st.cell)
 			return false
@@ -44,6 +45,37 @@ play_plan :: proc(t: ^testing.T, g: ^game.Game, plan: []palace.Plan_Step) -> boo
 		free_all(context.temp_allocator)
 	}
 	return true
+}
+
+@(test)
+dead_end_is_told :: proc(t: ^testing.T) {
+	g: game.Game
+	defer game.destroy(&g)
+	// the lamp lit at the start wakes the stone in the way: no way on
+	LEVEL :: `size 9
+block 0 0 0
+block 1 0 0
+block 2 0 0
+block 3 0 0
+block 4 0 0
+veiled 2 0 1
+start 0 0 1
+exit 4 0 1
+lamp
+`
+	if !load_text(t, &g, LEVEL) {
+		return
+	}
+	game.know_dead_ends(&g, game.find_dead_ends(&g, game.level_allocator(&g)))
+	testing.expect(t, len(g.dead_ends) > 0, "the level has dead ends")
+	run(&g, 1)
+	testing.expect(t, !g.dead_end, "the start is not one")
+	game.toggle_lamp(&g)
+	run(&g, 1)
+	testing.expect(t, g.dead_end && g.hud.hint.active && g.hud.hint.key == .Hint_Dead_End_No_Rest, "lit at the start, the lamp leaves her in a dead end, and she is told")
+	game.toggle_lamp(&g)
+	run(&g, 1)
+	testing.expect(t, g.dead_end, "putting the lamp out does not take the stone away")
 }
 
 @(test)
@@ -231,6 +263,7 @@ act2_levels_solve_and_play :: proc(t: ^testing.T) {
 			testing.expectf(t, left >= 0, "%s: the lamp's oil lasts the plan (%.1f s left)", info.id, left)
 		}
 
+		game.know_dead_ends(&g, game.find_dead_ends(&g, alloc))
 		game.begin(&g, prologue = false)
 		run(&g, game.start_cues_time(&g) + 0.5)
 		if !play_plan(t, &g, sol.plan[:]) {

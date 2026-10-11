@@ -226,6 +226,10 @@ Key :: enum u16 {
 	Hint_Oil,
 	Hint_Lamp_Toggle, // the lamp pressed, not held (accessibility)
 	Hint_Oil_Toggle,
+	Hint_Dead_End, // standing where the goal cannot be reached any more
+	Hint_Dead_End_No_Rest,
+	Hint_Dead_End_Twice,
+	Hint_Dead_End_No_Rest_Twice,
 	Hint_Seam,
 	Hint_No_Oil,
 	Hint_Hidden_Stairs,
@@ -253,6 +257,10 @@ Key :: enum u16 {
 	Hint_Oil_Pad,
 	Hint_Lamp_Toggle_Pad,
 	Hint_Oil_Toggle_Pad,
+	Hint_Dead_End_Pad,
+	Hint_Dead_End_No_Rest_Pad,
+	Hint_Dead_End_Twice_Pad,
+	Hint_Dead_End_No_Rest_Twice_Pad,
 	Hint_Turn_Pad,
 	Hint_Handle_Pad,
 	Hint_Sundial_Pad,
@@ -338,8 +346,8 @@ set_language :: proc(l: Language) {
 
 tr :: proc(k: Key) -> string {
 	k := k
-	if lamp_toggle {
-		if t := TOGGLE_TEXT[k]; t != .Title {
+	for v in variants {
+		if t := VARIANT_TEXT[v][k]; t != .Title {
 			k = t
 		}
 	}
@@ -381,19 +389,31 @@ set_pad :: proc(names: Maybe(Pad_Names)) {
 	}
 }
 
-// The lamp pressed to light and pressed again to put out (accessibility)
-// instead of held: the texts that teach it.
-@(private)
-lamp_toggle: bool
-
-set_lamp_toggle :: proc(on: bool) {
-	lamp_toggle = on
+// Controls the accessibility settings change, and the texts that name them.
+Variant :: enum u8 {
+	Lamp_Toggle, // the lamp pressed to light and pressed again to put out, instead of held
+	Restart_Twice, // R pressed twice restarts the level, instead of held
 }
 
 @(private)
-TOGGLE_TEXT := #partial [Key]Key {
-	.Hint_Lamp = .Hint_Lamp_Toggle,
-	.Hint_Oil  = .Hint_Oil_Toggle,
+variants: bit_set[Variant]
+
+set_variant :: proc(v: Variant, on: bool) {
+	if on {
+		variants += {v}
+	} else {
+		variants -= {v}
+	}
+}
+
+@(private)
+VARIANT_TEXT := [Variant][Key]Key {
+	.Lamp_Toggle = #partial {.Hint_Lamp = .Hint_Lamp_Toggle, .Hint_Oil = .Hint_Oil_Toggle},
+	.Restart_Twice = #partial {
+		.Hint_No_Rest = .Hint_No_Rest_Twice,
+		.Hint_Dead_End = .Hint_Dead_End_Twice,
+		.Hint_Dead_End_No_Rest = .Hint_Dead_End_No_Rest_Twice,
+	},
 }
 
 // The texts that name keys, and their pad version (.Title: none).
@@ -415,6 +435,10 @@ PAD_TEXT := #partial [Key]Key {
 	.Hint_Oil           = .Hint_Oil_Pad,
 	.Hint_Lamp_Toggle   = .Hint_Lamp_Toggle_Pad,
 	.Hint_Oil_Toggle    = .Hint_Oil_Toggle_Pad,
+	.Hint_Dead_End      = .Hint_Dead_End_Pad,
+	.Hint_Dead_End_No_Rest = .Hint_Dead_End_No_Rest_Pad,
+	.Hint_Dead_End_Twice = .Hint_Dead_End_Twice_Pad,
+	.Hint_Dead_End_No_Rest_Twice = .Hint_Dead_End_No_Rest_Twice_Pad,
 	.Hint_Turn          = .Hint_Turn_Pad,
 	.Hint_Handle        = .Hint_Handle_Pad,
 	.Hint_Sundial       = .Hint_Sundial_Pad,
@@ -620,6 +644,10 @@ IT := [Key]string {
 	.Rest_Button_Twice = "Braciere · premi due volte: ricomincia",
 	.Place_Cave = "Entra nella grotta",
 	.Hint_No_Rest = "Nessun braciere acceso: tieni premuto R per ricominciare il livello",
+	.Hint_Dead_End = "Vicolo cieco: da qui non si va più avanti. R ti riporta all'ultimo braciere; tieni premuto R per ricominciare il livello",
+	.Hint_Dead_End_No_Rest = "Vicolo cieco: da qui non si va più avanti. Tieni premuto R per ricominciare il livello",
+	.Hint_Dead_End_Twice = "Vicolo cieco: da qui non si va più avanti. R ti riporta all'ultimo braciere; premi due volte R per ricominciare il livello",
+	.Hint_Dead_End_No_Rest_Twice = "Vicolo cieco: da qui non si va più avanti. Premi due volte R per ricominciare il livello",
 	.Hint_No_Rest_Twice = "Nessun braciere acceso: premi due volte R per ricominciare il livello",
 	.Hint_Again_Twice = "Premi di nuovo R per ricominciare il livello",
 	.Hint_Hold = "Sei al braciere: tieni premuto R per ricominciare il livello",
@@ -671,6 +699,10 @@ IT := [Key]string {
 	.Fragment_Continue_Pad = "Premi {S} per continuare",
 	.Mech_Handle_Pad = "Una manovella muove la parte segnata dall'intarsio di bronzo.\nStando sulla manovella, premi {RT}: il fuso la gira, e la parte ruota di un quarto.",
 	.Hint_No_Rest_Pad = "Nessun braciere acceso: tieni premuto {E} per ricominciare il livello",
+	.Hint_Dead_End_Pad = "Vicolo cieco: da qui non si va più avanti. {E} ti riporta all'ultimo braciere; tieni premuto {E} per ricominciare il livello",
+	.Hint_Dead_End_No_Rest_Pad = "Vicolo cieco: da qui non si va più avanti. Tieni premuto {E} per ricominciare il livello",
+	.Hint_Dead_End_Twice_Pad = "Vicolo cieco: da qui non si va più avanti. {E} ti riporta all'ultimo braciere; premi due volte {E} per ricominciare il livello",
+	.Hint_Dead_End_No_Rest_Twice_Pad = "Vicolo cieco: da qui non si va più avanti. Premi due volte {E} per ricominciare il livello",
 	.Hint_No_Rest_Twice_Pad = "Nessun braciere acceso: premi due volte {E} per ricominciare il livello",
 	.Hint_Again_Twice_Pad = "Premi di nuovo {E} per ricominciare il livello",
 	.Hint_Hold_Pad  = "Sei al braciere: tieni premuto {E} per ricominciare il livello",
@@ -908,6 +940,10 @@ EN := [Key]string {
 	.Rest_Button_Twice = "Brazier · press twice: start again",
 	.Place_Cave = "Go into the cave",
 	.Hint_No_Rest = "No brazier lit: hold R to start the level again",
+	.Hint_Dead_End = "A dead end: there is no way on from here. R takes you back to the last brazier; hold R to start the level again",
+	.Hint_Dead_End_No_Rest = "A dead end: there is no way on from here. Hold R to start the level again",
+	.Hint_Dead_End_Twice = "A dead end: there is no way on from here. R takes you back to the last brazier; press R twice to start the level again",
+	.Hint_Dead_End_No_Rest_Twice = "A dead end: there is no way on from here. Press R twice to start the level again",
 	.Hint_No_Rest_Twice = "No brazier lit: press R twice to start the level again",
 	.Hint_Again_Twice = "Press R again to start the level again",
 	.Hint_Hold = "You are at the brazier: hold R to start the level again",
@@ -959,6 +995,10 @@ EN := [Key]string {
 	.Fragment_Continue_Pad = "Press {S} to continue",
 	.Mech_Handle_Pad = "A handle moves the part marked by the bronze inlay.\nStanding on the handle, press {RT}: the spindle turns it, and the part turns a quarter.",
 	.Hint_No_Rest_Pad = "No brazier lit: hold {E} to start the level again",
+	.Hint_Dead_End_Pad = "A dead end: there is no way on from here. {E} takes you back to the last brazier; hold {E} to start the level again",
+	.Hint_Dead_End_No_Rest_Pad = "A dead end: there is no way on from here. Hold {E} to start the level again",
+	.Hint_Dead_End_Twice_Pad = "A dead end: there is no way on from here. {E} takes you back to the last brazier; press {E} twice to start the level again",
+	.Hint_Dead_End_No_Rest_Twice_Pad = "A dead end: there is no way on from here. Press {E} twice to start the level again",
 	.Hint_No_Rest_Twice_Pad = "No brazier lit: press {E} twice to start the level again",
 	.Hint_Again_Twice_Pad = "Press {E} again to start the level again",
 	.Hint_Hold_Pad  = "You are at the brazier: hold {E} to start the level again",

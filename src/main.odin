@@ -22,6 +22,7 @@ import "game"
 import "i18n"
 import "input"
 import "level"
+import "palace"
 import "progress"
 import "render"
 import "settings"
@@ -93,6 +94,7 @@ App :: struct {
 	rest_tap_t:      f32, // time since the last tap of R (pressed twice: the level again)
 	east_block:      bool, // the pad's East closed a menu: it is not the brazier until let go
 	lamp_down:       bool, // the lamp's key, button or slot was held last frame
+	dead_ends:       [content.LEVEL_COUNT]Maybe([]palace.State), // per level, once searched (game.find_dead_ends)
 	focus_screen:    Screen, // the screen the UI's focus belongs to
 }
 
@@ -228,6 +230,15 @@ new_level :: proc(app: ^App, index: int) -> bool {
 		if game.fragment_index(g, i) in app.prog.fragments {
 			g.fragments_known += {i}
 		}
+	}
+	// the dead ends, searched once per level (a level read from a file each time)
+	if app.shots.file != "" && index == app.shots.level {
+		game.know_dead_ends(g, game.find_dead_ends(g, game.level_allocator(g)))
+	} else {
+		if app.dead_ends[index] == nil {
+			app.dead_ends[index] = game.find_dead_ends(g)
+		}
+		game.know_dead_ends(g, app.dead_ends[index].?)
 	}
 	render.scene_build(&app.scene, g, game.level_allocator(g))
 	return true
@@ -388,7 +399,7 @@ update_rest :: proc(app: ^App, button_down: bool) {
 	app.rest_tap_t = 0
 	switch {
 	case !game.has_rest(g):
-		game.hint(g, twice ? .Hint_No_Rest_Twice : .Hint_No_Rest, 4, true)
+		game.hint(g, .Hint_No_Rest, 4, true)
 	case game.return_to_rest(g):
 		if twice {
 			game.hint(g, .Hint_Again_Twice, 2.5, true)
@@ -937,7 +948,8 @@ draw_screens :: proc(app: ^App) {
 	u.labels_always = app.cfg.skill_labels == .Always
 	u.reduce_motion = app.cfg.reduce_motion
 	g.endless_oil = app.cfg.endless_oil
-	i18n.set_lamp_toggle(app.cfg.lamp_toggle)
+	i18n.set_variant(.Lamp_Toggle, app.cfg.lamp_toggle)
+	i18n.set_variant(.Restart_Twice, app.cfg.restart_twice)
 	g.reduce_motion = app.cfg.reduce_motion
 	u.toast_visible = app.toast_count > 0
 	switch app.screen {
