@@ -134,7 +134,6 @@ Key :: enum u16 {
 	Mech_Time,
 
 	// the Book
-	Book_Fragments,
 	Book_Missing,
 	Book_Achievements,
 	Book_Hidden,
@@ -330,10 +329,6 @@ current: Language = .Italian
 
 set_language :: proc(l: Language) {
 	current = l
-}
-
-language :: proc() -> Language {
-	return current
 }
 
 tr :: proc(k: Key) -> string {
@@ -547,7 +542,6 @@ IT := [Key]string {
 	.Mech_Time      = "Sulla meridiana, premi 2 (o clicca su Psiche): il fuso fa girare il tempo.\nDi giorno il sole mostra la verità e le sue scale reggono, ma la lucerna resta spenta. A sera le scale del sole crollano, tornano le illusioni e la lucerna si accende.",
 	.Mech_Time_Pad  = "Sulla meridiana, premi {RT}: il fuso fa girare il tempo.\nDi giorno il sole mostra la verità e le sue scale reggono, ma la lucerna resta spenta. A sera le scale del sole crollano, tornano le illusioni e la lucerna si accende.",
 
-	.Book_Fragments = "Frammenti del racconto",
 	.Book_Missing   = "frammento non ancora trovato",
 	.Book_Achievements = "Traguardi",
 	.Book_Hidden    = "Traguardo segreto",
@@ -831,7 +825,6 @@ EN := [Key]string {
 	.Mech_Time      = "On the sundial, press 2 (or click Psyche): the spindle turns the time.\nBy day the sun shows the truth and its stairs stand, but the lamp stays dark. At evening the stairs of the sun crumble, the illusions return and the lamp can be lit.",
 	.Mech_Time_Pad  = "On the sundial, press {RT}: the spindle turns the time.\nBy day the sun shows the truth and its stairs stand, but the lamp stays dark. At evening the stairs of the sun crumble, the illusions return and the lamp can be lit.",
 
-	.Book_Fragments = "Fragments of the Tale",
 	.Book_Missing   = "fragment not found yet",
 	.Book_Achievements = "Achievements",
 	.Book_Hidden    = "Secret achievement",

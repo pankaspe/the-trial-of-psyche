@@ -279,10 +279,6 @@ choose_layout :: proc(l: Maybe(Layout)) {
 	state.chosen = l
 }
 
-pad_connected :: proc() -> bool {
-	return state.pad >= 0
-}
-
 down :: proc(b: Button) -> bool {
 	return b in state.down
 }
@@ -310,11 +306,6 @@ take :: proc(b: Button) -> bool {
 // Any button at all went down this frame.
 any_pressed :: proc() -> bool {
 	return state.pressed - state.consumed != {}
-}
-
-// The left stick (screen axes, y down), 0 inside the dead zone.
-stick :: proc() -> Vec2 {
-	return state.stick
 }
 
 // The direction Psyche is steered in, on screen: the stick, or the d-pad
@@ -349,9 +340,4 @@ flick :: proc() -> int {
 // Show the HUD of a pad of this family and read nothing (screenshots).
 force :: proc(l: Layout) {
 	state = {pad = -1, forced = true, device = .Pad, layout = l}
-}
-
-// Back to the keyboard and the mouse, reading the devices again (tests).
-reset :: proc() {
-	state = {pad = -1}
 }

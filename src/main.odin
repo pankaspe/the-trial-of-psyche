@@ -731,46 +731,45 @@ pad_names :: proc(app: ^App) {
 	}
 }
 
-// The pad's Start and East (back) over the screens, as Esc and Enter.
+// Back out of the screen on top (Esc, or the pad's Start or East): true if
+// there was one to leave.
+back :: proc(app: ^App) -> bool {
+	#partial switch app.screen {
+	case .Pause:
+		app.screen = .Play
+	case .Settings:
+		close_settings(app)
+	case .Levels, .Book:
+		app.screen = .Title
+	case .Card:
+		dismiss_act_card(app)
+	case .Fragment:
+		close_fragment(app)
+	case .Mechanic:
+		close_mechanic(app)
+	case:
+		return false
+	}
+	return true
+}
+
+// Esc, or the pad's Start: the pause in play, back anywhere else.
+pause_or_back :: proc(app: ^App) {
+	if app.screen == .Play {
+		app.screen = .Pause
+	} else {
+		back(app)
+	}
+}
+
+// The pad's Start and East (back) over the screens, as Esc.
 pad_keys :: proc(app: ^App) {
 	if input.take(.Start) {
-		#partial switch app.screen {
-		case .Play:
-			app.screen = .Pause
-		case .Pause:
-			app.screen = .Play
-		case .Settings:
-			close_settings(app)
-		case .Card:
-			dismiss_act_card(app)
-		case .Fragment:
-			close_fragment(app)
-		case .Mechanic:
-			close_mechanic(app)
-		}
+		pause_or_back(app)
 	}
-	if app.screen != .Play && input.pressed(.East) {
-		used := true
-		#partial switch app.screen {
-		case .Pause:
-			app.screen = .Play
-		case .Settings:
-			close_settings(app)
-		case .Levels, .Book:
-			app.screen = .Title
-		case .Card:
-			dismiss_act_card(app)
-		case .Fragment:
-			close_fragment(app)
-		case .Mechanic:
-			close_mechanic(app)
-		case:
-			used = false
-		}
-		if used {
-			input.consume(.East)
-			app.east_block = true
-		}
+	if app.screen != .Play && input.pressed(.East) && back(app) {
+		input.consume(.East)
+		app.east_block = true
 	}
 }
 
@@ -785,23 +784,7 @@ global_keys :: proc(app: ^App) {
 		save_settings(app)
 	}
 	if rl.IsKeyPressed(.ESCAPE) {
-		switch app.screen {
-		case .Play:
-			app.screen = .Pause
-		case .Pause:
-			app.screen = .Play
-		case .Settings:
-			close_settings(app)
-		case .Levels, .Book:
-			app.screen = .Title
-		case .Card:
-			dismiss_act_card(app)
-		case .Fragment:
-			close_fragment(app)
-		case .Mechanic:
-			close_mechanic(app)
-		case .Title, .Ending:
-		}
+		pause_or_back(app)
 	}
 	if app.screen == .Card && (rl.IsKeyPressed(.ENTER) || rl.IsKeyPressed(.SPACE)) {
 		dismiss_act_card(app)

@@ -53,30 +53,5 @@ main :: proc() {
 }
 
 write_wav :: proc(path: string, samples: []f32, channels: int) {
-	pcm := make([]i16, len(samples), context.temp_allocator)
-	audio.to_pcm16(samples, pcm)
-	data_size := len(pcm) * 2
-	out := make([]u8, 44 + data_size, context.temp_allocator)
-	put_u32 :: proc(b: []u8, at: int, v: u32) {
-		b[at], b[at + 1], b[at + 2], b[at + 3] = u8(v), u8(v >> 8), u8(v >> 16), u8(v >> 24)
-	}
-	put_u16 :: proc(b: []u8, at: int, v: u16) {
-		b[at], b[at + 1] = u8(v), u8(v >> 8)
-	}
-	copy(out[0:], "RIFF")
-	put_u32(out, 4, u32(36 + data_size))
-	copy(out[8:], "WAVEfmt ")
-	put_u32(out, 16, 16)
-	put_u16(out, 20, 1)
-	put_u16(out, 22, u16(channels))
-	put_u32(out, 24, audio.RATE)
-	put_u32(out, 28, u32(audio.RATE * 2 * channels))
-	put_u16(out, 32, u16(2 * channels))
-	put_u16(out, 34, 16)
-	copy(out[36:], "data")
-	put_u32(out, 40, u32(data_size))
-	for v, i in pcm {
-		put_u16(out, 44 + i * 2, u16(v))
-	}
-	_ = os.write_entire_file(path, out)
+	_ = os.write_entire_file(path, audio.wav_file(samples, channels, context.temp_allocator))
 }

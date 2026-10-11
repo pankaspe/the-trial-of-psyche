@@ -166,7 +166,7 @@ slot_of :: proc(g: ^game.Game, i: int) -> (sl: Slot) {
 		sl.name = .Lamp_Button
 		if !game.has_skill(g, .Lamp) {
 			if content.skill_known(g.level_index, .Lamp) {
-				// known, but left behind here (by day there is nothing to light)
+				// known, but not carried in this level
 				sl.look = .Off
 				sl.status = i18n.tr(.Skill_Lamp_Absent)
 			}

@@ -532,7 +532,7 @@ synthesize_bed :: proc(bed: Bed, allocator := context.allocator) -> []f32 {
 		far := fx.rand_range(&rng, 0.3, 1)
 		period := fx.rand_range(&rng, 0.55, 1.3)
 		pulses := 2 + int(fx.randf(&rng) * 3)
-		left, right := math.sqrt(0.5 * (1 - pan)), math.sqrt(0.5 * (1 + pan))
+		left, right := pan_gains(pan)
 		for start := fx.rand_range(&rng, 0, period); start < f32(m) / RATE - 0.3; start += period * fx.rand_range(&rng, 0.9, 1.1) {
 			if fx.randf(&rng) < 0.15 {
 				continue // a pause now and then
@@ -578,30 +578,40 @@ synthesize_bed :: proc(bed: Bed, allocator := context.allocator) -> []f32 {
 	return out
 }
 
-// The river: a broad wash of water (pink noise through a slow, wandering
-// band), the babble of the current over stones (many small bubbles, each a
-// short rising tone), and now and then a bird of the first light.
+// Equal-power gains for a source at `pan` (-1 left .. 1 right).
 @(private)
-river :: proc(raw: []f32, m: int, rng: ^fx.Rng) {
+pan_gains :: proc(pan: f32) -> (left, right: f32) {
+	return math.sqrt(0.5 * (1 - pan)), math.sqrt(0.5 * (1 + pan))
+}
+
+// Running water on both channels: pink noise through a band that wanders
+// slowly (two sways at `rates` Hz) about `hz`, `swing` Hz either way.
+@(private)
+water_wash :: proc(raw: []f32, m: int, rng: ^fx.Rng, rates: [2]f32, hz, swing, gain: f32) {
 	for ch in 0 ..< 2 {
 		pk: Pink
 		f: Svf
 		ph := fx.rand_range(rng, 0, 10)
 		for i in 0 ..< m {
 			t := time_of(i)
-			sway := 0.5 + 0.5 * math.sin(0.31 * t + ph) * math.sin(0.13 * t + 2 * ph)
-			_, bp, _ := svf(&f, pink(&pk, rng), 520 + 380 * sway, 0.9)
-			raw[2 * i + ch] += bp * 0.22
+			sway := 0.5 + 0.5 * math.sin(rates[0] * t + ph) * math.sin(rates[1] * t + 2 * ph)
+			_, bp, _ := svf(&f, pink(&pk, rng), hz + swing * sway, 0.9)
+			raw[2 * i + ch] += bp * gain
 		}
 	}
-	// bubbles: a few hundred per second would be a torrent; this is a calm river
-	for b := 0; b < int(f32(m) / RATE * 26); b += 1 {
+}
+
+// Bubbles or drops: `per_second` short tones scattered over the loop, each
+// rising by `rise` of its pitch as it bursts; pitch, length and level drawn
+// from their ranges, placed within `width` of the middle.
+@(private)
+bubbles :: proc(raw: []f32, m: int, rng: ^fx.Rng, per_second: f32, hz_range, dur_range, level_range: [2]f32, width, rise: f32) {
+	for b := 0; b < int(f32(m) / RATE * per_second); b += 1 {
 		start := int(fx.randf(rng) * f32(m))
-		hz := fx.rand_range(rng, 380, 1300)
-		dur := fx.rand_range(rng, 0.012, 0.035)
-		level := fx.rand_range(rng, 0.004, 0.018)
-		pan := fx.rand_range(rng, -0.9, 0.9)
-		left, right := math.sqrt(0.5 * (1 - pan)), math.sqrt(0.5 * (1 + pan))
+		hz := fx.rand_range(rng, hz_range[0], hz_range[1])
+		dur := fx.rand_range(rng, dur_range[0], dur_range[1])
+		level := fx.rand_range(rng, level_range[0], level_range[1])
+		left, right := pan_gains(fx.rand_range(rng, -width, width))
 		length := int(dur * RATE)
 		phase: f32 = 0
 		for k in 0 ..< length {
@@ -610,16 +620,26 @@ river :: proc(raw: []f32, m: int, rng: ^fx.Rng) {
 				break
 			}
 			u := f32(k) / f32(length)
-			phase += math.TAU * hz * (1 + 0.8 * u) / RATE // the pitch rises as the bubble bursts
+			phase += math.TAU * hz * (1 + rise * u) / RATE
 			v := math.sin(phase) * math.sin(math.PI * u) * (1 - u) * level
 			raw[2 * i] += v * left
 			raw[2 * i + 1] += v * right
 		}
 	}
+}
+
+// The river: a broad wash of water (pink noise through a slow, wandering
+// band), the babble of the current over stones (many small bubbles, each a
+// short rising tone), and now and then a bird of the first light.
+@(private)
+river :: proc(raw: []f32, m: int, rng: ^fx.Rng) {
+	water_wash(raw, m, rng, {0.31, 0.13}, 520, 380, 0.22)
+	// bubbles: a few hundred per second would be a torrent; this is a calm river
+	bubbles(raw, m, rng, 26, {380, 1300}, {0.012, 0.035}, {0.004, 0.018}, 0.9, 0.8)
 	// the first birds: short whistled phrases, far off
 	for start := fx.rand_range(rng, 1, 4); start < f32(m) / RATE - 2; start += fx.rand_range(rng, 3.5, 8) {
 		pan := fx.rand_range(rng, -0.85, 0.85)
-		left, right := math.sqrt(0.5 * (1 - pan)), math.sqrt(0.5 * (1 + pan))
+		left, right := pan_gains(pan)
 		base := fx.rand_range(rng, 2600, 3800)
 		notes := 2 + int(fx.randf(rng) * 4)
 		at := start
@@ -659,31 +679,11 @@ garden :: proc(raw: []f32, m: int, rng: ^fx.Rng) {
 		}
 	}
 	// the drops: small rising tones, close together, near the middle
-	for b := 0; b < int(f32(m) / RATE * 14); b += 1 {
-		start := int(fx.randf(rng) * f32(m))
-		hz := fx.rand_range(rng, 900, 2200)
-		dur := fx.rand_range(rng, 0.01, 0.025)
-		level := fx.rand_range(rng, 0.003, 0.01)
-		pan := fx.rand_range(rng, -0.35, 0.35)
-		left, right := math.sqrt(0.5 * (1 - pan)), math.sqrt(0.5 * (1 + pan))
-		length := int(dur * RATE)
-		phase: f32 = 0
-		for k in 0 ..< length {
-			i := start + k
-			if i >= m {
-				break
-			}
-			u := f32(k) / f32(length)
-			phase += math.TAU * hz * (1 + 0.6 * u) / RATE
-			v := math.sin(phase) * math.sin(math.PI * u) * (1 - u) * level
-			raw[2 * i] += v * left
-			raw[2 * i + 1] += v * right
-		}
-	}
+	bubbles(raw, m, rng, 14, {900, 2200}, {0.01, 0.025}, {0.003, 0.01}, 0.35, 0.6)
 	// the doves: "coo-coo-ooo", a low round voice, soft and far
 	for start := fx.rand_range(rng, 2, 5); start < f32(m) / RATE - 3; start += fx.rand_range(rng, 6, 11) {
 		pan := fx.rand_range(rng, -0.8, 0.8)
-		left, right := math.sqrt(0.5 * (1 - pan)), math.sqrt(0.5 * (1 + pan))
+		left, right := pan_gains(pan)
 		base := fx.rand_range(rng, 360, 430)
 		NOTES :: [3][3]f32{{0, 0.22, 1.0}, {0.3, 0.2, 1.06}, {0.62, 0.55, 0.94}} // start, length, pitch
 		f: Svf
@@ -714,44 +714,14 @@ garden :: proc(raw: []f32, m: int, rng: ^fx.Rng) {
 // and fades in long phrases; at evening the reeds stir now and then.
 @(private)
 pasture :: proc(raw: []f32, m: int, rng: ^fx.Rng, day: bool) {
-	for ch in 0 ..< 2 {
-		pk: Pink
-		f: Svf
-		ph := fx.rand_range(rng, 0, 10)
-		for i in 0 ..< m {
-			t := time_of(i)
-			sway := 0.5 + 0.5 * math.sin(0.23 * t + ph) * math.sin(0.09 * t + 2 * ph)
-			_, bp, _ := svf(&f, pink(&pk, rng), 430 + 260 * sway, 0.9)
-			raw[2 * i + ch] += bp * 0.15
-		}
-	}
-	for b := 0; b < int(f32(m) / RATE * 11); b += 1 {
-		start := int(fx.randf(rng) * f32(m))
-		hz := fx.rand_range(rng, 340, 1000)
-		dur := fx.rand_range(rng, 0.014, 0.035)
-		level := fx.rand_range(rng, 0.003, 0.011)
-		pan := fx.rand_range(rng, -0.9, 0.9)
-		left, right := math.sqrt(0.5 * (1 - pan)), math.sqrt(0.5 * (1 + pan))
-		length := int(dur * RATE)
-		phase: f32 = 0
-		for k in 0 ..< length {
-			i := start + k
-			if i >= m {
-				break
-			}
-			u := f32(k) / f32(length)
-			phase += math.TAU * hz * (1 + 0.8 * u) / RATE
-			v := math.sin(phase) * math.sin(math.PI * u) * (1 - u) * level
-			raw[2 * i] += v * left
-			raw[2 * i + 1] += v * right
-		}
-	}
+	water_wash(raw, m, rng, {0.23, 0.09}, 430, 260, 0.15)
+	bubbles(raw, m, rng, 11, {340, 1000}, {0.014, 0.035}, {0.003, 0.011}, 0.9, 0.8)
 	if day {
 		// cicadas: a tone near 4.5 kHz, pulsed fast, through a soft band; each
 		// sings a phrase of a few seconds, rests, sings again, far and to one side
 		for _ in 0 ..< 3 {
 			pan := fx.rand_range(rng, -0.85, 0.85)
-			left, right := math.sqrt(0.5 * (1 - pan)), math.sqrt(0.5 * (1 + pan))
+			left, right := pan_gains(pan)
 			hz := fx.rand_range(rng, 4100, 5200)
 			pulse := fx.rand_range(rng, 140, 210)
 			level := fx.rand_range(rng, 0.004, 0.008)
@@ -885,6 +855,39 @@ reverb :: proc(input: []f32, params: Reverb_Params, tail: f32, allocator := cont
 // f32 samples -> signed 16-bit PCM.
 to_pcm16 :: proc(samples: []f32, out: []i16) {
 	for s, i in samples {
-		out[i] = i16(clamp(s, -1, 1) * 32000)
+		out[i] = pcm16(s)
 	}
+}
+
+// One sample to 16 bits, a little headroom kept.
+pcm16 :: proc(s: f32) -> i16 {
+	return i16(clamp(s, -1, 1) * 32000)
+}
+
+// A 16-bit WAV file of interleaved samples at RATE (the tools write them).
+wav_file :: proc(samples: []f32, channels: int, allocator := context.allocator) -> []u8 {
+	data_size := len(samples) * 2
+	out := make([]u8, 44 + data_size, allocator)
+	put_u32 :: proc(b: []u8, at: int, v: u32) {
+		b[at], b[at + 1], b[at + 2], b[at + 3] = u8(v), u8(v >> 8), u8(v >> 16), u8(v >> 24)
+	}
+	put_u16 :: proc(b: []u8, at: int, v: u16) {
+		b[at], b[at + 1] = u8(v), u8(v >> 8)
+	}
+	copy(out[0:], "RIFF")
+	put_u32(out, 4, u32(36 + data_size))
+	copy(out[8:], "WAVEfmt ")
+	put_u32(out, 16, 16)
+	put_u16(out, 20, 1)
+	put_u16(out, 22, u16(channels))
+	put_u32(out, 24, RATE)
+	put_u32(out, 28, u32(RATE * 2 * channels))
+	put_u16(out, 32, u16(2 * channels))
+	put_u16(out, 34, 16)
+	copy(out[36:], "data")
+	put_u32(out, 40, u32(data_size))
+	for v, i in samples {
+		put_u16(out, 44 + i * 2, u16(pcm16(v)))
+	}
+	return out
 }

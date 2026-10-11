@@ -744,9 +744,14 @@ has_skill :: proc(g: ^Game, skill: content.Skill) -> bool {
 	return false
 }
 
+// Psyche stands still in play, the palace at rest: a tool or the place can act.
+standing :: proc(g: ^Game) -> bool {
+	return g.active && g.phase == .Play && !g.turning && !g.psyche.walking
+}
+
 // Is she standing still on a handle or a sundial, the spindle ready to turn it?
 on_spindle :: proc(g: ^Game) -> bool {
-	if !g.active || g.phase != .Play || g.turning || g.psyche.walking || !has_skill(g, .Spindle) {
+	if !standing(g) || !has_skill(g, .Spindle) {
 		return false
 	}
 	return pl.handle_at(&g.palace, g.psyche.cell) >= 0 || pl.sundial_at(&g.palace, g.psyche.cell) >= 0
@@ -754,7 +759,7 @@ on_spindle :: proc(g: ^Game) -> bool {
 
 // Psyche stands still at the mouth of a cave whose other end can be reached.
 at_cave :: proc(g: ^Game) -> bool {
-	if !g.active || g.phase != .Play || g.turning || g.psyche.walking {
+	if !standing(g) {
 		return false
 	}
 	i := pl.cave_at(&g.palace, g.psyche.cell)
@@ -1205,7 +1210,6 @@ use_spindle :: proc(g: ^Game) {
 	}
 	h := pl.handle_at(&g.palace, g.psyche.cell)
 	g.part_turning = g.data.handles[h].part
-	sa.clear(&g.path)
 	set_phase(g, .Mechanism)
 	audio.play(.Turn, -4, 0.6)
 	learn(g, .Hint_Handle)
@@ -1227,9 +1231,6 @@ part_angle :: proc(g: ^Game, n: int) -> f32 {
 // coming up puts the lamp out.
 @(private)
 turn_time :: proc(g: ^Game) {
-	sa.clear(&g.path)
-	g.steering = false
-	g.pending_turn = 0
 	if !g.palace.day {
 		set_lamp(g, false)
 	}

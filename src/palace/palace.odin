@@ -76,7 +76,6 @@ Palace :: struct {
 	blocked:    []bool,
 	fences:     []iso.Dirs,
 	node_at:    []i32,
-	block_at:   []i32, // index of the data.blocks entry in the cell, -1
 	// view grid (same shape), for the current view
 	view_node:  []i32,
 	view_solid: []bool,
@@ -99,7 +98,6 @@ init :: proc(p: ^Palace, data: ^level.Level_Data, allocator := context.allocator
 	p.blocked = make([]bool, n)
 	p.fences = make([]iso.Dirs, n)
 	p.node_at = make([]i32, n)
-	p.block_at = make([]i32, n)
 	p.flipped = make([]bool, len(data.blocks))
 	p.view_node = make([]i32, n)
 	p.view_solid = make([]bool, n)
@@ -187,15 +185,6 @@ prop_place :: proc(p: ^Palace, prop: level.Prop) -> (c: Cell, d: Dir) {
 	return level.part_cell(prop.cell, p.data.parts[prop.part - 1].pivot, r), iso.rot_dir(prop.dir, r)
 }
 
-// The block entry Psyche stands on at feet cell c (-1: none, or stairs).
-support :: proc(p: ^Palace, c: Cell) -> int {
-	below := c - {0, 0, 1}
-	if !in_grid(p, below) {
-		return -1
-	}
-	return int(p.block_at[cell_index(p, below)])
-}
-
 // The lamp's light makes things true within this distance of Psyche's feet.
 TRUTH_RADIUS :: 2.5
 
@@ -260,7 +249,6 @@ rebuild_real :: proc(p: ^Palace) {
 	slice.zero(p.blocked)
 	slice.zero(p.fences)
 	slice.fill(p.node_at, -1)
-	slice.fill(p.block_at, -1)
 	p.overlap = false
 	for _, i in p.data.blocks {
 		if !block_present(p, i) {
@@ -269,7 +257,6 @@ rebuild_real :: proc(p: ^Palace) {
 		c := cell_index(p, block_cell(p, i))
 		p.overlap ||= p.solid[c].kind != .None
 		p.solid[c] = block_solid(p, i)
-		p.block_at[c] = i32(i)
 	}
 	for e in p.data.rise {
 		if int(e.seal) in p.risen {
@@ -355,11 +342,6 @@ sundial_at :: proc(p: ^Palace, c: Cell) -> int {
 		}
 	}
 	return -1
-}
-
-// Is the sun up? It shows the truth as the lamp does: no illusions.
-is_day :: proc(p: ^Palace) -> bool {
-	return p.day
 }
 
 // Turn the time: day to evening or back.

@@ -10,7 +10,6 @@
 package video_audio
 
 import "core:fmt"
-import "core:math"
 import "core:os"
 import "core:strconv"
 import "core:strings"
@@ -154,30 +153,7 @@ load_takes :: proc(id: audio.Sound_Id, list: ^[dynamic][]f32) {
 
 // Interleaved stereo f32 -> 16-bit WAV.
 write_wav :: proc(path: string, samples: []f32) {
-	data_size := len(samples) * 2
-	out := make([]u8, 44 + data_size)
-	put_u32 :: proc(b: []u8, at: int, v: u32) {
-		b[at], b[at + 1], b[at + 2], b[at + 3] = u8(v), u8(v >> 8), u8(v >> 16), u8(v >> 24)
-	}
-	put_u16 :: proc(b: []u8, at: int, v: u16) {
-		b[at], b[at + 1] = u8(v), u8(v >> 8)
-	}
-	copy(out[0:], "RIFF")
-	put_u32(out, 4, u32(36 + data_size))
-	copy(out[8:], "WAVEfmt ")
-	put_u32(out, 16, 16)
-	put_u16(out, 20, 1)
-	put_u16(out, 22, 2)
-	put_u32(out, 24, RATE)
-	put_u32(out, 28, RATE * 4)
-	put_u16(out, 32, 4)
-	put_u16(out, 34, 16)
-	copy(out[36:], "data")
-	put_u32(out, 40, u32(data_size))
-	for v, i in samples {
-		put_u16(out, 44 + i * 2, u16(i16(math.clamp(v, -1, 1) * 32000)))
-	}
-	if err := os.write_entire_file(path, out); err != nil {
+	if err := os.write_entire_file(path, audio.wav_file(samples, 2)); err != nil {
 		fail("cannot write the WAV")
 	}
 }

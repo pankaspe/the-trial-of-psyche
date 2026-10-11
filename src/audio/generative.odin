@@ -237,7 +237,6 @@ Generator :: struct {
 	current:    int,
 	chord:      int,
 	next_chord: int, // samples to the next chord
-	bright:     f32, // 0..1 breathing of the pads' filter
 	bright_ph:  f32,
 	lp:         [2][2]f32,
 	drone_ph:   f32,

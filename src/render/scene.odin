@@ -257,15 +257,7 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 		p := solid_piece(e.cell, e.solid, -1)
 		p.block = i32(i)
 		p.part = e.part
-		for c in g.data.lawn {
-			p.lawn ||= c == e.cell && p.cube
-		}
-		for c in g.data.ground {
-			p.ground ||= c == e.cell
-		}
-		if p.ground && !p.cube {
-			p.material = .Lawn // steps cut in the rock: grassy treads, earth risers
-		}
+		earth(g, &p, e.cell)
 		for pk in g.data.planks {
 			if pk.cell == e.cell {
 				p.mesh = pk.along_y ? .Plank_Y : .Plank_X
@@ -279,72 +271,54 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 		if prop.kind in level.ORIENTED_PROPS {
 			mesh = oriented_mesh(mesh, prop.dir)
 		}
-		append(&s.pieces, Piece{cell = prop.cell, mesh = mesh, material = PROP_MATERIAL[prop.kind], rise_index = -1, block = -1, handle = -1, part = prop.part})
+		append(&s.pieces, piece(prop.cell, mesh, PROP_MATERIAL[prop.kind], prop.part))
 		#partial switch prop.kind {
 		case .Sconce:
 			// the candle, in wax
-			append(&s.pieces, Piece{cell = prop.cell, mesh = oriented_mesh(.Candle_PX, prop.dir), material = .Psyche, rise_index = -1, block = -1, handle = -1, part = prop.part})
+			append(&s.pieces, piece(prop.cell, oriented_mesh(.Candle_PX, prop.dir), .Psyche, prop.part))
 		case .Pine:
-			append(&s.pieces, Piece{cell = prop.cell, mesh = oriented_mesh(.Trunk_PX, prop.dir), material = .Wood, rise_index = -1, block = -1, handle = -1, part = prop.part})
+			append(&s.pieces, piece(prop.cell, oriented_mesh(.Trunk_PX, prop.dir), .Wood, prop.part))
 		case .Spruce:
-			append(&s.pieces, Piece{cell = prop.cell, mesh = .Spruce_Trunk, material = .Wood, rise_index = -1, block = -1, handle = -1, part = prop.part})
+			append(&s.pieces, piece(prop.cell, .Spruce_Trunk, .Wood, prop.part))
 		case .Rose:
-			append(&s.pieces, Piece{cell = prop.cell, mesh = oriented_mesh(.Rose_Bloom_PX, prop.dir), material = .Blossom, rise_index = -1, block = -1, handle = -1, part = prop.part})
+			append(&s.pieces, piece(prop.cell, oriented_mesh(.Rose_Bloom_PX, prop.dir), .Blossom, prop.part))
 		case .Myrtle:
-			append(&s.pieces, Piece{cell = prop.cell, mesh = oriented_mesh(.Myrtle_Pot_PX, prop.dir), material = .Bronze, rise_index = -1, block = -1, handle = -1, part = prop.part})
+			append(&s.pieces, piece(prop.cell, oriented_mesh(.Myrtle_Pot_PX, prop.dir), .Bronze, prop.part))
 		}
 	}
 	for c in g.data.candelabra {
-		append(&s.pieces, Piece{cell = c.cell, mesh = oriented_mesh(.Candelabrum_PX, c.dir), material = .Bronze, rise_index = -1, block = -1, handle = -1})
-		append(&s.pieces, Piece{cell = c.cell, mesh = oriented_mesh(.Candelabrum_Wax_PX, c.dir), material = .Psyche, rise_index = -1, block = -1, handle = -1})
+		append(&s.pieces, piece(c.cell, oriented_mesh(.Candelabrum_PX, c.dir), .Bronze))
+		append(&s.pieces, piece(c.cell, oriented_mesh(.Candelabrum_Wax_PX, c.dir), .Psyche))
 	}
 	for c in g.data.caves {
-		append(&s.pieces, Piece{cell = c.cell, mesh = oriented_mesh(.Cave_PX, c.dir), material = .Rock, rise_index = -1, block = -1, handle = -1})
-		append(&s.pieces, Piece{cell = c.cell, mesh = oriented_mesh(.Cave_Dark_PX, c.dir), material = .Void, rise_index = -1, block = -1, handle = -1})
+		append(&s.pieces, piece(c.cell, oriented_mesh(.Cave_PX, c.dir), .Rock))
+		append(&s.pieces, piece(c.cell, oriented_mesh(.Cave_Dark_PX, c.dir), .Void))
 	}
 	for h, i in g.data.handles {
-		append(&s.pieces, Piece{cell = h.cell, mesh = .Crank_Post, material = .Bronze, rise_index = -1, block = -1, handle = i32(i)})
+		append(&s.pieces, handle_piece(h.cell, i))
 	}
 	for c in g.data.sundials {
-		append(&s.pieces, Piece{cell = c, mesh = .Crank_Post, material = .Fleece, rise_index = -1, block = -1, handle = -1, sundial = true})
+		append(&s.pieces, sundial_piece(c))
 	}
 	for c in g.data.rests {
-		append(&s.pieces, Piece{cell = c, mesh = .Altar, material = .Bronze, rise_index = -1, block = -1, handle = -1})
+		append(&s.pieces, piece(c, .Altar, .Bronze))
 	}
 	for e, i in g.data.rise {
 		p := solid_piece(e.cell, e.solid, i32(i))
-		for c in g.data.ground {
-			p.ground ||= c == e.cell
-		}
-		for c in g.data.lawn {
-			p.lawn ||= c == e.cell && p.cube
-		}
-		if p.ground && !p.cube {
-			p.material = .Lawn
-		}
+		earth(g, &p, e.cell)
 		append(&s.pieces, p)
 	}
 	for c, k in g.data.sigils {
-		append(&s.pieces, Piece{cell = c, mesh = .Sigil_Off, material = .Bronze, rise_index = -1, block = -1, handle = -1, sigil = .Off, seal = u8(k)})
-		append(&s.pieces, Piece{cell = c, mesh = .Sigil_On, material = .Bronze, rise_index = -1, block = -1, handle = -1, sigil = .On, seal = u8(k)})
+		append(&s.pieces, sigil_piece(c, .Sigil_Off, .Off, k))
+		append(&s.pieces, sigil_piece(c, .Sigil_On, .On, k))
 	}
 
 	// framing: every piece from every view (as the prototype's fit_rect), parts in every position
 	first := true
 	for p in s.pieces {
-		for turn in 0 ..< (p.part > 0 ? 4 : 1) {
-			cell := p.cell
-			if p.part > 0 {
-				cell = level.part_cell(cell, g.data.parts[p.part - 1].pivot, turn)
-			}
-			for r in 0 ..< 4 {
-				c := iso.floor_center(iso.to_view(cell, r, g.data.size))
-				top: f32 = p.mesh == .Block ? -96 : -120
-				rect := Rect{c.x - 64, c.y + top, 128, 152}
-				s.fit = first ? rect : rect_merge(s.fit, rect)
-				first = false
-			}
-		}
+		rect := piece_bounds(g, p, p.mesh == .Block ? -96 : -120)
+		s.fit = first ? rect : rect_merge(s.fit, rect)
+		first = false
 	}
 	s.see = make([]f32, len(s.pieces), allocator)
 	// a tall level: each band of heights framed from every view (the pieces of
@@ -355,18 +329,9 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 			if p.cell.z < t[0] - 3 || p.cell.z > t[1] {
 				continue
 			}
-			for turn in 0 ..< (p.part > 0 ? 4 : 1) {
-				cell := p.cell
-				if p.part > 0 {
-					cell = level.part_cell(cell, g.data.parts[p.part - 1].pivot, turn)
-				}
-				for r in 0 ..< 4 {
-					c := iso.floor_center(iso.to_view(cell, r, g.data.size))
-					rect := Rect{c.x - 64, c.y - 120, 128, 152}
-					s.frames[i] = first ? rect : rect_merge(s.frames[i], rect)
-					first = false
-				}
-			}
+			rect := piece_bounds(g, p, -120)
+			s.frames[i] = first ? rect : rect_merge(s.frames[i], rect)
+			first = false
 		}
 		s.frame_h = max(s.frame_h, s.frames[i].h)
 	}
@@ -377,6 +342,68 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 	for _ in 0 ..< 40 {
 		emit_mote(s, true)
 	}
+}
+
+// A piece of decoration (or of a part, n > 0) at cell c.
+@(private)
+piece :: proc(c: Cell, mesh: Mesh_Id, material: Material, part: u8 = 0) -> Piece {
+	return {cell = c, mesh = mesh, material = material, rise_index = -1, block = -1, handle = -1, part = part}
+}
+
+@(private)
+handle_piece :: proc(c: Cell, i: int) -> Piece {
+	p := piece(c, .Crank_Post, .Bronze)
+	p.handle = i32(i)
+	return p
+}
+
+// A sundial's crank: the handle's, in the Sun's gold (drawn larger).
+@(private)
+sundial_piece :: proc(c: Cell) -> Piece {
+	p := piece(c, .Crank_Post, .Fleece)
+	p.sundial = true
+	return p
+}
+
+@(private)
+sigil_piece :: proc(c: Cell, mesh: Mesh_Id, state: type_of(Piece{}.sigil), seal: int) -> Piece {
+	p := piece(c, mesh, .Bronze)
+	p.sigil, p.seal = state, u8(seal)
+	return p
+}
+
+// Living rock and grass on a block or stairs at cell c (`ground`, `lawn` lines).
+@(private)
+earth :: proc(g: ^game.Game, p: ^Piece, c: Cell) {
+	for l in g.data.lawn {
+		p.lawn ||= l == c && p.cube
+	}
+	for r in g.data.ground {
+		p.ground ||= r == c
+	}
+	if p.ground && !p.cube {
+		p.material = .Lawn // steps cut in the rock: grassy treads, earth risers
+	}
+}
+
+// What a piece covers on screen (proto px) from every view, a part in every
+// position; `top`: how far above its floor centre it reaches.
+@(private)
+piece_bounds :: proc(g: ^game.Game, p: Piece, top: f32) -> (bounds: Rect) {
+	first := true
+	for turn in 0 ..< (p.part > 0 ? 4 : 1) {
+		cell := p.cell
+		if p.part > 0 {
+			cell = level.part_cell(cell, g.data.parts[p.part - 1].pivot, turn)
+		}
+		for r in 0 ..< 4 {
+			c := iso.floor_center(iso.to_view(cell, r, g.data.size))
+			rect := Rect{c.x - 64, c.y + top, 128, 152}
+			bounds = first ? rect : rect_merge(bounds, rect)
+			first = false
+		}
+	}
+	return
 }
 
 @(private)
@@ -2115,17 +2142,18 @@ draw_teach :: proc(g: ^game.Game, v: View, time: f32) {
 		J :: 0.3
 		outline(v, top(g, i, J, J), top(g, i, 1 - J, J), top(g, i, 1 - J, 1 - J), top(g, i, J, 1 - J), {col.r, col.g, col.b, col.a * 0.5}, width * 0.7)
 	}
-	if mech == .Time {
-		// the sundials that turn the time
-		for c in g.data.sundials {
-			p := Vec3{f32(c.x), f32(c.y), f32(c.z) + 0.01}
-			outline(v, p + {0.06, 0.06, 0}, p + {0.94, 0.06, 0}, p + {0.94, 0.94, 0}, p + {0.06, 0.94, 0}, col, width)
+	// the floors the spindle works from: the sundials that turn the time, the handles
+	floors := make([dynamic]Cell, 0, 8, context.temp_allocator)
+	#partial switch mech {
+	case .Time:
+		append(&floors, ..g.data.sundials[:])
+	case .Handle:
+		for h in g.data.handles {
+			append(&floors, h.cell)
 		}
 	}
-	if mech == .Handle {
-		for h in g.data.handles {
-			c := Vec3{f32(h.cell.x), f32(h.cell.y), f32(h.cell.z) + 0.01}
-			outline(v, c + {0.06, 0.06, 0}, c + {0.94, 0.06, 0}, c + {0.94, 0.94, 0}, c + {0.06, 0.94, 0}, col, width)
-		}
+	for c in floors {
+		p := Vec3{f32(c.x), f32(c.y), f32(c.z) + 0.01}
+		outline(v, p + {0.06, 0.06, 0}, p + {0.94, 0.06, 0}, p + {0.94, 0.94, 0}, p + {0.06, 0.94, 0}, col, width)
 	}
 }
