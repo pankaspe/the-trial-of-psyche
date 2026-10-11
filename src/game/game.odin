@@ -471,7 +471,7 @@ update :: proc(g: ^Game, dt: f32) {
 		if g.oil <= 0 {
 			set_lamp(g, false)
 			if g.activated == {} {
-				hint(g, .Hint_No_Oil, 0, true)
+				tell_no_oil(g)
 			}
 		}
 	}
@@ -662,8 +662,14 @@ toggle_lamp :: proc(g: ^Game) {
 		}
 	} else {
 		audio.play(.Blocked, -6)
-		hint(g, .Hint_No_Oil, 0, true)
+		tell_no_oil(g)
 	}
+}
+
+// The oil is gone: the way out is the brazier, or the level again.
+@(private)
+tell_no_oil :: proc(g: ^Game) {
+	hint(g, has_rest(g) ? .Hint_No_Oil : .Hint_No_Oil_No_Rest, 0, true)
 }
 
 @(private)
