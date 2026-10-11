@@ -567,15 +567,15 @@ draw_pointer :: proc(u: ^Ui, g: ^game.Game, hud: Hud_Input) {
 	breath: f32 = u.reduce_motion ? 1 : 0.75 + 0.25 * math.sin(g.time * 1.3)
 	drift: f32 = u.reduce_motion ? 0 : (0.5 + 0.5 * math.sin(g.time * 1.3)) * 6 * k
 	tip := hud.psyche_screen - {0, 22 * k + u.place_reveal * 50 * k - drift}
-	glow_dot(tip - {0, 8 * k}, 18 * k, {255, 214, 140, 255}, a * breath)
+	glow_dot(tip - {0, 8 * k}, 18 * k, {255, 110, 50, 255}, a * breath)
 	// the chevron in light: wide and faint, then narrower and brighter
 	rl.BeginBlendMode(.ADDITIVE)
 	for layer in 0 ..< 4 {
 		w := f32(10 - layer * 3) * k
-		col := fade(rl.Color{255, 214, 150, 255}, a * breath * (0.1 + f32(layer) * 0.12))
+		col := fade(rl.Color{255, 120, 60, 255}, a * breath * (0.1 + f32(layer) * 0.12))
 		if layer == 3 {
 			w = 2 * k
-			col = fade(rl.Color{255, 244, 220, 255}, a * breath * 0.9)
+			col = fade(rl.Color{255, 196, 150, 255}, a * breath * 0.9)
 		}
 		for side in ([2]f32{-1, 1}) {
 			rl.DrawLineEx(tip + {side * 11 * k, -11 * k}, tip, w, col)
