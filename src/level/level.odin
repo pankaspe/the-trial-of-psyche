@@ -30,6 +30,7 @@ Mechanic :: enum u8 {
 	Veiled,
 	Handle,
 	Time, // day and evening, turned at a sundial
+	Eagle, // Jupiter's eagle: a flight one way, from its perch
 }
 
 MECHANIC_NAME := [Mechanic]string {
@@ -37,6 +38,7 @@ MECHANIC_NAME := [Mechanic]string {
 	.Veiled  = "veiled",
 	.Handle  = "handle",
 	.Time    = "time",
+	.Eagle   = "eagle",
 }
 
 // The cutscene that opens a level (the first of each act has one).
@@ -62,6 +64,7 @@ Setting :: enum u8 {
 	Pasture_Day, // the Sun's pastures by a river at noon: a hot clear sky, the sun high
 	Pasture_Evening, // the same at evening: the sun gone down, amber and violet, the first star
 	Venus_Day, // the house of Venus above the clouds by day: a pale gold morning, the sun in a rose haze
+	Styx_Night, // the gorge under the Styx's crag: no moon, faint stars, the black water falling
 }
 
 SETTING_NAME := [Setting]string {
@@ -78,6 +81,7 @@ SETTING_NAME := [Setting]string {
 	.Pasture_Day   = "pasture_day",
 	.Pasture_Evening = "pasture_evening",
 	.Venus_Day     = "venus_day",
+	.Styx_Night    = "styx_night",
 }
 
 // How a block behaves (Act II): fixed stone, or one that changes for good.
@@ -209,6 +213,13 @@ Cave :: struct {
 	dir:  Dir,
 }
 
+// Jupiter's eagle (Act III) waits on a perch on the surface `from`
+// (x, y, h): standing there, Space calls it, and it carries Psyche to the
+// surface `to`. One way only: nothing brings her back but another eagle.
+Eagle :: struct {
+	from, to: Cell,
+}
+
 // A block drawn as the deck of a rope bridge (it holds like any block).
 Plank :: struct {
 	cell:    Cell,
@@ -272,6 +283,7 @@ Level_Data :: struct {
 	evening:      Setting, // a level with sundials: the look at evening
 	sundials:     [dynamic]Cell, // Act III: standing on one, the spindle turns the time (day <-> evening); the level starts by day
 	rams:         [dynamic]Ram, // the Sun's rams: standing by day, lying (a step) at evening
+	eagles:       [dynamic]Eagle, // Act III: from a perch, a flight one way
 }
 
 MAX_PARTS :: 8
@@ -284,6 +296,7 @@ MAX_SEALS :: 4
 Seals :: bit_set[0 ..< MAX_SEALS; u8] // which seals have been lit
 MAX_SUNDIALS :: 8
 MAX_RAMS :: 12
+MAX_EAGLES :: 4
 
 // The cell of a part's block after `r` quarter turns.
 part_cell :: proc(c: Cell, pivot: [2]i32, r: int) -> Cell {
@@ -323,6 +336,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	data.rests = make([dynamic]Cell, 0, 4)
 	data.sundials = make([dynamic]Cell, 0, MAX_SUNDIALS)
 	data.rams = make([dynamic]Ram, 0, MAX_RAMS)
+	data.eagles = make([dynamic]Eagle, 0, MAX_EAGLES)
 	has_evening := false
 	has_start := false
 	part: u8 = 0 // the part being described (between `part` and `end`)
@@ -459,7 +473,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 			}
 			if !found {
-				return data, fail(line_no, "mechanic: expected veiled, handle or time")
+				return data, fail(line_no, "mechanic: expected veiled, handle, time or eagle")
 			}
 
 		case "rest":
@@ -501,6 +515,29 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			}
 			append(&data.rams, Ram{v, d})
 			max_z = max(max_z, v.z + 1)
+
+		case "eagle":
+			v: [6]i32
+			if !ints(args, v[:]) {
+				return data, fail(line_no, "eagle: expected x y h (the perch) and x y h (where it carries her)")
+			}
+			if part != 0 {
+				return data, fail(line_no, "eagle: not inside a part")
+			}
+			if len(data.eagles) == MAX_EAGLES {
+				return data, fail(line_no, "eagle: at most %d per level", MAX_EAGLES)
+			}
+			e := Eagle{{v[0], v[1], v[2]}, {v[3], v[4], v[5]}}
+			if e.from == e.to {
+				return data, fail(line_no, "eagle: it must carry her somewhere else")
+			}
+			for o in data.eagles {
+				if o.from == e.from {
+					return data, fail(line_no, "eagle: two eagles on the perch %v", e.from)
+				}
+			}
+			append(&data.eagles, e)
+			max_z = max(max_z, v[2] + 1, v[5])
 
 		case "oil":
 			v: [1]i32
@@ -832,6 +869,11 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	for m in data.rams {
 		if !check(m.cell, data.size, data.height) {
 			return data, fail(0, "ram %v outside the grid", m.cell)
+		}
+	}
+	for e in data.eagles {
+		if !check(e.from, data.size, data.height) || !check(e.to, data.size, data.height) {
+			return data, fail(0, "eagle %v -> %v outside the grid", e.from, e.to)
 		}
 	}
 	// a part must stay inside the grid in all four positions

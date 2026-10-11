@@ -329,6 +329,33 @@ LOOKS := [level.Setting]Look {
 		daylight = 1,
 		mote = {1.0, 0.86, 0.90, 0.4},
 	},
+	// the gorge under the Styx's crag: no moon at all, a few cold stars, black
+	// peaks against a sky barely lighter than they are, the black water below;
+	// only her own light and the lamp's show the stones
+	.Styx_Night = {
+		sky_top = {0.003, 0.004, 0.014},
+		sky_mid = {0.012, 0.013, 0.04},
+		sky_horizon = {0.03, 0.028, 0.07},
+		orb_pos = {0.80, 0.2},
+		orb_radius = 0,
+		orb_color = {0, 0, 0},
+		halo_color = {0, 0, 0},
+		halo_width = 10,
+		stars = 0.55,
+		haze = {0.03, 0.03, 0.07},
+		islands = false,
+		ridges = 1,
+		ridge_color = {{0.03, 0.035, 0.07}, {0.018, 0.022, 0.048}, {0.008, 0.01, 0.024}},
+		ridge_rim = {0.08, 0.09, 0.16},
+		cloud_back = {0.04, 0.04, 0.09},
+		cloud_front = {0.06, 0.06, 0.12},
+		mist = {0.025, 0.025, 0.06},
+		water = {0.03, 0.03, 0.06, 0.92},
+		glint = {0.55, 0.6, 0.85, 0.18},
+		daylight = 0,
+		gloom = 0.6,
+		mote = {0.55, 0.6, 0.9, 0.3},
+	},
 	// the palace of voices at twilight: the sun is gone, its last light low on
 	// the clouds, the first stars, the moon rising; the candles are lit
 	.Dusk = {

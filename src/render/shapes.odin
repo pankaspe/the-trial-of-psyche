@@ -64,6 +64,11 @@ Mesh_Id :: enum u8 {
 	Ram_Head, // ...its face in bronze (x forward from the back of the skull)...
 	Ram_Horns, // ...its horns curling beside the face...
 	Ram_Leg, // ...and a leg, one unit tall
+	Perch, // Jupiter's eagle's perch: a bronze post and crossbar in the (+x, -y) corner
+	Eagle_Body, // the eagle: its body along +x, the tail at the origin...
+	Eagle_Beak, // ...its hooked beak (x forward)...
+	Eagle_Wing, // ...a wing spread along +y from the shoulder...
+	Eagle_Tail, // ...and its tail fanned along -x
 }
 
 // Where the resting brazier's flame burns, in cell space.
@@ -643,6 +648,69 @@ build_meshes :: proc(meshes: ^[Mesh_Id]rl.Mesh) {
 	meshes[.Ram_Head] = ram_head()
 	meshes[.Ram_Horns] = ram_horns()
 	meshes[.Ram_Leg] = lathe_mesh(RAM_LEG[:], 8)
+	meshes[.Perch] = one(PERCH[:])
+	meshes[.Eagle_Body] = eagle_body()
+	meshes[.Eagle_Beak] = eagle_beak()
+	meshes[.Eagle_Wing] = one(EAGLE_WING[:])
+	meshes[.Eagle_Tail] = one(EAGLE_TAIL[:])
+}
+
+// The eagle's perch: a post in the (+x, -y) corner, its foot on a plate, a
+// crossbar on top where the eagle grips (game.EAGLE_PERCH).
+@(private)
+PERCH := [?]Box {
+	{{0.70, 0.14, 0}, {0.86, 0.30, 0.04}},
+	{{0.76, 0.20, 0.04}, {0.80, 0.24, 0.82}},
+	{{0.66, 0.205, 0.80}, {0.90, 0.235, 0.84}},
+}
+
+// The body: a smooth lathe from the tail (origin) to the breast, laid along x;
+// the head a sphere drawn on it (game.EAGLE_HEAD).
+@(private)
+eagle_body :: proc() -> rl.Mesh {
+	BODY :: [?][2]f32{{0, 0}, {0.03, 0.01}, {0.07, 0.07}, {0.095, 0.15}, {0.1, 0.22}, {0.085, 0.29}, {0.05, 0.33}, {0, 0.34}}
+	b := builder_make()
+	profile := BODY
+	lathe(&b, profile[:], 12)
+	lay_along_x(&b, 0)
+	return upload(&b)
+}
+
+// The beak: a short cone along x, its tip bent down.
+@(private)
+eagle_beak :: proc() -> rl.Mesh {
+	BEAK :: [?][2]f32{{0, 0}, {0.022, 0}, {0.018, 0.03}, {0.008, 0.06}, {0, 0.07}}
+	b := builder_make()
+	profile := BEAK
+	lathe(&b, profile[:], 8)
+	lay_along_x(&b, 0)
+	for i := 0; i < len(b.verts); i += 3 {
+		x := b.verts[i]
+		b.verts[i + 2] -= 0.25 * x * x / 0.07 // the hook
+	}
+	return upload(&b)
+}
+
+// A wing, spread along +y from the shoulder at the origin: the broad inner
+// coverts, the arm, then the long primaries at the tip, staggered back like
+// fingers. Thin, flat in the xy plane.
+@(private)
+EAGLE_WING := [?]Box {
+	{{-0.14, 0.0, -0.008}, {0.05, 0.32, 0.008}},
+	{{-0.12, 0.32, -0.007}, {0.04, 0.52, 0.007}},
+	{{-0.03, 0.52, -0.006}, {0.035, 0.80, 0.006}},
+	{{-0.075, 0.52, -0.006}, {-0.025, 0.76, 0.006}},
+	{{-0.115, 0.50, -0.006}, {-0.07, 0.70, 0.006}},
+	{{-0.155, 0.46, -0.006}, {-0.11, 0.63, 0.006}},
+	{{-0.19, 0.04, -0.006}, {-0.13, 0.46, 0.006}}, // the trailing edge
+}
+
+// The tail: three broad feathers fanned back.
+@(private)
+EAGLE_TAIL := [?]Box {
+	{{-0.2, -0.035, -0.006}, {0.02, 0.035, 0.006}},
+	{{-0.17, -0.075, -0.005}, {0.02, -0.02, 0.005}},
+	{{-0.17, 0.02, -0.005}, {0.02, 0.075, 0.005}},
 }
 
 // The rams of the Sun, smooth and abstract like the other figures. The

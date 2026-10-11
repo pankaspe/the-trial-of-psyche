@@ -231,7 +231,7 @@ Shots :: struct {
 	has_quality: bool,
 	plan:  bool, // --plan: play the solver's plan of the level, a shot after every decision
 	record: bool, // --record (with --plan): every frame at RECORD_FPS instead, for a video
-	cave_shot: int, // --plan: the last move shot at a cave's mouth (the action of the place shows)
+	cave_shot: int, // --plan: the last move shot at a cave's mouth or a perch (the action of the place shows)
 	cine_shot: int, // --plan: shots taken of the opening cutscene (one every CINE_SHOT_EVERY s)
 	no_ui: bool, // --no-ui: the world only (backdrops for mockups and stills)
 	survey: bool, // --survey: the level from the four views, band by band (a tall level), no walking
@@ -463,14 +463,14 @@ plan_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool)
 		s.t = 0
 		return "", false
 	}
-	if next := s.moves[s.move]; next.move == .Step && pl.is_passage(&g.palace, g.psyche.cell, next.cell) && s.cave_shot <= s.move {
-		// at a cave's mouth: a shot with the action of the place over her
+	if next := s.moves[s.move]; (next.move == .Flight || next.move == .Step && pl.is_passage(&g.palace, g.psyche.cell, next.cell)) && s.cave_shot <= s.move {
+		// at a cave's mouth or an eagle's perch: a shot with the action of the place over her
 		if s.t < 0.6 {
 			return "", false
 		}
 		s.cave_shot = s.move + 1
 		s.t = 0
-		return fmt.tprintf("p%03d_cave", s.move), false
+		return fmt.tprintf("p%03d_place", s.move), false
 	}
 	if !game.apply_move(g, s.moves[s.move]) {
 		fmt.eprintfln("plan: the game refused move %d %v", s.move, s.moves[s.move])

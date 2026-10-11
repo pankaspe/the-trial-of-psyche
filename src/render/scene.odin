@@ -250,7 +250,7 @@ PAN_TIME :: 1.8 // the camera moving from one band of a tall level to the next
 
 scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 	s^ = {}
-	s.pieces = make([dynamic]Piece, 0, len(g.data.blocks) + 2 * len(g.data.props) + 2 * len(g.data.candelabra) + 2 * len(g.data.caves) + len(g.data.rise) + len(g.data.handles) + 2 * len(g.data.sigils) + len(g.data.sundials), allocator)
+	s.pieces = make([dynamic]Piece, 0, len(g.data.blocks) + 2 * len(g.data.props) + 2 * len(g.data.candelabra) + 2 * len(g.data.caves) + len(g.data.rise) + len(g.data.handles) + 2 * len(g.data.sigils) + len(g.data.sundials) + len(g.data.eagles), allocator)
 	s.rng = fx.rng_init(1234)
 	s.mote = look_of(g).mote
 	for e, i in g.data.blocks {
@@ -299,6 +299,9 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 	}
 	for c in g.data.sundials {
 		append(&s.pieces, sundial_piece(c))
+	}
+	for e in g.data.eagles {
+		append(&s.pieces, piece(e.from, .Perch, .Bronze))
 	}
 	for c in g.data.rests {
 		append(&s.pieces, piece(c, .Altar, .Bronze))
@@ -1089,6 +1092,7 @@ draw_figures :: proc(r: ^Renderer, g: ^game.Game) {
 
 	draw_fragments(r, g)
 	draw_rams(r, g)
+	draw_eagles(r, g)
 
 	// the prologue's procession: veiled mourners, a little taller than Psyche
 	if game.procession(g) {
@@ -1222,6 +1226,52 @@ draw_rams :: proc(r: ^Renderer, g: ^game.Game) {
 				}
 			}
 		}
+	}
+}
+
+// Jupiter's eagles, in gold: folded on their perches, spread while they
+// carry her and fly home (game.eagle_pose).
+@(private)
+draw_eagles :: proc(r: ^Renderer, g: ^game.Game) {
+	if len(g.data.eagles) == 0 {
+		return
+	}
+	Eagle_Pose :: struct {
+		body, head: rl.Matrix,
+		wings:      [2]rl.Matrix,
+		spread:     f32,
+	}
+	poses := make([]Eagle_Pose, len(g.data.eagles), context.temp_allocator)
+	for &pose, i in poses {
+		pos, yaw, spread := game.eagle_pose(g, i)
+		breath := math.sin(g.time * 1.3 + f32(i) * 2.1)
+		// perched it sits upright, its breast out; flying it lies level
+		pitch := -1.05 * (1 - spread) - 0.08
+		pose.spread = spread
+		pose.body = rl.MatrixTranslate(pos.x, pos.y, pos.z) * rl.MatrixRotateZ(yaw) * rl.MatrixRotateY(pitch) * rl.MatrixTranslate(-0.16, 0, 0.1)
+		pose.head = pose.body * rl.MatrixTranslate(0.37, 0, 0.05 + 0.005 * breath) * rl.MatrixRotateY(-pitch * 0.8)
+		// wings: folded back along the body, or open and beating slowly
+		beat := spread * (0.15 + 0.55 * math.sin(g.time * 5.2 + f32(i)))
+		sweep := (1 - spread) * (math.PI * 0.5 - 0.12)
+		droop := (1 - spread) * 0.25
+		for side, k in ([2]f32{-1, 1}) {
+			pose.wings[k] = pose.body * rl.MatrixTranslate(0.24, side * 0.07, 0.06) * rl.MatrixRotateX(side * (beat - droop)) * rl.MatrixRotateZ(side * sweep) * rl.MatrixScale(1, side * (0.5 + 0.5 * spread), 1)
+		}
+	}
+	// the feathers in gold...
+	set_piece_uniforms(r, .Fleece, 0, 0, 1, 0.9, 0.12)
+	for pose in poses {
+		rl.DrawMesh(r.meshes[.Eagle_Body], r.material, pose.body)
+		rl.DrawMesh(r.meshes[.Eagle_Tail], r.material, pose.body * rl.MatrixRotateY(-0.15 * pose.spread))
+		rl.DrawMesh(r.meshes[.Head], r.material, pose.head * rl.MatrixScale(0.06, 0.055, 0.058))
+		for w in pose.wings {
+			rl.DrawMesh(r.meshes[.Eagle_Wing], r.material, w)
+		}
+	}
+	// ...the beak in dark bronze
+	set_piece_uniforms(r, .Bronze, 0, 0, 1, 0.9, 0)
+	for pose in poses {
+		rl.DrawMesh(r.meshes[.Eagle_Beak], r.material, pose.head * rl.MatrixTranslate(0.045, 0, -0.005))
 	}
 }
 
@@ -1447,6 +1497,19 @@ draw_decals :: proc(g: ^game.Game) {
 		col.a *= k
 		floor_ring(pl.node_world(&g.palace, c) + {0, 0, 0.007}, 0.32, 0.05, col)
 		floor_ellipse(pl.node_world(&g.palace, c) + {0, 0, 0.006}, 0.3, 0.3, {col.r, col.g, col.b, col.a * 0.25})
+	}
+
+	// Jupiter's eagles: a faint golden ring on each perch; standing on one,
+	// the ring where it will set her down breathes brighter
+	for e, n in g.data.eagles {
+		k := 0.6 + 0.4 * math.sin(g.time * 1.4 + f32(n))
+		col := Color4{1.0, 0.84, 0.5, 0.26 * k}
+		floor_ring(pl.node_world(&g.palace, e.from) + {0, 0, 0.007}, 0.32, 0.04, col)
+		if game.at_eagle(g) && g.psyche.cell == e.from {
+			land := pl.node_world(&g.palace, e.to) + {0, 0, 0.007}
+			floor_ring(land, 0.3 + 0.04 * k, 0.06, {1.0, 0.86, 0.5, 0.55 * k})
+			floor_ellipse(land - {0, 0, 0.001}, 0.3, 0.3, {1.0, 0.86, 0.5, 0.14 * k})
+		}
 	}
 
 	// a bronze inlay on the parts that turn
@@ -1726,6 +1789,23 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 		c := pl.node_world(&g.palace, c0) + {0, 0, 0.05}
 		pulse := 0.25 + 0.55 * (0.5 + 0.5 * math.cos(g.rise_t[k] * math.PI / 1.4))
 		glow(v, c, 70, {1.0, 0.75, 0.35, pulse})
+	}
+	// Jupiter's eagles: a golden light about them, brighter in flight
+	for _, i in g.data.eagles {
+		p, _, spread := game.eagle_pose(g, i)
+		breath := 0.85 + 0.15 * math.sin(t * 1.3 + f32(i) * 2.1)
+		glow(v, p + {0, 0, 0.15}, 70 + 50 * spread, {1.0, 0.78, 0.4, (0.16 + 0.12 * spread) * breath})
+		glow(v, p + {0, 0, 0.15}, 20, {1.0, 0.92, 0.7, 0.3 * breath})
+	}
+	// where the eagle she stands under will set her down: a column of gold
+	if game.at_eagle(g) {
+		e := g.data.eagles[pl.eagle_at(&g.palace, g.psyche.cell)]
+		c := pl.node_world(&g.palace, e.to)
+		pulse := 0.8 + 0.2 * math.sin(t * 1.6)
+		for n in 0 ..< 5 {
+			glow(v, c + {0, 0, 0.3 + f32(n) * 0.35}, 18 - f32(n) * 2, {1.0, 0.85, 0.5, 0.22 * pulse * (1 - f32(n) / 5)}, 2.4)
+		}
+		glow(v, c + {0, 0, 0.02}, 44, {1.0, 0.8, 0.45, 0.28 * pulse}, 0.5)
 	}
 	// Venus: a rose light, her star's
 	if vp, alpha := game.venus_figure(g); alpha > 0.003 {
@@ -2148,7 +2228,7 @@ draw_teach :: proc(g: ^game.Game, v: View, time: f32) {
 		case .None:
 		case .Veiled: want = e.trait == .Veiled && !g.palace.flipped[i]
 		case .Handle: want = e.part > 0
-		case .Time:
+		case .Time, .Eagle:
 		}
 		if !want || pl.solid_at(&g.palace, pl.block_cell(&g.palace, i) + {0, 0, 1}).kind != .None {
 			continue
@@ -2158,7 +2238,8 @@ draw_teach :: proc(g: ^game.Game, v: View, time: f32) {
 		J :: 0.3
 		outline(v, top(g, i, J, J), top(g, i, 1 - J, J), top(g, i, 1 - J, 1 - J), top(g, i, J, 1 - J), {col.r, col.g, col.b, col.a * 0.5}, width * 0.7)
 	}
-	// the floors the spindle works from: the sundials that turn the time, the handles
+	// the floors the spindle works from (the sundials that turn the time, the
+	// handles), the eagles' perches
 	floors := make([dynamic]Cell, 0, 8, context.temp_allocator)
 	#partial switch mech {
 	case .Time:
@@ -2166,6 +2247,10 @@ draw_teach :: proc(g: ^game.Game, v: View, time: f32) {
 	case .Handle:
 		for h in g.data.handles {
 			append(&floors, h.cell)
+		}
+	case .Eagle:
+		for e in g.data.eagles {
+			append(&floors, e.from)
 		}
 	}
 	for c in floors {

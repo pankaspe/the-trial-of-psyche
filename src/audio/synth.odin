@@ -30,6 +30,7 @@ Sound_Id :: enum u8 {
 	Good, // something found: a harp, a pad
 	Wind, // a gust (Zephyr, the exits): air and its song
 	Rustle, // the ants: a dry whisper of little feet and grains
+	Wings, // Jupiter's eagle: slow broad wingbeats, then the glide
 }
 
 // Effects drawn from recordings (loaded in audio.odin).
@@ -56,6 +57,7 @@ VARIANTS := [Sound_Id]int {
 	.Good       = 1,
 	.Wind       = 2,
 	.Rustle     = 3,
+	.Wings      = 2,
 }
 
 // The ambience of a place: a seamless stereo loop.
@@ -70,6 +72,7 @@ Bed :: enum u8 {
 	Garden, // the house of Venus at evening: a breeze, a fountain, doves far off
 	Pasture_Day, // the Sun's pastures at noon: a slow river, a warm breeze, cicadas far off
 	Pasture_Evening, // the same at evening: the river, crickets, the reeds stirring
+	Styx, // the gorge of the Styx: a low wind, the black water falling far off
 }
 
 BED_SECONDS :: 24
@@ -434,6 +437,40 @@ synthesize :: proc(id: Sound_Id, variant: int, allocator := context.allocator) -
 			s += hiss * 0.05 * math.pow(max(math.sin(math.PI * min(t / 1.4, 1)), 0), 2)
 		}
 		room, tail = ROOM, 0.8
+
+	case .Wings:
+		// the eagle: a few slow, broad beats of air (each a soft swell
+		// through a low band), slower as it takes her up, then the glide
+		b = buffer(3.4, context.temp_allocator)
+		BEATS :: 5
+		at := fx.rand_range(&rng, 0.02, 0.06)
+		for k in 0 ..< BEATS {
+			hz := fx.rand_range(&rng, 380, 520) * (1 - 0.06 * f32(k))
+			pk: Pink
+			f: Svf
+			s0 := int(at * RATE)
+			length := int(0.5 * RATE)
+			for j in 0 ..< length {
+				i := s0 + j
+				if i >= len(b) {
+					break
+				}
+				t := f32(j) / RATE
+				env := min(t / 0.09, 1) * math.exp(-t * 7)
+				_, bp, _ := svf(&f, pink(&pk, &rng), hz + 260 * env, 0.8)
+				b[i] += bp * env * (1 - 0.1 * f32(k))
+			}
+			at += 0.36 + 0.07 * f32(k)
+		}
+		pk: Pink
+		f: Svf
+		for &v, i in b {
+			t := time_of(i)
+			glide := fx.progress(t, 1.6, 0.8) * (1 - fx.progress(t, 2.6, 0.8))
+			_, bp, _ := svf(&f, pink(&pk, &rng), 700, 0.7)
+			v += bp * 0.35 * glide
+		}
+		room, tail = HALL, 1.8
 	}
 	soften(b, SOFT_HZ)
 	out := reverb(b, room, tail, allocator)
@@ -506,6 +543,8 @@ synthesize_bed :: proc(bed: Bed, allocator := context.allocator) -> []f32 {
 	case .Pasture_Evening:
 		wind = {0.1, 200, 600, 0.45}
 		crickets, cricket_level = 4, 0.022
+	case .Styx:
+		wind = {0.15, 100, 360, 0.55}
 	}
 	for ch in 0 ..< 2 {
 		pk: Pink
@@ -561,6 +600,12 @@ synthesize_bed :: proc(bed: Bed, allocator := context.allocator) -> []f32 {
 	}
 	if bed == .Pasture_Day || bed == .Pasture_Evening {
 		pasture(raw, m, &rng, bed == .Pasture_Day)
+	}
+	if bed == .Styx {
+		// the black water falling from the crag, far off: a deep steady wash
+		// and the spray over it
+		water_wash(raw, m, &rng, {0.09, 0.04}, 240, 110, 0.19)
+		water_wash(raw, m, &rng, {0.17, 0.07}, 1100, 300, 0.03)
 	}
 	// the wrap: the last XF seconds fade into the first, equal power
 	out := make([]f32, n * 2, allocator)

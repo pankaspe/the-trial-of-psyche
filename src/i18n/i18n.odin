@@ -114,6 +114,7 @@ Key :: enum u16 {
 	Fragment_11b, // the reed's advice
 	Fragment_11c, // Psyche goes to the river to die
 	Fragment_12,
+	Fragment_12b, // Jupiter's eagle remembers the old service
 	Fragment_13,
 	Fragment_14,
 	Fragment_15,
@@ -133,6 +134,8 @@ Key :: enum u16 {
 	Mech_Handle,
 	Mech_Time_Title,
 	Mech_Time,
+	Mech_Eagle_Title,
+	Mech_Eagle,
 
 	// the Book
 	Book_Missing,
@@ -186,6 +189,7 @@ Key :: enum u16 {
 	Rest_Button,
 	Rest_Button_Twice,
 	Place_Cave,
+	Place_Eagle,
 	Hint_No_Rest,
 	Hint_No_Rest_Twice,
 	Hint_Again_Twice,
@@ -214,6 +218,7 @@ Key :: enum u16 {
 	Intro_II_4,
 	Intro_III_1,
 	Intro_III_2,
+	Intro_III_3,
 	// beside Cupid in the dark, before the end of the game
 	V_Doubt,
 
@@ -240,6 +245,8 @@ Key :: enum u16 {
 	Hint_Veiled,
 	Hint_Handle,
 	Hint_Sundial,
+	Hint_Eagle,
+	Hint_Eagle_No_Floor, // the eagle would set her down where there is nothing
 	Hint_Fragment,
 	Hint_Lamp_Day,
 	Hint_Rest,
@@ -251,6 +258,7 @@ Key :: enum u16 {
 	Fragment_Continue_Pad,
 	Mech_Handle_Pad,
 	Mech_Time_Pad,
+	Mech_Eagle_Pad,
 	Hint_No_Rest_Pad,
 	Hint_No_Rest_Twice_Pad,
 	Hint_Again_Twice_Pad,
@@ -273,6 +281,7 @@ Key :: enum u16 {
 	Hint_Turn_Pad,
 	Hint_Handle_Pad,
 	Hint_Sundial_Pad,
+	Hint_Eagle_Pad,
 	Hint_Rest_Pad,
 	Pad_Cross, // a PlayStation pad's face buttons, by name
 	Pad_Circle,
@@ -294,6 +303,7 @@ Key :: enum u16 {
 	Outro_II_4,
 	Outro_III_1,
 	Outro_III_2,
+	Outro_III_3,
 
 	// endings
 	End_Trust_Title,
@@ -435,6 +445,7 @@ PAD_TEXT := #partial [Key]Key {
 	.Fragment_Continue  = .Fragment_Continue_Pad,
 	.Mech_Handle        = .Mech_Handle_Pad,
 	.Mech_Time          = .Mech_Time_Pad,
+	.Mech_Eagle         = .Mech_Eagle_Pad,
 	.Hint_No_Rest       = .Hint_No_Rest_Pad,
 	.Hint_No_Rest_Twice = .Hint_No_Rest_Twice_Pad,
 	.Hint_Again_Twice   = .Hint_Again_Twice_Pad,
@@ -457,6 +468,7 @@ PAD_TEXT := #partial [Key]Key {
 	.Hint_Turn          = .Hint_Turn_Pad,
 	.Hint_Handle        = .Hint_Handle_Pad,
 	.Hint_Sundial       = .Hint_Sundial_Pad,
+	.Hint_Eagle         = .Hint_Eagle_Pad,
 	.Hint_Rest          = .Hint_Rest_Pad,
 }
 
@@ -557,7 +569,7 @@ IT := [Key]string {
 	.Level_II_4     = "Il tempio di Cerere e Giunone",
 	.Level_III_1    = "La casa di Venere",
 	.Level_III_2    = "Il gregge del Sole",
-	.Level_III_3    = "Il vello d'oro",
+	.Level_III_3    = "L'aquila di Giove",
 	.Level_III_4    = "L'acqua dello Stige",
 	.Level_III_5    = "L'ordine del vaso",
 	.Level_IV_1     = "La torre che parla",
@@ -591,6 +603,7 @@ IT := [Key]string {
 	.Fragment_11b   = "Una canna verde, nutrice di musica soave, mossa da un soffio di vento: «Psiche, non macchiare con la tua morte le mie acque sante. E non andare tra le pecore finché il sole brucia: il suo calore le rende feroci, con le corna aguzze e i morsi velenosi. Aspetta la sera, quando si placano, e raccogli la lana d'oro rimasta tra i rovi.»",
 	.Fragment_11c   = "All'alba Venere le indica un bosco lungo il fiume, dove pascolano pecore splendenti d'oro. Psiche ci va volentieri, ma non per obbedire: vuole gettarsi da una rupe nel fiume e trovare finalmente pace.",
 	.Fragment_12    = "Venere va a un banchetto di nozze, profumata e coronata di rose. Lascia Psiche sola, davanti al lavoro impossibile.",
+	.Fragment_12b   = "All'improvviso arriva l'uccello regale di Giove, l'aquila rapace, le ali spiegate. Ricorda l'antico servizio: fu Amore a guidarla quando portò in cielo il fanciullo frigio, coppiere di Giove. Ora soccorre la sposa di Amore.",
 	.Fragment_13    = "L'acqua nera scende da una rupe altissima, tra rocce lisce. Draghi senza sonno la custodiscono, e le acque stesse gridano: «Vattene!»",
 	.Fragment_14    = "«Va' da Proserpina» dice Venere, «e chiedile un po' della sua bellezza, quanto basta per un giorno.»",
 	.Fragment_15    = "Psiche capisce che la mandano a morire. Sale su un'alta torre per gettarsi di sotto, «è la via più breve per l'Ade.»",
@@ -609,6 +622,9 @@ IT := [Key]string {
 	.Mech_Time_Title = "Il giorno e la sera",
 	.Mech_Time      = "Sulla meridiana, premi 2 (o clicca su Psiche): il fuso fa girare il tempo.\nDi giorno il sole mostra la verità e le sue scale reggono, ma la lucerna resta spenta. A sera le scale del sole crollano, tornano le illusioni e la lucerna si accende.",
 	.Mech_Time_Pad  = "Sulla meridiana, premi {RT}: il fuso fa girare il tempo.\nDi giorno il sole mostra la verità e le sue scale reggono, ma la lucerna resta spenta. A sera le scale del sole crollano, tornano le illusioni e la lucerna si accende.",
+	.Mech_Eagle_Title = "L'aquila di Giove",
+	.Mech_Eagle     = "L'aquila aspetta sul suo trespolo di bronzo.\nStando sul trespolo, premi Spazio: l'aquila ti porta dove brilla la luce d'oro. Solo andata: per tornare serve un'altra aquila.",
+	.Mech_Eagle_Pad = "L'aquila aspetta sul suo trespolo di bronzo.\nStando sul trespolo, premi {S}: l'aquila ti porta dove brilla la luce d'oro. Solo andata: per tornare serve un'altra aquila.",
 
 	.Book_Missing   = "frammento non ancora trovato",
 	.Book_Achievements = "Traguardi",
@@ -659,6 +675,7 @@ IT := [Key]string {
 	.Rest_Button = "Braciere · tieni premuto: ricomincia",
 	.Rest_Button_Twice = "Braciere · premi due volte: ricomincia",
 	.Place_Cave = "Entra nella grotta",
+	.Place_Eagle = "Chiama l'aquila",
 	.Hint_No_Rest = "Nessun braciere acceso: tieni premuto R per ricominciare il livello",
 	.Hint_Dead_End = "Vicolo cieco: da qui non si va più avanti. R ti riporta all'ultimo braciere; tieni premuto R per ricominciare il livello",
 	.Hint_Dead_End_No_Rest = "Vicolo cieco: da qui non si va più avanti. Tieni premuto R per ricominciare il livello",
@@ -690,6 +707,7 @@ IT := [Key]string {
 	.Intro_II_4     = "Psiche vaga giorno e notte in cerca dello sposo. Al tramonto trova un tempio di Cerere e di Giunone: spighe e falci in disordine, doni appesi alle colonne.",
 	.Intro_III_1    = "È ancora giorno nella casa di Venere. Nel cortile, una meridiana segna le ore.",
 	.Intro_III_2    = "Lungo il fiume pascola il gregge d'oro del Sole. Una canna sussurra: aspetta la sera.",
+	.Intro_III_3    = "Venere le mette in mano un'urna di cristallo: «Riempila all'acqua nera che sgorga dalla vetta.»",
 	.V_Doubt        = "Dorme. Ti tornano in mente le parole delle sorelle: e se fosse un mostro? La lampada è nella tua mano.",
 
 	.Tutorial_Label = "Come si gioca",
@@ -716,6 +734,8 @@ IT := [Key]string {
 	.Hint_Veiled    = "La lampada mostra in oro ciò che il buio nasconde: avvicinati con la luce, e diventa vero per sempre",
 	.Hint_Handle    = "Sei su una manovella: premi 2 (o clicca su Psiche) per ruotare la parte che muove",
 	.Hint_Sundial   = "Sei sulla meridiana: premi 2 (o clicca su Psiche) e il sole tramonterà",
+	.Hint_Eagle     = "Sei sul trespolo: premi Spazio e l'aquila ti porterà dove brilla la luce d'oro",
+	.Hint_Eagle_No_Floor = "L'aquila non si muove: dove ti poserebbe non c'è ancora terra",
 	.Hint_Lamp_Day  = "Il sole mostra già la verità: la fiamma aspetta la sera",
 	.Hint_Rest      = "Un braciere acceso: se ti perdi, R ti riporta qui (tenuto premuto, ricomincia il livello)",
 	.Card_Continue_Pad = "Premi {S} per continuare",
@@ -740,6 +760,7 @@ IT := [Key]string {
 	.Hint_Turn_Pad  = "Il monte non si mostra mai tutto da un lato. Premi {LB} o {RB} per girargli intorno: da un'altra parte le rocce lontane si toccano, e affiorano i frammenti del racconto.",
 	.Hint_Handle_Pad = "Sei su una manovella: premi {RT} per ruotare la parte che muove",
 	.Hint_Sundial_Pad = "Sei sulla meridiana: premi {RT} e il sole tramonterà",
+	.Hint_Eagle_Pad = "Sei sul trespolo: premi {S} e l'aquila ti porterà dove brilla la luce d'oro",
 	.Hint_Rest_Pad  = "Un braciere acceso: se ti perdi, {E} ti riporta qui (tenuto premuto, ricomincia il livello)",
 	.Pad_Cross      = "Croce",
 	.Pad_Circle     = "Cerchio",
@@ -759,6 +780,7 @@ IT := [Key]string {
 	.Outro_II_3     = "«Zefiro, prendimi!» grida la sorella, e si getta. Ma il vento non viene, e lei cade tra le rocce.\nPresto la stessa sorte tocca all'altra.",
 	.Outro_II_4     = "Cerere ne ha pietà, ma non può mettersi contro Venere. Giunone le appare, ma la legge vieta di accogliere la serva fuggita di un'altra.\nNon c'è più rifugio. Psiche andrà da Venere.",
 	.Outro_III_2    = "Psiche torna da Venere con il grembo pieno di lana d'oro. Ma nemmeno questo la placa: «So bene chi ti ha aiutata.»",
+	.Outro_III_3    = "L'aquila la porta fin sotto la vetta. Lassù l'acqua nera grida, e i draghi non dormono mai.",
 	.Outro_III_1    = "A notte Venere torna dal banchetto, accaldata dal vino e profumata di rose. Vede il lavoro compiuto.\n«Non è opera tua», dice, e le getta un tozzo di pane.",
 
 	.End_Trust_Title = "Fiducia",
@@ -862,7 +884,7 @@ EN := [Key]string {
 	.Level_II_4     = "The Temple of Ceres and Juno",
 	.Level_III_1    = "The House of Venus",
 	.Level_III_2    = "The Flock of the Sun",
-	.Level_III_3    = "The Golden Fleece",
+	.Level_III_3    = "Jupiter's Eagle",
 	.Level_III_4    = "The Water of the Styx",
 	.Level_III_5    = "The Order of the Box",
 	.Level_IV_1     = "The Speaking Tower",
@@ -896,6 +918,7 @@ EN := [Key]string {
 	.Fragment_11b   = "A green reed, nurse of sweet music, stirred by a breath of wind: “Psyche, do not stain my holy waters with your death. And do not go among the sheep while the sun burns: its heat makes them wild, their horns sharp, their bites poisonous. Wait for evening, when they grow calm, and gather the golden wool left on the briars.”",
 	.Fragment_11c   = "At dawn Venus points her to a grove along the river, where sheep shining with gold are grazing. Psyche goes willingly, but not to obey: she means to throw herself from a rock into the river and find rest at last.",
 	.Fragment_12    = "Venus goes off to a wedding feast, perfumed and crowned with roses. She leaves Psyche alone with the impossible task.",
+	.Fragment_12b   = "Suddenly the royal bird of Jupiter appears, the raptor eagle, its wings spread wide. It remembers the old service: Cupid guided it when it carried the Phrygian boy up to heaven to be Jupiter's cupbearer. Now it comes to the aid of Cupid's bride.",
 	.Fragment_13    = "Black water falls from a towering crag, between smooth rocks. Sleepless dragons guard it, and the waters themselves cry out: “Go away!”",
 	.Fragment_14    = "“Go to Proserpina,” says Venus, “and ask her for a little of her beauty, enough for a single day.”",
 	.Fragment_15    = "Psyche understands she is being sent to die. She climbs a high tower to throw herself down: the shortest road to Hades.",
@@ -914,6 +937,9 @@ EN := [Key]string {
 	.Mech_Time_Title = "Day and evening",
 	.Mech_Time      = "On the sundial, press 2 (or click Psyche): the spindle turns the time.\nBy day the sun shows the truth and its stairs stand, but the lamp stays dark. At evening the stairs of the sun crumble, the illusions return and the lamp can be lit.",
 	.Mech_Time_Pad  = "On the sundial, press {RT}: the spindle turns the time.\nBy day the sun shows the truth and its stairs stand, but the lamp stays dark. At evening the stairs of the sun crumble, the illusions return and the lamp can be lit.",
+	.Mech_Eagle_Title = "Jupiter's eagle",
+	.Mech_Eagle     = "The eagle waits on its bronze perch.\nStanding on the perch, press Space: the eagle carries you where the golden light shines. One way only: to come back you need another eagle.",
+	.Mech_Eagle_Pad = "The eagle waits on its bronze perch.\nStanding on the perch, press {S}: the eagle carries you where the golden light shines. One way only: to come back you need another eagle.",
 
 	.Book_Missing   = "fragment not found yet",
 	.Book_Achievements = "Achievements",
@@ -964,6 +990,7 @@ EN := [Key]string {
 	.Rest_Button = "Brazier · hold: start again",
 	.Rest_Button_Twice = "Brazier · press twice: start again",
 	.Place_Cave = "Go into the cave",
+	.Place_Eagle = "Call the eagle",
 	.Hint_No_Rest = "No brazier lit: hold R to start the level again",
 	.Hint_Dead_End = "A dead end: there is no way on from here. R takes you back to the last brazier; hold R to start the level again",
 	.Hint_Dead_End_No_Rest = "A dead end: there is no way on from here. Hold R to start the level again",
@@ -995,6 +1022,7 @@ EN := [Key]string {
 	.Intro_II_4     = "Psyche wanders day and night in search of her husband. At dusk she finds a temple of Ceres and Juno: wheat and sickles in disorder, gifts hung on the columns.",
 	.Intro_III_1    = "It is still day in the house of Venus. In the court, a sundial tells the hours.",
 	.Intro_III_2    = "Along the river grazes the golden flock of the Sun. A reed whispers: wait for evening.",
+	.Intro_III_3    = "Venus puts a crystal urn in her hands: “Fill it with the black water that springs from the summit.”",
 	.V_Doubt        = "He sleeps. Your sisters' words come back to you: what if he is a monster? The lamp is in your hand.",
 
 	.Tutorial_Label = "How to play",
@@ -1021,6 +1049,8 @@ EN := [Key]string {
 	.Hint_Veiled    = "The lamp shows in gold what the dark hides: come near with the light, and it becomes real for good",
 	.Hint_Handle    = "You stand on a handle: press 2 (or click Psyche) to turn the part it moves",
 	.Hint_Sundial   = "You stand on the sundial: press 2 (or click Psyche) and the sun will set",
+	.Hint_Eagle     = "You stand on the perch: press Space and the eagle will carry you where the golden light shines",
+	.Hint_Eagle_No_Floor = "The eagle does not stir: where it would set you down there is no ground yet",
 	.Hint_Lamp_Day  = "The sun already shows the truth: the flame waits for the evening",
 	.Hint_Rest      = "A lit brazier: if you lose your way, R brings you back here (held down, it restarts the level)",
 	.Card_Continue_Pad = "Press {S} to continue",
@@ -1045,6 +1075,7 @@ EN := [Key]string {
 	.Hint_Turn_Pad  = "The mountain never shows itself whole from one side. Press {LB} or {RB} to walk around it: from elsewhere, distant rocks touch, and fragments of the tale come to light.",
 	.Hint_Handle_Pad = "You stand on a handle: press {RT} to turn the part it moves",
 	.Hint_Sundial_Pad = "You stand on the sundial: press {RT} and the sun will set",
+	.Hint_Eagle_Pad = "You stand on the perch: press {S} and the eagle will carry you where the golden light shines",
 	.Hint_Rest_Pad  = "A lit brazier: if you lose your way, {E} brings you back here (held down, it restarts the level)",
 	.Pad_Cross      = "Cross",
 	.Pad_Circle     = "Circle",
@@ -1064,6 +1095,7 @@ EN := [Key]string {
 	.Outro_II_3     = "“Zephyr, take me!” the sister cries, and leaps. But no wind comes, and she falls among the rocks.\nSoon the other meets the same end.",
 	.Outro_II_4     = "Ceres pities her, but cannot set herself against Venus. Juno appears, but the law forbids sheltering another's runaway servant.\nThere is no refuge left. Psyche will go to Venus.",
 	.Outro_III_2    = "Psyche comes back to Venus with her lap full of golden wool. But not even this appeases her: “I know well who helped you.”",
+	.Outro_III_3    = "The eagle carries her up below the summit. Up there the black water cries out, and the dragons never sleep.",
 	.Outro_III_1    = "At night Venus comes back from the feast, flushed with wine and fragrant with roses. She sees the work done.\n“This is not your doing,” she says, and throws her a crust of bread.",
 
 	.End_Trust_Title = "Trust",

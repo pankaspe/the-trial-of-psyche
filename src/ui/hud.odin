@@ -35,7 +35,7 @@ Hud_Input :: struct {
 Hud_Action :: struct {
 	lamp_down: bool, // the lamp's slot is held down with the mouse
 	spindle:   bool,
-	place:     bool, // the action of the place (into the cave)
+	place:     bool, // the action of the place (into the cave, the eagle called)
 	turn:      int,
 	rest_down: bool, // the brazier's button is held down with the mouse
 }
@@ -523,9 +523,10 @@ flame :: proc(u: ^Ui, c: Vec2, k: f32, col: rl.Color) {
 @(private)
 draw_place :: proc(u: ^Ui, g: ^game.Game, hud: Hud_Input, act: ^Hud_Action) {
 	k := hud_k(u)
-	here := game.at_cave(g)
+	cave, eagle := game.at_cave(g), game.on_perch(g)
+	here := cave || eagle
 	if here {
-		u.place_key = .Place_Cave
+		u.place_key = cave ? .Place_Cave : .Place_Eagle
 	}
 	approach(u, &u.place_reveal, here ? 1 : 0, 1 / 0.25)
 	a := u.place_reveal
@@ -865,6 +866,16 @@ tutorial_sign :: proc(u: ^Ui, g: ^game.Game, key: i18n.Key, c: Vec2, col: rl.Col
 		rl.EndScissorMode()
 		rl.DrawLineEx(c + Vec2{-24, 6} * s, c + Vec2{24, 6} * s, 2.5 * s, col)
 		rl.DrawLineEx(c + Vec2{-14, 13} * s, c + Vec2{14, 13} * s, 2 * s, col)
+	case .Hint_Eagle:
+		// a bird gliding, its wings beating slowly
+		beat := 6 * math.sin(g.time * 2.4)
+		for sgn in ([2]f32{-1, 1}) {
+			mid := c + Vec2{sgn * 12, -4 - beat * 0.5} * s
+			tip := c + Vec2{sgn * 24, -2 - beat} * s
+			rl.DrawLineEx(c + {0, 2 * s}, mid, 3 * s, col)
+			rl.DrawLineEx(mid, tip, 2.5 * s, col)
+		}
+		rl.DrawCircleV(c + {0, 3 * s}, 3.5 * s, col)
 	case .Hint_Fragment:
 		// the scroll of the count, glowing
 		glow_dot(c, 22 * s, {255, 214, 140, 255}, 0.5 + 0.3 * breathe(u, g.time, 3))

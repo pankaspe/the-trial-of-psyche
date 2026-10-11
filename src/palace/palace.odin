@@ -17,6 +17,10 @@
 // other. A passage is a real edge between the two mouths (it works in the
 // dark and in the light, whatever the view).
 //
+// Jupiter's eagle (Act III) carries her from its perch to another surface, one
+// way: not an edge of the walk graph (the graph is undirected, and walks never
+// take it), a move of its own (game.call_eagle, the solver's Flight).
+//
 // Act II: veiled blocks (hidden in the dark) become real for good where the
 // lamp's light reaches them (`flipped`). Parts of the palace turn a quarter at
 // a time about a pivot (`part_rot`). The graph is rebuilt after every change.
@@ -360,6 +364,22 @@ cave_at :: proc(p: ^Palace, c: Cell) -> int {
 		}
 	}
 	return -1
+}
+
+// The eagle whose perch is at surface c, or -1.
+eagle_at :: proc(p: ^Palace, c: Cell) -> int {
+	for e, i in p.data.eagles {
+		if e.from == c {
+			return i
+		}
+	}
+	return -1
+}
+
+// Can eagle i carry her now? Its perch and its landing are floors.
+eagle_flies :: proc(p: ^Palace, i: int) -> bool {
+	e := p.data.eagles[i]
+	return is_surface(p, e.from) && is_surface(p, e.to)
 }
 
 // Is the step a-b a passage through the rock, from one cave's mouth to the other's?

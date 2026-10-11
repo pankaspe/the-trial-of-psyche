@@ -12,7 +12,7 @@
 // fewest decisions, how many states can be reached and how many of them are
 // dead ends (the level must be restarted), and checks that no part turns
 // into the palace. For the designer, one more report: which pieces the level
-// could do without (each sundial, ram, handle, pair of caves taken out in
+// could do without (each sundial, ram, handle, eagle, pair of caves taken out in
 // turn: a level still solved without one has a piece that does nothing, or a
 // way round it).
 package level_check
@@ -268,6 +268,9 @@ check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 		append(&needed, c.cell)
 	}
 	append(&needed, ..data.sundials[:])
+	for e in data.eagles {
+		append(&needed, e.from, e.to)
+	}
 	for prop in data.props {
 		if prop.kind not_in level.BLOCKING_PROPS {
 			continue
@@ -395,6 +398,24 @@ check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 			say(&said, &ok, true, "the sundial at %v is not on a floor", c)
 		}
 	}
+	for e in data.eagles {
+		if !pl.is_surface(p, e.from) {
+			say(&said, &ok, true, "the eagle's perch at %v is not on a floor", e.from)
+		}
+		if !pl.is_surface(p, e.to) {
+			say(&said, &ok, true, "the eagle from %v sets her down at %v, not on a floor", e.from, e.to)
+		}
+		for h in data.handles {
+			if h.cell == e.from {
+				say(&said, &ok, true, "a handle and an eagle's perch at %v", e.from)
+			}
+		}
+		for c in data.sundials {
+			if c == e.from {
+				say(&said, &ok, true, "a sundial and an eagle's perch at %v", e.from)
+			}
+		}
+	}
 	// what stands on a veiled stone floats while it is hidden (the hand
 	// ropes of a bridge do not: they hang between the posts)
 	for prop in data.props {
@@ -481,7 +502,7 @@ solve_report :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Allo
 		optional := pl.solve(p, data.exit, c, alloc)
 		fmt.printfln("\nfragment %v: reachable %v, optional %v", c, reach.solved, optional.solved)
 		if reach.solved {
-			fmt.printfln("  fragment plan: %d steps, %d turns, %d lightings, %d handles, %d times turned", reach.steps, reach.turns, reach.lightings, reach.handles, reach.times)
+			fmt.printfln("  fragment plan: %d steps, %d turns, %d lightings, %d handles, %d times turned, %d flights", reach.steps, reach.turns, reach.lightings, reach.handles, reach.times, reach.flights)
 		}
 		if !reach.solved || !optional.solved {
 			fmt.eprintln("error: the fragment must be reachable and never required")
@@ -505,8 +526,8 @@ print_plan :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Alloca
 		fmt.eprintln("error: the exit cannot be reached")
 		return false
 	}
-	fmt.printfln("plan: %d steps (%d in the light), %d turns, %d lightings, %d handles, %d times turned", sol.steps, sol.light_steps, sol.turns, sol.lightings, sol.handles, sol.times)
-	fmt.printfln("decisions: %d (turns, lightings, handles, sundials)", decisions(sol))
+	fmt.printfln("plan: %d steps (%d in the light), %d turns, %d lightings, %d handles, %d times turned, %d flights", sol.steps, sol.light_steps, sol.turns, sol.lightings, sol.handles, sol.times, sol.flights)
+	fmt.printfln("decisions: %d (turns, lightings, handles, sundials, eagles)", decisions(sol))
 	if data.has_lamp {
 		rules := game.oil_rules(data)
 		least := pl.oil_left(p, sol.plan[:], rules)
@@ -546,6 +567,8 @@ print_plan :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Alloca
 		case .Time:
 			day = !day
 			fmt.printfln("  the sundial at %v: %s", st.cell, day ? "day (the rams stand)" : "evening (the rams lie down)")
+		case .Flight:
+			fmt.printfln("  the eagle carries her to %v%s", st.cell, st.changed > 0 ? fmt.tprintf(" (%d blocks change)", st.changed) : "")
 		case .Start, .Step:
 		}
 		_ = i
@@ -570,7 +593,7 @@ needed_report :: proc(text: string) {
 			continue
 		}
 		switch f[0] {
-		case "sundial", "ram", "handle":
+		case "sundial", "ram", "handle", "eagle":
 			append(&tests, [2]int{i, -1})
 		case "cave":
 			append(&caves, i)
@@ -633,7 +656,7 @@ brief :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Allocator) 
 		for st, i in sol.plan {
 			visits += int(st.move == .Handle && (i == 0 || sol.plan[i - 1].move != .Handle))
 		}
-		fmt.printfln("%s steps %d turns %d handles %d visits %d times %d decisions %d states %d dead %d", tag, sol.steps, sol.turns, sol.handles, visits, sol.times, decisions(sol), sol.states, sol.dead)
+		fmt.printfln("%s steps %d turns %d handles %d visits %d times %d flights %d decisions %d states %d dead %d", tag, sol.steps, sol.turns, sol.handles, visits, sol.times, sol.flights, decisions(sol), sol.states, sol.dead)
 	}
 	sol := pl.solve(p, pl.goal_cell(p), nil, alloc)
 	line("exit", sol)
@@ -649,7 +672,7 @@ brief :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Allocator) 
 	}
 }
 
-// What the player decides along a plan: turns, lightings, handles, sundials.
+// What the player decides along a plan: turns, lightings, handles, sundials, eagles.
 decisions :: proc(sol: pl.Solution) -> int {
-	return sol.turns + sol.lightings + sol.handles + sol.times
+	return sol.turns + sol.lightings + sol.handles + sol.times + sol.flights
 }

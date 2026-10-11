@@ -1,0 +1,88 @@
+# The Trial of Psyche - level III.3: "Jupiter's Eagle" (format: level_04.txt)
+#
+# The gorge under the Styx's crag, in total darkness: no moon, the black water
+# all round, little oil in the lamp. Jupiter's eagles carry Psyche from rock
+# to rock, one way only, and only where there is a floor to set her down.
+# The bank where she starts (S); up the east bank, by stairs the wall hides
+# from the first view, the first seal raises the landing on the north ledge
+# (B). From the bank's west end the first eagle takes her to the pillar (P):
+# in view 3 a seam joins its seal, which raises the shelf under the summit.
+# From the pillar the second eagle takes her to the ledge, but only once the
+# first seal has raised its landing: whoever flies to the pillar first is
+# stranded there (the brazier on the bank remembers). On the ledge the lamp
+# wakes a veiled stone to the third perch; the third eagle sets her on the
+# shelf, and in view 0 a seam joins the spring's rock (the exit).
+# Fragments: a rock in the water (from the bank, view 2); a tooth of rock by
+# the pillar's seal (from the pillar, view 3).
+size 11
+setting styx_night
+mechanic eagle
+lamp 3
+oil 7
+intro intro_iii_3
+outro outro_iii_3
+water 0 0 10 10
+# S: the bank where she starts (h1)
+rock 6 8 0 0
+rock 7 8 0 0
+rock 8 8 0 0
+rock 7 9 0 0
+rock 8 9 0 0
+start 8 9 1
+rest 8 9 1
+eagle 6 8 1 2 7 3
+hint 6 8 1 hint_eagle
+# the gorge's east wall
+rock 10 8 0 2
+prop pine 10 8 3 mx
+rock 10 6 0 3
+prop boulder 10 6 4
+# C: the east bank, up to the second seal
+rock 9 8 0 0
+rock 9 7 0 0
+steps 9 7 1 my
+rock 9 6 0 1
+rock 9 5 0 1
+steps 9 5 2 my
+rock 9 4 0 2
+sigil 9 4 3
+# P: the pillar (h3), its seal above (h4)
+rock 1 7 0 2
+rock 2 7 0 2
+rock 1 8 0 2
+rock 2 8 0 2
+rock 1 9 0 3
+sigil 1 9 4
+eagle 2 8 3 8 3 2
+# B: the ledge (h2)
+rock 8 3 0 0
+rise 8 3 1 rock 1
+rock 8 2 0 1
+rock 9 2 0 1
+rock 8 1 0 0
+veiled 8 1 1 rock
+rock 7 1 0 1
+eagle 7 1 2 3 2 4
+# T: the summit
+rock 3 2 0 2
+rise 3 2 3 rock 2
+rock 5 3 0 4
+exit 5 3 5
+prop lip 5 3 5 px
+# the fragments: a rock in the black water (from the bank, view 2), and a
+# tooth of rock beside the pillar's seal (from the pillar, view 3)
+rock 5 6 0 1
+fragment 5 6 2
+rock 0 9 0 3
+prop lip 0 9 4 px
+fragment 0 9 4
+# decoration: dead pines, a cairn, lips of broken rock
+prop shrub 7 9 1 mx
+prop cairn 8 9 1 px
+prop lip 8 9 1 py
+prop lip 7 9 1 py
+prop lip 1 8 3 mx
+prop lip 1 8 3 py
+prop pine 9 2 2 px
+prop cairn 9 4 3 px
+prop shrub 3 2 4 my

@@ -6,7 +6,8 @@
 // the rams stand in the way; at evening the illusions are back and the rams
 // lie down, steps; the lamp is lit only at evening, and the sun coming up puts
 // it out). The lamp's light makes veiled blocks real within its reach; the
-// lamp lit on a seal raises its `rise` blocks.
+// lamp lit on a seal raises its `rise` blocks. From an eagle's perch, a flight
+// carries her to its landing, one way.
 // A state is her cell, the view, the lamp and the palace's configuration
 // (which blocks changed, how each part is turned, the time). The search is a cheapest
 // path (steps cost least; turns, lightings and handles more, so the plan it
@@ -46,6 +47,7 @@ Move :: enum u8 {
 	Douse,
 	Handle,
 	Time, // the spindle on a sundial: day <-> evening
+	Flight, // Jupiter's eagle: from its perch to its landing, one way
 }
 
 COST := [Move]int {
@@ -57,6 +59,7 @@ COST := [Move]int {
 	.Douse      = 2,
 	.Handle     = 6,
 	.Time       = 6,
+	.Flight     = 4,
 }
 
 // What a move costs more when the lamp burns through it (about a unit per
@@ -70,6 +73,7 @@ LIT_COST := [Move]int {
 	.Douse      = 0,
 	.Handle     = 3,
 	.Time       = 0,
+	.Flight     = 11,
 }
 LIT_PASSAGE_COST :: 8
 
@@ -90,6 +94,7 @@ Solution :: struct {
 	lightings:   int,
 	handles:     int,
 	times:       int, // the time turned (at a sundial)
+	flights:     int, // carried by an eagle
 	states:      int, // states reached from the start
 	dead:        int, // ...of which cannot reach the goal any more (R restarts)
 	given_up:    bool, // more than `limit` states: the search stopped, nothing is known
@@ -330,6 +335,24 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 				}
 			}
 
+			// an eagle: carried to its landing (the lamp, if lit, burns there)
+			if e := eagle_at(p, st.cell); e >= 0 {
+				to := p.data.eagles[e].to
+				if _, lands := g.index[to]; lands && (!has_avoid || to != avoid_cell) {
+					flown := st
+					flown.cell = to
+					changed := 0
+					if st.lamp {
+						n := 0
+						flown.cfg, n = touch(&s, flown.cfg, to)
+						flown.cfg, changed = seal(p, flown.cfg, to, n)
+					}
+					if _, still := graph_of(&s, flown.cfg).index[to]; still {
+						next(&entries, &seen, &buckets, &edges, id, flown, .Flight, false, changed)
+					}
+				}
+			}
+
 			// steps
 			dark := !st.lamp && !st.cfg.day
 			if dark {
@@ -439,6 +462,8 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 				sol.handles += 1
 			case .Time:
 				sol.times += 1
+			case .Flight:
+				sol.flights += 1
 			}
 		}
 	}
@@ -528,7 +553,7 @@ check_dynamic_fragment :: proc(p: ^Palace, i: int, allocator := context.allocato
 
 // Does the level have blocks that change or parts that turn?
 is_dynamic :: proc(d: ^level.Level_Data) -> bool {
-	if len(d.parts) > 0 || len(d.sundials) > 0 {
+	if len(d.parts) > 0 || len(d.sundials) > 0 || len(d.eagles) > 0 {
 		return true
 	}
 	if d.has_sigil && len(d.rise) > 0 && !d.has_amore {
@@ -548,6 +573,7 @@ Oil_Rules :: struct {
 	light_cost: f32, // lighting it
 	step:       f32, // a step
 	passage:    f32, // a step through a cave
+	flight:     f32, // carried by an eagle
 	turn:       f32, // a turn of the view
 	handle:     f32, // a part turning
 	rise_delay: f32, // a seal's stones come up one after the other...
@@ -580,6 +606,8 @@ oil_left :: proc(p: ^Palace, plan: []Plan_Step, rules: Oil_Rules) -> (least: f32
 			lamp = false // the sun comes up (the lamp burns only at evening)
 		case .Step:
 			spent = is_passage(p, at, st.cell) ? rules.passage : rules.step
+		case .Flight:
+			spent = rules.flight
 		}
 		at = st.cell
 		if lamp {

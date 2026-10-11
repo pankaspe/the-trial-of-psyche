@@ -266,6 +266,7 @@ SETTING_BED := [level.Setting]audio.Bed {
 	.Pasture_Day   = .Pasture_Day,
 	.Pasture_Evening = .Pasture_Evening,
 	.Venus_Day     = .Garden,
+	.Styx_Night    = .Styx,
 }
 
 // What the mixer plays: the act's music (silent while the screen goes
@@ -815,6 +816,7 @@ MECHANIC_CARD := [level.Mechanic][2]i18n.Key {
 	.Veiled  = {.Mech_Veiled_Title, .Mech_Veiled},
 	.Handle  = {.Mech_Handle_Title, .Mech_Handle},
 	.Time    = {.Mech_Time_Title, .Mech_Time},
+	.Eagle   = {.Mech_Eagle_Title, .Mech_Eagle},
 }
 
 @(private)
@@ -896,15 +898,15 @@ update_lamp :: proc(app: ^App, slot_down: bool) {
 	}
 }
 
-// The action of the place: into the cave at her feet.
+// The action of the place: into the cave at her feet, or the eagle called.
 place :: proc(g: ^game.Game) -> bool {
-	return game.enter_cave(g)
+	return game.enter_cave(g) || game.call_eagle(g)
 }
 
 // The pad in play: the stick (or the d-pad) steers Psyche; the two tools on
 // the triggers, as their slots show (LT the lamp, read with the HUD:
 // update_lamp; RT the spindle), South the action of the place (into the cave
-// at her feet), North the arrow over Psyche; the shoulders or a flick
+// at her feet, the eagle called), North the arrow over Psyche; the shoulders or a flick
 // of the right stick turn the palace. East, the brazier, is read with the HUD
 // (update_rest). One button, one thing: South does not stand in for a tool,
 // so a button never does what another one shows.

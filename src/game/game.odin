@@ -31,6 +31,10 @@
 // others: she walks into the dark and out of the other. Walks never go
 // through a cave by themselves: a click elsewhere must not carry her there.
 //
+// Jupiter's eagle (Act III) waits on its perch. Standing there, Space (or the
+// card over her) calls it: it takes her by the shoulders and carries her to
+// its landing, one way, then flies back to its perch. Walks never call it.
+//
 // Cutscenes are timelines: a phase plus the time spent in it; every animation
 // is a function of that time, so there are no callbacks to keep alive.
 //
@@ -80,6 +84,11 @@ DISSOLVE_TIME :: 1.2 // a veiled block appearing
 PASSAGE_TIME :: 2.4 // through the rock from one cave to the other
 PASSAGE_DEPTH :: 0.45 // how far into the mouth she walks before the dark takes her
 TIME_TURN :: 2.4 // a sundial turns the time: the sun goes down (or comes up)
+FLIGHT_TIME :: 3.6 // carried by the eagle from its perch to its landing
+FLIGHT_TAKE :: 0.2 // ...the part of it where the eagle comes down to her...
+FLIGHT_LAND :: 0.86 // ...and where she touches the ground again
+EAGLE_RETURN :: 3.2 // the eagle flying back to its perch
+EAGLE_HOLD :: 0.82 // how far above her feet the eagle holds her
 
 Phase :: enum u8 {
 	Play,
@@ -129,6 +138,7 @@ Psyche :: struct {
 	step_t:        f32,
 	step_illusion: bool,
 	step_passage:  bool, // the step is a passage between two caves
+	step_flight:   bool, // the step is a flight in the eagle's talons
 	pos:           Vec3, // feet, world space
 	yaw:           f32, // facing, radians in the world xy plane
 	target_yaw:    f32,
@@ -187,6 +197,8 @@ Game :: struct {
 	part_turning:   int, // the part a handle is turning (phase Mechanism)
 	evening:        f32, // 0 day .. 1 evening, follows palace.day (the sky, the rams' pose)
 	rest:           Rest, // the last brazier Psyche lit
+	eagle_flying:   int, // the eagle carrying her (while psyche.step_flight)
+	eagle_back:     [level.MAX_EAGLES]f32, // per eagle: time since it let her go, < 0 before
 	rests_lit:      []bool, // per data.rests entry
 	teach_pending:  bool, // the level's new mechanic is still to be presented
 	mechanic_new:   bool, // event for the app: present the new mechanic now (it clears it)
@@ -306,6 +318,7 @@ load_text :: proc(g: ^Game, index: int, text: string) -> (err: Maybe(Load_Error)
 	g.cine_out = -1
 	g.arrive_t = -1
 	g.rise_t = -1
+	g.eagle_back = -1
 	g.collapse_t = -1
 	for &t in g.fragment_t {
 		t = -1
@@ -342,6 +355,7 @@ oil_rules :: proc(d: ^level.Level_Data) -> pl.Oil_Rules {
 		light_cost = LIGHT_COST,
 		step = STEP_TIME,
 		passage = PASSAGE_TIME,
+		flight = FLIGHT_TIME,
 		turn = ROTATE_TIME,
 		handle = PART_TIME,
 		rise_delay = RISE_DELAY,
@@ -794,6 +808,47 @@ enter_cave :: proc(g: ^Game) -> bool {
 	return true
 }
 
+// Psyche stands still on an eagle's perch (the action of the place shows).
+on_perch :: proc(g: ^Game) -> bool {
+	return standing(g) && pl.eagle_at(&g.palace, g.psyche.cell) >= 0
+}
+
+// ...and it can carry her: where it would set her down there is a floor.
+at_eagle :: proc(g: ^Game) -> bool {
+	return on_perch(g) && pl.eagle_flies(&g.palace, pl.eagle_at(&g.palace, g.psyche.cell))
+}
+
+// The eagle on the perch at her feet carries her to its landing; with no
+// floor there, it does not stir (and she is told why).
+call_eagle :: proc(g: ^Game) -> bool {
+	if !on_perch(g) {
+		return false
+	}
+	if !at_eagle(g) {
+		audio.play(.Blocked, -8)
+		hint(g, .Hint_Eagle_No_Floor, 4, true)
+		return true
+	}
+	i := pl.eagle_at(&g.palace, g.psyche.cell)
+	psy := &g.psyche
+	sa.clear(&g.path)
+	g.pending_turn = 0
+	g.steering = false
+	g.eagle_flying = i
+	g.eagle_back[i] = -1
+	psy.step_from = psy.cell
+	psy.step_to = g.data.eagles[i].to
+	psy.step_t = 0
+	psy.step_illusion = false
+	psy.step_passage = false
+	psy.step_flight = true
+	psy.walking = true
+	face_toward(g, pl.node_world(&g.palace, psy.step_to) - pl.node_world(&g.palace, psy.step_from))
+	learn(g, .Hint_Eagle)
+	audio.play(.Wings, -8)
+	return true
+}
+
 // Start walking to `target` as a click on it would (tests, scripted scenes).
 walk_to :: proc(g: ^Game, target: Cell) -> bool {
 	from := g.psyche.walking ? g.psyche.step_to : g.psyche.cell
@@ -948,6 +1003,7 @@ next_step :: proc(g: ^Game) {
 	psy.step_t = 0
 	psy.step_illusion = illusion && !passage
 	psy.step_passage = passage
+	psy.step_flight = false
 	psy.walking = true
 	if psy.step_illusion {
 		audio.play(.Seam, -18)
@@ -963,6 +1019,9 @@ next_step :: proc(g: ^Game) {
 
 // How long the current step lasts.
 step_time :: proc(g: ^Game) -> f32 {
+	if g.psyche.step_flight {
+		return FLIGHT_TIME
+	}
 	return g.psyche.step_passage ? PASSAGE_TIME : STEP_TIME
 }
 
@@ -1023,6 +1082,9 @@ step_points :: proc(g: ^Game, u: f32) -> (pos: Vec3, second_half: bool) {
 		}
 		return fx.lerp(cave_inside(g, j), b, fx.sine_in_out((u - 0.5) * 2)), true
 	}
+	if psy.step_flight {
+		return flight_point(g, a, b, u), u >= 0.5
+	}
 	if !psy.step_illusion {
 		return walk_point(g, psy.step_from, psy.step_to, u), u >= 0.5
 	}
@@ -1039,6 +1101,47 @@ step_points :: proc(g: ^Game, u: f32) -> (pos: Vec3, second_half: bool) {
 	edge_b := iso.world_point(edge_view + f32(k), f32(r), size)
 	return fx.lerp(edge_b, b, (u - 0.5) * 2), true
 }
+
+// Where the eagle holds her along a flight from a to b (u = 0..1): she waits
+// for it, is lifted, carried high over the gorge, set down.
+flight_point :: proc(g: ^Game, a, b: Vec3, u: f32) -> Vec3 {
+	k := fx.progress(u, FLIGHT_TAKE, FLIGHT_LAND - FLIGHT_TAKE)
+	s := fx.sine_in_out(k)
+	high := 1.3 + abs(a.z - b.z) * 0.5
+	return fx.lerp(a, b, s) + {0, 0, high * math.sin(math.PI * k)}
+}
+
+// Where eagle i is, which way it faces (world yaw) and how far its wings are
+// spread (0 folded on its perch .. 1 open).
+eagle_pose :: proc(g: ^Game, i: int) -> (pos: Vec3, yaw: f32, spread: f32) {
+	e := g.data.eagles[i]
+	perch := Vec3{f32(e.from.x), f32(e.from.y), f32(e.from.z)} + EAGLE_PERCH
+	land := pl.node_world(&g.palace, e.to)
+	out := land - pl.node_world(&g.palace, e.from)
+	yaw = math.atan2(out.y, out.x)
+	psy := &g.psyche
+	if psy.walking && psy.step_flight && g.eagle_flying == i {
+		u := psy.step_t / FLIGHT_TIME
+		held := psy.pos + {0, 0, EAGLE_HOLD}
+		if u < FLIGHT_TAKE {
+			// off the perch, a wingbeat up, down onto her shoulders
+			k := fx.sine_in_out(u / FLIGHT_TAKE)
+			return fx.lerp(perch, held, k) + {0, 0, 0.5 * math.sin(math.PI * k)}, yaw, k
+		}
+		return held, yaw, 1
+	}
+	if t := g.eagle_back[i]; t >= 0 && t < EAGLE_RETURN {
+		// up from where it let her go and back over the gorge to its perch
+		k := fx.sine_in_out(t / EAGLE_RETURN)
+		from := land + {0, 0, EAGLE_HOLD}
+		home := perch - from
+		return fx.lerp(from, perch, k) + {0, 0, (1.8 + abs(home.z) * 0.5) * math.sin(math.PI * k)}, math.atan2(home.y, home.x), 1 - fx.progress(t, EAGLE_RETURN * 0.85, EAGLE_RETURN * 0.15)
+	}
+	return perch, yaw, 0
+}
+
+// Where the eagle sits on its post, in cell space (the post: render's Perch).
+EAGLE_PERCH :: Vec3{0.78, 0.22, 0.86}
 
 // A point on the way from cell a to the next cell b (u = 0..1), on the
 // ground: stairs are climbed tread by tread.
@@ -1112,6 +1215,11 @@ update_walk :: proc(g: ^Game, dt: f32) {
 	}
 	psy.cell = psy.step_to
 	psy.pos = pl.stand_world(&g.palace, psy.cell)
+	if psy.step_flight {
+		// the eagle lets her go and flies home
+		psy.step_flight = false
+		g.eagle_back[g.eagle_flying] = 0
+	}
 	footstep(g, psy.cell)
 	arrive(g, psy.cell)
 	next_step(g)
@@ -1564,6 +1672,11 @@ update_effects :: proc(g: ^Game, dt: f32) {
 	if g.amore.fly_t >= 0 {
 		g.amore.fly_t += dt
 	}
+	for &t in g.eagle_back {
+		if t >= 0 {
+			t = min(t + dt, 1e3)
+		}
+	}
 	for &t in g.fragment_t {
 		if t >= 0 {
 			t += dt
@@ -1849,7 +1962,7 @@ candelabrum_flame :: proc(g: ^Game, i: int) -> f32 {
 is_tutorial :: proc(key: Key) -> bool {
 	#partial switch key {
 	case .Hint_Move, .Hint_Turn, .Hint_Lamp, .Hint_Illusion, .Hint_Sigil, .Hint_Oil,
-	     .Hint_Veiled, .Hint_Handle, .Hint_Sundial, .Hint_Fragment:
+	     .Hint_Veiled, .Hint_Handle, .Hint_Sundial, .Hint_Eagle, .Hint_Fragment:
 		return true
 	}
 	return false

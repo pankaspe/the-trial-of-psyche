@@ -186,3 +186,63 @@ exit 3 2 2
 	sol := palace.solve(&h.palace, h.data.exit, nil, virtual.arena_allocator(&arena))
 	testing.expect(t, sol.solved && sol.times == 0, "the solver climbs it by day")
 }
+
+// Jupiter's eagle: from its perch a flight one way, only where there is a
+// floor to set her down (here the stone a seal raises).
+@(private)
+EAGLE_PALACE :: `size 9
+setting styx_night
+lamp
+column 0 1 0 0
+column 1 1 0 0
+column 0 2 0 0
+start 0 1 1
+sigil 0 2 1
+eagle 1 1 1 6 6 3
+column 6 6 0 1
+rise 6 6 2 rock
+column 7 6 0 2
+exit 7 6 3
+`
+
+@(test)
+eagle_flies_one_way :: proc(t: ^testing.T) {
+	g: game.Game
+	defer game.destroy(&g)
+	if !load_time(t, &g, EAGLE_PALACE) {
+		return
+	}
+	testing.expect(t, walk(t, &g, {1, 1, 1}), "onto the perch")
+	testing.expect(t, game.on_perch(&g) && !game.at_eagle(&g), "on the perch, nowhere to land yet")
+	testing.expect(t, game.call_eagle(&g) && !g.psyche.walking, "the eagle does not stir")
+	testing.expect(t, g.hud.hint.key == .Hint_Eagle_No_Floor, "and she is told why")
+
+	testing.expect(t, walk(t, &g, {0, 2, 1}), "onto the seal")
+	game.toggle_lamp(&g)
+	run(&g, 3)
+	testing.expect(t, 0 in g.activated && palace.is_surface(&g.palace, {6, 6, 3}), "the seal raises the landing")
+	game.toggle_lamp(&g)
+	testing.expect(t, walk(t, &g, {1, 1, 1}), "back onto the perch")
+	testing.expect(t, game.at_eagle(&g), "now the eagle can carry her")
+	testing.expect(t, !game.walk_to(&g, {6, 6, 3}), "a walk never calls the eagle")
+	testing.expect(t, game.call_eagle(&g) && g.psyche.step_flight, "the eagle takes her")
+	run(&g, game.FLIGHT_TIME * 0.5)
+	testing.expect(t, g.psyche.pos.z > 3, "carried high over the water")
+	run(&g, game.FLIGHT_TIME * 0.5 + 0.2)
+	testing.expect(t, g.psyche.cell == {6, 6, 3} && !g.psyche.walking, "set down on the landing")
+	testing.expect(t, !game.on_perch(&g) && !game.walk_to(&g, {0, 1, 1}), "one way: no way back")
+
+	// the solver plays the same rules
+	arena: virtual.Arena
+	defer virtual.arena_destroy(&arena)
+	h: game.Game
+	defer game.destroy(&h)
+	if !load_time(t, &h, EAGLE_PALACE) {
+		return
+	}
+	sol := palace.solve(&h.palace, h.data.exit, nil, virtual.arena_allocator(&arena))
+	testing.expect(t, sol.solved && sol.flights == 1 && sol.lightings == 1, "solved: the seal, then the eagle")
+	testing.expect(t, play_plan(t, &h, sol.plan[:]), "the game accepts every move")
+	run(&h, game.EXIT_END + 0.5)
+	testing.expect(t, game.is_over(&h), "the plan reaches the exit")
+}
