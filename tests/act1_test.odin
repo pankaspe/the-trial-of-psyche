@@ -60,7 +60,7 @@ level_I_1_zephyrs_crag :: proc(t: ^testing.T) {
 	game.request_turn(&g, -1)
 	run(&g, 1)
 	testing.expect(t, game.rot(&g) == 3, "one turn")
-	testing.expect(t, !g.hud.hint.active, "turning dismisses the turning hint")
+	testing.expect(t, g.learned[i18n.Key.Hint_Turn] && g.hud.hint.key == .Hint_Fragment, "turning dismisses the turning hint; the fragments' one follows")
 	testing.expect(t, walk(t, &g, g.data.exit), "the turned crag joins the edge to the rock")
 	exits(t, &g)
 }
