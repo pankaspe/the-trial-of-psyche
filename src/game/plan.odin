@@ -23,10 +23,11 @@ apply_move :: proc(g: ^Game, st: pl.Plan_Step) -> bool {
 		toggle_lamp(g)
 		return g.lamp_on != before
 	case .Handle:
-		use_handle(g)
+		use_spindle(g)
 		return g.phase == .Mechanism
-	case .Ants:
-		return call_ants(g)
+	case .Time:
+		use_spindle(g)
+		return g.phase == .Time
 	}
 	return true
 }

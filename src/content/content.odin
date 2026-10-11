@@ -160,21 +160,21 @@ SHADER_RIDGES_FS :: #load("../../assets/shaders/ridges.fs", cstring)
 SHADER_POST_BLUR_FS :: #load("../../assets/shaders/post_blur.fs", cstring)
 SHADER_VEIL_FS :: #load("../../assets/shaders/veil.fs", cstring)
 
-// The skills Psyche learns along the way, one per act, each on its
-// number key (1, 2...): the HUD's slots. Each is known from a level on.
+// Psyche's two tools, each on its number key (1, 2) and pad trigger (LT, RT):
+// the HUD's slots. Each is known from a level on; what it does depends on the
+// place (the lamp: the truth, a seal, veiled blocks; the spindle: a handle,
+// a sundial).
 Skill :: enum u8 {
 	Lamp, // 1
-	Handle, // 2
-	Ants, // 3
+	Spindle, // 2
 }
 
 SKILL_FROM := [Skill]string {
-	.Lamp   = "I.4",
-	.Handle = "II.3",
-	.Ants   = "III.1",
+	.Lamp    = "I.4",
+	.Spindle = "II.3",
 }
 
-MAX_SKILLS :: 4 // the slots of the HUD: the ones still to learn show locked
+MAX_SKILLS :: len(Skill) // the slots of the HUD: the ones still to learn show locked
 
 // Is the skill known in level slot `index`?
 skill_known :: proc(index: int, skill: Skill) -> bool {

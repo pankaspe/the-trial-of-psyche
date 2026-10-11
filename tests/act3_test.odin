@@ -1,37 +1,21 @@
-// Act III: the ants carry a stone of seeds along the way the current view
-// shows (illusions too) into the nearest free hollow, where it stays for good;
-// on a small hand-made palace, through the game and the solver.
+// Act III: day and evening, turned by the spindle on a sundial; by day the
+// sun shows the truth and the rams stand in the way, at evening the
+// illusions are back and the rams lie down (steps). The sun shows, only the
+// flame makes real: the lamp is lit only at evening. On small hand-made
+// palaces, through the game and the solver.
 package tests
 
 import "core:mem/virtual"
 import "core:testing"
 
 import "../src/game"
-import "../src/iso"
 import "../src/palace"
 
-ANTS_LEVEL :: 8 // III.1: the ants are known from here on
-
-// A row at h1 ends in the seed; from there only an illusion of view 0 leads
-// on, up to a walk at h2 broken by a hollow before the exit.
-@(private)
-SEED_PALACE :: `size 8
-block 0 2 0
-block 1 2 0
-block 2 2 0
-column 4 3 0 1
-column 5 3 0 1
-hollow 6 3 1
-column 7 3 0 1
-seed 2 2 1
-start 0 2 1
-rest 0 2 1
-exit 7 3 2
-`
+TIME_LEVEL :: 8 // III.1: the spindle is known (from II.3)
 
 @(private)
-load_ants :: proc(t: ^testing.T, g: ^game.Game, text: string) -> bool {
-	if err := game.load_text(g, ANTS_LEVEL, text); err != nil {
+load_time :: proc(t: ^testing.T, g: ^game.Game, text: string) -> bool {
+	if err := game.load_text(g, TIME_LEVEL, text); err != nil {
 		testing.expectf(t, false, "test palace does not load: %v", err)
 		return false
 	}
@@ -40,97 +24,8 @@ load_ants :: proc(t: ^testing.T, g: ^game.Game, text: string) -> bool {
 	return true
 }
 
-@(test)
-ants_carry_along_the_view :: proc(t: ^testing.T) {
-	g: game.Game
-	defer game.destroy(&g)
-	if !load_ants(t, &g, SEED_PALACE) {
-		return
-	}
-	testing.expect(t, game.has_skill(&g, .Ants), "the ants are known in Act III")
-	testing.expect(t, !game.at_seed(&g), "at the start she is not beside the seed")
-	testing.expect(t, !game.call_ants(&g), "no seed beside her: nothing happens")
-	testing.expect(t, walk(t, &g, {1, 2, 1}), "to the seed")
-	testing.expect(t, game.at_seed(&g), "beside the seed")
-
-	// view 1: the illusion is not there, the ants find no way and go back
-	game.set_view(&g, 1)
-	testing.expect(t, !game.call_ants(&g), "view 1: no way to a hollow")
-	run(&g, game.ANTS_FAIL + 0.5)
-	testing.expect(t, g.palace.seed_at[0] < 0 && g.phase == .Play, "the seed stays where it lay")
-
-	// view 0: across the illusion to the walk, and into the hollow
-	game.set_view(&g, 0)
-	testing.expect(t, game.call_ants(&g), "view 0: the ants carry it")
-	testing.expect(t, g.phase == .Carry, "the game waits while they carry it")
-	testing.expect(t, g.carry.illusion[0], "its way starts across the illusion")
-	run(&g, game.carry_end(&g) + 0.2)
-	testing.expect(t, g.phase == .Play && g.palace.seed_at[0] == 0, "it dropped into the hollow")
-	testing.expect(t, palace.is_real_edge(&g.palace, {5, 3, 2}, {6, 3, 2}) && palace.is_real_edge(&g.palace, {6, 3, 2}, {7, 3, 2}), "the hollow filled, the walk is whole: real, in every view")
-	game.set_view(&g, 2)
-	testing.expect(t, !game.at_seed(&g), "nothing left to carry")
-	game.set_view(&g, 0)
-	testing.expect(t, walk(t, &g, {6, 3, 2}), "across the illusion onto the filled hollow")
-
-	// the brazier brings back the palace as it was: the seed where it lay
-	testing.expect(t, game.return_to_rest(&g), "R: back to the brazier")
-	testing.expect(t, g.palace.seed_at[0] < 0 && palace.solid_at(&g.palace, {2, 2, 1}).kind == .Block, "the seed lies where it was")
-	testing.expect(t, palace.solid_at(&g.palace, {6, 3, 1}).kind == .None, "and the hollow is empty again")
-}
-
-// The ants never carry a seed over the cell where Psyche stands, and with
-// the lamp lit they believe only real ways.
-@(test)
-ants_see_what_she_sees :: proc(t: ^testing.T) {
-	g: game.Game
-	defer game.destroy(&g)
-	LEVEL :: `size 8
-block 0 2 0
-block 1 2 0
-block 2 2 0
-block 1 3 0
-column 4 3 0 1
-column 5 3 0 1
-hollow 6 3 1
-column 7 3 0 1
-seed 2 2 1
-start 0 2 1
-exit 7 3 2
-lamp
-`
-	if !load_ants(t, &g, LEVEL) {
-		return
-	}
-	testing.expect(t, walk(t, &g, {1, 2, 1}), "beside the seed")
-	game.toggle_lamp(&g)
-	run(&g, 1)
-	testing.expect(t, !game.call_ants(&g), "in the light the illusion is not a way")
-	game.toggle_lamp(&g)
-	run(&g, 1)
-	testing.expect(t, game.call_ants(&g), "in the dark they take it")
-}
-
-// The solver finds the plan through the right view, and the game plays it.
-@(test)
-ants_solved_and_played :: proc(t: ^testing.T) {
-	g: game.Game
-	defer game.destroy(&g)
-	if !load_ants(t, &g, SEED_PALACE) {
-		return
-	}
-	arena: virtual.Arena
-	testing.expect(t, virtual.arena_init_growing(&arena) == nil)
-	defer virtual.arena_destroy(&arena)
-	sol := palace.solve(&g.palace, g.data.exit, nil, virtual.arena_allocator(&arena))
-	testing.expect(t, sol.solved && sol.ants == 1, "solved with the ants once")
-	testing.expect(t, play_plan(t, &g, sol.plan[:]), "the game accepts every move")
-	run(&g, game.EXIT_END + 0.5)
-	testing.expectf(t, g.phase == .Finished && g.ending == .Exit, "the plan reaches the exit (Psyche at %v)", g.psyche.cell)
-	_ = iso.Cell{}
-}
-
-// Day and evening: a row at h1 with a reed near the start; a ram stands in
-// the way by day; lying at evening it is a step up to the ledge of the exit.
+// A row at h1 with a sundial near the start; a ram stands in the way by day;
+// lying at evening it is a step up to the ledge of the exit.
 @(private)
 TIME_PALACE :: `size 8
 setting pasture_day
@@ -141,7 +36,7 @@ column 2 2 0 0
 column 3 2 0 0
 column 4 2 0 1
 column 5 2 0 1
-reed 1 2 1
+sundial 1 2 1
 ram 3 2 1 px
 start 0 2 1
 rest 0 2 1
@@ -149,26 +44,30 @@ exit 5 2 2
 `
 
 @(test)
-reeds_turn_the_time :: proc(t: ^testing.T) {
+sundial_turns_the_time :: proc(t: ^testing.T) {
 	g: game.Game
 	defer game.destroy(&g)
-	if !load_ants(t, &g, TIME_PALACE) {
+	if !load_time(t, &g, TIME_PALACE) {
 		return
 	}
 	testing.expect(t, g.palace.day && !game.dark(&g), "the level starts by day: the sun shows the truth")
 	testing.expect(t, !game.walk_to(&g, {5, 2, 2}), "by day the ram stands in the way")
 	testing.expect(t, !palace.is_node(&g.palace, {3, 2, 1}), "nobody stands where the ram is")
+	game.use_spindle(&g)
+	testing.expect(t, g.palace.day && g.phase == .Play, "off the sundial the spindle does nothing")
 
-	// a walk never passes over a reed: it ends there
-	path: palace.Path
-	testing.expect(t, !palace.find_path(&g.palace, {0, 2, 1}, {2, 2, 1}, false, &path), "no way over the reed")
+	// a walk passes over a sundial: only the spindle turns the time
+	testing.expect(t, walk(t, &g, {2, 2, 1}), "over the sundial")
+	testing.expect(t, g.palace.day, "walking over it does not turn the time")
+	testing.expect(t, walk(t, &g, {1, 2, 1}), "back onto the sundial")
+	testing.expect(t, game.on_spindle(&g) && game.at_sundial(&g), "on the sundial, the spindle ready")
 
-	testing.expect(t, walk(t, &g, {1, 2, 1}), "onto the reed")
-	testing.expect(t, g.phase == .Time && !g.palace.day, "the reed turns the time: evening")
+	game.use_spindle(&g)
+	testing.expect(t, g.phase == .Time && !g.palace.day, "the spindle turns the time: evening")
 	run(&g, game.TIME_TURN + 0.2)
 	testing.expect(t, g.phase == .Play && g.evening > 0.99, "the sun is down")
 	testing.expect(t, palace.is_stair(&g.palace, {3, 2, 1}), "the ram lies down: a step")
-	testing.expect(t, walk(t, &g, {2, 2, 1}), "off the reed (the time stays)")
+	testing.expect(t, walk(t, &g, {2, 2, 1}), "off the sundial (the time stays)")
 	testing.expect(t, !g.palace.day, "stepping off does not turn it back")
 
 	// the brazier remembers the day
@@ -181,13 +80,64 @@ reeds_turn_the_time :: proc(t: ^testing.T) {
 	sol := palace.solve(&g.palace, {5, 2, 2}, nil, virtual.arena_allocator(&arena))
 	testing.expect(t, sol.solved && sol.times == 1, "the solver turns the time once")
 	testing.expect(t, g.palace.day, "the solver leaves the palace as loaded (by day)")
-	for st in sol.plan {
-		ok := game.apply_move(&g, st)
-		testing.expectf(t, ok, "the game takes the move %v to %v", st.move, st.cell)
-		for i := 0; !game.idle(&g) && i < 2000; i += 1 {
-			game.update(&g, DT)
-			free_all(context.temp_allocator)
-		}
-	}
+	testing.expect(t, play_plan(t, &g, sol.plan[:]), "the game accepts every move")
+	run(&g, game.EXIT_END + 0.5)
 	testing.expect(t, game.is_over(&g), "the plan reaches the exit")
+}
+
+// The sun shows, only the flame makes real: a seal on the row raises the
+// step to the exit, and the lamp is lit only at evening.
+@(private)
+FLAME_PALACE :: `size 8
+setting pasture_day
+evening pasture_evening
+lamp
+column 0 2 0 0
+column 1 2 0 0
+column 2 2 0 0
+column 3 2 0 0
+column 4 2 0 1
+sundial 1 2 1
+sigil 2 2 1
+rise 3 2 1 px
+start 0 2 1
+exit 4 2 2
+`
+
+@(test)
+the_flame_waits_for_evening :: proc(t: ^testing.T) {
+	g: game.Game
+	defer game.destroy(&g)
+	if !load_time(t, &g, FLAME_PALACE) {
+		return
+	}
+	testing.expect(t, walk(t, &g, {2, 2, 1}), "onto the seal")
+	game.toggle_lamp(&g)
+	run(&g, 1)
+	testing.expect(t, !g.lamp_on && g.activated == {}, "by day the lamp is not lit, the seal waits")
+
+	testing.expect(t, walk(t, &g, {1, 2, 1}), "to the sundial")
+	game.use_spindle(&g)
+	run(&g, game.TIME_TURN + 0.2)
+	testing.expect(t, !g.palace.day, "evening")
+	game.toggle_lamp(&g)
+	run(&g, 0.5)
+	testing.expect(t, g.lamp_on, "at evening the lamp is lit")
+	game.use_spindle(&g)
+	testing.expect(t, g.palace.day && !g.lamp_on, "the sun coming up puts the lamp out")
+	run(&g, game.TIME_TURN + 0.2)
+
+	// the solver: evening, the lamp on the seal, up the risen step
+	arena: virtual.Arena
+	defer virtual.arena_destroy(&arena)
+	h: game.Game
+	defer game.destroy(&h)
+	if !load_time(t, &h, FLAME_PALACE) {
+		return
+	}
+	sol := palace.solve(&h.palace, h.data.exit, nil, virtual.arena_allocator(&arena))
+	testing.expect(t, sol.solved && sol.times == 1 && sol.lightings == 1, "solved: the evening, then the flame")
+	testing.expect(t, play_plan(t, &h, sol.plan[:]), "the game accepts every move")
+	run(&h, game.EXIT_END + 0.5)
+	testing.expect(t, game.is_over(&h), "the plan reaches the exit")
 }

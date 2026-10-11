@@ -825,7 +825,6 @@ MECHANIC_CARD := [level.Mechanic][2]i18n.Key {
 	.None    = {.Mech_New, .Mech_New},
 	.Veiled  = {.Mech_Veiled_Title, .Mech_Veiled},
 	.Handle  = {.Mech_Handle_Title, .Mech_Handle},
-	.Ants    = {.Mech_Ants_Title, .Mech_Ants},
 	.Time    = {.Mech_Time_Title, .Mech_Time},
 }
 
@@ -865,15 +864,12 @@ play_input :: proc(app: ^App) {
 		return
 	}
 	// R (the brazier, held: the level again) is read with the HUD: update_rest
-	// the skills on their number keys, Space for the action of the place
+	// the two tools on their number keys, Space for the action of the place
 	if rl.IsKeyPressed(.ONE) || rl.IsKeyPressed(.KP_1) || rl.IsKeyPressed(.L) || rl.IsMouseButtonPressed(.RIGHT) {
 		game.toggle_lamp(g)
 	}
-	if (rl.IsKeyPressed(.TWO) || rl.IsKeyPressed(.KP_2) || rl.IsKeyPressed(.F)) && game.has_skill(g, .Handle) {
-		game.use_handle(g)
-	}
-	if (rl.IsKeyPressed(.THREE) || rl.IsKeyPressed(.KP_3)) && game.has_skill(g, .Ants) {
-		game.call_ants(g)
+	if rl.IsKeyPressed(.TWO) || rl.IsKeyPressed(.KP_2) || rl.IsKeyPressed(.F) {
+		game.use_spindle(g)
 	}
 	if rl.IsKeyPressed(.SPACE) {
 		place(g)
@@ -892,36 +888,29 @@ play_input :: proc(app: ^App) {
 	}
 }
 
-// The action of the place: into the cave at her feet, or the ants called to
-// the seed beside her.
+// The action of the place: into the cave at her feet.
 place :: proc(g: ^game.Game) -> bool {
-	if game.enter_cave(g) {
-		return true
-	}
-	return game.at_seed(g) && game.call_ants(g)
+	return game.enter_cave(g)
 }
 
-// The pad in play: the stick (or the d-pad) steers Psyche; each skill on its
-// own button, as its slot shows (West the lamp, North the handle, LT the
-// ants; RT waits for the last skill), South into the cave at her feet; the
-// shoulders or a flick of the right stick turn the palace. East, the brazier,
-// is read with the HUD (update_rest). One button, one thing: South does not
-// stand in for a skill, so a button never does what another one shows.
+// The pad in play: the stick (or the d-pad) steers Psyche; the two tools on
+// the triggers, as their slots show (LT the lamp, RT the spindle), South the
+// action of the place (into the cave at her feet); the shoulders or a flick
+// of the right stick turn the palace. East, the brazier, is read with the HUD
+// (update_rest). One button, one thing: South does not stand in for a tool,
+// so a button never does what another one shows.
 pad_play :: proc(app: ^App) {
 	g := &app.game
 	dir, fresh := input.steer()
 	game.steer(g, dir, fresh)
-	if input.take(.West) {
+	if input.take(.LT) {
 		game.toggle_lamp(g)
 	}
-	if input.take(.North) && game.has_skill(g, .Handle) {
-		game.use_handle(g)
-	}
-	if input.take(.LT) && game.has_skill(g, .Ants) {
-		game.call_ants(g)
+	if input.take(.RT) {
+		game.use_spindle(g)
 	}
 	if input.take(.South) {
-		game.enter_cave(g)
+		place(g)
 	}
 	turn := input.flick()
 	if input.take(.LB) {
@@ -987,11 +976,8 @@ draw_screens :: proc(app: ^App) {
 		if act.lamp {
 			game.toggle_lamp(g)
 		}
-		if act.handle {
-			game.use_handle(g)
-		}
-		if act.ants {
-			game.call_ants(g)
+		if act.spindle {
+			game.use_spindle(g)
 		}
 		if act.place {
 			place(g)

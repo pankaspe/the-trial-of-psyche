@@ -114,14 +114,17 @@ pad_texts_name_its_buttons :: proc(t: ^testing.T) {
 		i18n.set_pad(i18n.PAD_XBOX)
 		s := i18n.tr(.Controls)
 		testing.expectf(t, strings.contains(s, "LB") && !strings.contains(s, "{"), "%v: the pad's controls name LB: %s", l, s)
-		testing.expectf(t, strings.contains(i18n.tr(.Hint_Lamp), "X"), "%v: the lamp is X", l)
-		for k in ([]i18n.Key{.Hint_Ants, .Mech_Ants}) {
-			// the ants are LT, the button their slot shows, not A
-			testing.expectf(t, strings.contains(i18n.tr(k), "LT") && !strings.contains(i18n.tr(k), " A:"), "%v: the ants are LT: %s", l, i18n.tr(k))
+		for k in ([]i18n.Key{.Hint_Lamp, .Hint_Oil}) {
+			// the lamp is LT, the button its slot shows
+			testing.expectf(t, strings.contains(i18n.tr(k), "LT"), "%v: the lamp is LT: %s", l, i18n.tr(k))
+		}
+		for k in ([]i18n.Key{.Hint_Handle, .Hint_Sundial, .Mech_Handle, .Mech_Time}) {
+			// the spindle is RT, the button its slot shows, not A
+			testing.expectf(t, strings.contains(i18n.tr(k), "RT") && !strings.contains(i18n.tr(k), " A:"), "%v: the spindle is RT: %s", l, i18n.tr(k))
 		}
 		i18n.set_pad(i18n.pad_playstation())
 		testing.expectf(t, strings.contains(i18n.tr(.Hint_Turn), "L1"), "%v: PlayStation shoulders", l)
-		testing.expectf(t, strings.contains(i18n.tr(.Hint_Ants), "L2"), "%v: PlayStation triggers", l)
+		testing.expectf(t, strings.contains(i18n.tr(.Hint_Lamp), "L2"), "%v: PlayStation triggers", l)
 		i18n.set_pad(nil)
 		testing.expectf(t, strings.contains(i18n.tr(.Controls), "Q / E"), "%v: the keyboard's controls again", l)
 	}

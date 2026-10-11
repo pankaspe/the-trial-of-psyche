@@ -44,7 +44,7 @@ the light shows the truth — until the oil runs out.
   </tr>
   <tr>
     <td align="center"><sub><b>II.4 · The Temple of Ceres and Juno</b> — the lamp lit: the illusions crack</sub></td>
-    <td align="center"><sub><b>III.1 · The House of Venus</b> — the ants carry the seeds along the way you see</sub></td>
+    <td align="center"><sub><b>III.1 · The House of Venus</b> — evening on the house of the goddess</sub></td>
   </tr>
   <tr>
     <td colspan="2"><img src="docs/screenshots/the-book.jpg" alt="The Book, with the fragments of the tale found"></td>
@@ -61,9 +61,10 @@ the light shows the truth — until the oil runs out.
 - **The tale, in order**: four acts and an epilogue, from the oracle to Olympus;
   each act opens with a short cutscene. Texts written anew from the Latin, in
   **Italian and English**.
-- **Two new mechanics per act**: turning the diorama and the lamp (Act I), veiled
-  stones and handles (Act II), the ants (Act III)… The other levels go deeper, not
-  wider; the last ones of an act are real puzzles.
+- **Two tools, many uses**: the lamp shows the truth, lights the seals and makes
+  veiled stones real; the spindle turns parts of the palace and, from Act III, the
+  time of day. The place decides what they do; the last levels of an act fuse them
+  into real puzzles.
 - **Fragments of the tale**, hidden and optional, gathered in the Book.
 - **A place for every level**, with its own sky, light and sound; generative,
   dreamlike music that never repeats.
@@ -112,9 +113,8 @@ analyses a level.
 |---|---|---|
 | walk | click | left stick or d-pad |
 | turn the diorama | Q / E | LB / RB |
-| the lamp | 1, L or right click | X |
-| turn a handle (standing on it) | 2 or F | Y |
-| call the ants (beside a seed) | 3 or Space | LT |
+| the lamp | 1, L or right click | LT |
+| the spindle (on a handle or a sundial) | 2, F or a click on Psyche | RT |
 | into a cave | Space | A |
 | back to the last brazier · hold: restart | R | B |
 | pause | Esc | Start |

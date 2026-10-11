@@ -29,15 +29,13 @@ Mechanic :: enum u8 {
 	None,
 	Veiled,
 	Handle,
-	Ants,
-	Time, // day and evening, turned by the reeds
+	Time, // day and evening, turned at a sundial
 }
 
 MECHANIC_NAME := [Mechanic]string {
 	.None    = "none",
 	.Veiled  = "veiled",
 	.Handle  = "handle",
-	.Ants    = "ants",
 	.Time    = "time",
 }
 
@@ -265,12 +263,10 @@ Level_Data :: struct {
 	parts:        [dynamic]Part,
 	handles:      [dynamic]Handle,
 	rests:        [dynamic]Cell, // braziers: lit by passing, R brings Psyche back to the last one
-	seeds:        [dynamic]Cell, // Act III: stones of seeds, each resting on the surface (x, y, h): the ants carry them
-	hollows:      [dynamic]Cell, // the hollows where seeds belong: empty block cells (x, y, z) in a floor
 	mechanic:     Mechanic, // the new mechanic this level introduces (a card at the start)
-	setting:      Setting, // the sky, the backdrop, the light on the stones (by day, in a level with reeds)
-	evening:      Setting, // a level with reeds: the look at evening
-	reeds:        [dynamic]Cell, // Act III: stepping onto one turns the time (day <-> evening); the level starts by day
+	setting:      Setting, // the sky, the backdrop, the light on the stones (by day, in a level with sundials)
+	evening:      Setting, // a level with sundials: the look at evening
+	sundials:     [dynamic]Cell, // Act III: standing on one, the spindle turns the time (day <-> evening); the level starts by day
 	rams:         [dynamic]Ram, // the Sun's rams: standing by day, lying (a step) at evening
 }
 
@@ -282,9 +278,7 @@ MAX_DYNAMIC :: 64 // veiled blocks in one level
 MAX_TIERS :: 6
 MAX_SEALS :: 4
 Seals :: bit_set[0 ..< MAX_SEALS; u8] // which seals have been lit
-MAX_SEEDS :: 4
-MAX_HOLLOWS :: 6
-MAX_REEDS :: 8
+MAX_SUNDIALS :: 8
 MAX_RAMS :: 12
 
 // The cell of a part's block after `r` quarter turns.
@@ -323,9 +317,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	data.parts = make([dynamic]Part, 0, 2)
 	data.handles = make([dynamic]Handle, 0, 2)
 	data.rests = make([dynamic]Cell, 0, 4)
-	data.seeds = make([dynamic]Cell, 0, MAX_SEEDS)
-	data.hollows = make([dynamic]Cell, 0, MAX_HOLLOWS)
-	data.reeds = make([dynamic]Cell, 0, MAX_REEDS)
+	data.sundials = make([dynamic]Cell, 0, MAX_SUNDIALS)
 	data.rams = make([dynamic]Ram, 0, MAX_RAMS)
 	has_evening := false
 	has_start := false
@@ -463,7 +455,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 			}
 			if !found {
-				return data, fail(line_no, "mechanic: expected veiled, handle, ants or time")
+				return data, fail(line_no, "mechanic: expected veiled, handle or time")
 			}
 
 		case "rest":
@@ -474,39 +466,18 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			append(&data.rests, v)
 			max_z = max(max_z, v.z)
 
-		case "seed", "hollow":
+		case "sundial":
 			v: [3]i32
 			if !ints(args, v[:]) {
-				return data, fail(line_no, "%s: expected x y %s", fields[0], fields[0] == "seed" ? "h" : "z")
+				return data, fail(line_no, "sundial: expected x y h")
 			}
 			if part != 0 {
-				return data, fail(line_no, "%s: not inside a part", fields[0])
+				return data, fail(line_no, "sundial: not inside a part")
 			}
-			if fields[0] == "seed" {
-				if len(data.seeds) == MAX_SEEDS {
-					return data, fail(line_no, "seed: at most %d per level", MAX_SEEDS)
-				}
-				append(&data.seeds, v)
-			} else {
-				if len(data.hollows) == MAX_HOLLOWS {
-					return data, fail(line_no, "hollow: at most %d per level", MAX_HOLLOWS)
-				}
-				append(&data.hollows, v)
+			if len(data.sundials) == MAX_SUNDIALS {
+				return data, fail(line_no, "sundial: at most %d per level", MAX_SUNDIALS)
 			}
-			max_z = max(max_z, v.z + 1)
-
-		case "reed":
-			v: [3]i32
-			if !ints(args, v[:]) {
-				return data, fail(line_no, "reed: expected x y h")
-			}
-			if part != 0 {
-				return data, fail(line_no, "reed: not inside a part")
-			}
-			if len(data.reeds) == MAX_REEDS {
-				return data, fail(line_no, "reed: at most %d per level", MAX_REEDS)
-			}
-			append(&data.reeds, v)
+			append(&data.sundials, v)
 			max_z = max(max_z, v.z + 1)
 
 		case "ram":
@@ -821,34 +792,21 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			return data, fail(0, "prop %v outside the grid", p.cell)
 		}
 	}
-	for c in data.seeds {
+	if len(data.sundials) > 0 && !has_evening {
+		return data, fail(0, "sundial: a level with sundials needs its 'evening' setting")
+	}
+	if len(data.rams) > 0 && len(data.sundials) == 0 {
+		return data, fail(0, "ram: the rams lie down only at evening: the level needs a sundial")
+	}
+	for c in data.sundials {
 		if !check(c, data.size, data.height) {
-			return data, fail(0, "seed %v outside the grid", c)
-		}
-	}
-	for c in data.hollows {
-		if !check(c, data.size, data.height) {
-			return data, fail(0, "hollow %v outside the grid", c)
-		}
-	}
-	if len(data.reeds) > 0 && !has_evening {
-		return data, fail(0, "reed: a level with reeds needs its 'evening' setting")
-	}
-	if len(data.rams) > 0 && len(data.reeds) == 0 {
-		return data, fail(0, "ram: the rams lie down only at evening: the level needs a reed")
-	}
-	for c in data.reeds {
-		if !check(c, data.size, data.height) {
-			return data, fail(0, "reed %v outside the grid", c)
+			return data, fail(0, "sundial %v outside the grid", c)
 		}
 	}
 	for m in data.rams {
 		if !check(m.cell, data.size, data.height) {
 			return data, fail(0, "ram %v outside the grid", m.cell)
 		}
-	}
-	if len(data.seeds) > 0 && len(data.hollows) == 0 {
-		return data, fail(0, "seed: a level with seeds needs a hollow")
 	}
 	// a part must stay inside the grid in all four positions
 	for e in data.blocks {

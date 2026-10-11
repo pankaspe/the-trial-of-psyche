@@ -21,16 +21,11 @@
 // lamp's light reaches them (`flipped`). Parts of the palace turn a quarter at
 // a time about a pivot (`part_rot`). The graph is rebuilt after every change.
 //
-// Act III: stones of seeds rest on the floor, each a block in the grid; the
-// ants carry one (`seed_route`) along the surfaces that join in the current
-// view (illusions too, in the dark; never stairs or caves) to the nearest
-// free hollow beside a floor, and it drops in, a block there for good
-// (`seed_at`).
-//
-// Day and evening (Act III): stepping onto a reed turns the time. By day the
-// sun shows the truth, as the lamp does (callers pass `dark` false), and the
-// Sun's golden rams stand on their cells: nobody passes. At evening the
-// illusions come back and the rams lie down, each a step up (stairs).
+// Day and evening (Act III): standing on a sundial, the spindle turns the
+// time. By day the sun shows the truth, as the lamp does (callers pass `dark`
+// false), and the Sun's golden rams stand on their cells: nobody passes. At
+// evening the illusions come back and the rams lie down, each a step up
+// (stairs).
 //
 // Memory: every array is allocated once from the allocator given to `init`
 // (the level arena) and reused; rebuilding the graph or the illusions does not
@@ -75,9 +70,7 @@ Palace :: struct {
 	flipped:    []bool, // per data.blocks entry: changed for good (see the top)
 	part_rot:   [level.MAX_PARTS]int, // quarter turns of each part
 	overlap:    bool, // two blocks share a cell (a part turned into the palace)
-	seed_at:    [level.MAX_SEEDS]i8, // where each seed is: -1 where it lay, k: set in hollow k for good
-	seed_lifted: int, // a seed held up by the ants while its way is sought (-1: none)
-	day:        bool, // a level with reeds: the sun is up (the rams stand)
+	day:        bool, // a level with sundials: the sun is up (the rams stand)
 	// world grid, indexed by cell_index
 	solid:      []level.Solid,
 	blocked:    []bool,
@@ -100,11 +93,7 @@ init :: proc(p: ^Palace, data: ^level.Level_Data, allocator := context.allocator
 	p.data = data
 	p.size = data.size
 	p.height = data.height
-	for &at in p.seed_at {
-		at = -1
-	}
-	p.seed_lifted = -1
-	p.day = len(data.reeds) > 0 // a level with reeds starts by day
+	p.day = len(data.sundials) > 0 // a level with sundials starts by day
 	n := int(p.size * p.size * p.height)
 	p.solid = make([]level.Solid, n)
 	p.blocked = make([]bool, n)
@@ -282,16 +271,6 @@ rebuild_real :: proc(p: ^Palace) {
 			p.solid[cell_index(p, e.cell)] = e.solid
 		}
 	}
-	for _, i in p.data.seeds {
-		if c, ok := seed_cell(p, i); ok {
-			ci := cell_index(p, c)
-			p.overlap ||= p.solid[ci].kind != .None
-			p.solid[ci] = {kind = .Block}
-			if over := c + {0, 0, 1}; p.seed_at[i] < 0 && in_grid(p, over) {
-				p.blocked[cell_index(p, over)] = true // a heap of seeds is no floor (set in its hollow, it is)
-			}
-		}
-	}
 	for m in p.data.rams {
 		i := cell_index(p, m.cell)
 		if p.day {
@@ -361,148 +340,12 @@ rebuild_real :: proc(p: ^Palace) {
 	graph_build(&p.real, len(p.nodes))
 }
 
-// --- Act III: the seeds and the ants ---------------------------------------------------
+// --- day and evening ------------------------------------------------------------------
 
-// The block cell seed i fills now (not there while the ants hold it up).
-seed_cell :: proc(p: ^Palace, i: int) -> (c: Cell, ok: bool) {
-	if i == p.seed_lifted {
-		return
-	}
-	k := p.seed_at[i]
-	return k < 0 ? p.data.seeds[i] : p.data.hollows[k], true
-}
-
-// Is hollow k still waiting for its seed?
-hollow_free :: proc(p: ^Palace, k: int) -> bool {
-	for at in p.seed_at[:len(p.data.seeds)] {
-		if int(at) == k {
-			return false
-		}
-	}
-	return solid_at(p, p.data.hollows[k]).kind == .None
-}
-
-// The seed still where it lay right beside surface c (on the same level, no
-// rail between them), that Psyche can ask the ants to carry; -1 if none.
-seed_beside :: proc(p: ^Palace, c: Cell) -> int {
-	if !is_surface(p, c) {
-		return -1
-	}
-	for s, i in p.data.seeds {
-		if p.seed_at[i] >= 0 || i == p.seed_lifted || s.z != c.z || abs(s.x - c.x) + abs(s.y - c.y) != 1 {
-			continue
-		}
-		d, _ := iso.dir_from_vec({s.x - c.x, s.y - c.y})
-		if open(p, c, d) && open(p, s, iso.opposite(d)) {
-			return i
-		}
-	}
-	return -1
-}
-
-// The free hollow seed could drop into from surface c: a gap in the floor
-// beside it, one block down, the side open and the air over the gap clear.
-// The first in file order; -1 if none.
-@(private)
-hollow_beside :: proc(p: ^Palace, c: Cell) -> int {
-	for h, k in p.data.hollows {
-		if h.z != c.z - 1 || abs(h.x - c.x) + abs(h.y - c.y) != 1 || !hollow_free(p, k) {
-			continue
-		}
-		d, _ := iso.dir_from_vec({h.x - c.x, h.y - c.y})
-		over := h + {0, 0, 1}
-		if open(p, c, d) && solid_at(p, over).kind == .None && !p.blocked[cell_index(p, over)] {
-			return k
-		}
-	}
-	return -1
-}
-
-// The way the ants carry seed i: from where it lies, over the surfaces that
-// join in the current view (`dark`: its illusions too; never stairs, caves or
-// the cell `avoid`, where Psyche stands), to the nearest surface beside a
-// free hollow. `out` gets the cells from the seed's place to that surface.
-// Returns the hollow, or -1 when there is no way in this view. The palace is
-// left as it was.
-seed_route :: proc(p: ^Palace, i: int, avoid: Cell, dark: bool, out: ^Path) -> (hollow: int) {
-	sa.clear(out)
-	hollow = -1
-	if p.seed_at[i] >= 0 {
-		return
-	}
-	saved := p.seed_lifted
-	p.seed_lifted = i
-	rebuild_graph(p)
-	defer {
-		p.seed_lifted = saved
-		rebuild_graph(p)
-	}
-	start := node_index(p, p.data.seeds[i])
-	if start < 0 || p.nodes[start].stair {
-		return
-	}
-	skip := node_index(p, avoid)
-	n := len(p.nodes)
-	parent := make([]i32, n, context.temp_allocator)
-	slice.fill(parent, -1)
-	queue := make([]i32, n, context.temp_allocator)
-	head, tail := 0, 1
-	parent[start] = start
-	queue[0] = start
-	goal: i32 = -1
-	search: for head < tail {
-		cur := queue[head]
-		head += 1
-		if k := hollow_beside(p, p.nodes[cur].cell); k >= 0 {
-			goal, hollow = cur, k
-			break search
-		}
-		for g in ([]^Graph{&p.real, &p.illusion}) {
-			if g == &p.illusion && !dark {
-				break
-			}
-			for nb in neighbours(g, cur) {
-				if parent[nb] >= 0 || nb == skip || p.nodes[nb].stair || is_passage(p, p.nodes[cur].cell, p.nodes[nb].cell) {
-					continue
-				}
-				parent[nb] = cur
-				queue[tail] = nb
-				tail += 1
-			}
-		}
-	}
-	if goal < 0 {
-		return
-	}
-	length := 1
-	for s := goal; s != start; s = parent[s] {
-		length += 1
-	}
-	if length > MAX_PATH {
-		return -1
-	}
-	sa.resize(out, length)
-	at := length - 1
-	for s := goal; ; s = parent[s] {
-		sa.set(out, at, p.nodes[s].cell)
-		at -= 1
-		if s == start {
-			break
-		}
-	}
-	return
-}
-
-// Seed i drops into hollow k, for good.
-set_seed :: proc(p: ^Palace, i, k: int) {
-	p.seed_at[i] = i8(k)
-	rebuild_graph(p)
-}
-
-// The reed at surface c, or -1: stepping onto it turns the time.
-reed_at :: proc(p: ^Palace, c: Cell) -> int {
-	for r, i in p.data.reeds {
-		if r == c {
+// The sundial at surface c, or -1: standing there, the spindle turns the time.
+sundial_at :: proc(p: ^Palace, c: Cell) -> int {
+	for d, i in p.data.sundials {
+		if d == c {
 			return i
 		}
 	}
@@ -758,8 +601,7 @@ is_illusion :: proc(p: ^Palace, a, b: Cell) -> bool {
 // --- search --------------------------------------------------------------------
 
 // Breadth-first path from `from` to `to` (excluding `from`) into `out`; it
-// never goes through a cave (that is entered on purpose) nor over a reed (it
-// turns the time: only as the end of the walk).
+// never goes through a cave (that is entered on purpose).
 // Returns false (and an empty path) when unreachable.
 find_path :: proc(p: ^Palace, from, to: Cell, dark: bool, out: ^Path) -> bool {
 	sa.clear(out)
@@ -790,9 +632,6 @@ find_path :: proc(p: ^Palace, from, to: Cell, dark: bool, out: ^Path) -> bool {
 					parent[nb] = cur
 					if nb == goal {
 						break search
-					}
-					if reed_at(p, p.nodes[nb].cell) >= 0 {
-						continue // a reed is a walk's end, never a way through
 					}
 					queue[tail] = nb
 					tail += 1

@@ -17,10 +17,9 @@ Controls
 --------
     Click             walk
     Q / E  (<- / ->)  turn the diorama
-    1 / L / right     light the lamp (once Psyche has it)
-    2 / F             turn a handle (standing on it)
-    3                 call the ants (beside a stone of seeds)
-    Space             the action of the place (caves, the ants)
+    1 / L / right     the lamp (once Psyche has it)
+    2 / F             the spindle (standing on a handle or a sundial)
+    Space             the action of the place (caves)
     R                 back to the last brazier; hold to restart the level
     Esc               pause and controls
     F11               fullscreen
@@ -28,9 +27,8 @@ Controls
 Gamepad (Xbox names; PlayStation and Nintendo pads work too)
     Left stick, d-pad walk
     LB / RB           turn the diorama
-    X                 the lamp
-    Y                 turn a handle
-    LT                call the ants
+    LT                the lamp
+    RT                the spindle
     A                 the action of the place; in menus, choose
     B                 the brazier (hold: restart); in menus, back
     Start             pause and controls

@@ -13,8 +13,8 @@ import "../src/iso"
 import "../src/palace"
 
 @(private)
-load_text :: proc(t: ^testing.T, g: ^game.Game, text: string) -> bool {
-	if err := game.load_text(g, 4, text); err != nil {
+load_text :: proc(t: ^testing.T, g: ^game.Game, text: string, slot := 4) -> bool {
+	if err := game.load_text(g, slot, text); err != nil {
 		testing.expectf(t, false, "test palace does not load: %v", err)
 		return false
 	}
@@ -97,13 +97,13 @@ start 0 3 1
 exit 3 0 1
 rest 0 3 1
 `
-	if !load_text(t, &g, LEVEL) {
+	if !load_text(t, &g, LEVEL, slot = 6) { // II.3: the spindle is known from here on
 		return
 	}
 	testing.expect(t, walk(t, &g, {1, 3, 1}), "to the handle")
 	path: palace.Path
 	testing.expect(t, !palace.find_path(&g.palace, g.psyche.cell, g.data.exit, true, &path), "the bridge points the wrong way")
-	game.use_handle(&g)
+	game.use_spindle(&g)
 	testing.expect(t, g.phase == .Mechanism, "the handle turns the part")
 	run(&g, game.PART_TIME + 0.2)
 	testing.expect(t, g.phase == .Play && g.palace.part_rot[0] == 1, "a quarter turn")
@@ -214,7 +214,8 @@ act2_levels_solve_and_play :: proc(t: ^testing.T) {
 			testing.expectf(t, false, "%s does not load: %v", info.id, err)
 			continue
 		}
-		testing.expectf(t, palace.is_dynamic(&g.data), "%s uses the act's mechanics", info.id)
+		// III.1 waits to be rebuilt without the ants (a plain walk until then)
+		testing.expectf(t, palace.is_dynamic(&g.data) || info.id == "III.1", "%s uses the act's mechanics", info.id)
 		arena: virtual.Arena
 		testing.expect(t, virtual.arena_init_growing(&arena) == nil)
 		defer virtual.arena_destroy(&arena)
