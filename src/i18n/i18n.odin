@@ -116,6 +116,8 @@ Key :: enum u16 {
 	Fragment_12,
 	Fragment_12b, // Jupiter's eagle remembers the old service
 	Fragment_13,
+	Fragment_13b, // Psyche turned to stone by the sight
+	Fragment_13c, // the eagle: the gods swear by the Styx
 	Fragment_14,
 	Fragment_15,
 	Fragment_16,
@@ -607,6 +609,8 @@ IT := [Key]string {
 	.Fragment_12    = "Venere va a un banchetto di nozze, profumata e coronata di rose. Lascia Psiche sola, davanti al lavoro impossibile.",
 	.Fragment_12b   = "All'improvviso arriva l'uccello regale di Giove, l'aquila rapace, le ali spiegate. Ricorda l'antico servizio: fu Amore a guidarla quando portò in cielo il fanciullo frigio, coppiere di Giove. Ora soccorre la sposa di Amore.",
 	.Fragment_13    = "L'acqua nera scende da una rupe altissima, tra rocce lisce. Draghi senza sonno la custodiscono, e le acque stesse gridano: «Vattene!»",
+	.Fragment_13b   = "A quella vista Psiche resta come pietra: il corpo è lì, la mente è altrove. Il pericolo è così grande che le manca perfino l'ultimo conforto, le lacrime.",
+	.Fragment_13c   = "«Speri forse, ingenua, di rubare una goccia a questa fonte santissima e crudele? Gli dèi, e Giove stesso, temono le acque dello Stige: come voi giurate sugli dèi, così essi giurano sulla maestà dello Stige.»",
 	.Fragment_14    = "«Va' da Proserpina» dice Venere, «e chiedile un po' della sua bellezza, quanto basta per un giorno.»",
 	.Fragment_15    = "Psiche capisce che la mandano a morire. Sale su un'alta torre per gettarsi di sotto, «è la via più breve per l'Ade.»",
 	.Fragment_16    = "Non lontano c'è il Tenaro, uno spiraglio da cui respira il regno dei morti. Da lì una strada impervia scende fino alla reggia di Dite.",
@@ -924,6 +928,8 @@ EN := [Key]string {
 	.Fragment_12    = "Venus goes off to a wedding feast, perfumed and crowned with roses. She leaves Psyche alone with the impossible task.",
 	.Fragment_12b   = "Suddenly the royal bird of Jupiter appears, the raptor eagle, its wings spread wide. It remembers the old service: Cupid guided it when it carried the Phrygian boy up to heaven to be Jupiter's cupbearer. Now it comes to the aid of Cupid's bride.",
 	.Fragment_13    = "Black water falls from a towering crag, between smooth rocks. Sleepless dragons guard it, and the waters themselves cry out: “Go away!”",
+	.Fragment_13b   = "At the sight Psyche stands like stone: her body is there, her mind is elsewhere. The danger is so great that she lacks even the last comfort, tears.",
+	.Fragment_13c   = "“Do you hope, simple girl, to steal one drop from this most holy and cruel spring? The gods, Jupiter himself, fear the waters of the Styx: as you swear by the gods, so they swear by the majesty of the Styx.”",
 	.Fragment_14    = "“Go to Proserpina,” says Venus, “and ask her for a little of her beauty, enough for a single day.”",
 	.Fragment_15    = "Psyche understands she is being sent to die. She climbs a high tower to throw herself down: the shortest road to Hades.",
 	.Fragment_16    = "Not far away lies Taenarus, a vent through which the kingdom of the dead breathes. From there a rough road leads down to the palace of Dis.",

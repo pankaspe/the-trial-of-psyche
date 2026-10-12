@@ -4,11 +4,15 @@
 # hour, but where they set her down there is no sundial: the hour she leaves
 # with is the hour she finds. Here the seals wait for the evening (the flame)
 # and the ways up for the day (the stairs of the sun): light at evening, fly
-# by day.
+# by day. The flame also makes the rope bridge real: woken at evening, it
+# stays for the day.
 #   - the foot (S, h1): the start, a brazier, the first sundial;
 #   - the east shoulder (E, h3): by day up a stair of the sun; at evening, in
-#     view 1, a seam joins it to the foot. The first seal raises the landing
-#     on the west spur; the first eagle flies there;
+#     view 1, a seam joins it to the foot. A brazier; the first seal raises
+#     the landing on the west spur;
+#   - the rope bridge north of the shoulder: its planks are veiled, the lamp
+#     carried across wakes them; beyond, the eagle's crag (N, h3), where the
+#     first eagle flies to the west spur;
 #   - the west spur: the landing (h2), a stair of the sun up to its top (h3),
 #     the second sundial, a brazier. At evening in view 2 a seam joins the
 #     tooth of the second seal, which raises the landing on the summit's
@@ -18,92 +22,125 @@
 # Traps: an eagle taken at evening sets her where the stairs of the sun are
 # gone and no sundial turns the hour back; in view 2 the east shoulder looks
 # joined to the shelf, at evening: the summit a step away, and no way up.
-# Solution (solver: 41 steps, 2 turns, 3 lightings, 4 times turned, 2
-# flights, 11 decisions). Fragment (VI.14, the dragons and the crying water)
-# on a rock east of the shoulder, joined to it at evening in view 0.
-size 13
+# Solution (solver: 54 steps, 2 turns, 3 lightings, 4 times turned, 2
+# flights, 11 decisions): at evening the seal on the shoulder and the bridge
+# woken; by day across it to the first eagle; at evening the second seal and
+# the perch; by day the second eagle and the spring.
+# Fragments: III.4 (VI.14, the dragons and the crying water) on a rock in the
+# black water, joined to the shoulder at evening in view 2; III.4b (VI.14,
+# Psyche turned to stone) on a rock below the eagle's crag, joined to it in
+# view 1 at evening: the bridge carried to its end with the lamp lit; III.4c
+# (VI.15, the eagle: the gods swear by the Styx) on a pinnacle west of the
+# second seal's tooth, joined to it in view 3.
+size 15
 setting styx_day
 evening styx_evening
 lamp 3
 intro intro_iii_4
 outro outro_iii_4
-water 0 0 12 12
+water 0 0 14 14
 
 # --- S: the foot (h1) --------------------------------------------------------
-rock 7 10 0 0
-rock 8 10 0 0
-rock 9 10 0 0
-rock 7 11 0 0
 rock 8 11 0 0
 rock 9 11 0 0
-rock 9 9 0 0
-rock 10 9 0 0
-start 9 11 1
-rest 9 11 1
-sundial 7 11 1
+rock 10 11 0 0
+rock 8 12 0 0
+rock 9 12 0 0
+rock 10 12 0 0
+rock 10 10 0 0
+rock 11 10 0 0
+start 10 12 1
+rest 10 12 1
+sundial 8 12 1
 
 # --- up to the east shoulder: a stair of the sun, then steps ------------------
-rock 10 8 0 0
-sunlit 10 8 1 my
-rock 10 7 0 1
-rock 10 6 0 1
-steps 10 6 2 my
+rock 11 9 0 0
+sunlit 11 9 1 my
+rock 11 8 0 1
+rock 11 7 0 1
+steps 11 7 2 my
 
 # --- E: the east shoulder (h3): the first seal, the first eagle --------------
-rock 10 5 0 2
+rock 11 6 0 2
+rock 12 6 0 2
 rock 11 5 0 2
-rock 10 4 0 2
-rock 11 4 0 2
-sigil 11 5 3
-rest 10 5 3
-eagle 10 4 3 2 9 2
+rock 12 5 0 2
+sigil 12 6 3
+rest 11 6 3
 
 # --- W: the west spur: the landing (h2), raised by the first seal ------------
-rock 2 9 0 0
-rise 2 9 1 rock 1
-rock 1 9 0 1
-rock 1 8 0 1
-rock 1 7 0 1
-sunlit 1 7 2 my
+rock 3 10 0 0
+rise 3 10 1 rock 1
+rock 2 10 0 1
+rock 2 9 0 1
+rock 2 8 0 1
+sunlit 2 8 2 my
 # its top (h3): the second sundial, a brazier
-rock 1 6 0 2
+rock 2 7 0 2
+rock 3 7 0 2
 rock 2 6 0 2
-rock 1 5 0 2
-rock 2 5 0 2
-sundial 2 6 3
-rest 1 5 3
-prop lip 2 6 3 py
+rock 3 6 0 2
+sundial 3 7 3
+rest 2 6 3
+prop lip 3 7 3 py
 # the tooth of the second seal (h4), the veiled stone of the second eagle
-rock 0 4 0 3
-sigil 0 4 4
-veiled 2 4 2 rock
-eagle 2 4 3 6 2 5
+rock 1 5 0 3
+sigil 1 5 4
+veiled 3 5 2 rock
+eagle 3 5 3 7 3 5
 
 # --- T: the shelf under the summit (h5), the spring (h6) ---------------------
-rock 6 2 0 3
-rise 6 2 4 rock 2
+rock 7 3 0 3
+rise 7 3 4 rock 2
+rock 8 3 0 4
+prop lip 8 3 5 my
 rock 7 2 0 4
-prop lip 7 2 5 my
-rock 6 1 0 4
-sunlit 6 1 5 my
-rock 6 0 0 5
-exit 6 0 6
+sunlit 7 2 5 my
+rock 7 1 0 5
+exit 7 1 6
 
 # --- the fragment: a rock in the black water, north-west of the shoulder ----
-rock 8 4 0 3
-fragment 8 4 4
+# --- the rope bridge north of the shoulder: its planks veiled ---------------
+veiled 11 4 2 plank_y
+veiled 11 3 2 plank_y
+veiled 11 2 2 plank_y
+veiled 11 1 2 plank_y
+prop rope 11 4 3 mx
+prop rope 11 4 3 px
+prop rope 11 3 3 mx
+prop rope 11 3 3 px
+prop rope 11 2 3 mx
+prop rope 11 2 3 px
+prop rope 11 1 3 mx
+prop rope 11 1 3 px
+# --- N: the eagle's crag (h3): the first eagle -------------------------------
+rock 11 0 0 2
+rock 12 0 0 2
+rock 12 1 0 2
+eagle 12 1 3 3 10 2
+
+rock 9 5 0 3
+fragment 9 5 4
+rock 9 1 0 1
+fragment 9 1 2
+rock 0 7 0 4
+fragment 0 7 5
+prop lip 9 1 2 mx
+prop lip 0 7 5 mx
+prop shrub 12 0 3 px
+prop cairn 11 0 3 my
 
 # --- decoration: lips of broken rock, dead pines, cairns ---------------------
-prop cairn 8 11 1 px
-prop lip 7 11 1 py
-prop lip 8 11 1 py
-prop shrub 9 10 1 px
-prop pine 11 4 3 my
-prop lip 11 5 3 px
-prop shrub 1 9 2 py
-prop lip 1 6 3 mx
-prop lip 1 5 3 mx
-prop cairn 0 4 4 mx
-prop lip 6 0 6 mx
-prop lip 6 0 6 px
-prop lip 8 4 4 px
+prop cairn 9 12 1 px
+prop lip 8 12 1 py
+prop lip 9 12 1 py
+prop shrub 10 11 1 px
+prop pine 12 5 3 my
+prop lip 12 6 3 px
+prop shrub 2 10 2 py
+prop lip 2 7 3 mx
+prop lip 2 6 3 mx
+prop cairn 1 5 4 mx
+prop lip 7 1 6 mx
+prop lip 7 1 6 px
+prop lip 9 5 4 px
