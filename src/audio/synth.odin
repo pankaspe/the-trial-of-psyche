@@ -252,8 +252,9 @@ footfall :: proc(b: []f32, rng: ^fx.Rng, start, body, weight, brush, crisp, amp:
 		x := pink(&pk, rng)
 		press, _, _ := svf(&lo, x, 380, 0.7)
 		_, band, _ := svf(&hi, x, brush, 1.6)
-		swish, _, _ := svf(&top, band, brush * 1.6, 0.7)
-		a := min(t / 0.004, 1)
+		swish, _, _ := svf(&top, band, brush * 1.3, 0.7)
+		a := min(t / 0.012, 1)
+		a *= a * (3 - 2 * a) // a soft attack: no click
 		thump := math.sin(math.TAU * body * t) * math.exp(-t * 60) * weight
 		b[i] += (thump + press * 0.2 * math.exp(-t * 50) + swish * crisp * math.exp(-t * 34)) * a * amp
 	}
@@ -282,26 +283,23 @@ synthesize :: proc(id: Sound_Id, variant: int, allocator := context.allocator) -
 	tail: f32 = 3
 	switch id {
 	case .Step_Grass:
-		// a bare foot on grass: the heel presses the turf, the blades brush
-		// her sole, then the toes; a few blades spring back
-		b = buffer(0.32, context.temp_allocator)
-		toe := fx.rand_range(&rng, 0.045, 0.075)
-		footfall(b, &rng, 0, fx.rand_range(&rng, 70, 95), 0.24, fx.rand_range(&rng, 1400, 2000), 0.9, 1)
-		footfall(b, &rng, toe, fx.rand_range(&rng, 90, 120), 0.12, fx.rand_range(&rng, 1700, 2300), 0.55, 0.6)
-		blades :: proc(t: f32) -> f32 {return 900 * math.exp(-t * 18)}
-		grains(b, &rng, 0.005, 0.2, blades, 1800, 3800, 0.05, 0.003)
+		// a bare foot on grass: the heel sinks into the turf, the blades
+		// brush her sole, then the toes; dull and close, never a tick
+		b = buffer(0.34, context.temp_allocator)
+		toe := fx.rand_range(&rng, 0.05, 0.08)
+		footfall(b, &rng, 0, fx.rand_range(&rng, 60, 80), 0.3, fx.rand_range(&rng, 550, 800), 0.9, 1)
+		footfall(b, &rng, toe, fx.rand_range(&rng, 70, 95), 0.15, fx.rand_range(&rng, 650, 950), 0.6, 0.6)
+		blades :: proc(t: f32) -> f32 {return 500 * math.exp(-t * 18)}
+		grains(b, &rng, 0.01, 0.2, blades, 900, 1800, 0.03, 0.005)
 		room, tail = STEP_ROOM, 0.35
 
 	case .Step_Stone:
-		// a bare foot on stone: the soft pat of the heel, then the sole
-		// settles, a little louder, a grain of sand under it
+		// a bare foot on stone: the muffled pat of the heel, then the sole
+		// settles, a little heavier
 		b = buffer(0.36, context.temp_allocator)
-		toe := fx.rand_range(&rng, 0.02, 0.05)
-		footfall(b, &rng, 0, fx.rand_range(&rng, 120, 150), 0.14, fx.rand_range(&rng, 900, 1300), 0.35, 0.65)
-		footfall(b, &rng, toe, fx.rand_range(&rng, 140, 180), 0.11, fx.rand_range(&rng, 1300, 1900), 0.55, 1)
-		modal(b, toe, fx.rand_range(&rng, 420, 520), 0.05, SOFT_WOOD[:1], 0.003)
-		sand :: proc(t: f32) -> f32 {return 120 * math.exp(-t * 25)}
-		grains(b, &rng, 0.01, 0.12, sand, 3000, 5000, 0.02, 0.002)
+		toe := fx.rand_range(&rng, 0.025, 0.05)
+		footfall(b, &rng, 0, fx.rand_range(&rng, 85, 110), 0.25, fx.rand_range(&rng, 380, 520), 0.45, 0.65)
+		footfall(b, &rng, toe, fx.rand_range(&rng, 95, 125), 0.2, fx.rand_range(&rng, 450, 650), 0.6, 1)
 		room, tail = STEP_ROOM, 0.35
 
 	case .Turn:
