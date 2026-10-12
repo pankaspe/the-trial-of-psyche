@@ -2,8 +2,8 @@ The Trial of Psyche
 ===================
 
 An isometric puzzle about seeing and trusting, from Apuleius' tale of Cupid
-and Psyche (Metamorphoses IV-VI). Early build: Acts I and II (eight levels) and the
-first level of Act III.
+and Psyche (Metamorphoses IV-VI). Early build: Acts I, II and III (thirteen
+levels).
 
 Run
 ---
@@ -17,9 +17,10 @@ Controls
 --------
     Click             walk
     Q / E  (<- / ->)  turn the diorama
-    1 / L / right     the lamp (once Psyche has it)
+    1 / L / right     the lamp (once Psyche has it): it burns while held
     2 / F             the spindle (standing on a handle or a sundial)
-    Space             the action of the place (caves)
+    Space             the action of the place (caves, the eagle)
+    Tab               a light over Psyche: where is she?
     R                 back to the last brazier; hold to restart the level
     Esc               pause and controls
     F11               fullscreen
@@ -27,10 +28,11 @@ Controls
 Gamepad (Xbox names; PlayStation and Nintendo pads work too)
     Left stick, d-pad walk
     LB / RB           turn the diorama
-    LT                the lamp
+    LT                the lamp (held)
     RT                the spindle
     A                 the action of the place; in menus, choose
     B                 the brazier (hold: restart); in menus, back
+    Y                 a light over Psyche
     Start             pause and controls
 
 Saves and settings: ~/.config/the-trial-of-psyche/
