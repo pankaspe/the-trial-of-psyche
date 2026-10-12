@@ -14,20 +14,20 @@
 #     balcony; the cave leads to the north-west islet;
 #   - the north-west islet: a handle turns the west bridge again, north-south
 #     to the south-west islet, where a stair hidden behind a pillar (seen
-#     only in views 1 and 3, or with the lamp) climbs to the third seal: it
-#     raises the eagle's perch; the other handle turns the north bridge
-#     east-west, to the garden;
+#     only in views 1 and 3, or with the lamp) climbs to the second seal: it
+#     raises the balcony's last stone; the other handle turns the north
+#     bridge east-west, to the garden;
 #   - the garden (h2): the ram of the Sun lies down at evening, a step up to
-#     the terrace (h3): the second seal (it raises the balcony's last stone)
-#     and the rope bridge, its planks veiled: the lamp carried across wakes
+#     the terrace (h3): the third seal (it raises the eagle's perch) and the
+#     rope bridge, its planks veiled: the lamp carried across wakes
 #     them, to the eagle's crag;
 #   - the eagle's crag (h3): the second sundial; by day the eagle flies to the
 #     balcony (h6), and a stair of the sun climbs to Venus's throne (the exit).
 # Solution (solver: 64 steps, 2 turns, 3 lightings, 4 handles, 2 times
 # turned, 1 flight, 12 decisions; every sundial, handle, the cave, the ram
 # and the eagle needed): evening; the east bridge, the west bridge; the first
-# seal; the cave; the west bridge turned again, the third seal up the hidden
-# stair; the north bridge; the ram, the second seal, the rope bridge; day on
+# seal; the cave; the west bridge turned again, the second seal up the hidden
+# stair; the north bridge; the ram, the third seal, the rope bridge; day on
 # the crag; the eagle; the stair of the sun.
 # Traps: in view 2 Venus's court looks joined to the stair under the throne,
 # at evening: up there no sundial brings the day back.
@@ -100,7 +100,7 @@ column 2 3 0 3
 prop urn 2 3 4
 cave 3 3 2 mx
 
-# --- the south-west islet (h2): the hidden stair, the third seal -------------
+# --- the south-west islet (h2): the hidden stair, the second seal ------------
 column 3 8 0 1
 column 3 9 0 1
 column 2 9 0 1
@@ -122,7 +122,7 @@ column 9 9 0 1
 column 10 9 0 1
 prop myrtle 10 9 2 px
 
-# --- the garden (h2), the ram, the terrace of the second seal (h3) -----------
+# --- the garden (h2), the ram, the terrace of the third seal (h3) ------------
 column 8 3 0 1
 column 9 3 0 1
 column 10 3 0 1
