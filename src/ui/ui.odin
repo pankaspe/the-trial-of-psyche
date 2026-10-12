@@ -37,7 +37,6 @@ TITLE :: rl.Color{251, 235, 200, 255}
 FAINT :: rl.Color{196, 178, 150, 200}
 SHADOW :: rl.Color{8, 3, 0, 204}
 HALO :: rl.Color{240, 160, 70, 255} // the warm glow around titles
-WARM :: rl.Color{38, 20, 12, 255} // the tint of cards and buttons
 NIGHT :: rl.Color{16, 12, 34, 255} // the tint of the glass sheet
 
 // The faces of the UI. Atlases are rebuilt for the UI scale (sizes at 1080p):
@@ -839,6 +838,7 @@ slider :: proc(u: ^Ui, label: string, value: ^f32, y, left, right: f32) -> bool 
 	return changed
 }
 
+// Filled triangle in either winding (raylib wants counter-clockwise on screen).
 tri :: proc(a, b, c: Vec2, col: rl.Color) {
 	cross := (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
 	if cross < 0 {

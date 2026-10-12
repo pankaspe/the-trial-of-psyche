@@ -17,6 +17,7 @@ import "../game"
 import "../iso"
 import "../level"
 import pl "../palace"
+import "../ui"
 
 Cell :: iso.Cell
 Color4 :: [4]f32
@@ -1342,17 +1343,7 @@ color :: proc(c: Color4) {
 // Flat ellipse lying on the floor.
 @(private)
 floor_ellipse :: proc(center: Vec3, rx, ry: f32, c: Color4) {
-	N :: 16
-	rlgl.Begin(rlgl.TRIANGLES)
-	for i in 0 ..< N {
-		a0 := f32(i) / N * math.TAU
-		a1 := f32(i + 1) / N * math.TAU
-		color(c)
-		vtx(center)
-		vtx(center + {math.cos(a0) * rx, math.sin(a0) * ry, 0})
-		vtx(center + {math.cos(a1) * rx, math.sin(a1) * ry, 0})
-	}
-	rlgl.End()
+	ellipse_3d(center, {1, 0, 0}, {0, 1, 0}, rx, ry, 0, c, 16)
 }
 
 // A ring on the floor between radius r and r + width.
@@ -1864,18 +1855,17 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	rlgl.EnableDepthMask()
 }
 
-// An ellipse in the plane spanned by u and w, around `center`.
+// An ellipse in the plane spanned by u and w, around `center`, in n slices.
 @(private)
-ellipse_3d :: proc(center, u, w: Vec3, rx, ry, tilt: f32, c: Color4) {
-	N :: 18
+ellipse_3d :: proc(center, u, w: Vec3, rx, ry, tilt: f32, c: Color4, n := 18) {
 	ct, st := math.cos(tilt), math.sin(tilt)
 	point :: proc(center, u, w: Vec3, x, y, ct, st: f32) -> Vec3 {
 		return center + u * (x * ct - y * st) + w * (x * st + y * ct)
 	}
 	rlgl.Begin(rlgl.TRIANGLES)
-	for i in 0 ..< N {
-		a0 := f32(i) / N * math.TAU
-		a1 := f32(i + 1) / N * math.TAU
+	for i in 0 ..< n {
+		a0 := f32(i) / f32(n) * math.TAU
+		a1 := f32(i + 1) / f32(n) * math.TAU
 		color(c)
 		vtx(center)
 		vtx(point(center, u, w, math.cos(a0) * rx, math.sin(a0) * ry, ct, st))
@@ -2088,21 +2078,10 @@ ISLANDS := [?]Island {
 	{{2250, 380}, 0.2, {{0, 0, 0}, {1, 0, 0}, {0, 0, 1}, {1, 0, 1}}},
 }
 
-// Filled triangle in either winding (raylib wants counter-clockwise on screen).
-@(private)
-tri :: proc(a, b, c: Vec2, col: rl.Color) {
-	cross := (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
-	if cross < 0 {
-		rl.DrawTriangle(a, b, c, col)
-	} else {
-		rl.DrawTriangle(a, c, b, col)
-	}
-}
-
 @(private)
 quad_2d :: proc(a, b, c, d: Vec2, col: rl.Color) {
-	tri(a, b, c, col)
-	tri(a, c, d, col)
+	ui.tri(a, b, c, col)
+	ui.tri(a, c, d, col)
 }
 
 @(private)

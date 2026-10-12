@@ -157,10 +157,7 @@ check_screen :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 	}
 	for whole in ([2]bool{false, true}) {
 		// as loaded (veiled stones hidden), then whole
-		for &f, i in p.flipped {
-			f = whole && data.blocks[i].trait == .Veiled
-		}
-		p.risen = whole ? pl.all_seals(data) : {}
+		set_whole(p, data, whole)
 		pl.rebuild_graph(p)
 		for c in data.fragments {
 			for r in 0 ..< 4 {
@@ -174,13 +171,25 @@ check_screen :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 			}
 		}
 	}
-	for &f in p.flipped {
-		f = false
+	as_loaded(p, data)
+	return
+}
+
+// The palace whole (every veiled stone shown, every seal's blocks raised), or
+// as loaded; the graph is the caller's to rebuild.
+set_whole :: proc(p: ^pl.Palace, data: ^level.Level_Data, whole: bool) {
+	for &f, i in p.flipped {
+		f = whole && data.blocks[i].trait == .Veiled
 	}
-	p.risen = {}
+	p.risen = whole ? pl.all_seals(data) : {}
+}
+
+// Back to the palace as loaded: nothing changed, parts unturned, view 0.
+as_loaded :: proc(p: ^pl.Palace, data: ^level.Level_Data) {
+	set_whole(p, data, false)
+	p.part_rot = {}
 	pl.set_view(p, 0)
 	pl.rebuild_graph(p)
-	return
 }
 
 // The illusions of the palace changed for good (veiled stones shown, every
@@ -194,10 +203,7 @@ whole_illusions :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.A
 			base[{p.nodes[e[0]].cell, p.nodes[e[1]].cell}] = true
 		}
 	}
-	for &f, i in p.flipped {
-		f = data.blocks[i].trait == .Veiled
-	}
-	p.risen = pl.all_seals(data)
+	set_whole(p, data, true)
 	pl.rebuild_graph(p)
 	for r in 0 ..< 4 {
 		pl.set_view(p, r)
@@ -210,12 +216,7 @@ whole_illusions :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.A
 		}
 		fmt.println()
 	}
-	for &f in p.flipped {
-		f = false
-	}
-	p.risen = {}
-	pl.set_view(p, 0)
-	pl.rebuild_graph(p)
+	as_loaded(p, data)
 }
 
 // What would look wrong (an error) or odd (a warning), with the palace whole
@@ -295,10 +296,7 @@ check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 	for _ in data.parts {
 		combos *= 4
 	}
-	for &f, i in p.flipped {
-		f = data.blocks[i].trait == .Veiled
-	}
-	p.risen = pl.all_seals(data)
+	set_whole(p, data, true)
 	for k in 0 ..< combos {
 		n := k
 		for i in 0 ..< len(data.parts) {
@@ -428,13 +426,7 @@ check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 			}
 		}
 	}
-	for &f in p.flipped {
-		f = false
-	}
-	p.risen = {}
-	p.part_rot = {}
-	pl.set_view(p, 0)
-	pl.rebuild_graph(p)
+	as_loaded(p, data)
 	return
 }
 

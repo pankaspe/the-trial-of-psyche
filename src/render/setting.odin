@@ -59,26 +59,7 @@ LOOKS := [level.Setting]Look {
 		daylight = 0,
 		mote = {0.6, 0.7, 1.0, 0.5},
 	},
-	// the palace of voices by night, its candles lit for her
-	.Night_Candles = {
-		sky_top = {0.012, 0.015, 0.05},
-		sky_mid = {0.046, 0.042, 0.115},
-		sky_horizon = {0.08, 0.07, 0.18},
-		orb_pos = {0.80, 0.2},
-		orb_radius = 0.049,
-		orb_color = {0.86, 0.88, 1.0},
-		halo_color = {0.105, 0.115, 0.19},
-		halo_width = 9,
-		stars = 1,
-		haze = {0.088, 0.088, 0.176},
-		islands = true,
-		cloud_back = {0.13, 0.13, 0.29},
-		cloud_front = {0.19, 0.19, 0.38},
-		mist = {0.07, 0.07, 0.17},
-		daylight = 0,
-		candles = true,
-		mote = {0.9, 0.75, 0.6, 0.45},
-	},
+	.Night_Candles = {}, // the night with its candles lit: see night_candles
 	// deep night in the palace of voices: candles out, clouds drifting across the moon
 	.Deep_Night = {
 		sky_top = {0.004, 0.006, 0.024},
@@ -475,6 +456,15 @@ moon_cover :: proc(lk: ^Look, time, angle, aspect: f32) -> f32 {
 		}
 	}
 	return cover * lk.moon_clouds * 0.93
+}
+
+// The palace of voices by night, its candles lit for her: the night's look,
+// the candles burning, the motes warm.
+@(init, private)
+night_candles :: proc "contextless" () {
+	LOOKS[.Night_Candles] = LOOKS[.Night]
+	LOOKS[.Night_Candles].candles = true
+	LOOKS[.Night_Candles].mote = {0.9, 0.75, 0.6, 0.45}
 }
 
 look :: proc(s: level.Setting) -> ^Look {

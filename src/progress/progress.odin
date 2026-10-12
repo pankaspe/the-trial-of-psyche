@@ -323,17 +323,8 @@ serialize :: proc(p: Progress, allocator := context.allocator) -> string {
 // Read `key = value` lines into p; unknown keys, levels and achievements are ignored.
 parse :: proc(text: string, p: ^Progress) {
 	rest := text
-	for raw in strings.split_lines_iterator(&rest) {
-		line := strings.trim_space(raw)
-		if line == "" || line[0] == '#' {
-			continue
-		}
-		eq := strings.index_byte(line, '=')
-		if eq < 0 {
-			continue
-		}
-		key := strings.trim_space(line[:eq])
-		values := line[eq + 1:]
+	for key, line in settings.config_entries(&rest) {
+		values := line
 		for word in strings.fields_iterator(&values) {
 			switch key {
 			case "completed":

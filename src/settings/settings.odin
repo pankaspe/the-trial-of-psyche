@@ -174,21 +174,26 @@ serialize :: proc(s: Settings, allocator := context.allocator) -> string {
 	return strings.to_string(b)
 }
 
+// The next `key = value` line of a config file's text (blank lines, `#`
+// comments and lines without `=` are skipped), both sides trimmed:
+// `for key, value in config_entries(&rest)`.
+config_entries :: proc(rest: ^string) -> (key, value: string, ok: bool) {
+	for raw in strings.split_lines_iterator(rest) {
+		line := strings.trim_space(raw)
+		eq := strings.index_byte(line, '=')
+		if line == "" || line[0] == '#' || eq < 0 {
+			continue
+		}
+		return strings.trim_space(line[:eq]), strings.trim_space(line[eq + 1:]), true
+	}
+	return
+}
+
 // Read `key = value` lines into s, keeping the current value of anything
 // missing or malformed.
 parse :: proc(text: string, s: ^Settings) {
 	rest := text
-	for raw in strings.split_lines_iterator(&rest) {
-		line := strings.trim_space(raw)
-		if line == "" || line[0] == '#' {
-			continue
-		}
-		eq := strings.index_byte(line, '=')
-		if eq < 0 {
-			continue
-		}
-		key := strings.trim_space(line[:eq])
-		value := strings.trim_space(line[eq + 1:])
+	for key, value in config_entries(&rest) {
 
 		boolean :: proc(v: string, out: ^bool) {
 			switch v {
