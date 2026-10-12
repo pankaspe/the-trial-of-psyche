@@ -1,6 +1,6 @@
 #version 330
 // Palace pieces and figures.
-// The face orientation gives Kenney's three tones (left / right / top) as a
+// The face orientation gives three tones (left / right / top) as a
 // light map t, which is re-coloured:
 //   dark: flat moonlit palette, no depth cue -> illusions read as real joins;
 //   lamp: warm light around Psyche plus a strong depth cue -> the joins fall apart.
@@ -248,7 +248,7 @@ void main() {
         return;
     }
 
-    // Kenney's light map from the face orientation, relative to the view
+    // the three tones from the face orientation, relative to the view
     float side = mix(T_LEFT, T_RIGHT, smoothstep(-shade_soft, shade_soft, dot(n.xy, view_right)));
     float t = mix(side, T_TOP, smoothstep(0.5, 0.9, n.z));
 

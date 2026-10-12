@@ -19,7 +19,7 @@ HALF_W :: 64.0
 HALF_H :: 32.0
 WALL :: 64.0
 
-// The four grid directions. Kenney-style names: px = +x, mx = -x, py = +y, my = -y.
+// The four grid directions: px = +x, mx = -x, py = +y, my = -y.
 Dir :: enum u8 {
 	PX,
 	MX,

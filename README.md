@@ -60,8 +60,7 @@ and run `./trial-of-psyche`.
 ## License
 
 Free software under the [GNU GPL v3.0](LICENSE). Fonts under the SIL Open Font
-License; the shapes of the pieces after [Kenney](https://kenney.nl)'s prototype kit.
-Made in [Odin](https://odin-lang.org) and [raylib](https://www.raylib.com), with
+License. Made in [Odin](https://odin-lang.org) and [raylib](https://www.raylib.com), with
 [Claude Code](https://claude.com/claude-code) as a coding copilot.
 
 <div align="center">
