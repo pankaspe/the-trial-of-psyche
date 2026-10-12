@@ -11,7 +11,7 @@ from Apuleius' tale of Cupid and Psyche.*
 
 <br><br>
 
-<img src="docs/screenshots/title.jpg" alt="The title screen: Zephyr's crag at sunset over a sea of clouds" width="100%">
+<img src="docs/screenshots/title.jpg" alt="The title screen: the temple of Ceres and Juno at dusk over a sea of clouds" width="100%">
 
 <br><br>
 
@@ -30,11 +30,11 @@ to win him back.
 
 Turn the diorama and two stones that only *seem* to touch become a bridge. Light
 the lamp and the truth shows — until the oil runs out. Later the spindle turns
-parts of the palace, and even the time of day.
+parts of the palace, and even the time of day, and Jupiter's eagle carries her
+where no road goes.
 
 Four acts and an epilogue, in Italian and English, with hidden fragments of the
-tale to gather in the Book. **Now playable:** Acts I and II and the first levels
-of Act III.
+tale to gather in the Book. **Now playable:** Acts I, II and III.
 
 ## Play
 
@@ -46,10 +46,11 @@ and run `./trial-of-psyche`.
 |---|---|---|
 | walk | click | left stick or d-pad |
 | turn the diorama | Q / E | LB / RB |
-| the lamp | 1, L or right click | LT |
+| the lamp (hold) | 1, L or right click | LT |
 | the spindle (on a handle or a sundial) | 2, F or a click on Psyche | RT |
-| into a cave | Space | A |
+| into a cave · call the eagle | Space | A |
 | back to the last brazier · hold: restart | R | B |
+| where is Psyche? | Tab | Y |
 | pause | Esc | Start |
 
 ## License

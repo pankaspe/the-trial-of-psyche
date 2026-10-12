@@ -32,6 +32,8 @@ Shot_Step :: struct {
 @(private = "file")
 LAMP_LEVEL :: 3 // I.4, the level of the lamp
 @(private = "file")
+TEMPLE_LEVEL :: 7 // II.4, the temple of Ceres and Juno: the README's title shot
+@(private = "file")
 BALCONY :: iso.Cell{6, 5, 4}
 @(private = "file")
 ROOF_ENTRY :: iso.Cell{13, 10, 6}
@@ -60,6 +62,8 @@ place :: proc(app: ^App, c: iso.Cell) {
 
 SHOT_SCRIPT := [?]Shot_Step {
 	{1.5, "01_menu", nil},
+	{0.1, "", proc(app: ^App) {new_level(app, TEMPLE_LEVEL)}},
+	{1.5, "01b_menu_temple", nil},
 	{0.1, "", proc(app: ^App) {open_settings(app)}},
 	{0.6, "02_settings", nil},
 	{0.1, "", proc(app: ^App) {app.ui.settings_tab = .Graphics}},
