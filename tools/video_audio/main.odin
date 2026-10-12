@@ -137,15 +137,8 @@ effects :: proc(log_path, out_path: string) {
 	fmt.printfln("%s: %.2f s, %d effects, ambience %v", out_path, seconds, len(events), bed)
 }
 
-// Every take of an effect, interleaved stereo at RATE: the recordings decoded, or synthesised.
+// Every take of an effect, synthesised, interleaved stereo at RATE.
 load_takes :: proc(id: audio.Sound_Id, list: ^[dynamic][]f32) {
-	if id in audio.RECORDED {
-		files := id == .Step_Grass ? audio.STEPS_GRASS[:] : audio.STEPS_STONE[:]
-		for f in files {
-			append(list, audio.step_take(f))
-		}
-		return
-	}
 	for v in 0 ..< max(audio.VARIANTS[id], 1) {
 		append(list, audio.synthesize(id, v))
 	}

@@ -15,8 +15,8 @@ import "../fx"
 RATE :: 44100
 
 Sound_Id :: enum u8 {
-	Step_Grass, // recorded (assets/sfx)
-	Step_Stone, // recorded (assets/sfx)
+	Step_Grass, // a bare foot on grass: a soft press, the blades brushing
+	Step_Stone, // a bare foot on stone: a soft pat, heel then toes
 	Turn, // the world turns about Psyche: air, weight, a soft settle
 	Seam, // a way opens where two stones meet in the view: a glass chime
 	Lamp_On, // the wick catches: a breath of flame, crackle, a warm bloom
@@ -33,17 +33,14 @@ Sound_Id :: enum u8 {
 	Wings, // Jupiter's eagle: slow broad wingbeats, then the glide
 }
 
-// Effects drawn from recordings (loaded in audio.odin).
-RECORDED :: bit_set[Sound_Id]{.Step_Grass, .Step_Stone}
-
 // Effects in key: transposed with the act's soundtrack.
 TUNED :: bit_set[Sound_Id]{.Seam, .Tap, .Reveal, .Good, .Wind, .Lamp_On}
 
 // How many takes of each synthesised effect (a different random seed each),
 // so repeated sounds are never quite the same.
 VARIANTS := [Sound_Id]int {
-	.Step_Grass = 0,
-	.Step_Stone = 0,
+	.Step_Grass = 5,
+	.Step_Stone = 6,
 	.Turn       = 2,
 	.Seam       = 1,
 	.Lamp_On    = 3,
@@ -238,6 +235,30 @@ flute :: proc(b: []f32, start, freq, dur, amp: f32, rng: ^fx.Rng, attack: f32 = 
 	}
 }
 
+// One part of a bare foot meeting the ground at `start`: a low thump of the
+// body's weight (`body` Hz), the press of the skin (low noise) and the brush
+// of the surface (noise around `brush` Hz, `crisp` of it): grass rustles,
+// stone pats. The footsteps are a heel and then the toes.
+@(private)
+footfall :: proc(b: []f32, rng: ^fx.Rng, start, body, weight, brush, crisp, amp: f32) {
+	s0 := int(start * RATE)
+	pk: Pink
+	lo, hi, top: Svf
+	for i in s0 ..< len(b) {
+		t := time_of(i - s0)
+		if t > 0.25 {
+			break
+		}
+		x := pink(&pk, rng)
+		press, _, _ := svf(&lo, x, 380, 0.7)
+		_, band, _ := svf(&hi, x, brush, 1.6)
+		swish, _, _ := svf(&top, band, brush * 1.6, 0.7)
+		a := min(t / 0.004, 1)
+		thump := math.sin(math.TAU * body * t) * math.exp(-t * 60) * weight
+		b[i] += (thump + press * 0.2 * math.exp(-t * 50) + swish * crisp * math.exp(-t * 34)) * a * amp
+	}
+}
+
 // A slow chord of sines, two voices a few cents apart (a pad of light).
 @(private)
 glow :: proc(b: []f32, freqs: []f32, amp, rise, hold, fall: f32) {
@@ -260,11 +281,28 @@ synthesize :: proc(id: Sound_Id, variant: int, allocator := context.allocator) -
 	room := DREAM
 	tail: f32 = 3
 	switch id {
-	case .Step_Grass, .Step_Stone:
-		// recordings: a tiny placeholder, only for headless use
-		b = buffer(0.05, context.temp_allocator)
-		modal(b, 0, 180, 0.3, SOFT_WOOD)
-		room, tail = ROOM, 0.2
+	case .Step_Grass:
+		// a bare foot on grass: the heel presses the turf, the blades brush
+		// her sole, then the toes; a few blades spring back
+		b = buffer(0.32, context.temp_allocator)
+		toe := fx.rand_range(&rng, 0.045, 0.075)
+		footfall(b, &rng, 0, fx.rand_range(&rng, 70, 95), 0.24, fx.rand_range(&rng, 1400, 2000), 0.9, 1)
+		footfall(b, &rng, toe, fx.rand_range(&rng, 90, 120), 0.12, fx.rand_range(&rng, 1700, 2300), 0.55, 0.6)
+		blades :: proc(t: f32) -> f32 {return 900 * math.exp(-t * 18)}
+		grains(b, &rng, 0.005, 0.2, blades, 1800, 3800, 0.05, 0.003)
+		room, tail = STEP_ROOM, 0.35
+
+	case .Step_Stone:
+		// a bare foot on stone: the soft pat of the heel, then the sole
+		// settles, a little louder, a grain of sand under it
+		b = buffer(0.36, context.temp_allocator)
+		toe := fx.rand_range(&rng, 0.02, 0.05)
+		footfall(b, &rng, 0, fx.rand_range(&rng, 120, 150), 0.14, fx.rand_range(&rng, 900, 1300), 0.35, 0.65)
+		footfall(b, &rng, toe, fx.rand_range(&rng, 140, 180), 0.11, fx.rand_range(&rng, 1300, 1900), 0.55, 1)
+		modal(b, toe, fx.rand_range(&rng, 420, 520), 0.05, SOFT_WOOD[:1], 0.003)
+		sand :: proc(t: f32) -> f32 {return 120 * math.exp(-t * 25)}
+		grains(b, &rng, 0.01, 0.12, sand, 3000, 5000, 0.02, 0.002)
+		room, tail = STEP_ROOM, 0.35
 
 	case .Turn:
 		// the world turns: a breath of air rising and settling, a low warmth under it

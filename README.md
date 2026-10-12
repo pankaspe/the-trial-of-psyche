@@ -33,6 +33,10 @@ the lamp and the truth shows — until the oil runs out. Later the spindle turns
 parts of the palace, and even the time of day, and Jupiter's eagle carries her
 where no road goes.
 
+Everything you see and hear is made by code: the pieces, the sky, the music and
+every sound, footsteps included. There is not a single image or audio file in the
+game.
+
 Four acts and an epilogue, in Italian and English, with hidden fragments of the
 tale to gather in the Book. **Now playable:** Acts I, II and III.
 
@@ -56,7 +60,7 @@ and run `./trial-of-psyche`.
 ## License
 
 Free software under the [GNU GPL v3.0](LICENSE). Fonts under the SIL Open Font
-License; footsteps and the shapes of the pieces after [Kenney](https://kenney.nl) (CC0).
+License; the shapes of the pieces after [Kenney](https://kenney.nl)'s prototype kit.
 Made in [Odin](https://odin-lang.org) and [raylib](https://www.raylib.com), with
 [Claude Code](https://claude.com/claude-code) as a coding copilot.
 

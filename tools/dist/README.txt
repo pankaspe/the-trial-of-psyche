@@ -39,4 +39,4 @@ Saves and settings: ~/.config/the-trial-of-psyche/
 Source and news:    https://github.com/pankaspe/the-trial-of-psyche
 
 License: GPL-3.0 (LICENSE). Fonts: SIL Open Font License (OFL-*.txt).
-Footstep sounds: Kenney (CC0).
+Everything you see and hear is generated in code: no image or audio files.

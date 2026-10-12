@@ -16,9 +16,6 @@ main :: proc() {
 	dir := len(os.args) > 1 ? os.args[1] : "build/sounds"
 	os.make_directory_all(dir)
 	for id in audio.Sound_Id {
-		if id in audio.RECORDED {
-			continue
-		}
 		for v in 0 ..< audio.VARIANTS[id] {
 			b := audio.synthesize(id, v, context.temp_allocator)
 			write_wav(fmt.tprintf("%s/%v_%d.wav", dir, id, v), b, 2)
