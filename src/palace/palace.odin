@@ -73,6 +73,7 @@ Palace :: struct {
 	risen:      level.Seals, // the seals lit: their `rise` blocks are up
 	flipped:    []bool, // per data.blocks entry: changed for good (see the top)
 	part_rot:   [level.MAX_PARTS]int, // quarter turns of each part
+	half_turn:  bit_set[0 ..< level.MAX_PARTS], // parts the same turned a half turn (`half_symmetric`)
 	overlap:    bool, // two blocks share a cell (a part turned into the palace)
 	day:        bool, // a level with sundials: the sun is up (the rams stand)
 	// world grid, indexed by cell_index
@@ -108,6 +109,11 @@ init :: proc(p: ^Palace, data: ^level.Level_Data, allocator := context.allocator
 	p.stair_seen = make([]bool, n) // one per grid cell: enough for any node count
 	p.edge_seen = make([]iso.Dirs, n)
 	p.nodes = make([dynamic]Node, 0, 256)
+	for k in 0 ..< len(data.parts) {
+		if half_symmetric(data, k) {
+			p.half_turn += {k}
+		}
+	}
 	for g in ([]^Graph{&p.real, &p.illusion}) {
 		g.pairs = make([dynamic][2]i32, 0, 256)
 		g.start = make([dynamic]i32, 0, 257)
@@ -160,6 +166,60 @@ block_present :: proc(p: ^Palace, i: int) -> bool {
 	case .Sunlit: return p.day
 	}
 	return true
+}
+
+// Does part n look the same turned a half turn (a straight bridge about its
+// middle)? Then its turns 0 and 2 (1 and 3) are the same palace: the solver
+// keeps them as one state. Only plain stone: a veiled or raised block would
+// change with its twin.
+half_symmetric :: proc(d: ^level.Level_Data, n: int) -> bool {
+	part := u8(n + 1)
+	pivot := d.parts[n].pivot
+	for e in d.rise {
+		if e.part == part {
+			return false
+		}
+	}
+	found := false
+	for e in d.blocks {
+		if e.part != part {
+			continue
+		}
+		found = true
+		if e.trait != .Stone {
+			return false
+		}
+		twin := level.part_cell(e.cell, pivot, 2)
+		dir := e.solid.kind == .Stairs ? iso.rot_dir(e.solid.dir, 2) : e.solid.dir
+		matched := false
+		for o in d.blocks {
+			if o.part == part && o.cell == twin && o.solid.kind == e.solid.kind && o.trait == e.trait && (e.solid.kind != .Stairs || o.solid.dir == dir) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+	for pr in d.props {
+		if pr.part != part {
+			continue
+		}
+		twin := level.part_cell(pr.cell, pivot, 2)
+		dir := iso.rot_dir(pr.dir, 2)
+		matched := false
+		for o in d.props {
+			if o.part == part && o.cell == twin && o.kind == pr.kind && (!pr.oriented || o.dir == dir) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+	return found
 }
 
 // Where block entry i is now (parts turn).

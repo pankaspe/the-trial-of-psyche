@@ -25,7 +25,7 @@ import "../level"
 
 Config :: struct {
 	flips: u64, // bit k: the k-th changing block has changed
-	rots:  u32, // 2 bits per part
+	rots:  u32, // 2 bits per part (modulo 2 for a part in `half_turn`)
 	risen: level.Seals, // the seals that have been lit
 	day:   bool, // the sun is up (a level with sundials)
 }
@@ -147,7 +147,7 @@ state_of :: proc(p: ^Palace, cell: Cell, lamp: bool) -> (st: State) {
 		}
 	}
 	for n in 0 ..< len(p.data.parts) {
-		st.cfg.rots |= u32(p.part_rot[n] & 3) << (2 * u32(n))
+		st.cfg.rots |= u32(p.part_rot[n] & (n in p.half_turn ? 1 : 3)) << (2 * u32(n))
 	}
 	st.cfg.risen = p.risen
 	st.cfg.day = p.day
@@ -319,7 +319,8 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 				turned := st
 				part := p.data.handles[h].part
 				r := (st.cfg.rots >> (2 * u32(part))) & 3
-				turned.cfg.rots = (st.cfg.rots & ~(3 << (2 * u32(part)))) | (((r + 1) & 3) << (2 * u32(part)))
+				r = (r + 1) & (part in p.half_turn ? 1 : 3)
+				turned.cfg.rots = (st.cfg.rots & ~(3 << (2 * u32(part)))) | (r << (2 * u32(part)))
 				if _, still := graph_of(&s, turned.cfg).index[st.cell]; still {
 					next(&entries, &seen, &buckets, &edges, id, turned, .Handle)
 				}

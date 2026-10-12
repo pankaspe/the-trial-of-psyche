@@ -119,6 +119,8 @@ Key :: enum u16 {
 	Fragment_13b, // Psyche turned to stone by the sight
 	Fragment_13c, // the eagle: the gods swear by the Styx
 	Fragment_14,
+	Fragment_14b, // Venus: you seem a witch
+	Fragment_14c, // the box, and come back soon
 	Fragment_15,
 	Fragment_16,
 	Fragment_17,
@@ -222,6 +224,7 @@ Key :: enum u16 {
 	Intro_III_2,
 	Intro_III_3,
 	Intro_III_4,
+	Intro_III_5,
 	// beside Cupid in the dark, before the end of the game
 	V_Doubt,
 
@@ -308,6 +311,7 @@ Key :: enum u16 {
 	Outro_III_2,
 	Outro_III_3,
 	Outro_III_4,
+	Outro_III_5,
 
 	// endings
 	End_Trust_Title,
@@ -612,6 +616,8 @@ IT := [Key]string {
 	.Fragment_13b   = "A quella vista Psiche resta come pietra: il corpo è lì, la mente è altrove. Il pericolo è così grande che le manca perfino l'ultimo conforto, le lacrime.",
 	.Fragment_13c   = "«Speri forse, ingenua, di rubare una goccia a questa fonte santissima e crudele? Gli dèi, e Giove stesso, temono le acque dello Stige: come voi giurate sugli dèi, così essi giurano sulla maestà dello Stige.»",
 	.Fragment_14    = "«Va' da Proserpina» dice Venere, «e chiedile un po' della sua bellezza, quanto basta per un giorno.»",
+	.Fragment_14b   = "Venere la guarda torva: «Ormai mi sembri una strega, una maga grande e profonda, se hai obbedito così bene ai miei ordini. Ma c'è ancora una cosa che devi fare per me.»",
+	.Fragment_14c   = "«Prendi questo vaso. E torna presto: devo ungermi della sua bellezza prima di andare al teatro degli dèi.»",
 	.Fragment_15    = "Psiche capisce che la mandano a morire. Sale su un'alta torre per gettarsi di sotto, «è la via più breve per l'Ade.»",
 	.Fragment_16    = "Non lontano c'è il Tenaro, uno spiraglio da cui respira il regno dei morti. Da lì una strada impervia scende fino alla reggia di Dite.",
 	.Fragment_17    = "Caronte non fa nulla gratis. Anche tra i morti vive l'avarizia. Chi muore deve portare la moneta in bocca.",
@@ -715,6 +721,7 @@ IT := [Key]string {
 	.Intro_III_2    = "Lungo il fiume pascola il gregge d'oro del Sole. Una canna sussurra: aspetta la sera.",
 	.Intro_III_3    = "Venere le mette in mano un'urna di cristallo: «Riempila all'acqua nera che sgorga dalla vetta.»",
 	.Intro_III_4    = "Sulla vetta l'acqua nera grida. Le aquile ti portano lassù, ma dove ti posano l'ora resta quella: sceglila prima di volare.",
+	.Intro_III_5    = "Di nuovo nella casa di Venere. Per uscirne servirà ogni cosa imparata: la lucerna, il fuso, la grotta, l'aquila.",
 	.V_Doubt        = "Dorme. Ti tornano in mente le parole delle sorelle: e se fosse un mostro? La lampada è nella tua mano.",
 
 	.Tutorial_Label = "Come si gioca",
@@ -789,6 +796,7 @@ IT := [Key]string {
 	.Outro_III_2    = "Psiche torna da Venere con il grembo pieno di lana d'oro. Ma nemmeno questo la placa: «So bene chi ti ha aiutata.»",
 	.Outro_III_3    = "L'aquila la porta fin sotto la vetta. Lassù l'acqua nera grida, e i draghi non dormono mai.",
 	.Outro_III_4    = "L'aquila affonda l'urna nell'acqua che grida e gliela rende piena. Venere la guarda, e la sua ira cresce.",
+	.Outro_III_5    = "Con il vaso tra le mani Psiche sale sulla torre più alta. Non conosce altra strada per gli inferi che la morte.",
 	.Outro_III_1    = "A notte Venere torna dal banchetto, accaldata dal vino e profumata di rose. Vede il lavoro compiuto.\n«Non è opera tua», dice, e le getta un tozzo di pane.",
 
 	.End_Trust_Title = "Fiducia",
@@ -931,6 +939,8 @@ EN := [Key]string {
 	.Fragment_13b   = "At the sight Psyche stands like stone: her body is there, her mind is elsewhere. The danger is so great that she lacks even the last comfort, tears.",
 	.Fragment_13c   = "“Do you hope, simple girl, to steal one drop from this most holy and cruel spring? The gods, Jupiter himself, fear the waters of the Styx: as you swear by the gods, so they swear by the majesty of the Styx.”",
 	.Fragment_14    = "“Go to Proserpina,” says Venus, “and ask her for a little of her beauty, enough for a single day.”",
+	.Fragment_14b   = "Venus glares at her: “By now you seem to me a witch, a great and deep enchantress, to have obeyed my orders so well. But there is still one thing you must do for me.”",
+	.Fragment_14c   = "“Take this box. And come back soon: I must anoint myself with her beauty before I go to the theatre of the gods.”",
 	.Fragment_15    = "Psyche understands she is being sent to die. She climbs a high tower to throw herself down: the shortest road to Hades.",
 	.Fragment_16    = "Not far away lies Taenarus, a vent through which the kingdom of the dead breathes. From there a rough road leads down to the palace of Dis.",
 	.Fragment_17    = "Charon does nothing for free. Even among the dead greed lives on: whoever dies must carry the coin in his mouth.",
@@ -1034,6 +1044,7 @@ EN := [Key]string {
 	.Intro_III_2    = "Along the river grazes the golden flock of the Sun. A reed whispers: wait for evening.",
 	.Intro_III_3    = "Venus puts a crystal urn in her hands: “Fill it with the black water that springs from the summit.”",
 	.Intro_III_4    = "At the summit the black water cries out. The eagles carry you up, but where they set you down the hour stays as it was: choose it before you fly.",
+	.Intro_III_5    = "Back in the house of Venus. To leave it she will need everything she has learned: the lamp, the spindle, the cave, the eagle.",
 	.V_Doubt        = "He sleeps. Your sisters' words come back to you: what if he is a monster? The lamp is in your hand.",
 
 	.Tutorial_Label = "How to play",
@@ -1108,6 +1119,7 @@ EN := [Key]string {
 	.Outro_III_2    = "Psyche comes back to Venus with her lap full of golden wool. But not even this appeases her: “I know well who helped you.”",
 	.Outro_III_3    = "The eagle carries her up below the summit. Up there the black water cries out, and the dragons never sleep.",
 	.Outro_III_4    = "The eagle plunges the urn into the crying water and gives it back to her full. Venus looks at her, and her anger grows.",
+	.Outro_III_5    = "With the box in her hands Psyche climbs the highest tower. She knows no other road to the underworld but death.",
 	.Outro_III_1    = "At night Venus comes back from the feast, flushed with wine and fragrant with roses. She sees the work done.\n“This is not your doing,” she says, and throws her a crust of bread.",
 
 	.End_Trust_Title = "Trust",

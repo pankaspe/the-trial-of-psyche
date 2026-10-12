@@ -1,0 +1,221 @@
+# The Trial of Psyche - level III.5: "The Order of the Box" (format: level_04.txt)
+#
+# The last of Act III: back in the house of Venus, a maze of islands in her
+# pool, joined by three swing bridges; everything learned so far, together.
+# The level starts by day.
+#   - the court of arrival (C, h2, east): the start, a brazier, the first
+#     sundial; a handle turns the east bridge (part 0) from north-south to
+#     east-west, to Venus's court;
+#   - Venus's court (M, h2, the middle): a handle turns the west bridge
+#     (part 1) to the west terrace; the north bridge (part 2) reaches the
+#     north islet (a fragment);
+#   - the west terrace (W, h2): a brazier; at evening in view 2 a seam joins
+#     the tooth of the first seal, which raises the landing on Venus's
+#     balcony; the cave leads to the north-west islet;
+#   - the north-west islet: a handle turns the west bridge again, north-south
+#     to the south-west islet, where a stair hidden behind a pillar (seen
+#     only in views 1 and 3, or with the lamp) climbs to the third seal: it
+#     raises the eagle's perch; the other handle turns the north bridge
+#     east-west, to the garden;
+#   - the garden (h2): the ram of the Sun lies down at evening, a step up to
+#     the terrace (h3): the second seal (it raises the balcony's last stone)
+#     and the rope bridge, its planks veiled: the lamp carried across wakes
+#     them, to the eagle's crag;
+#   - the eagle's crag (h3): the second sundial; by day the eagle flies to the
+#     balcony (h6), and a stair of the sun climbs to Venus's throne (the exit).
+# Solution (solver: 64 steps, 2 turns, 3 lightings, 4 handles, 2 times
+# turned, 1 flight, 12 decisions; every sundial, handle, the cave, the ram
+# and the eagle needed): evening; the east bridge, the west bridge; the first
+# seal; the cave; the west bridge turned again, the third seal up the hidden
+# stair; the north bridge; the ram, the second seal, the rope bridge; day on
+# the crag; the eagle; the stair of the sun.
+# Traps: in view 2 Venus's court looks joined to the stair under the throne,
+# at evening: up there no sundial brings the day back.
+# Fragments: III.5 (VI.16, "go to Proserpina") on the north islet, across the
+# north bridge as it lies; III.5b (VI.16, Venus: "you seem a witch") on a
+# rock south of the hidden stair, joined in view 2 at evening; III.5c (VI.16,
+# the box) on a rock under the rope bridge, joined to the eagle's crag in
+# view 1: the bridge woken first.
+size 15
+setting venus_day
+evening venus_evening
+lamp 3
+intro intro_iii_5
+outro outro_iii_5
+water 0 0 14 14
+
+# --- C: the court of arrival (h2) --------------------------------------------
+column 11 5 0 1
+column 11 6 0 1
+column 11 7 0 1
+column 12 5 0 1
+column 12 6 0 1
+column 12 7 0 1
+column 13 5 0 1
+column 13 6 0 1
+column 13 7 0 1
+start 13 7 2
+rest 13 7 2
+sundial 13 5 2
+prop rail 13 5 2 my
+prop rail 13 7 2 px
+prop rail 13 7 2 py
+prop rail 12 7 2 py
+prop myrtle 12 7 2 py
+candelabrum 13 6 2 px lit
+
+# --- M: Venus's court (h2) ---------------------------------------------------
+column 5 5 0 1
+column 5 6 0 1
+column 5 7 0 1
+column 6 5 0 1
+column 6 6 0 1
+column 6 7 0 1
+column 7 5 0 1
+column 7 6 0 1
+column 7 7 0 1
+prop statue 6 6 2 py
+prop rose 7 7 2 px
+prop rose 5 5 2 mx
+
+# --- W: the west terrace (h2), the cave, the tooth of the first seal ---------
+column 0 5 0 1
+column 0 6 0 1
+column 0 7 0 1
+column 1 5 0 1
+column 1 6 0 1
+column 1 7 0 1
+rest 1 7 2
+column 0 8 0 3
+cave 0 7 2 py
+column 0 4 0 2
+sigil 0 4 3
+prop rail 0 4 3 my
+
+# --- the north-west islet (h2): the cave's other mouth -----------------------
+column 3 3 0 1
+column 4 3 0 1
+column 3 4 0 1
+column 2 3 0 3
+prop urn 2 3 4
+cave 3 3 2 mx
+
+# --- the south-west islet (h2): the hidden stair, the third seal -------------
+column 3 8 0 1
+column 3 9 0 1
+column 2 9 0 1
+column 1 9 0 1
+stairs 1 9 2 mx
+column 0 9 0 2
+sigil 0 9 3
+# the pillar that hides the stair
+column 2 10 0 4
+prop urn 2 10 5
+
+# --- islets at the bridges' other ends ---------------------------------------
+# north (the fragment)
+column 6 1 0 1
+column 6 0 0 1
+# south-east: the doves' rock
+column 9 8 0 1
+column 9 9 0 1
+column 10 9 0 1
+prop myrtle 10 9 2 px
+
+# --- the garden (h2), the ram, the terrace of the second seal (h3) -----------
+column 8 3 0 1
+column 9 3 0 1
+column 10 3 0 1
+column 10 2 0 1
+column 9 4 0 1
+column 10 4 0 1
+prop rail 8 3 2 my
+prop rose 10 4 2 px
+ram 10 2 2 my
+column 9 1 0 2
+column 10 1 0 2
+column 11 1 0 2
+column 10 0 0 2
+column 11 0 0 2
+sigil 9 1 3
+rest 11 0 3
+
+# --- the rope bridge, its planks veiled; the eagle's crag (h3) ---------------
+veiled 12 1 2 plank
+prop rope 12 1 3 my
+prop rope 12 1 3 py
+veiled 13 1 2 plank
+prop rope 13 1 3 my
+prop rope 13 1 3 py
+column 14 1 0 2
+column 14 2 0 2
+column 14 3 0 1
+rise 14 3 2 3
+sundial 14 2 3
+eagle 14 3 3 0 3 6
+
+# --- Venus's balcony (h6) and throne (h7) ------------------------------------
+column 0 3 0 4
+rise 0 3 5 1
+prop rail 0 3 6 px
+column 0 2 0 4
+rise 0 2 5 2
+column 1 2 0 5
+sunlit 1 2 6 px
+column 2 2 0 6
+exit 2 2 7
+prop rail 2 2 7 px
+prop rail 2 2 7 py
+
+# --- the bridges -------------------------------------------------------------
+# 0: the east bridge, north-south (the garden, the doves' rock)
+part 9 6
+block 9 5 1 plank_y
+block 9 6 1 plank_y
+block 9 7 1 plank_y
+prop rope 9 5 2 mx
+prop rope 9 5 2 px
+prop rope 9 6 2 mx
+prop rope 9 6 2 px
+prop rope 9 7 2 mx
+prop rope 9 7 2 px
+end
+# 1: the west bridge, north-south (the two west islets)
+part 3 6
+block 3 5 1 plank_y
+block 3 6 1 plank_y
+block 3 7 1 plank_y
+prop rope 3 5 2 mx
+prop rope 3 5 2 px
+prop rope 3 6 2 mx
+prop rope 3 6 2 px
+prop rope 3 7 2 mx
+prop rope 3 7 2 px
+end
+# 2: the north bridge, north-south (Venus's court, the north islet)
+part 6 3
+block 6 2 1 plank_y
+block 6 3 1 plank_y
+block 6 4 1 plank_y
+prop rope 6 2 2 mx
+prop rope 6 2 2 px
+prop rope 6 3 2 mx
+prop rope 6 3 2 px
+prop rope 6 4 2 mx
+prop rope 6 4 2 px
+end
+
+# the handles: the east bridge from the court of arrival, the west bridge
+# from Venus's court and from the north-west islet, the north bridge from
+# the north-west islet
+handle 11 7 2 0
+handle 5 7 2 1
+handle 4 3 2 1
+handle 3 4 2 2
+
+# III.5, III.5b, III.5c
+fragment 6 0 2
+column 1 11 0 1
+fragment 1 11 2
+column 12 2 0 1
+fragment 12 2 2

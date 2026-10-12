@@ -32,8 +32,8 @@ LEGACY_LAST_LEVEL :: "III.3"
 
 #assert(content.LEVEL_COUNT <= 32)
 Level_Set :: bit_set[0 ..< 32] // indices into content.LEVELS
-#assert(content.FRAGMENT_COUNT <= 32)
-Fragment_Set :: bit_set[0 ..< 32] // indices into content.FRAGMENTS
+#assert(content.FRAGMENT_COUNT <= 64)
+Fragment_Set :: bit_set[0 ..< 64] // indices into content.FRAGMENTS
 
 Achievement :: enum u8 {
 	Tale_1, // every fragment of an act
