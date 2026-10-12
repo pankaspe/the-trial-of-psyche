@@ -48,6 +48,7 @@ Uniform :: enum u8 {
 	Candle_Reach,
 	Candle_Count,
 	Sun_Truth,
+	Rock_Tint,
 }
 
 @(private)
@@ -73,6 +74,7 @@ UNIFORM_NAME := [Uniform]cstring {
 	.Daylight      = "daylight",
 	.Moonlight     = "moonlight",
 	.Sun_Truth     = "sun_truth",
+	.Rock_Tint     = "rock_tint",
 	.Candles       = "candles",
 	.Candle_Reach  = "candle_reach",
 	.Candle_Count  = "candle_count",
@@ -770,6 +772,7 @@ set_frame_uniforms :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	set_v3(r, .Mist_Color, lk.mist)
 	set_f(r, .Daylight, lk.daylight)
 	set_f(r, .Sun_Truth, game.has_time(g) ? 1 - g.evening : 0)
+	set_v3(r, .Rock_Tint, lk.rock == {} ? {1, 1, 1} : lk.rock)
 	set_f(r, .Moonlight, (1 - lk.gloom) * (1 - 0.45 * s.moon_cover))
 	list, n := candle_lights(g)
 	reach: [MAX_CANDLES]f32

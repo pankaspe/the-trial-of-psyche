@@ -219,6 +219,7 @@ Key :: enum u16 {
 	Intro_III_1,
 	Intro_III_2,
 	Intro_III_3,
+	Intro_III_4,
 	// beside Cupid in the dark, before the end of the game
 	V_Doubt,
 
@@ -304,6 +305,7 @@ Key :: enum u16 {
 	Outro_III_1,
 	Outro_III_2,
 	Outro_III_3,
+	Outro_III_4,
 
 	// endings
 	End_Trust_Title,
@@ -708,6 +710,7 @@ IT := [Key]string {
 	.Intro_III_1    = "È ancora giorno nella casa di Venere. Nel cortile, una meridiana segna le ore.",
 	.Intro_III_2    = "Lungo il fiume pascola il gregge d'oro del Sole. Una canna sussurra: aspetta la sera.",
 	.Intro_III_3    = "Venere le mette in mano un'urna di cristallo: «Riempila all'acqua nera che sgorga dalla vetta.»",
+	.Intro_III_4    = "Sulla vetta l'acqua nera grida. Le aquile ti portano lassù, ma dove ti posano l'ora resta quella: sceglila prima di volare.",
 	.V_Doubt        = "Dorme. Ti tornano in mente le parole delle sorelle: e se fosse un mostro? La lampada è nella tua mano.",
 
 	.Tutorial_Label = "Come si gioca",
@@ -781,6 +784,7 @@ IT := [Key]string {
 	.Outro_II_4     = "Cerere ne ha pietà, ma non può mettersi contro Venere. Giunone le appare, ma la legge vieta di accogliere la serva fuggita di un'altra.\nNon c'è più rifugio. Psiche andrà da Venere.",
 	.Outro_III_2    = "Psiche torna da Venere con il grembo pieno di lana d'oro. Ma nemmeno questo la placa: «So bene chi ti ha aiutata.»",
 	.Outro_III_3    = "L'aquila la porta fin sotto la vetta. Lassù l'acqua nera grida, e i draghi non dormono mai.",
+	.Outro_III_4    = "L'aquila affonda l'urna nell'acqua che grida e gliela rende piena. Venere la guarda, e la sua ira cresce.",
 	.Outro_III_1    = "A notte Venere torna dal banchetto, accaldata dal vino e profumata di rose. Vede il lavoro compiuto.\n«Non è opera tua», dice, e le getta un tozzo di pane.",
 
 	.End_Trust_Title = "Fiducia",
@@ -1023,6 +1027,7 @@ EN := [Key]string {
 	.Intro_III_1    = "It is still day in the house of Venus. In the court, a sundial tells the hours.",
 	.Intro_III_2    = "Along the river grazes the golden flock of the Sun. A reed whispers: wait for evening.",
 	.Intro_III_3    = "Venus puts a crystal urn in her hands: “Fill it with the black water that springs from the summit.”",
+	.Intro_III_4    = "At the summit the black water cries out. The eagles carry you up, but where they set you down the hour stays as it was: choose it before you fly.",
 	.V_Doubt        = "He sleeps. Your sisters' words come back to you: what if he is a monster? The lamp is in your hand.",
 
 	.Tutorial_Label = "How to play",
@@ -1096,6 +1101,7 @@ EN := [Key]string {
 	.Outro_II_4     = "Ceres pities her, but cannot set herself against Venus. Juno appears, but the law forbids sheltering another's runaway servant.\nThere is no refuge left. Psyche will go to Venus.",
 	.Outro_III_2    = "Psyche comes back to Venus with her lap full of golden wool. But not even this appeases her: “I know well who helped you.”",
 	.Outro_III_3    = "The eagle carries her up below the summit. Up there the black water cries out, and the dragons never sleep.",
+	.Outro_III_4    = "The eagle plunges the urn into the crying water and gives it back to her full. Venus looks at her, and her anger grows.",
 	.Outro_III_1    = "At night Venus comes back from the feast, flushed with wine and fragrant with roses. She sees the work done.\n“This is not your doing,” she says, and throws her a crust of bread.",
 
 	.End_Trust_Title = "Trust",

@@ -24,6 +24,7 @@ uniform float screen_height;
 uniform vec3 mist_color;
 uniform float daylight;      // 0 the moonlit palette .. 1 the low sun of a setting (no lamp needed)
 uniform float moonlight;     // the moon's light on the stones: < 1 in a darker night, or behind a cloud
+uniform vec3 rock_tint;      // the living rock's tint in this setting (1: its own colours)
 uniform float sun_truth;     // 0..1: the sun is up and shows true depth (a level with day and evening)
 #define MAX_CANDLES 16
 uniform vec4 candles[MAX_CANDLES]; // lit candles and candelabra: world position, strength
@@ -344,6 +345,7 @@ void main() {
     }
     night *= moonlight;
     vec3 col = mix(night, warm, lit);
+    if (material > 7.5 && material < 8.5) col *= rock_tint;
     // the candles warm the stones around them, most the faces that look at them
     float cl = 0.0;
     for (int i = 0; i < MAX_CANDLES; i++) {

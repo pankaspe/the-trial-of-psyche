@@ -36,6 +36,7 @@ Look :: struct {
 	candles:       bool, // the candles on the walls are lit
 	gloom:         f32, // 0 .. 1: how much darker the stones are than under a clear moon
 	moon_clouds:   f32, // 0 none .. 1 dark clouds drifting across the moon (they dim the stones)
+	rock:          Vec3, // the living rock's tint (zero: its own earth colours)
 	mote:          Color4,
 }
 
@@ -356,6 +357,61 @@ LOOKS := [level.Setting]Look {
 		gloom = 0.6,
 		mote = {0.55, 0.6, 0.9, 0.3},
 	},
+	// the summit of the Styx's crag by day: a pale scorched sky, a small white
+	// sun, grey-blue peaks in the glare, the black water still black
+	.Styx_Day = {
+		sky_top = {0.26, 0.34, 0.52},
+		sky_mid = {0.56, 0.60, 0.70},
+		sky_horizon = {0.86, 0.84, 0.80},
+		orb_pos = {0.30, 0.12},
+		orb_radius = 0.026,
+		orb_color = {1.0, 1.0, 0.96},
+		halo_color = {0.70, 0.70, 0.66},
+		halo_width = 3,
+		stars = 0,
+		haze = {0.74, 0.74, 0.72},
+		islands = false,
+		ridges = 1,
+		ridge_color = {{0.46, 0.50, 0.58}, {0.32, 0.35, 0.43}, {0.20, 0.22, 0.28}},
+		ridge_rim = {1.0, 0.96, 0.86},
+		cloud_back = {0.78, 0.78, 0.78},
+		cloud_front = {0.88, 0.88, 0.87},
+		cloud_crest = {0.18, 0.16, 0.12},
+		mist = {0.62, 0.64, 0.68},
+		water = {0.04, 0.05, 0.08, 0.94},
+		glint = {1.0, 1.0, 0.94, 0.5},
+		daylight = 1,
+		rock = {0.46, 0.48, 0.56},
+		mote = {1.0, 1.0, 0.9, 0.25},
+	},
+	// the same at evening: the sun low and red behind the far peaks, the sky
+	// darkening to violet above, the crags black against the glow
+	.Styx_Evening = {
+		sky_top = {0.04, 0.03, 0.10},
+		sky_mid = {0.24, 0.10, 0.18},
+		sky_horizon = {0.78, 0.30, 0.18},
+		orb_pos = {0.70, 0.80},
+		orb_radius = 0.05,
+		orb_color = {1.0, 0.56, 0.34},
+		halo_color = {0.62, 0.20, 0.10},
+		halo_width = 5,
+		stars = 0.35,
+		haze = {0.30, 0.12, 0.16},
+		islands = false,
+		ridges = 1,
+		ridge_color = {{0.22, 0.10, 0.14}, {0.12, 0.06, 0.10}, {0.05, 0.03, 0.06}},
+		ridge_rim = {0.90, 0.38, 0.20},
+		cloud_back = {0.30, 0.13, 0.17},
+		cloud_front = {0.40, 0.18, 0.20},
+		cloud_crest = {0.60, 0.24, 0.10},
+		mist = {0.18, 0.08, 0.12},
+		water = {0.03, 0.02, 0.04, 0.94},
+		glint = {1.0, 0.50, 0.30, 0.45},
+		daylight = 0.75,
+		gloom = 0.25,
+		rock = {0.62, 0.50, 0.56},
+		mote = {1.0, 0.6, 0.4, 0.35},
+	},
 	// the palace of voices at twilight: the sun is gone, its last light low on
 	// the clouds, the first stars, the moon rising; the candles are lit
 	.Dusk = {
@@ -466,6 +522,7 @@ blend :: proc(a, b: Look, t: f32) -> (o: Look) {
 	o.daylight = mixf(a.daylight, b.daylight, t)
 	o.gloom = mixf(a.gloom, b.gloom, t)
 	o.moon_clouds = mixf(a.moon_clouds, b.moon_clouds, t)
+	o.rock = mix3(a.rock, b.rock, t)
 	o.mote = mix4(a.mote, b.mote, t)
 	return
 }

@@ -65,6 +65,8 @@ Setting :: enum u8 {
 	Pasture_Evening, // the same at evening: the sun gone down, amber and violet, the first star
 	Venus_Day, // the house of Venus above the clouds by day: a pale gold morning, the sun in a rose haze
 	Styx_Night, // the gorge under the Styx's crag: no moon, faint stars, the black water falling
+	Styx_Day, // the summit of the Styx's crag by day: a white sun hard on the black rock
+	Styx_Evening, // the same at evening: a low red sun, the peaks black against it
 }
 
 SETTING_NAME := [Setting]string {
@@ -82,6 +84,8 @@ SETTING_NAME := [Setting]string {
 	.Pasture_Evening = "pasture_evening",
 	.Venus_Day     = "venus_day",
 	.Styx_Night    = "styx_night",
+	.Styx_Day      = "styx_day",
+	.Styx_Evening  = "styx_evening",
 }
 
 // How a block behaves (Act II): fixed stone, or one that changes for good.

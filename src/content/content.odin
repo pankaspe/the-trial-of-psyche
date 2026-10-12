@@ -63,7 +63,7 @@ LEVELS := [?]Level_Info {
 	{"III.1", .III, .Level_III_1, #load("../../assets/levels/level_09.txt", string)},
 	{"III.2", .III, .Level_III_2, #load("../../assets/levels/level_10.txt", string)},
 	{"III.3", .III, .Level_III_3, #load("../../assets/levels/level_11.txt", string)},
-	{"III.4", .III, .Level_III_4, ""},
+	{"III.4", .III, .Level_III_4, #load("../../assets/levels/level_12.txt", string)},
 	{"III.5", .III, .Level_III_5, ""},
 	{"IV.1", .IV, .Level_IV_1, ""},
 	{"IV.2", .IV, .Level_IV_2, ""},

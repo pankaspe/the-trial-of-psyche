@@ -1,0 +1,109 @@
+# The Trial of Psyche - level III.4: "The Water of the Styx" (format: level_04.txt)
+#
+# The summit of the Styx's crag, by day and at evening. The eagles fly at any
+# hour, but where they set her down there is no sundial: the hour she leaves
+# with is the hour she finds. Here the seals wait for the evening (the flame)
+# and the ways up for the day (the stairs of the sun): light at evening, fly
+# by day.
+#   - the foot (S, h1): the start, a brazier, the first sundial;
+#   - the east shoulder (E, h3): by day up a stair of the sun; at evening, in
+#     view 1, a seam joins it to the foot. The first seal raises the landing
+#     on the west spur; the first eagle flies there;
+#   - the west spur: the landing (h2), a stair of the sun up to its top (h3),
+#     the second sundial, a brazier. At evening in view 2 a seam joins the
+#     tooth of the second seal, which raises the landing on the summit's
+#     shelf; the lamp wakes the veiled stone where the second eagle waits;
+#   - the shelf under the summit (h5): a stair of the sun up to the spring
+#     (h6), where the black water rises (the exit).
+# Traps: an eagle taken at evening sets her where the stairs of the sun are
+# gone and no sundial turns the hour back; in view 2 the east shoulder looks
+# joined to the shelf, at evening: the summit a step away, and no way up.
+# Solution (solver: 41 steps, 2 turns, 3 lightings, 4 times turned, 2
+# flights, 11 decisions). Fragment (VI.14, the dragons and the crying water)
+# on a rock east of the shoulder, joined to it at evening in view 0.
+size 13
+setting styx_day
+evening styx_evening
+lamp 3
+intro intro_iii_4
+outro outro_iii_4
+water 0 0 12 12
+
+# --- S: the foot (h1) --------------------------------------------------------
+rock 7 10 0 0
+rock 8 10 0 0
+rock 9 10 0 0
+rock 7 11 0 0
+rock 8 11 0 0
+rock 9 11 0 0
+rock 9 9 0 0
+rock 10 9 0 0
+start 9 11 1
+rest 9 11 1
+sundial 7 11 1
+
+# --- up to the east shoulder: a stair of the sun, then steps ------------------
+rock 10 8 0 0
+sunlit 10 8 1 my
+rock 10 7 0 1
+rock 10 6 0 1
+steps 10 6 2 my
+
+# --- E: the east shoulder (h3): the first seal, the first eagle --------------
+rock 10 5 0 2
+rock 11 5 0 2
+rock 10 4 0 2
+rock 11 4 0 2
+sigil 11 5 3
+rest 10 5 3
+eagle 10 4 3 2 9 2
+
+# --- W: the west spur: the landing (h2), raised by the first seal ------------
+rock 2 9 0 0
+rise 2 9 1 rock 1
+rock 1 9 0 1
+rock 1 8 0 1
+rock 1 7 0 1
+sunlit 1 7 2 my
+# its top (h3): the second sundial, a brazier
+rock 1 6 0 2
+rock 2 6 0 2
+rock 1 5 0 2
+rock 2 5 0 2
+sundial 2 6 3
+rest 1 5 3
+prop lip 2 6 3 py
+# the tooth of the second seal (h4), the veiled stone of the second eagle
+rock 0 4 0 3
+sigil 0 4 4
+veiled 2 4 2 rock
+eagle 2 4 3 6 2 5
+
+# --- T: the shelf under the summit (h5), the spring (h6) ---------------------
+rock 6 2 0 3
+rise 6 2 4 rock 2
+rock 7 2 0 4
+prop lip 7 2 5 my
+rock 6 1 0 4
+sunlit 6 1 5 my
+rock 6 0 0 5
+exit 6 0 6
+
+# --- the fragment: a rock in the black water, north-west of the shoulder ----
+rock 8 4 0 3
+fragment 8 4 4
+
+# --- decoration: lips of broken rock, dead pines, cairns ---------------------
+prop cairn 8 11 1 px
+prop lip 7 11 1 py
+prop lip 8 11 1 py
+prop shrub 9 10 1 px
+prop pine 11 4 3 my
+prop lip 11 5 3 px
+prop shrub 1 9 2 py
+prop lip 1 6 3 mx
+prop lip 1 5 3 mx
+prop cairn 0 4 4 mx
+prop lip 6 0 6 mx
+prop lip 6 0 6 px
+prop lip 8 4 4 px
