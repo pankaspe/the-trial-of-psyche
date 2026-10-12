@@ -22,6 +22,13 @@
 // then she rises and the doves carry her off into the sky. Psyche is alone
 // before the heap; a little ant comes to her feet, and files of ants come
 // running from every side.
+//
+// The Tower (level IV.1, `tower x y h` = the brink she looks down from): dusk,
+// a red glow low in the sky. Psyche, Venus's box in her hands, comes to the
+// edge of the high tower to throw herself down: the shortest way to the
+// underworld. The tower speaks: a light rises through its stones while it
+// tells her the way (Taenarus, the cakes, the coins); she steps back from the
+// edge and turns to the way down.
 package game
 
 import "core:math"
@@ -73,6 +80,14 @@ prologue_start :: proc(g: ^Game) {
 	if g.data.scene == .Venus {
 		venus_routes(g)
 	}
+	if g.data.scene == .Tower && pl.find_path(&g.palace, g.data.start, g.data.prologue, false, &path) {
+		// from the start to the brink, and back
+		sa.clear(&g.prologue.route)
+		sa.push_back(&g.prologue.route, g.data.start)
+		for i in 0 ..< min(sa.len(path), MAX_ROUTE - 1) {
+			sa.push_back(&g.prologue.route, sa.get(path, i))
+		}
+	}
 	set_phase(g, .Prologue)
 	g.angle = PRO_SPIN
 }
@@ -107,6 +122,9 @@ prologue_alone :: proc(g: ^Game) -> f32 {
 	if g.data.scene == .Venus {
 		return VE_ALONE
 	}
+	if g.data.scene == .Tower {
+		return TW_ALONE
+	}
 	return prologue_back(g) + (mourner_stop(g, 0) + PRO_RISE) * PRO_BACK_PACE + 0.6
 }
 
@@ -115,6 +133,7 @@ prologue_fade_in :: proc(g: ^Game) -> f32 {
 	switch g.data.scene {
 	case .Flight: return FL_FADE
 	case .Venus: return VE_FADE
+	case .Tower: return TW_FADE
 	case .None, .Oracle:
 	}
 	return PRO_WALK_START
@@ -208,7 +227,7 @@ psyche_alpha :: proc(g: ^Game) -> f32 {
 	if g.phase != .Prologue {
 		return passage_alpha(g)
 	}
-	if g.data.scene == .Flight || g.data.scene == .Venus {
+	if g.data.scene != .Oracle {
 		return 1
 	}
 	return fx.clamp01(1 + psyche_distance(g) / PRO_RISE)
@@ -247,10 +266,17 @@ prologue_caption :: proc(g: ^Game) -> (key: Key, alpha: f32) {
 		{.Ve_Ants, VE_GONE + 0.1, alone - 0.3},
 		{.Ve_Alone, alone, 1e9},
 	}
+	tower := [?]Caption {
+		{.Tw_Brink, 1.0, TW_VOICE - 0.2},
+		{.Tw_Voice, TW_VOICE, TW_WAY - 0.2},
+		{.Tw_Way, TW_WAY, TW_BACK + 0.6},
+		{.Tw_Alone, alone, 1e9},
+	}
 	list := captions[:]
 	switch g.data.scene {
 	case .Flight: list = flight[:]
 	case .Venus: list = venus[:]
+	case .Tower: list = tower[:]
 	case .None, .Oracle:
 	}
 	for c in list {
@@ -269,6 +295,10 @@ update_prologue :: proc(g: ^Game, dt: f32) {
 	}
 	if g.data.scene == .Venus {
 		update_venus(g, dt)
+		return
+	}
+	if g.data.scene == .Tower {
+		update_tower(g, dt)
 		return
 	}
 	t := g.phase_t
@@ -348,6 +378,16 @@ cine :: proc(g: ^Game) -> (c: Cine) {
 		c.zoom = 1 + 0.3 * house + 0.7 * ants
 		c.focus = 0.6 * house + 0.92 * ants
 		c.venus = house
+		return
+	}
+	if g.data.scene == .Tower {
+		// from the red sky down to the top of the tower; close on her at the
+		// brink, a little back while the tower speaks, the usual framing after
+		c.bars = 1
+		c.look_up = 0.8 * (1 - fx.sine_in_out(fx.clamp01(t / 5)))
+		closer := fx.sine_in_out(fx.progress(t, 1.5, 3)) * (1 - 0.5 * fx.sine_in_out(fx.progress(t, TW_VOICE, 2))) * (1 - fx.sine_in_out(fx.progress(t, TW_BACK, TW_ALONE + 0.5 - TW_BACK)))
+		c.zoom = 1 + 0.45 * closer
+		c.focus = 0.8 * closer
 		return
 	}
 	if g.data.scene == .Flight {
@@ -620,5 +660,88 @@ update_venus :: proc(g: ^Game, dt: f32) {
 	}
 	if crossed(t, dt, VE_SWARM + 1.5) {
 		audio.play(.Rustle, -11, 0.92)
+	}
+}
+
+// --- the Tower ----------------------------------------------------------------------------
+
+TW_FADE :: 2.0 // out of black: the dusk over the tower
+TW_WALK :: 1.6 // she walks to the brink...
+TW_PACE :: 1.0 // ...seconds per cell
+TW_VOICE :: 6.8 // the tower speaks
+TW_WAY :: 11.2 // ...and tells her the way
+TW_BACK :: 15.4 // she steps back from the brink
+TW_ALONE :: 18.0 // the prompt follows
+TW_LIGHTS :: 6 // the lights rising through the stones while the tower speaks
+
+// Her distance along the route from the start to the brink (and back).
+@(private)
+tower_distance :: proc(g: ^Game) -> f32 {
+	length := route_length(g)
+	t := g.phase_t
+	if t < TW_BACK {
+		return min(max(t - TW_WALK, 0) / TW_PACE, length)
+	}
+	return max(length - (t - TW_BACK) / TW_PACE, 0)
+}
+
+// The way she looks out from the brink: away from the start, over the edge.
+@(private)
+tower_out :: proc(g: ^Game) -> Vec3 {
+	brink := pl.node_world(&g.palace, g.data.prologue)
+	d := brink - pl.node_world(&g.palace, g.data.start)
+	if d.x * d.x + d.y * d.y < 1e-4 {
+		mid := f32(g.data.size) * 0.5
+		d = brink - Vec3{mid, mid, brink.z}
+	}
+	return brink + Vec3{d.x, d.y, 0} * 3
+}
+
+// The voice of the tower: light k rising through its stones under the brink,
+// where it is and how bright (0: none).
+tower_light :: proc(g: ^Game, k: int) -> (pos: Vec3, alpha: f32) {
+	if g.phase != .Prologue || g.data.scene != .Tower {
+		return
+	}
+	t := g.phase_t - TW_VOICE
+	if t < 0 {
+		return
+	}
+	// up the corner of the tower under the brink, just outside its stones
+	brink := pl.node_world(&g.palace, g.data.prologue)
+	out := tower_out(g) - brink
+	out /= max(math.sqrt(out.x * out.x + out.y * out.y), 1e-4)
+	u := math.mod(t * 0.22 + f32(k) / TW_LIGHTS, 1)
+	depth := brink.z - 0.3
+	side := Vec3{-out.y, out.x, 0} * (0.35 * math.sin(f32(k) * 2.3 + t * 0.6))
+	pos = brink + out * 0.78 + side + {0, 0, -depth * (1 - u)}
+	alpha = math.sin(math.PI * u) * fx.clamp01(t / 1.5) * (1 - fx.progress(g.phase_t, TW_BACK, 2))
+	return
+}
+
+@(private)
+update_tower :: proc(g: ^Game, dt: f32) {
+	t := g.phase_t
+	g.angle = PRO_SPIN * (1 - fx.sine_in_out(fx.clamp01(t / (TW_ALONE + 1))))
+	s := tower_distance(g)
+	pos, dir := route_point(g, s)
+	moving := (t > TW_WALK && s < route_length(g) && t < TW_BACK) || (t > TW_BACK && s > 0)
+	g.psyche.pos = pos + {0, 0, bob(t, moving, 0)}
+	switch {
+	case moving && t > TW_BACK: g.psyche.target_yaw = yaw_of(-dir)
+	case moving: g.psyche.target_yaw = yaw_of(dir)
+	case t < TW_BACK: face_point(g, tower_out(g))
+	}
+	if crossed(t, dt, TW_FADE) {
+		audio.play(.Wind, -14, 0.75)
+	}
+	if crossed(t, dt, TW_VOICE) {
+		audio.play(.Reveal, -14, audio.semitones(-12))
+	}
+	if crossed(t, dt, TW_WAY + 0.3) {
+		audio.play(.Seam, -20, audio.semitones(-5))
+	}
+	if crossed(t, dt, TW_BACK + 1) {
+		audio.play(.Good, -16, audio.semitones(-5))
 	}
 }

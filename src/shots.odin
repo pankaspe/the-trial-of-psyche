@@ -430,7 +430,17 @@ plan_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool)
 		return "p000_start", false
 	}
 	if s.step == 3 {
-		if s.t < 5 {
+		if g.ferried && s.shot >= 0 && game.lightning_flash(g) > 0.6 {
+			// the lightning as he takes the coin
+			s.shot = -3
+			return "p998_lightning", false
+		}
+		if g.ferried && s.shot == -3 && s.t >= 3.6 {
+			// Charon poling the boat away
+			s.shot = -2
+			return "p999_ferry", false
+		}
+		if s.t < game.exit_end(g) + 1.4 {
 			return "", false
 		}
 		virtual.arena_destroy(&s.arena)
@@ -459,6 +469,20 @@ plan_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool)
 	}
 	if s.move >= len(s.moves) && g.data.has_amore && !game.is_over(g) && !g.lamp_on {
 		game.toggle_lamp(g) // beside Cupid: the lamp, the canonical ending
+		s.t = 0
+		return "", false
+	}
+	if s.move >= len(s.moves) && g.data.has_boat && !game.is_over(g) {
+		// on Charon's landing: a shot with the action of the place, then aboard
+		if s.cave_shot <= s.move {
+			if s.t < 0.6 {
+				return "", false
+			}
+			s.cave_shot = s.move + 1
+			s.t = 0
+			return fmt.tprintf("p%03d_place", s.move), false
+		}
+		game.board_boat(g)
 		s.t = 0
 		return "", false
 	}

@@ -31,6 +31,8 @@ Sound_Id :: enum u8 {
 	Wind, // a gust (Zephyr, the exits): air and its song
 	Rustle, // the ants: a dry whisper of little feet and grains
 	Wings, // Jupiter's eagle: slow broad wingbeats, then the glide
+	Oar, // Charon's pole in the dark water: a slow swirl, a few deep gurgles
+	Thunder, // far thunder over the underworld: a soft crack, then a long low roll
 }
 
 // Effects in key: transposed with the act's soundtrack.
@@ -55,6 +57,8 @@ VARIANTS := [Sound_Id]int {
 	.Wind       = 2,
 	.Rustle     = 3,
 	.Wings      = 2,
+	.Oar        = 2,
+	.Thunder    = 2,
 }
 
 // The ambience of a place: a seamless stereo loop.
@@ -507,6 +511,65 @@ synthesize :: proc(id: Sound_Id, variant: int, allocator := context.allocator) -
 			v += bp * 0.35 * glide
 		}
 		room, tail = HALL, 1.8
+
+	case .Oar:
+		// Charon's pole: it parts the dark water in a slow low swirl, the
+		// boat answers with a few deep gurgles under the hull
+		b = buffer(2.2, context.temp_allocator)
+		pk: Pink
+		f: Svf
+		for &v, i in b {
+			t := time_of(i)
+			swirl := math.pow(max(math.sin(math.PI * min(t / 1.9, 1)), 0), 1.6)
+			_, bp, _ := svf(&f, pink(&pk, &rng), 260 + 180 * swirl, 1.1)
+			v = bp * swirl
+		}
+		at := fx.rand_range(&rng, 0.25, 0.4)
+		for _ in 0 ..< 4 {
+			hz := fx.rand_range(&rng, 140, 230)
+			length := int(fx.rand_range(&rng, 0.06, 0.11) * RATE)
+			phase: f32 = 0
+			for k in 0 ..< length {
+				i := int(at * RATE) + k
+				if i >= len(b) {
+					break
+				}
+				u := f32(k) / f32(length)
+				phase += math.TAU * hz * (1 + 0.5 * u) / RATE
+				b[i] += math.sin(phase) * math.sin(math.PI * u) * (1 - u) * 0.5
+			}
+			at += fx.rand_range(&rng, 0.18, 0.35)
+		}
+		room, tail = HALL, 2.2
+
+	case .Thunder:
+		// far thunder: the crack rounded off by the distance, then the roll,
+		// a few slow swells of low noise dying away
+		b = buffer(5.5, context.temp_allocator)
+		pk: Pink
+		lo, crack: Svf
+		swells: [4][2]f32 // when, how strong
+		at: f32 = 0.35
+		for &w, k in swells {
+			w = {at, fx.rand_range(&rng, 0.5, 0.9) * (1 - 0.18 * f32(k))}
+			at += fx.rand_range(&rng, 0.55, 0.95)
+		}
+		for &v, i in b {
+			t := time_of(i)
+			x := pink(&pk, &rng)
+			roll: f32 = 0
+			for w in swells {
+				d := t - w.x
+				if d > -0.3 {
+					roll += w.y * math.exp(-d * d / 0.18) if d < 0 else w.y * math.exp(-d * 1.4)
+				}
+			}
+			body, _, _ := svf(&lo, x, 140 + 120 * math.exp(-t * 2), 0.8)
+			_, bright, _ := svf(&crack, x, 700, 0.9)
+			onset := min(t / 0.03, 1) * math.exp(-t * 6)
+			v = body * (0.25 * onset + roll) * 1.4 + bright * onset * 0.35
+		}
+		room, tail = HALL, 3.5
 	}
 	soften(b, SOFT_HZ)
 	out := reverb(b, room, tail, allocator)

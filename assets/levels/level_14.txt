@@ -1,0 +1,187 @@
+# The Trial of Psyche - level IV.1: "The Speaking Tower" (format: level_04.txt)
+#
+# The first level of Act IV opens with the Tower: on its top Psyche comes to
+# the edge to throw herself down, and the tower speaks (the cutscene, from the
+# brink). Then she goes down a tower that widens as it falls, a spiral way
+# round it (a tower of Babel): the spire (2 x 2, h21), the first ring (4 x 4,
+# h20 - h16), the second (6 x 6, h16 - h8), the third of living rock (h8 -
+# h3); from the dusk at the top to the red dark of Taenarus at its foot
+# (`below`: the look follows her down). Candles on the walls and candelabra,
+# very few up high, more and more as the dark grows. A breather that goes
+# over what she knows:
+#   - the stairs on the far side of the tower hide behind it: turn (or the
+#     lamp, which shows every stair while the oil lasts);
+#   - braziers at the head of the second and third rings;
+#   - a stone missing at the south-west corner of the second ring: the lamp
+#     wakes it (veiled);
+#   - the foot: a cave through the crag under the west face, out onto the
+#     road along the shore; at its end the dark, where a guard candelabrum
+#     (lit with the lamp, standing beside it) shows the stones to the jetty.
+#     Charon waits; Space boards his boat, the sky cracks with lightning as
+#     he takes the coin, and he poles away from the tower into the mist.
+# Solution (solver: 58 steps, 1 turn, 2 lightings, 3 decisions; the cave and
+# the boat besides).
+# Fragments: IV.1 (VI.19, do not open the box) on a stone fallen from the
+# crown, joined to the first ring's north-west corner in view 2; IV.1b
+# (VI.19, the weavers) on a rock in the dark water, joined to the cave's way
+# out in view 2.
+size 12
+setting tower_dusk
+below taenarus
+tier 1 6
+tier 7 11
+tier 12 16
+tier 17 21
+lamp 1
+intro intro_iv_1
+outro outro_iv_1
+water 0 0 15 11
+start 5 5 21
+tower 6 5 21
+prop wallBattlement 5 5 21 mx
+prop wallBattlement 5 6 21 mx
+prop wallBattlement 5 5 21 my
+prop wallBattlement 6 5 21 my
+prop wallBattlement 5 6 21 py
+# the first fragment: a stone fallen from the crown, joined to the first ring's corner in view 2
+block 1 2 19
+fragment 1 2 20
+# --- the spire (h21): 2 x 2, a stair cut in its corner -----------------------------
+column 5 5 0 20
+column 6 5 0 20
+column 5 6 0 20
+column 6 6 0 19
+stairs 6 6 20 mx
+# --- the first ring (4 x 4, h20 - h16) --------------------------------------------
+column 7 6 0 19
+column 7 5 0 18
+stairs 7 5 19 py
+column 7 4 0 18
+column 6 4 0 18
+column 5 4 0 17
+stairs 5 4 18 px
+column 4 4 0 17
+column 4 5 0 17
+column 4 6 0 16
+stairs 4 6 17 my
+column 4 7 0 16
+column 5 7 0 16
+column 6 7 0 15
+stairs 6 7 16 mx
+column 7 7 0 15
+# --- the second ring (6 x 6, h16 - h8) ------------------------------------------
+column 8 7 0 15
+column 8 6 0 14
+stairs 8 6 15 py
+column 8 5 0 14
+column 8 4 0 13
+stairs 8 4 14 py
+column 8 3 0 13
+column 7 3 0 13
+column 6 3 0 12
+stairs 6 3 13 px
+column 5 3 0 12
+column 4 3 0 11
+stairs 4 3 12 px
+column 3 3 0 11
+column 3 4 0 11
+column 3 5 0 10
+stairs 3 5 11 my
+column 3 6 0 10
+column 3 7 0 9
+stairs 3 7 10 my
+column 3 8 0 8
+column 4 8 0 9
+column 5 8 0 8
+stairs 5 8 9 mx
+column 6 8 0 8
+column 7 8 0 7
+stairs 7 8 8 mx
+column 8 8 0 7
+# --- the third ring (8 x 8, h8 - h1): the living rock ------------------------------
+rock 9 8 0 7
+rock 9 7 0 6
+stairs 9 7 7 py
+rock 9 6 0 6
+rock 9 5 0 5
+stairs 9 5 6 py
+rock 9 4 0 5
+rock 9 3 0 4
+stairs 9 3 5 py
+rock 9 2 0 4
+rock 8 2 0 4
+rock 7 2 0 3
+stairs 7 2 4 px
+rock 6 2 0 3
+rock 5 2 0 2
+stairs 5 2 3 px
+rock 4 2 0 2
+rock 3 2 0 2
+rock 2 2 0 2
+rock 2 3 0 2
+rest 8 7 16
+rest 9 8 8
+veiled 3 8 9
+candelabrum 8 3 14 px lit
+candelabrum 9 6 7 px lit
+candelabrum 9 2 5 my lit
+candelabrum 6 2 4 my lit
+candelabrum 2 2 3 mx lit
+# --- the foot: a cave through the crag, the road along the shore ------------------
+# the crag of living rock under the west face; the cave goes through it
+rock 2 4 0 4
+rock 2 5 0 4
+rock 2 6 0 4
+rock 2 7 0 4
+rock 2 8 0 3
+cave 2 3 3 py
+cave 2 9 1 my
+# the road of Taenarus (h1) under the south face, lit by candelabra
+rock 2 9 0 0
+rock 3 9 0 0
+rock 4 9 0 0
+rock 5 9 0 0
+rock 6 9 0 0
+rock 7 9 0 0
+prop lip 2 9 1 py
+prop lip 3 9 1 py
+prop lip 4 9 1 py
+prop lip 5 9 1 py
+prop lip 6 9 1 py
+candelabrum 3 9 1 py lit
+candelabrum 5 9 1 py lit
+# the dark: the guard's light shows the stones to the jetty
+candelabrum 7 9 1 py guard
+hint 7 9 1 hint_guard
+rise 8 9 0 rock 1
+rise 9 9 0 rock 1
+block 10 9 0 plank
+exit 10 9 1
+charon 10 9 1 px
+# the second fragment: a rock in the dark water, joined to the cave's way out in view 2
+block 0 8 1 rock
+fragment 0 8 2
+# --- candles on the walls: very few up high, more and more as the dark grows ------
+prop sconce 6 5 20 px
+prop sconce 5 6 20 py
+prop sconce 7 4 17 px
+prop sconce 4 7 15 py
+prop sconce 8 5 12 px
+prop sconce 5 3 11 my
+prop sconce 3 5 9 mx
+prop sconce 6 8 7 py
+prop sconce 8 6 13 px
+prop sconce 9 7 5 px
+prop sconce 9 4 4 px
+prop sconce 8 2 3 my
+prop sconce 6 2 2 my
+prop sconce 4 2 2 my
+prop sconce 3 2 1 my
+prop sconce 2 5 3 mx
+prop sconce 2 7 3 mx
+prop sconce 3 8 5 py
+prop sconce 4 8 3 py
+prop sconce 5 8 4 py
+prop sconce 6 8 3 py
+prop sconce 7 8 5 py
+prop sconce 8 8 3 py

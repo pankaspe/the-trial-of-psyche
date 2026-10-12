@@ -35,6 +35,13 @@
 // card over her) calls it: it takes her by the shoulders and carries her to
 // its landing, one way, then flies back to its perch. Walks never call it.
 //
+// Charon's boat (Act IV) is moored at the exit: reaching the landing does not
+// end the level; standing there, Space (or the card over her) boards it, she
+// gives him the coin and he ferries her away into the mist.
+//
+// A level that goes down (`below`): its look at the foot is blended in as she
+// descends from the start's height to the exit's (`descent`).
+//
 // Cutscenes are timelines: a phase plus the time spent in it; every animation
 // is a function of that time, so there are no callbacks to keep alive.
 //
@@ -89,6 +96,7 @@ FLIGHT_TAKE :: 0.2 // ...the part of it where the eagle comes down to her...
 FLIGHT_LAND :: 0.86 // ...and where she touches the ground again
 EAGLE_RETURN :: 3.2 // the eagle flying back to its perch
 EAGLE_HOLD :: 0.82 // how far above her feet the eagle holds her
+DESCENT_TIME :: 2.0 // the sky following her down (a level that goes down), at most this long from top to foot
 
 Phase :: enum u8 {
 	Play,
@@ -196,6 +204,8 @@ Game :: struct {
 	flip_t:         []f32, // per data.blocks entry: time since it changed for good, < 0 before
 	part_turning:   int, // the part a handle is turning (phase Mechanism)
 	evening:        f32, // 0 day .. 1 evening, follows palace.day (the sky, the rams' pose)
+	descent:        f32, // a level that goes down: 0 at the start's height .. 1 at the exit's (the look at its foot)
+	ferried:        bool, // the exit was by Charon's boat (phase Ending_Exit: its own timeline)
 	rest:           Rest, // the last brazier Psyche lit
 	eagle_flying:   int, // the eagle carrying her (while psyche.step_flight)
 	eagle_back:     [level.MAX_EAGLES]f32, // per eagle: time since it let her go, < 0 before
@@ -242,6 +252,7 @@ Game :: struct {
 	arrive_t:       f32, // time since the arrival from the last level began, < 0 without one
 	rise_t:         [level.MAX_SEALS]f32, // per seal: time since it was lit, < 0 before
 	rise_rank:      []int, // per data.rise entry: its place among the blocks of its seal
+	lightning_t:    f32, // time since the last lightning, < 0 before (`lightning`)
 	collapse_t:     f32, // < 0 until the palace falls
 	collapse_keep:  Cell,
 	shake_t:        f32,
@@ -320,6 +331,7 @@ load_text :: proc(g: ^Game, index: int, text: string) -> (err: Maybe(Load_Error)
 	g.rise_t = -1
 	g.eagle_back = -1
 	g.collapse_t = -1
+	g.lightning_t = -1
 	for &t in g.fragment_t {
 		t = -1
 	}
@@ -339,6 +351,7 @@ load_text :: proc(g: ^Game, index: int, text: string) -> (err: Maybe(Load_Error)
 	g.psyche.target_yaw = g.psyche.yaw
 	g.rng = fx.rng_init(u32(index) * 7919 + 17)
 	g.evening = g.palace.day || len(g.data.sundials) == 0 ? 0 : 1
+	g.descent = descent_target(g)
 	for c, i in g.data.rests {
 		if c == g.data.start {
 			light_rest(g, i, quiet = true) // a brazier where she starts is lit already
@@ -434,9 +447,28 @@ dark :: proc(g: ^Game) -> bool {
 	return !g.lamp_on && !g.palace.day
 }
 
-// The place as it looks now: the evening's setting once the sun is down.
+// The place as it looks now: the evening's setting once the sun is down, the
+// foot's once she is more than half way down.
 setting_now :: proc(g: ^Game) -> level.Setting {
-	return has_time(g) && g.evening > 0.5 ? g.data.evening : g.data.setting
+	switch {
+	case has_time(g) && g.evening > 0.5: return g.data.evening
+	case g.data.has_below && g.descent > 0.5: return g.data.below
+	}
+	return g.data.setting
+}
+
+// How far down she is, from the start's height (0) to the exit's (1), in a
+// level that goes down.
+@(private)
+descent_target :: proc(g: ^Game) -> f32 {
+	if !g.data.has_below {
+		return 0
+	}
+	top, foot := f32(g.data.start.z), f32(g.data.exit.z)
+	if top <= foot {
+		return 0
+	}
+	return fx.clamp01((top - g.psyche.pos.z) / (top - foot))
 }
 
 // How much the truth shows now (the cracks where the illusions were): the
@@ -516,6 +548,9 @@ update :: proc(g: ^Game, dt: f32) {
 	if has_time(g) {
 		g.evening = fx.move_toward(g.evening, g.palace.day ? 0 : 1, dt / TIME_TURN)
 	}
+	if g.data.has_below && g.phase != .Prologue {
+		g.descent = fx.move_toward(g.descent, descent_target(g), dt / DESCENT_TIME)
+	}
 	update_turn(g, dt)
 	update_walk(g, dt)
 	update_effects(g, dt)
@@ -575,7 +610,10 @@ update :: proc(g: ^Game, dt: f32) {
 	case .Ending_Trust:
 		update_ending_trust(g)
 	case .Ending_Exit:
-		if g.phase_t >= EXIT_END {
+		if g.ferried {
+			update_ferry(g, dt)
+		}
+		if g.phase_t >= exit_end(g) {
 			g.ending = .Exit
 			set_phase(g, .Finished)
 		}
@@ -846,6 +884,23 @@ call_eagle :: proc(g: ^Game) -> bool {
 	face_toward(g, pl.node_world(&g.palace, psy.step_to) - pl.node_world(&g.palace, psy.step_from))
 	learn(g, .Hint_Eagle)
 	audio.play(.Wings, -8)
+	return true
+}
+
+// Psyche stands still on the landing where Charon's boat is moored.
+at_boat :: proc(g: ^Game) -> bool {
+	return standing(g) && g.data.has_boat && g.psyche.cell == g.data.boat.cell
+}
+
+// Into Charon's boat: the level ends as he ferries her away.
+board_boat :: proc(g: ^Game) -> bool {
+	if !at_boat(g) {
+		return false
+	}
+	learn(g, .Hint_Boat)
+	g.ferried = true
+	start_ending(g, .Ending_Exit)
+	face_toward(g, boat_dir(g))
 	return true
 }
 
@@ -1256,8 +1311,10 @@ arrive :: proc(g: ^Game, n: Cell) {
 	if g.phase != .Play {
 		return
 	}
-	if g.data.has_exit && n == g.data.exit {
+	if g.data.has_exit && n == g.data.exit && !g.data.has_boat {
 		start_ending(g, .Ending_Exit)
+	} else if g.data.has_boat && n == g.data.boat.cell {
+		hint(g, .Hint_Boat, 0)
 	} else if !g.lamp_on && g.data.has_amore && adjacent_to_amore(g, n) {
 		if g.trust_allowed {
 			start_ending(g, .Ending_Trust)
@@ -1419,6 +1476,12 @@ return_to_rest :: proc(g: ^Game) -> bool {
 	g.evening = r.day || !has_time(g) ? 0 : 1
 	g.activated = r.activated
 	g.palace.risen = r.activated
+	for c, i in g.data.candelabra {
+		if c.guard && int(c.seal) not_in r.activated {
+			g.candelabra_lit -= {i}
+			g.candelabrum_t[i] = -1
+		}
+	}
 	for &t, k in g.rise_t {
 		t = k in r.activated ? 1e3 : -1
 	}
@@ -1472,11 +1535,24 @@ seal_at :: proc(g: ^Game, c: Cell) -> int {
 activate_sigil :: proc(g: ^Game, k: int) {
 	g.activated += {k}
 	g.rising = k
-	learn(g, .Hint_Sigil)
 	set_phase(g, .Sigil)
 	sa.clear(&g.path)
-	audio.play(.Rumble, -2)
-	shake(g, 2.6)
+	if k in g.data.guard_seals {
+		// a guard candelabrum catches the flame: its light shows the way
+		for c, i in g.data.candelabra {
+			if c.guard && int(c.seal) == k && i not_in g.candelabra_lit {
+				g.candelabra_lit += {i}
+				g.candelabrum_t[i] = 0
+			}
+		}
+		learn(g, .Hint_Guard)
+		audio.play(.Lamp_On, -6, audio.semitones(-5))
+		audio.play(.Reveal, -10)
+	} else {
+		learn(g, .Hint_Sigil)
+		audio.play(.Rumble, -2)
+		shake(g, 2.6)
+	}
 	g.palace.risen = g.activated
 	pl.rebuild_graph(&g.palace)
 	g.rise_t[k] = 0
@@ -1529,7 +1605,11 @@ start_ending :: proc(g: ^Game, p: Phase) {
 		face_point(g, amore_world(g))
 		audio.play(.Good, -2)
 	case .Ending_Exit:
-		audio.play(.Wind, -4)
+		if g.ferried {
+			audio.play(.Oar, -10)
+		} else {
+			audio.play(.Wind, -4)
+		}
 	case .Play, .Sigil, .Mechanism, .Time, .Prologue, .Arrival, .Finished:
 	}
 }
@@ -1566,12 +1646,18 @@ arrival_rise :: proc(g: ^Game, d: f32, jitter: f32) -> f32 {
 	return fx.cubic_out(fx.progress(g.arrive_t, 0.45 + d * 0.08 + jitter * 0.15, 1.0))
 }
 
+// How long the exit lasts: the wind's, or the crossing in Charon's boat.
+exit_end :: proc(g: ^Game) -> f32 {
+	return g.ferried ? BOAT_END : EXIT_END
+}
+
 // The veil between the levels over the world: closing as Psyche flies away
-// through an exit, opening as she arrives. 0: no veil, 1: closed.
+// through an exit (or the boat is lost in the mist), opening as she arrives.
+// 0: no veil, 1: closed.
 veil :: proc(g: ^Game) -> f32 {
 	switch {
 	case g.phase == .Ending_Exit:
-		return fx.sine_in_out(fx.progress(g.phase_t, VEIL_IN, VEIL_IN_TIME))
+		return fx.sine_in_out(fx.progress(g.phase_t, g.ferried ? BOAT_VEIL : VEIL_IN, VEIL_IN_TIME))
 	case g.phase == .Finished && g.ending == .Exit:
 		return 1
 	case g.phase == .Arrival:
@@ -1582,11 +1668,130 @@ veil :: proc(g: ^Game) -> f32 {
 
 // How high the wind has lifted Psyche (cells) at the exit.
 exit_lift :: proc(g: ^Game) -> f32 {
-	if g.phase != .Ending_Exit && !(g.phase == .Finished && g.ending == .Exit) {
+	if g.ferried || g.phase != .Ending_Exit && !(g.phase == .Finished && g.ending == .Exit) {
 		return 0
 	}
 	t := g.phase == .Finished ? EXIT_END : g.phase_t
 	return EXIT_HEIGHT * fx.quad_in(fx.clamp01((t - EXIT_LIFT) / (EXIT_END - EXIT_LIFT)))
+}
+
+// --- Charon's boat ---------------------------------------------------------------------
+
+// Timeline of the crossing: she steps down into the boat, puts the coin in
+// Charon's hand, and he poles the boat away into the mist.
+BOAT_STEP :: 1.0 // stepping down from the landing into the boat
+BOAT_COIN :: 1.2 // the coin passes from her to him...
+BOAT_COIN_TIME :: 0.9 // ...this long
+BOAT_PUSH :: 2.4 // he pushes off
+BOAT_GONE :: 4.6 // cells the boat goes before the veil hides it
+BOAT_VEIL :: 4.6 // the veil starts to close
+BOAT_END :: 6.6
+BOAT_STERN :: 0.55 // the stern, cells out from the landing's centre (render's Boat)...
+BOAT_LENGTH :: 1.78 // ...and the boat's length to the prow
+BOAT_SEAT :: 1.0 // where she stands in it, cells out from the landing's centre
+BOAT_CHARON :: 1.85 // where Charon stands, at the far end (cells out)
+BOAT_DRAFT :: 0.22 // its floor under the landing's surface
+
+// The way the boat lies: out from the landing, along its side `dir`.
+boat_dir :: proc(g: ^Game) -> Vec3 {
+	d := iso.DIR_VEC[g.data.boat.dir]
+	return {f32(d.x), f32(d.y), 0}
+}
+
+// Cells the boat has gone out from its mooring.
+@(private)
+boat_away :: proc(g: ^Game) -> f32 {
+	if !g.ferried || !(g.phase == .Ending_Exit || g.phase == .Finished) {
+		return 0
+	}
+	t := g.phase == .Finished ? BOAT_END : g.phase_t
+	return BOAT_GONE * fx.quad_in(fx.clamp01((t - BOAT_PUSH) / (BOAT_END - BOAT_PUSH)))
+}
+
+// A point of the boat (`out` cells from the landing's centre, along its
+// length), as it floats now: rocking on the water, then going away.
+boat_point :: proc(g: ^Game, out: f32) -> Vec3 {
+	land := pl.node_world(&g.palace, g.data.boat.cell)
+	bob := 0.015 * math.sin(g.time * 1.4)
+	return land + boat_dir(g) * (out + boat_away(g)) + {0, 0, bob - BOAT_DRAFT}
+}
+
+// Charon in his boat: where he stands, which way he faces, how far his pole
+// leans (0 upright .. 1 thrust), how much of him is seen (the mist takes him).
+charon_pose :: proc(g: ^Game) -> (pos: Vec3, yaw, pole, alpha: f32) {
+	pos = boat_point(g, BOAT_CHARON)
+	d := boat_dir(g)
+	// he faces the landing while he waits; out over the water once he poles
+	away := g.ferried && (g.phase == .Finished || g.phase == .Ending_Exit && g.phase_t > BOAT_PUSH - 0.4)
+	yaw = math.atan2(-d.y, -d.x)
+	if away {
+		yaw = math.atan2(d.y, d.x)
+		t := g.phase == .Finished ? BOAT_END : g.phase_t
+		pole = 0.5 + 0.5 * math.sin((t - BOAT_PUSH) * 1.6 - math.PI * 0.5)
+	}
+	alpha = 1 - boat_fade(g)
+	return
+}
+
+// How much the mist has taken the boat (0 there .. 1 gone).
+boat_fade :: proc(g: ^Game) -> f32 {
+	return fx.clamp01((boat_away(g) - BOAT_GONE * 0.45) / (BOAT_GONE * 0.55))
+}
+
+// The coin on its way from her hand to his (ok while it passes).
+boat_coin :: proc(g: ^Game) -> (pos: Vec3, ok: bool) {
+	if !g.ferried || g.phase != .Ending_Exit || g.phase_t < BOAT_COIN || g.phase_t >= BOAT_COIN + BOAT_COIN_TIME {
+		return
+	}
+	u := fx.sine_in_out((g.phase_t - BOAT_COIN) / BOAT_COIN_TIME)
+	her := g.psyche.pos + {0, 0, 0.52}
+	him, _, _, _ := charon_pose(g)
+	return fx.lerp(her, him + {0, 0, 0.5}, u) + {0, 0, 0.12 * math.sin(math.PI * u)}, true
+}
+
+@(private)
+update_ferry :: proc(g: ^Game, dt: f32) {
+	t := g.phase_t
+	from := pl.stand_world(&g.palace, g.data.boat.cell)
+	seat := boat_point(g, BOAT_SEAT)
+	u := fx.sine_in_out(fx.clamp01(t / BOAT_STEP))
+	g.psyche.pos = fx.lerp(from, seat, u) + {0, 0, 0.12 * math.sin(math.PI * u)}
+	if t > BOAT_STEP {
+		g.psyche.pos = seat
+	}
+	if crossed(t, dt, BOAT_STEP * 0.8) {
+		audio.play(.Thud, -20, 1.4)
+	}
+	if crossed(t, dt, BOAT_COIN + BOAT_COIN_TIME) {
+		audio.play(.Good, -12, audio.semitones(12))
+		lightning(g) // the sky over the underworld cracks as he takes the coin
+	}
+	if crossed(t, dt, BOAT_PUSH) {
+		audio.play(.Oar, -12, 0.85)
+	}
+}
+
+// --- lightning ------------------------------------------------------------------------
+
+THUNDER_AFTER :: 0.45 // the thunder rolls in this long after the flash
+
+// A flash of lightning over the place, the thunder after it (render draws the
+// bolt in the sky and the flash).
+lightning :: proc(g: ^Game) {
+	g.lightning_t = 0
+}
+
+// How bright the lightning is now (0 none .. 1): a flash, a second flicker.
+lightning_flash :: proc(g: ^Game) -> f32 {
+	t := g.lightning_t
+	if t < 0 {
+		return 0
+	}
+	f := math.exp(-t * 9)
+	if t > 0.2 {
+		f = max(f, 0.75 * math.exp(-(t - 0.2) * 7))
+	}
+	return f
 }
 
 // Timeline of "the drop of oil".
@@ -1662,6 +1867,13 @@ update_effects :: proc(g: ^Game, dt: f32) {
 	}
 	if g.collapse_t >= 0 {
 		g.collapse_t += dt
+	}
+	if g.lightning_t >= 0 {
+		before := g.lightning_t
+		g.lightning_t = min(g.lightning_t + dt, 1e3)
+		if before < THUNDER_AFTER && g.lightning_t >= THUNDER_AFTER {
+			audio.play(.Thunder, -4)
+		}
 	}
 	// stones that fell, dissolved or appeared: their animations run on this clock
 	for &t in g.flip_t {
@@ -1935,8 +2147,8 @@ candelabrum_base :: proc(g: ^Game, i: int) -> Vec3 {
 // The lamp lit beside an unlit candelabrum lights it, for good.
 @(private)
 light_candelabra :: proc(g: ^Game) {
-	for _, i in g.data.candelabra {
-		if i in g.candelabra_lit {
+	for c, i in g.data.candelabra {
+		if i in g.candelabra_lit || c.guard {
 			continue
 		}
 		d := candelabrum_base(g, i) - g.psyche.pos
@@ -1962,7 +2174,7 @@ candelabrum_flame :: proc(g: ^Game, i: int) -> f32 {
 is_tutorial :: proc(key: Key) -> bool {
 	#partial switch key {
 	case .Hint_Move, .Hint_Turn, .Hint_Lamp, .Hint_Illusion, .Hint_Sigil, .Hint_Oil,
-	     .Hint_Veiled, .Hint_Handle, .Hint_Sundial, .Hint_Eagle, .Hint_Fragment:
+	     .Hint_Veiled, .Hint_Handle, .Hint_Sundial, .Hint_Eagle, .Hint_Boat, .Hint_Guard, .Hint_Fragment:
 		return true
 	}
 	return false

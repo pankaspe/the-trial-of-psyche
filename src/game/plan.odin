@@ -39,3 +39,9 @@ idle :: proc(g: ^Game) -> bool {
 	settled := g.light == (g.lamp_on ? 1 : 0)
 	return !g.psyche.walking && !g.turning && settled && (g.phase == .Play || is_over(g))
 }
+
+// After the plan's last move: a plan ends on the exit, and where Charon's
+// boat waits there, she boards it. False if the game refuses it.
+board_at_end :: proc(g: ^Game) -> bool {
+	return !g.data.has_boat || is_over(g) || board_boat(g)
+}

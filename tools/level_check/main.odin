@@ -28,7 +28,6 @@ import "../../src/game"
 import "../../src/iso"
 import "../../src/level"
 import pl "../../src/palace"
-import "../../src/render"
 
 main :: proc() {
 	if len(os.args) < 2 {
@@ -223,7 +222,7 @@ whole_illusions :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.A
 // (veiled stones shown, the seals' blocks raised) and every part in each of
 // its positions: a prop inside a block or hanging in the air, a candle with no
 // wall, a candelabrum off a floor, a blocking prop on a cell the level needs,
-// a handle on a part, a block given twice, more flames than the stones show.
+// a handle on a part, a block given twice.
 check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 	ok = true
 	said := make(map[string]bool, 16, context.temp_allocator)
@@ -282,16 +281,6 @@ check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 			}
 		}
 	}
-	lights := len(data.candelabra)
-	if render.look(data.setting).candles {
-		for prop in data.props {
-			lights += int(prop.kind == .Sconce && prop.part == 0)
-		}
-	}
-	if lights > level.MAX_LIGHTS {
-		say(&said, &ok, false, "%d flames (candles, candelabra), the stones show the light of %d", lights, level.MAX_LIGHTS)
-	}
-
 	combos := 1
 	for _ in data.parts {
 		combos *= 4

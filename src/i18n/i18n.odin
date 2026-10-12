@@ -66,6 +66,10 @@ Key :: enum u16 {
 	Ve_Leave,
 	Ve_Ants,
 	Ve_Alone,
+	Tw_Brink,
+	Tw_Voice,
+	Tw_Way,
+	Tw_Alone,
 
 	// level titles
 	Level_I_1,
@@ -122,6 +126,7 @@ Key :: enum u16 {
 	Fragment_14b, // Venus: you seem a witch
 	Fragment_14c, // the box, and come back soon
 	Fragment_15,
+	Fragment_15b,
 	Fragment_16,
 	Fragment_17,
 	Fragment_18,
@@ -194,6 +199,7 @@ Key :: enum u16 {
 	Rest_Button_Twice,
 	Place_Cave,
 	Place_Eagle,
+	Place_Boat,
 	Hint_No_Rest,
 	Hint_No_Rest_Twice,
 	Hint_Again_Twice,
@@ -225,6 +231,7 @@ Key :: enum u16 {
 	Intro_III_3,
 	Intro_III_4,
 	Intro_III_5,
+	Intro_IV_1,
 	// beside Cupid in the dark, before the end of the game
 	V_Doubt,
 
@@ -253,6 +260,8 @@ Key :: enum u16 {
 	Hint_Sundial,
 	Hint_Eagle,
 	Hint_Eagle_No_Floor, // the eagle would set her down where there is nothing
+	Hint_Boat, // at the landing: Space boards Charon's boat
+	Hint_Guard, // a dark way: the lamp beside a guard candelabrum lights it, its light shows the way
 	Hint_Fragment,
 	Hint_Lamp_Day,
 	Hint_Rest,
@@ -288,6 +297,7 @@ Key :: enum u16 {
 	Hint_Handle_Pad,
 	Hint_Sundial_Pad,
 	Hint_Eagle_Pad,
+	Hint_Boat_Pad,
 	Hint_Rest_Pad,
 	Pad_Cross, // a PlayStation pad's face buttons, by name
 	Pad_Circle,
@@ -312,6 +322,7 @@ Key :: enum u16 {
 	Outro_III_3,
 	Outro_III_4,
 	Outro_III_5,
+	Outro_IV_1,
 
 	// endings
 	End_Trust_Title,
@@ -477,6 +488,7 @@ PAD_TEXT := #partial [Key]Key {
 	.Hint_Handle        = .Hint_Handle_Pad,
 	.Hint_Sundial       = .Hint_Sundial_Pad,
 	.Hint_Eagle         = .Hint_Eagle_Pad,
+	.Hint_Boat          = .Hint_Boat_Pad,
 	.Hint_Rest          = .Hint_Rest_Pad,
 }
 
@@ -566,6 +578,10 @@ IT := [Key]string {
 	.Ve_Leave       = "«Separali, ogni seme al suo posto, prima di sera.» E se ne va a un banchetto di nozze.",
 	.Ve_Ants        = "Psiche non tocca un solo seme. Ma una piccola formica di campagna ha pietà della sposa di Amore, e chiama tutto il suo popolo.",
 	.Ve_Alone       = "Accorrono a schiere, una fila dopo l'altra.",
+	.Tw_Brink       = "Dall'orlo della torre Psiche guarda giù. Un salto, e sarà tra le ombre.",
+	.Tw_Voice       = "Ma all'improvviso la torre parla: «Perché vuoi morire, misera? Chi scende per quella via non torna più alla luce.»",
+	.Tw_Way         = "«Va' al Tenaro. Tieni in mano due focacce d'orzo e miele, e in bocca due monete: il traghettatore vuole la sua.»",
+	.Tw_Alone       = "Psiche si ritrae dall'orlo, e comincia a scendere.",
 
 	.Level_I_1      = "La rupe di Zefiro",
 	.Level_I_2      = "Il palazzo invisibile",
@@ -618,7 +634,8 @@ IT := [Key]string {
 	.Fragment_14    = "«Va' da Proserpina» dice Venere, «e chiedile un po' della sua bellezza, quanto basta per un giorno.»",
 	.Fragment_14b   = "Venere la guarda torva: «Ormai mi sembri una strega, una maga grande e profonda, se hai obbedito così bene ai miei ordini. Ma c'è ancora una cosa che devi fare per me.»",
 	.Fragment_14c   = "«Prendi questo vaso. E torna presto: devo ungermi della sua bellezza prima di andare al teatro degli dèi.»",
-	.Fragment_15    = "Psiche capisce che la mandano a morire. Sale su un'alta torre per gettarsi di sotto, «è la via più breve per l'Ade.»",
+	.Fragment_15    = "«Ma soprattutto, ti dico: il vaso che porterai, non aprirlo e non guardarci dentro. Non essere curiosa del tesoro della bellezza divina.»",
+	.Fragment_15b   = "«Più avanti, vecchie tessitrici ti pregheranno di dare loro una mano al telaio. Non toccare la tela: sono insidie di Venere, perché ti cada di mano una focaccia.»",
 	.Fragment_16    = "Non lontano c'è il Tenaro, uno spiraglio da cui respira il regno dei morti. Da lì una strada impervia scende fino alla reggia di Dite.",
 	.Fragment_17    = "Caronte non fa nulla gratis. Anche tra i morti vive l'avarizia. Chi muore deve portare la moneta in bocca.",
 	.Fragment_18    = "Proserpina le offre un seggio morbido e un ricco banchetto. Psiche siede a terra e chiede solo pane scuro.",
@@ -688,6 +705,7 @@ IT := [Key]string {
 	.Rest_Button_Twice = "Braciere · premi due volte: ricomincia",
 	.Place_Cave = "Entra nella grotta",
 	.Place_Eagle = "Chiama l'aquila",
+	.Place_Boat = "Sali sulla barca",
 	.Hint_No_Rest = "Nessun braciere acceso: tieni premuto R per ricominciare il livello",
 	.Hint_Dead_End = "Vicolo cieco: da qui non si va più avanti. R ti riporta all'ultimo braciere; tieni premuto R per ricominciare il livello",
 	.Hint_Dead_End_No_Rest = "Vicolo cieco: da qui non si va più avanti. Tieni premuto R per ricominciare il livello",
@@ -722,6 +740,7 @@ IT := [Key]string {
 	.Intro_III_3    = "Venere le mette in mano un'urna di cristallo: «Riempila all'acqua nera che sgorga dalla vetta.»",
 	.Intro_III_4    = "Sulla vetta l'acqua nera grida. Le aquile ti portano lassù, ma dove ti posano l'ora resta quella: sceglila prima di volare.",
 	.Intro_III_5    = "Di nuovo nella casa di Venere. Per uscirne servirà ogni cosa imparata: la lucerna, il fuso, la grotta, l'aquila.",
+	.Intro_IV_1     = "La torre ti ha detto la via. Scendi: in fondo, sull'acqua scura, aspetta il traghettatore.",
 	.V_Doubt        = "Dorme. Ti tornano in mente le parole delle sorelle: e se fosse un mostro? La lampada è nella tua mano.",
 
 	.Tutorial_Label = "Come si gioca",
@@ -750,6 +769,8 @@ IT := [Key]string {
 	.Hint_Sundial   = "Sei sulla meridiana: premi 2 (o clicca su Psiche) e il sole tramonterà",
 	.Hint_Eagle     = "Sei sul trespolo: premi Spazio e l'aquila ti porterà dove brilla la luce d'oro",
 	.Hint_Eagle_No_Floor = "L'aquila non si muove: dove ti poserebbe non c'è ancora terra",
+	.Hint_Boat      = "Caronte aspetta: premi Spazio per salire sulla barca",
+	.Hint_Guard     = "Qui è buio: accendi la lucerna accanto al candelabro, e la sua luce ti mostrerà la via",
 	.Hint_Lamp_Day  = "Il sole mostra già la verità: la fiamma aspetta la sera",
 	.Hint_Rest      = "Un braciere acceso: se ti perdi, R ti riporta qui (tenuto premuto, ricomincia il livello)",
 	.Card_Continue_Pad = "Premi {S} per continuare",
@@ -775,6 +796,7 @@ IT := [Key]string {
 	.Hint_Handle_Pad = "Sei su una manovella: premi {RT} per ruotare la parte che muove",
 	.Hint_Sundial_Pad = "Sei sulla meridiana: premi {RT} e il sole tramonterà",
 	.Hint_Eagle_Pad = "Sei sul trespolo: premi {S} e l'aquila ti porterà dove brilla la luce d'oro",
+	.Hint_Boat_Pad  = "Caronte aspetta: premi {S} per salire sulla barca",
 	.Hint_Rest_Pad  = "Un braciere acceso: se ti perdi, {E} ti riporta qui (tenuto premuto, ricomincia il livello)",
 	.Pad_Cross      = "Croce",
 	.Pad_Circle     = "Cerchio",
@@ -797,6 +819,7 @@ IT := [Key]string {
 	.Outro_III_3    = "L'aquila la porta fin sotto la vetta. Lassù l'acqua nera grida, e i draghi non dormono mai.",
 	.Outro_III_4    = "L'aquila affonda l'urna nell'acqua che grida e gliela rende piena. Venere la guarda, e la sua ira cresce.",
 	.Outro_III_5    = "Con il vaso tra le mani Psiche sale sulla torre più alta. Non conosce altra strada per gli inferi che la morte.",
+	.Outro_IV_1     = "Caronte prende di sua mano la moneta dalle labbra di Psiche. Senza una parola, spinge la barca nella nebbia rossa.",
 	.Outro_III_1    = "A notte Venere torna dal banchetto, accaldata dal vino e profumata di rose. Vede il lavoro compiuto.\n«Non è opera tua», dice, e le getta un tozzo di pane.",
 
 	.End_Trust_Title = "Fiducia",
@@ -889,6 +912,10 @@ EN := [Key]string {
 	.Ve_Leave       = "“Sort them, every seed in its place, before evening.” And she goes off to a wedding feast.",
 	.Ve_Ants        = "Psyche does not touch a single seed. But a little country ant takes pity on the bride of Cupid, and calls all her people.",
 	.Ve_Alone       = "They come running in waves, one file after another.",
+	.Tw_Brink       = "From the edge of the tower Psyche looks down. One leap, and she will be among the shades.",
+	.Tw_Voice       = "But all at once the tower speaks: «Why do you want to die, poor girl? Whoever goes down that way never comes back to the light.»",
+	.Tw_Way         = "«Go to Taenarus. Hold two cakes of barley and honey in your hands, and two coins in your mouth: the ferryman wants his fare.»",
+	.Tw_Alone       = "Psyche draws back from the edge, and begins to go down.",
 
 	.Level_I_1      = "Zephyr's Crag",
 	.Level_I_2      = "The Invisible Palace",
@@ -941,7 +968,8 @@ EN := [Key]string {
 	.Fragment_14    = "“Go to Proserpina,” says Venus, “and ask her for a little of her beauty, enough for a single day.”",
 	.Fragment_14b   = "Venus glares at her: “By now you seem to me a witch, a great and deep enchantress, to have obeyed my orders so well. But there is still one thing you must do for me.”",
 	.Fragment_14c   = "“Take this box. And come back soon: I must anoint myself with her beauty before I go to the theatre of the gods.”",
-	.Fragment_15    = "Psyche understands she is being sent to die. She climbs a high tower to throw herself down: the shortest road to Hades.",
+	.Fragment_15    = "«But above all, I tell you: the box you will carry, do not open it, do not look inside. Do not be curious about the treasure of divine beauty.»",
+	.Fragment_15b   = "«Further on, old women weaving will beg you to lend a hand at the loom. Do not touch the cloth: these are Venus's snares, to make you drop a cake.»",
 	.Fragment_16    = "Not far away lies Taenarus, a vent through which the kingdom of the dead breathes. From there a rough road leads down to the palace of Dis.",
 	.Fragment_17    = "Charon does nothing for free. Even among the dead greed lives on: whoever dies must carry the coin in his mouth.",
 	.Fragment_18    = "Proserpina offers her a soft seat and a rich feast. Psyche sits on the ground and asks only for coarse bread.",
@@ -1011,6 +1039,7 @@ EN := [Key]string {
 	.Rest_Button_Twice = "Brazier · press twice: start again",
 	.Place_Cave = "Go into the cave",
 	.Place_Eagle = "Call the eagle",
+	.Place_Boat = "Board the boat",
 	.Hint_No_Rest = "No brazier lit: hold R to start the level again",
 	.Hint_Dead_End = "A dead end: there is no way on from here. R takes you back to the last brazier; hold R to start the level again",
 	.Hint_Dead_End_No_Rest = "A dead end: there is no way on from here. Hold R to start the level again",
@@ -1045,6 +1074,7 @@ EN := [Key]string {
 	.Intro_III_3    = "Venus puts a crystal urn in her hands: “Fill it with the black water that springs from the summit.”",
 	.Intro_III_4    = "At the summit the black water cries out. The eagles carry you up, but where they set you down the hour stays as it was: choose it before you fly.",
 	.Intro_III_5    = "Back in the house of Venus. To leave it she will need everything she has learned: the lamp, the spindle, the cave, the eagle.",
+	.Intro_IV_1     = "The tower has told you the way. Go down: at the bottom, on the dark water, the ferryman waits.",
 	.V_Doubt        = "He sleeps. Your sisters' words come back to you: what if he is a monster? The lamp is in your hand.",
 
 	.Tutorial_Label = "How to play",
@@ -1073,6 +1103,8 @@ EN := [Key]string {
 	.Hint_Sundial   = "You stand on the sundial: press 2 (or click Psyche) and the sun will set",
 	.Hint_Eagle     = "You stand on the perch: press Space and the eagle will carry you where the golden light shines",
 	.Hint_Eagle_No_Floor = "The eagle does not stir: where it would set you down there is no ground yet",
+	.Hint_Boat      = "Charon is waiting: press Space to board the boat",
+	.Hint_Guard     = "It is dark here: light the lamp beside the candelabrum, and its light will show you the way",
 	.Hint_Lamp_Day  = "The sun already shows the truth: the flame waits for the evening",
 	.Hint_Rest      = "A lit brazier: if you lose your way, R brings you back here (held down, it restarts the level)",
 	.Card_Continue_Pad = "Press {S} to continue",
@@ -1098,6 +1130,7 @@ EN := [Key]string {
 	.Hint_Handle_Pad = "You stand on a handle: press {RT} to turn the part it moves",
 	.Hint_Sundial_Pad = "You stand on the sundial: press {RT} and the sun will set",
 	.Hint_Eagle_Pad = "You stand on the perch: press {S} and the eagle will carry you where the golden light shines",
+	.Hint_Boat_Pad  = "Charon is waiting: press {S} to board the boat",
 	.Hint_Rest_Pad  = "A lit brazier: if you lose your way, {E} brings you back here (held down, it restarts the level)",
 	.Pad_Cross      = "Cross",
 	.Pad_Circle     = "Circle",
@@ -1120,6 +1153,7 @@ EN := [Key]string {
 	.Outro_III_3    = "The eagle carries her up below the summit. Up there the black water cries out, and the dragons never sleep.",
 	.Outro_III_4    = "The eagle plunges the urn into the crying water and gives it back to her full. Venus looks at her, and her anger grows.",
 	.Outro_III_5    = "With the box in her hands Psyche climbs the highest tower. She knows no other road to the underworld but death.",
+	.Outro_IV_1     = "Charon takes the coin from Psyche's lips with his own hand. Without a word, he pushes the boat into the red mist.",
 	.Outro_III_1    = "At night Venus comes back from the feast, flushed with wine and fragrant with roses. She sees the work done.\n“This is not your doing,” she says, and throws her a crust of bread.",
 
 	.End_Trust_Title = "Trust",

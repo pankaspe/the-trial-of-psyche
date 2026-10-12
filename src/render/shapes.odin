@@ -69,6 +69,7 @@ Mesh_Id :: enum u8 {
 	Eagle_Beak, // ...its hooked beak (x forward)...
 	Eagle_Wing, // ...a wing spread along +y from the shoulder...
 	Eagle_Tail, // ...and its tail fanned along -x
+	Boat, // Charon's boat: its stern at the origin, the prow along +x, the floor at z 0
 }
 
 // Where the resting brazier's flame burns, in cell space.
@@ -653,6 +654,22 @@ build_meshes :: proc(meshes: ^[Mesh_Id]rl.Mesh) {
 	meshes[.Eagle_Beak] = eagle_beak()
 	meshes[.Eagle_Wing] = one(EAGLE_WING[:])
 	meshes[.Eagle_Tail] = one(EAGLE_TAIL[:])
+	meshes[.Boat] = one(BOAT[:])
+}
+
+// Charon's boat: a long low hull of dark planks, its floor at z 0 (under it
+// the keel sinks into the water), a square stern at the origin, the sides
+// drawing in to a raised prow along +x (game.BOAT_LENGTH), one thwart.
+@(private)
+BOAT := [?]Box {
+	{{0.04, -0.22, -0.12}, {1.40, 0.22, 0.0}}, // the floor and the hull under it
+	{{0.0, -0.27, -0.10}, {1.40, -0.22, 0.17}}, // the sides
+	{{0.0, 0.22, -0.10}, {1.40, 0.27, 0.17}},
+	{{0.0, -0.27, -0.10}, {0.05, 0.27, 0.15}}, // the stern
+	{{1.40, -0.20, -0.08}, {1.56, 0.20, 0.20}}, // the bow, narrowing...
+	{{1.56, -0.12, -0.04}, {1.68, 0.12, 0.24}},
+	{{1.68, -0.05, 0.02}, {1.78, 0.05, 0.34}}, // ...to the raised prow
+	{{0.62, -0.24, 0.08}, {0.72, 0.24, 0.12}}, // the thwart
 }
 
 // The eagle's perch: a post in the (+x, -y) corner, its foot on a plate, a

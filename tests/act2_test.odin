@@ -231,13 +231,13 @@ new_mechanic_is_presented :: proc(t: ^testing.T) {
 	testing.expect(t, !g.mechanic_new, "a restart does not present it again")
 }
 
-// Every built level of Acts II and III can be solved, and the solver's plan,
-// played through the game, reaches the exit; the fragment is reachable and
-// optional.
+// Every built level of Acts II to IV can be solved, and the solver's plan,
+// played through the game, reaches the exit (where Charon's boat waits, she
+// boards it); the fragment is reachable and optional.
 @(test)
 act2_levels_solve_and_play :: proc(t: ^testing.T) {
 	for info, index in content.LEVELS {
-		if (info.act != .II && info.act != .III) || !content.is_built(index) {
+		if (info.act != .II && info.act != .III && info.act != .IV) || !content.is_built(index) {
 			continue
 		}
 		g: game.Game
@@ -269,7 +269,8 @@ act2_levels_solve_and_play :: proc(t: ^testing.T) {
 		if !play_plan(t, &g, sol.plan[:]) {
 			continue
 		}
-		run(&g, game.EXIT_END + 0.5)
+		testing.expectf(t, game.board_at_end(&g), "%s: at the end of the plan she boards Charon's boat", info.id)
+		run(&g, game.exit_end(&g) + 0.5)
 		testing.expectf(t, g.phase == .Finished && g.ending == .Exit, "%s: the plan played through the game reaches the exit (Psyche at %v)", info.id, g.psyche.cell)
 		testing.expectf(t, g.data.has_intro && g.data.has_outro, "%s has its intro and outro", info.id)
 	}

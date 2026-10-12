@@ -393,6 +393,66 @@ LOOKS := [level.Setting]Look {
 		rock = {0.62, 0.50, 0.56},
 		mote = {1.0, 0.6, 0.4, 0.35},
 	},
+	// the top of the high tower at dusk (IV.1): the sun gone, the sky still
+	// rose above, but low down a red glow comes up from the south, where the
+	// way to the underworld opens; the first stars, the ranges violet
+	.Tower_Dusk = {
+		sky_top = {0.06, 0.04, 0.16},
+		sky_mid = {0.34, 0.16, 0.30},
+		sky_horizon = {0.92, 0.40, 0.30},
+		orb_pos = {0.74, 0.22},
+		orb_radius = 0.004,
+		orb_color = {1.0, 0.95, 0.9},
+		halo_color = {0.36, 0.16, 0.26},
+		halo_width = 16,
+		stars = 0.4,
+		haze = {0.48, 0.20, 0.30},
+		islands = false,
+		ridges = 1,
+		ridge_color = {{0.50, 0.26, 0.40}, {0.34, 0.17, 0.30}, {0.20, 0.10, 0.20}},
+		ridge_rim = {0.98, 0.50, 0.36},
+		cloud_back = {0.52, 0.26, 0.36},
+		cloud_front = {0.62, 0.34, 0.42},
+		cloud_crest = {0.60, 0.24, 0.14},
+		mist = {0.34, 0.16, 0.28},
+		water = {0.10, 0.05, 0.10, 0.9},
+		glint = {1.0, 0.56, 0.42, 0.45},
+		daylight = 0.6,
+		rock = {0.66, 0.54, 0.58},
+		candles = true,
+		mote = {1.0, 0.66, 0.52, 0.4},
+	},
+	// the foot of Taenarus, the mouth of the underworld: a sky of red embers
+	// under a pall of ash, a dull sun sunk in it, black crags, a red mist on
+	// the dark water where Charon waits; down here the stones are dark, the
+	// candelabra light them
+	.Taenarus = {
+		sky_top = {0.10, 0.02, 0.03},
+		sky_mid = {0.36, 0.07, 0.06},
+		sky_horizon = {0.80, 0.24, 0.10},
+		orb_pos = {0.30, 0.66},
+		orb_radius = 0.06,
+		orb_color = {0.95, 0.36, 0.16},
+		halo_color = {0.55, 0.12, 0.06},
+		halo_width = 4,
+		stars = 0,
+		haze = {0.42, 0.12, 0.08},
+		islands = false,
+		ridges = 1,
+		ridge_color = {{0.30, 0.09, 0.08}, {0.17, 0.05, 0.06}, {0.07, 0.02, 0.03}},
+		ridge_rim = {0.95, 0.34, 0.14},
+		cloud_back = {0.36, 0.10, 0.08},
+		cloud_front = {0.46, 0.15, 0.10},
+		cloud_crest = {0.60, 0.20, 0.06},
+		mist = {0.26, 0.06, 0.06},
+		water = {0.05, 0.015, 0.02, 0.94},
+		glint = {1.0, 0.40, 0.20, 0.5},
+		daylight = 0.5,
+		gloom = 0.3,
+		rock = {0.52, 0.40, 0.40},
+		candles = true,
+		mote = {1.0, 0.45, 0.25, 0.45},
+	},
 	// the palace of voices at twilight: the sun is gone, its last light low on
 	// the clouds, the first stars, the moon rising; the candles are lit
 	.Dusk = {
@@ -472,13 +532,18 @@ look :: proc(s: level.Setting) -> ^Look {
 }
 
 // The look of the level now: in a level that turns between day and evening,
-// the two settings blended as the sun goes down (or comes up).
+// the two settings blended as the sun goes down (or comes up); in a level
+// that goes down, the look at its foot blended in as she descends.
 look_of :: proc(g: ^game.Game) -> ^Look {
-	if !game.has_time(g) {
+	@(static) blended: Look
+	switch {
+	case game.has_time(g):
+		blended = blend(LOOKS[g.data.setting], LOOKS[g.data.evening], fx.sine_in_out(g.evening))
+	case g.data.has_below:
+		blended = blend(LOOKS[g.data.setting], LOOKS[g.data.below], fx.sine_in_out(g.descent))
+	case:
 		return &LOOKS[g.data.setting]
 	}
-	@(static) blended: Look
-	blended = blend(LOOKS[g.data.setting], LOOKS[g.data.evening], fx.sine_in_out(g.evening))
 	return &blended
 }
 

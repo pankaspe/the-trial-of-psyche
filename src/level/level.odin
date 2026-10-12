@@ -47,6 +47,7 @@ Scene :: enum u8 {
 	Oracle, // I.1: the oracle, the procession up the crag, Psyche left alone
 	Flight, // II.1: Cupid flies away, Psyche clinging to him, and she falls into the forest
 	Venus, // III.1: Venus pours the seeds and leaves on her doves; an ant takes pity on Psyche
+	Tower, // IV.1: on the top of the tower Psyche looks down to throw herself off, and the tower speaks
 }
 
 // Where a level takes place: the sky, the backdrop, the light on the stones.
@@ -67,6 +68,8 @@ Setting :: enum u8 {
 	Styx_Night, // the gorge under the Styx's crag: no moon, faint stars, the black water falling
 	Styx_Day, // the summit of the Styx's crag by day: a white sun hard on the black rock
 	Styx_Evening, // the same at evening: a low red sun, the peaks black against it
+	Tower_Dusk, // the top of the high tower at dusk: the sky still rose, a red glow rising from below
+	Taenarus, // the foot of Taenarus, the mouth of the underworld: a red sky, ash, the dark water
 }
 
 SETTING_NAME := [Setting]string {
@@ -86,6 +89,8 @@ SETTING_NAME := [Setting]string {
 	.Styx_Night    = "styx_night",
 	.Styx_Day      = "styx_day",
 	.Styx_Evening  = "styx_evening",
+	.Tower_Dusk    = "tower_dusk",
+	.Taenarus      = "taenarus",
 }
 
 // How a block behaves (Act II): fixed stone, or one that changes for good.
@@ -201,11 +206,15 @@ PROP_NAME := [Prop_Kind]string {
 }
 
 // A standing candelabrum in a corner of a surface: lit from the start, or
-// waiting for the lamp's flame.
+// waiting for the lamp's flame. A guard (Act IV) is a seal of its own: the
+// lamp lit beside it lights it, and its light shows the way through the
+// dark (its `rise` blocks appear).
 Candelabrum :: struct {
-	cell: Cell, // the surface it stands on (x, y, h)
-	dir:  Dir, // its corner, as the vase's
-	lit:  bool,
+	cell:  Cell, // the surface it stands on (x, y, h)
+	dir:   Dir, // its corner, as the vase's
+	lit:   bool,
+	guard: bool,
+	seal:  u8, // a guard: its seal (data.sigils index)
 }
 
 // The mouth of a cave: a dark opening in the rock on side `dir` of the
@@ -222,6 +231,14 @@ Cave :: struct {
 // surface `to`. One way only: nothing brings her back but another eagle.
 Eagle :: struct {
 	from, to: Cell,
+}
+
+// Charon's boat (Act IV), moored on side `dir` of the surface `cell`
+// (x, y, h), the landing: standing there, Space boards it and he ferries
+// Psyche away across the dark water (the landing is the level's exit).
+Boat :: struct {
+	cell: Cell,
+	dir:  Dir,
 }
 
 // A block drawn as the deck of a rope bridge (it holds like any block).
@@ -256,13 +273,14 @@ Level_Data :: struct {
 	start:        Cell,
 	sigil:        Cell, // the first seal (I.4's: the canonical ending's level)
 	sigils:       [dynamic]Cell, // every seal, in file order: each raises its own `rise` blocks
+	guard_seals:  Seals, // the seals that are guard candelabra (their blocks appear in the light, not rising)
 	amore:        Cell,
 	fragments:    [dynamic]Cell, // the fragments of the tale (optional, never required), in content order
 	exit:         Cell, // reaching it completes the level
 	has_sigil:    bool,
 	has_amore:    bool,
 	has_exit:     bool,
-	prologue:     Cell, // the scene's place: where the procession comes up (Oracle), the cypress Cupid flies over (Flight)
+	prologue:     Cell, // the scene's place: where the procession comes up (Oracle), the cypress Cupid flies over (Flight), the edge she looks down from (Tower)
 	has_prologue: bool, // the level opens with a cutscene (`scene` says which)
 	scene:        Scene,
 	intro:        i18n.Key, // the line shown when the level begins
@@ -284,6 +302,10 @@ Level_Data :: struct {
 	rests:        [dynamic]Cell, // braziers: lit by passing, R brings Psyche back to the last one
 	mechanic:     Mechanic, // the new mechanic this level introduces (a card at the start)
 	setting:      Setting, // the sky, the backdrop, the light on the stones (by day, in a level with sundials)
+	below:        Setting, // a level that goes down (`has_below`): the look at its foot, blended in as she descends
+	has_below:    bool,
+	boat:         Boat, // Charon's boat at the exit (`has_boat`): Space boards it
+	has_boat:     bool,
 	evening:      Setting, // a level with sundials: the look at evening
 	sundials:     [dynamic]Cell, // Act III: standing on one, the spindle turns the time (day <-> evening); the level starts by day
 	rams:         [dynamic]Ram, // the Sun's rams: standing by day, lying (a step) at evening
@@ -293,7 +315,7 @@ Level_Data :: struct {
 MAX_PARTS :: 8
 MAX_FRAGMENTS :: 4
 MAX_CANDELABRA :: 12
-MAX_LIGHTS :: 16 // flames the stone shader takes at once: wall candles first, then candelabra
+MAX_LIGHTS :: 16 // flames the stone shader takes at once: the nearest to Psyche
 MAX_DYNAMIC :: 64 // veiled blocks in one level
 MAX_TIERS :: 6
 MAX_SEALS :: 4
@@ -574,15 +596,15 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			}
 			max_z = max(max_z, v[3])
 
-		case "setting", "evening":
+		case "setting", "evening", "below":
 			found := false
 			for name, st in SETTING_NAME {
 				if len(args) == 1 && name == args[0] {
 					found = true
-					if fields[0] == "setting" {
-						data.setting = st
-					} else {
-						data.evening, has_evening = st, true
+					switch fields[0] {
+					case "setting": data.setting = st
+					case "evening": data.evening, has_evening = st, true
+					case "below": data.below, data.has_below = st, true
 					}
 				}
 			}
@@ -621,6 +643,21 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				return data, fail(line_no, "cave: unknown direction '%s'", args[3])
 			}
 			append(&data.caves, Cave{v, d})
+			max_z = max(max_z, v.z + 1)
+
+		case "charon":
+			v: [3]i32
+			if !ints(args, v[:]) || len(args) < 4 {
+				return data, fail(line_no, "charon: expected x y h dir")
+			}
+			d, ok := iso.dir_from_name(args[3])
+			if !ok {
+				return data, fail(line_no, "charon: unknown direction '%s'", args[3])
+			}
+			if data.has_boat {
+				return data, fail(line_no, "charon: one boat per level")
+			}
+			data.boat, data.has_boat = Boat{v, d}, true
 			max_z = max(max_z, v.z + 1)
 
 		case "sunlit":
@@ -704,7 +741,26 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			if len(data.candelabra) == MAX_CANDELABRA {
 				return data, fail(line_no, "candelabrum: at most %d per level", MAX_CANDELABRA)
 			}
-			append(&data.candelabra, Candelabrum{cell = v, dir = d, lit = len(args) > 4 && args[4] == "lit"})
+			c := Candelabrum{cell = v, dir = d}
+			if len(args) > 4 {
+				switch args[4] {
+				case "lit": c.lit = true
+				case "guard":
+					// a seal of its own, numbered with the sigils in file order
+					if len(data.sigils) == MAX_SEALS {
+						return data, fail(line_no, "candelabrum: at most %d seals and guards per level", MAX_SEALS)
+					}
+					if !data.has_sigil {
+						data.sigil, data.has_sigil = v, true
+					}
+					c.guard, c.seal = true, u8(len(data.sigils))
+					data.guard_seals += {len(data.sigils)}
+					append(&data.sigils, v)
+				case:
+					return data, fail(line_no, "candelabrum: expected lit or guard after the direction")
+				}
+			}
+			append(&data.candelabra, c)
 			max_z = max(max_z, v.z + 1)
 
 		case "prop":
@@ -738,7 +794,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			append(&data.props, p)
 			max_z = max(max_z, v.z + 1)
 
-		case "start", "sigil", "amore", "fragment", "exit", "prologue", "flight", "venus":
+		case "start", "sigil", "amore", "fragment", "exit", "prologue", "flight", "venus", "tower":
 			v: [3]i32
 			if !ints(args, v[:]) {
 				return data, fail(line_no, "%s: expected x y h", fields[0])
@@ -763,6 +819,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			case "prologue": data.prologue, data.has_prologue, data.scene = v, true, .Oracle
 			case "flight": data.prologue, data.has_prologue, data.scene = v, true, .Flight
 			case "venus": data.prologue, data.has_prologue, data.scene = v, true, .Venus
+			case "tower": data.prologue, data.has_prologue, data.scene = v, true, .Tower
 			}
 			max_z = max(max_z, v.z)
 
@@ -861,6 +918,12 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 		if e.trait == .Sunlit && len(data.sundials) == 0 {
 			return data, fail(0, "sunlit: stands only by day: the level needs a sundial")
 		}
+	}
+	if data.has_boat && (!data.has_exit || data.boat.cell != data.exit) {
+		return data, fail(0, "charon: the boat is moored at the exit (its landing is the exit cell)")
+	}
+	if data.has_below && len(data.sundials) > 0 {
+		return data, fail(0, "below: a level that goes down does not turn between day and evening")
 	}
 	if len(data.rams) > 0 && len(data.sundials) == 0 {
 		return data, fail(0, "ram: the rams lie down only at evening: the level needs a sundial")

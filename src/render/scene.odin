@@ -315,6 +315,9 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 		append(&s.pieces, p)
 	}
 	for c, k in g.data.sigils {
+		if k in g.data.guard_seals {
+			continue // a guard candelabrum: no seal on the stone
+		}
 		append(&s.pieces, sigil_piece(c, .Sigil_Off, .Off, k))
 		append(&s.pieces, sigil_piece(c, .Sigil_On, .On, k))
 	}
@@ -590,7 +593,7 @@ scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
 	// the stones the seal raises: a trail of gold as they come up, a burst of dust as they land
 	for e, i in g.data.rise {
 		rt := game.rise_time(g, i)
-		if rt < 0 || rt > game.rise_duration(g, int(e.seal)) + 0.5 {
+		if rt < 0 || rt > game.rise_duration(g, int(e.seal)) + 0.5 || int(e.seal) in g.data.guard_seals {
 			continue
 		}
 		k := fx.progress(rt, game.rise_start(g, i), game.RISE_TIME)
@@ -646,9 +649,13 @@ scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
 	fx.update(&s.wind, dt)
 }
 
-// The exit shows once Zephyr is there: in the prologue, only when Psyche is left alone.
+// The exit shows once Zephyr is there: in the prologue, only when Psyche is
+// left alone; never where Charon's boat is the way on.
 @(private)
 exit_alpha :: proc(g: ^game.Game) -> f32 {
+	if g.data.has_boat {
+		return 0
+	}
 	if g.phase != .Prologue {
 		return 1
 	}
@@ -689,6 +696,7 @@ seam_edge :: proc(g: ^game.Game, e: [2]i32) -> (p0, p1, inward: Vec3) {
 draw_world :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 	lk := look_of(g)
 	draw_sky(r, s, g, v, time)
+	draw_bolt(g, v)
 	if lk.islands {
 		draw_islands(g, v, time)
 	}
@@ -711,6 +719,56 @@ draw_world :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 	draw_motes(r, s, v)
 	draw_markers(g, v)
 	draw_teach(g, v, time)
+	if f := game.lightning_flash(g); f > 0.003 {
+		// the flash over everything, warm under the red sky
+		rl.BeginBlendMode(.ADDITIVE)
+		rl.DrawRectangleV({0, 0}, {v.width, v.height}, to_color({1.0, 0.86, 0.8, 0.42 * f}))
+		rl.EndBlendMode()
+	}
+}
+
+// A bolt of lightning in the sky behind the level while it flashes
+// (game.lightning): a jagged stroke from the top of the sky toward the
+// horizon, a branch or two, drawn in light.
+@(private)
+draw_bolt :: proc(g: ^game.Game, v: View) {
+	f := game.lightning_flash(g)
+	if f <= 0.003 {
+		return
+	}
+	SEGMENTS :: 9
+	seed := u32(g.level_index) * 131 + 7
+	// to one side of the sky, clear of the level in the middle
+	x0 := v.width * (0.1 + 0.1 * fx.hash01(seed))
+	if fx.hash01(seed + 5) > 0.5 {
+		x0 = v.width - x0
+	}
+	pts: [SEGMENTS + 1]Vec2
+	pts[0] = {x0, -10}
+	for k in 1 ..= SEGMENTS {
+		h := u32(k) * 17 + seed
+		pts[k] = pts[k - 1] + {(fx.hash01(h) - 0.45) * v.width * 0.05, v.height * 0.055 * (0.7 + 0.6 * fx.hash01(h + 3))}
+	}
+	widths := [3]f32{14, 6, 2}
+	alphas := [3]f32{0.12, 0.3, 0.9}
+	rl.BeginBlendMode(.ADDITIVE)
+	for layer in 0 ..< 3 {
+		w := widths[layer] * v.height / 1080
+		a := alphas[layer] * f
+		col := to_color(layer == 2 ? Color4{1.0, 0.96, 0.92, a} : Color4{1.0, 0.7, 0.6, a})
+		for k in 0 ..< SEGMENTS {
+			rl.DrawLineEx(pts[k], pts[k + 1], w, col)
+		}
+		// a branch from the middle
+		b := pts[4]
+		for k in 0 ..< 3 {
+			h := u32(k) * 29 + seed + 101
+			e := b + {v.width * 0.03 * (1 + fx.hash01(h)), v.height * 0.05}
+			rl.DrawLineEx(b, e, w * 0.7, col)
+			b = e
+		}
+	}
+	rl.EndBlendMode()
 }
 
 @(private)
@@ -775,22 +833,38 @@ set_frame_uniforms :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	set_f(r, .Sun_Truth, game.has_time(g) ? 1 - g.evening : 0)
 	set_v3(r, .Rock_Tint, lk.rock == {} ? {1, 1, 1} : lk.rock)
 	set_f(r, .Moonlight, (1 - lk.gloom) * (1 - 0.45 * s.moon_cover))
-	list, n := candle_lights(g)
-	reach: [MAX_CANDLES]f32
-	for k in 0 ..< n {
-		reach[k] = 1.7
-	}
+	all := make([dynamic]Flame, 0, len(g.data.props) + len(g.data.candelabra), context.temp_allocator)
+	append(&all, ..candle_lights(g))
 	// the candelabra burning light far more of the palace than a candle
 	for _, i in g.data.candelabra {
 		f := game.candelabrum_flame(g, i)
-		if f <= 0.003 || n == MAX_CANDLES {
+		if f <= 0.003 {
 			continue
 		}
 		p := candelabrum_world(g, i) + {0, 0, 1.0}
 		fl := 0.9 + 0.07 * math.sin(g.time * 11 + f32(i) * 2.3) + 0.03 * math.sin(g.time * 29 + f32(i))
-		list[n] = {p.x, p.y, p.z, 1.15 * f * fl}
-		reach[n] = 1.2 + 1.6 * f
-		n += 1
+		append(&all, Flame{p, 1.15 * f * fl, 1.2 + 1.6 * f})
+	}
+	// the stones take the flames nearest Psyche (heights weigh more: the
+	// camera frames one band of a tall level)
+	if len(all) > MAX_CANDLES {
+		her := g.psyche.pos
+		far :: proc(a: Flame, her: Vec3) -> f32 {
+			d := a.pos - her
+			return d.x * d.x + d.y * d.y + 4 * d.z * d.z
+		}
+		context.user_ptr = &her
+		slice.sort_by(all[:], proc(a, b: Flame) -> bool {
+			her := (^Vec3)(context.user_ptr)^
+			return far(a, her) < far(b, her)
+		})
+	}
+	list: [MAX_CANDLES][4]f32
+	reach: [MAX_CANDLES]f32
+	n := min(len(all), MAX_CANDLES)
+	for f, k in all[:n] {
+		list[k] = {f.pos.x, f.pos.y, f.pos.z, f.strength}
+		reach[k] = f.reach
 	}
 	rl.SetShaderValueV(r.material.shader, r.loc[.Candles], &list, .VEC4, i32(max(n, 1)))
 	rl.SetShaderValueV(r.material.shader, r.loc[.Candle_Reach], &reach, .FLOAT, i32(max(n, 1)))
@@ -814,13 +888,14 @@ candelabrum_world :: proc(g: ^game.Game, i: int) -> Vec3 {
 // The candles lit on the walls (where the setting lights them): their flames
 // in the world and how bright each burns now (flickering; during the arrival,
 // once its wall has risen into place).
-candle_lights :: proc(g: ^game.Game) -> (list: [MAX_CANDLES][4]f32, n: int) {
+candle_lights :: proc(g: ^game.Game) -> []Flame {
 	if !look_of(g).candles {
-		return
+		return nil
 	}
+	list := make([dynamic]Flame, 0, len(g.data.props), context.temp_allocator)
 	t := g.time
 	for prop, i in g.data.props {
-		if prop.kind != .Sconce || prop.part > 0 || n == MAX_CANDLES {
+		if prop.kind != .Sconce || prop.part > 0 {
 			continue
 		}
 		fp := Vec3{f32(prop.cell.x), f32(prop.cell.y), f32(prop.cell.z)} + candle_flame(prop.dir)
@@ -832,10 +907,16 @@ candle_lights :: proc(g: ^game.Game) -> (list: [MAX_CANDLES][4]f32, n: int) {
 			a = k * k
 		}
 		fl := 0.85 + 0.1 * math.sin(t * 13 + f32(i) * 1.7) + 0.05 * math.sin(t * 31 + f32(i))
-		list[n] = {fp.x, fp.y, fp.z, fl * a}
-		n += 1
+		append(&list, Flame{fp, fl * a, 1.7})
 	}
-	return
+	return list[:]
+}
+
+// A flame that lights the stones: where, how strong, how far it reaches.
+Flame :: struct {
+	pos:      Vec3,
+	strength: f32,
+	reach:    f32,
 }
 
 @(private)
@@ -1097,6 +1178,7 @@ draw_figures :: proc(r: ^Renderer, g: ^game.Game) {
 	draw_fragments(r, g)
 	draw_rams(r, g)
 	draw_eagles(r, g)
+	draw_boat(r, g)
 
 	// the prologue's procession: veiled mourners, a little taller than Psyche
 	if game.procession(g) {
@@ -1279,6 +1361,37 @@ draw_eagles :: proc(r: ^Renderer, g: ^game.Game) {
 	}
 }
 
+// Charon's boat, in dark wood, moored at the landing; Charon standing at
+// its far end in his dark cloak, a pole in his hands: waiting, facing her;
+// then poling the boat away into the mist (game.charon_pose).
+@(private)
+draw_boat :: proc(r: ^Renderer, g: ^game.Game) {
+	if !g.data.has_boat {
+		return
+	}
+	d := game.boat_dir(g)
+	yaw := math.atan2(d.y, d.x)
+	pos, face, pole, alpha := game.charon_pose(g)
+	if alpha < 0.003 {
+		return
+	}
+	stern := game.boat_point(g, game.BOAT_STERN)
+	set_piece_uniforms(r, .Wood, 0, 0, alpha, 0.9, 0)
+	rl.DrawMesh(r.meshes[.Boat], r.material, rl.MatrixTranslate(stern.x, stern.y, stern.z) * rl.MatrixRotateZ(yaw))
+	// the pole: from the water beside him up past his shoulder, leaning back
+	// as he thrusts
+	side := Vec3{-d.y, d.x, 0}
+	lean := 0.18 + 0.42 * pole
+	up := Vec3{-d.x * math.sin(lean), -d.y * math.sin(lean), math.cos(lean)}
+	foot := pos + side * 0.17 - up * 0.55 + {0, 0, 0.3}
+	axis := Vec3{-up.y, up.x, 0}
+	rl.DrawMesh(r.meshes[.Block], r.material, rl.MatrixTranslate(foot.x, foot.y, foot.z) * rl.MatrixRotate(axis, lean) * rl.MatrixScale(0.035, 0.035, 1.75) * rl.MatrixTranslate(-0.5, -0.5, 0))
+	// Charon, a head taller than the mourners, his hood bowed
+	set_piece_uniforms(r, .Mourner, 0, 0, alpha, 0.9, 0)
+	rl.DrawMesh(r.meshes[.Robe], r.material, rl.MatrixTranslate(pos.x, pos.y, pos.z) * rl.MatrixRotateZ(face) * rl.MatrixScale(1.12, 1.12, 1.24))
+	rl.DrawMesh(r.meshes[.Head], r.material, rl.MatrixTranslate(pos.x, pos.y, pos.z + 0.66) * rl.MatrixRotateZ(face) * rl.MatrixTranslate(0.012, 0, 0) * rl.MatrixScale(0.056, 0.054, 0.062))
+}
+
 // How visible fragment i's scroll is: faint when collected in an earlier
 // play, rising and fading when picked up now.
 @(private)
@@ -1319,11 +1432,15 @@ cupid_fade :: proc(g: ^game.Game) -> f32 {
 	return 1 - fx.progress(g.amore.fly_t, 0.6, 2.2)
 }
 
-// How far below its place the i-th stone raised by the seal is now (<= 0).
+// How far below its place the i-th stone raised by the seal is now (<= 0);
+// the way a guard candelabrum shows does not rise: it appears in its light.
 rise_lift :: proc(g: ^game.Game, i: int) -> f32 {
 	rt := game.rise_time(g, i)
 	if rt < 0 {
 		return -game.RISE_DEPTH
+	}
+	if int(g.data.rise[i].seal) in g.data.guard_seals {
+		return 0
 	}
 	return -game.RISE_DEPTH * (1 - fx.cubic_out(fx.progress(rt, game.rise_start(g, i), game.RISE_TIME)))
 }
@@ -1604,8 +1721,11 @@ ant :: proc(pos, dir: Vec3, alpha: f32, grain: bool) {
 
 // A soft round glow facing the camera; radius in proto pixels.
 @(private)
-glow :: proc(v: View, center: Vec3, radius: f32, c: Color4, stretch_y: f32 = 1) {
+glow :: proc(v: View, at: Vec3, radius: f32, c: Color4, stretch_y: f32 = 1, toward: f32 = 0) {
 	right, up := billboard_axes(v)
+	// `toward`: cells nearer the camera, the same spot on screen (a glow on a
+	// wall would otherwise sink half into it, cut along a diagonal)
+	center := at + depth_axis(v) * toward
 	rx := right * radius
 	uy := up * radius * stretch_y
 	color(c)
@@ -1720,13 +1840,13 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	}
 	// the candles on the walls, where the setting has them lit
 	{
-		list, n := candle_lights(g)
-		for c in list[:n] {
-			fp, fl := Vec3{c.x, c.y, c.z}, c.w
-			glow(v, fp, 64, {1.0, 0.6, 0.26, 0.26 * fl})
-			glow(v, fp, 18, {1.0, 0.7, 0.35, 0.35 * fl})
-			glow(v, fp + {0, 0, 0.02}, 6, {1.0, 0.78, 0.42, fl}, 1.8)
-			glow(v, fp + {0, 0, 0.02}, 2.6, {1.0, 0.96, 0.85, fl}, 1.6)
+		for c in candle_lights(g) {
+			fp, fl := c.pos, c.strength
+			// off the wall toward the camera, as far as each halo reaches
+			glow(v, fp, 64, {1.0, 0.6, 0.26, 0.26 * fl}, toward = 1.6)
+			glow(v, fp, 18, {1.0, 0.7, 0.35, 0.35 * fl}, toward = 0.5)
+			glow(v, fp + {0, 0, 0.02}, 6, {1.0, 0.78, 0.42, fl}, 1.8, 0.2)
+			glow(v, fp + {0, 0, 0.02}, 2.6, {1.0, 0.96, 0.85, fl}, 1.6, 0.2)
 		}
 	}
 	// the candelabra: three flames each, a warm halo; one just lit flares up
@@ -1740,7 +1860,7 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 		if since := g.candelabrum_t[i]; since >= 0 {
 			flare = math.exp(-since * 2.5)
 		}
-		glow(v, base + {0, 0, 1.0}, 90 * (1 + flare), {1.0, 0.62, 0.28, (0.22 + 0.3 * flare) * burn})
+		glow(v, base + {0, 0, 1.0}, 90 * (1 + flare), {1.0, 0.62, 0.28, (0.22 + 0.3 * flare) * burn}, toward = 1.2)
 		for fp, k in CANDELABRUM_FLAMES {
 			fl := (0.85 + 0.1 * math.sin(t * 13 + f32(i * 3 + k) * 1.7) + 0.05 * math.sin(t * 31 + f32(k))) * burn
 			p := base + Vec3(fp)
@@ -1777,7 +1897,7 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	}
 	// the lit seals breathe
 	for c0, k in g.data.sigils {
-		if k not_in g.activated || g.collapse_t >= 0 {
+		if k not_in g.activated || k in g.data.guard_seals || g.collapse_t >= 0 {
 			continue
 		}
 		c := pl.node_world(&g.palace, c0) + {0, 0, 0.05}
@@ -1800,6 +1920,25 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 			glow(v, c + {0, 0, 0.3 + f32(n) * 0.35}, 18 - f32(n) * 2, {1.0, 0.85, 0.5, 0.22 * pulse * (1 - f32(n) / 5)}, 2.4)
 		}
 		glow(v, c + {0, 0, 0.02}, 44, {1.0, 0.8, 0.45, 0.28 * pulse}, 0.5)
+	}
+	// the tower speaking: lights rising through its stones under the brink
+	for k in 0 ..< game.TW_LIGHTS {
+		if p, a := game.tower_light(g, k); a > 0.003 {
+			glow(v, p, 44, {1.0, 0.6, 0.38, 0.55 * a}, 1.6)
+			glow(v, p, 12, {1.0, 0.9, 0.72, 0.85 * a})
+		}
+	}
+	// Charon's boat: a pale lantern on its prow; the coin passing from her lips to his hand
+	if g.data.has_boat {
+		_, _, _, alpha := game.charon_pose(g)
+		p := game.boat_point(g, game.BOAT_STERN + game.BOAT_LENGTH) + {0, 0, 0.42}
+		breath := 0.85 + 0.15 * math.sin(t * 1.1)
+		glow(v, p, 60, {0.9, 0.55, 0.45, 0.22 * breath * alpha})
+		glow(v, p, 10, {1.0, 0.86, 0.72, 0.6 * breath * alpha})
+		if c, ok := game.boat_coin(g); ok {
+			glow(v, c, 14, {1.0, 0.82, 0.4, 0.55})
+			glow(v, c, 4, {1.0, 0.95, 0.8, 0.95})
+		}
 	}
 	// Venus: a rose light, her star's
 	if vp, alpha := game.venus_figure(g); alpha > 0.003 {

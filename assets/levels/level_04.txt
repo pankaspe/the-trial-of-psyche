@@ -34,6 +34,8 @@
 #                           temple_dusk (a temple at dusk among the ranges, candles lit) |
 #                           styx_night (the gorge of the Styx: no moon, the black water) |
 #                           styx_day, styx_evening (the summit of the Styx's crag by day, at evening)
+#                           tower_dusk (the top of a high tower at dusk, a red glow below) |
+#                           taenarus (the mouth of the underworld: a red sky, ash, dark water)
 #   tier h0 h1              a level too tall for the screen: the camera frames one
 #                           band of heights at a time (Psyche's), panning to the next
 #                           when she changes band (through a cave, while she is inside)
@@ -52,6 +54,11 @@
 #                           x y h (corners as the vase's): lit from the start, or
 #                           waiting for the lamp: lit near it, the lamp lights it
 #                           for good; a lit one lights the stones around it
+#   candelabrum x y h dir guard
+#                           (Act IV) a seal of its own, numbered with the sigils
+#                           in file order: the lamp lit standing on x y h lights
+#                           it, and its light shows the way through the dark
+#                           (its `rise` blocks appear in place, they do not rise)
 #   voice x y h key         line spoken when Psyche first stands there; on the
 #                           start cell, when the level begins
 #                           (key = an i18n.Key name, case-insensitive)
@@ -104,6 +111,16 @@
 #                           standing there, Space (pad South) calls it and
 #                           it carries Psyche to surface tx ty th, one way
 #   mechanic eagle          (the card that presents the eagle)
+# Act IV (the way down):
+#   tower x y h             the level opens with the Tower (IV.1): Psyche walks
+#                           from the start to this brink, looks down, and the
+#                           tower speaks; she steps back and the level begins
+#   below name              a level that goes down: its look at the foot (the
+#                           exit's height), blended in as she descends from the
+#                           start's height (not with sundials)
+#   charon x y h dir        Charon's boat moored on side dir of the exit x y h:
+#                           reaching the landing does not end the level; there
+#                           Space (pad South) boards it and he ferries her away
 # Illusions: in the dark two surfaces are joined when they look joined in the
 # current view: (x',y',h) touches (x'+dx+k, y'+dy+k, h+k) in view coordinates,
 # provided the edge where they touch is visible on both tops (a top half

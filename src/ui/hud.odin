@@ -523,10 +523,12 @@ flame :: proc(u: ^Ui, c: Vec2, k: f32, col: rl.Color) {
 @(private)
 draw_place :: proc(u: ^Ui, g: ^game.Game, hud: Hud_Input, act: ^Hud_Action) {
 	k := hud_k(u)
-	cave, eagle := game.at_cave(g), game.on_perch(g)
-	here := cave || eagle
-	if here {
-		u.place_key = cave ? .Place_Cave : .Place_Eagle
+	cave, eagle, boat := game.at_cave(g), game.on_perch(g), game.at_boat(g)
+	here := cave || eagle || boat
+	switch {
+	case cave: u.place_key = .Place_Cave
+	case eagle: u.place_key = .Place_Eagle
+	case boat: u.place_key = .Place_Boat
 	}
 	approach(u, &u.place_reveal, here ? 1 : 0, 1 / 0.25)
 	a := u.place_reveal
@@ -876,6 +878,23 @@ tutorial_sign :: proc(u: ^Ui, g: ^game.Game, key: i18n.Key, c: Vec2, col: rl.Col
 			rl.DrawLineEx(mid, tip, 2.5 * s, col)
 		}
 		rl.DrawCircleV(c + {0, 3 * s}, 3.5 * s, col)
+	case .Hint_Boat:
+		// a boat on the water, a pole standing in it
+		rock := 1.5 * math.sin(g.time * 1.4)
+		rl.DrawLineEx(c + Vec2{-22, 4 + rock} * s, c + Vec2{18, 4 - rock} * s, 3 * s, col)
+		rl.DrawLineEx(c + Vec2{-22, 4 + rock} * s, c + Vec2{-17, 11 + rock} * s, 3 * s, col)
+		rl.DrawLineEx(c + Vec2{-17, 11 + rock} * s, c + Vec2{14, 11 - rock} * s, 3 * s, col)
+		rl.DrawLineEx(c + Vec2{14, 11 - rock} * s, c + Vec2{22, -2 - rock} * s, 3 * s, col)
+		rl.DrawLineEx(c + Vec2{6, -22} * s, c + Vec2{-2, 16} * s, 2 * s, col)
+		rl.DrawLineEx(c + Vec2{-26, 17} * s, c + Vec2{26, 17} * s, 1.5 * s, fade(col, 0.6))
+	case .Hint_Guard:
+		// a candelabrum: a stem, an arm, three flames
+		rl.DrawLineEx(c + Vec2{0, 18} * s, c + Vec2{0, -6} * s, 2.5 * s, col)
+		rl.DrawLineEx(c + Vec2{-12, 18} * s, c + Vec2{12, 18} * s, 2.5 * s, col)
+		rl.DrawLineEx(c + Vec2{-12, -6} * s, c + Vec2{12, -6} * s, 2.5 * s, col)
+		for x in ([3]f32{-12, 0, 12}) {
+			tri(c + Vec2{x - 3.5, -9} * s, c + Vec2{x + 3.5, -9} * s, c + Vec2{x, -19 - 2 * math.sin(g.time * 5 + x)} * s, col)
+		}
 	case .Hint_Fragment:
 		// the scroll of the count, glowing
 		glow_dot(c, 22 * s, {255, 214, 140, 255}, 0.5 + 0.3 * breathe(u, g.time, 3))

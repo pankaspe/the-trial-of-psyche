@@ -269,6 +269,8 @@ SETTING_BED := [level.Setting]audio.Bed {
 	.Styx_Night    = .Styx,
 	.Styx_Day      = .Styx,
 	.Styx_Evening  = .Styx,
+	.Tower_Dusk    = .Mountain,
+	.Taenarus      = .Styx,
 }
 
 // What the mixer plays: the act's music (silent while the screen goes
@@ -900,9 +902,10 @@ update_lamp :: proc(app: ^App, slot_down: bool) {
 	}
 }
 
-// The action of the place: into the cave at her feet, or the eagle called.
+// The action of the place: into the cave at her feet, the eagle called,
+// Charon's boat boarded.
 place :: proc(g: ^game.Game) -> bool {
-	return game.enter_cave(g) || game.call_eagle(g)
+	return game.enter_cave(g) || game.call_eagle(g) || game.board_boat(g)
 }
 
 // The pad in play: the stick (or the d-pad) steers Psyche; the two tools on
