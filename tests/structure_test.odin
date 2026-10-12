@@ -2,6 +2,8 @@
 // the tale, the canonical and secret endings, levels that end at an exit.
 package tests
 
+import "core:slice"
+import "core:strings"
 import "core:testing"
 
 import "../src/content"
@@ -67,6 +69,32 @@ progress_round_trip :: proc(t: ^testing.T) {
 	odd: progress.Progress
 	progress.parse("completed = I.4 Z.9\nfragments = nothing\nachievements = trust flying\ngarbage\n", &odd)
 	testing.expect(t, odd.completed == {3} && odd.fragments == {} && odd.achievements == {.Trust}, "unknown ids are ignored")
+}
+
+@(test)
+progress_sealed :: proc(t: ^testing.T) {
+	text := "completed = I.1 I.2\n"
+	sealed := progress.seal(text, context.temp_allocator)
+	testing.expect(t, strings.index(string(sealed), "I.1") < 0, "the sealed save can't be read")
+	back, ok := progress.unseal(sealed, context.temp_allocator)
+	testing.expect(t, ok && back == text, "a sealed save opens again")
+	again := progress.seal(text, context.temp_allocator)
+	testing.expect(t, string(again) != string(sealed), "each save has its own nonce")
+	for at in ([]int{0, 5, len(sealed) - 1}) {
+		edited := slice.clone(sealed, context.temp_allocator)
+		edited[at] ~= 1
+		_, opened := progress.unseal(edited, context.temp_allocator)
+		testing.expectf(t, !opened, "a save edited at byte %d is refused", at)
+	}
+	_, cut := progress.unseal(sealed[:len(sealed) - 2], context.temp_allocator)
+	testing.expect(t, !cut, "a cut save is refused")
+	_, plain := progress.unseal(transmute([]byte)text, context.temp_allocator)
+	testing.expect(t, !plain, "a plain file is not a save")
+
+	old: progress.Progress
+	progress.parse_legacy("completed = I.1 III.3 III.4 E\nfragments = I.1 III.3b III.4\nachievements = tale_1 trust wedding no_wasted_light\n", &old)
+	testing.expect(t, old.completed == {0, 10} && old.fragments == {0, 19}, "a plain save keeps only the levels built while saves were plain")
+	testing.expect(t, old.achievements == {.Tale_1, .No_Wasted_Light}, "a plain save can't finish the game")
 }
 
 @(test)

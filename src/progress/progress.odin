@@ -1,14 +1,19 @@
 // The player's progress: levels finished, fragments of the tale collected,
-// achievements. Saved as `key = value` lines next to the settings
-// (~/.config/the-trial-of-psyche/progress.cfg on Linux). Levels and fragments
-// are stored by their stable id ("I.4", "I.3b"), so adding levels never breaks
-// a save; unknown ids and lines are ignored.
+// achievements. Written as `key = value` lines, then sealed (ChaCha20-Poly1305)
+// into a file next to the settings (~/.config/the-trial-of-psyche/progress.sav
+// on Linux), so that it can't be read or edited by hand: a file that doesn't
+// open is a new game. The key is in the binary (and in this open source): it
+// keeps casual hands out, not a determined player. Levels and fragments are
+// stored by their stable id ("I.4", "I.3b"), so adding levels never breaks a
+// save; unknown ids and lines are ignored.
 //
 // The rules here are pure (no IO, no game state): the app reports what
 // happened, this package answers with the achievements it unlocked. If the
 // game ever ships on Steam, these are the events to forward.
 package progress
 
+import "core:crypto"
+import "core:crypto/chacha20poly1305"
 import "core:fmt"
 import "core:os"
 import "core:strings"
@@ -17,7 +22,13 @@ import "../content"
 import "../i18n"
 import "../settings"
 
-FILE_NAME :: "progress.cfg"
+FILE_NAME :: "progress.sav"
+// The plain save of the builds before, read once when there is no sealed one,
+// then removed.
+LEGACY_FILE_NAME :: "progress.cfg"
+// The last level built while saves were plain: a plain file written by hand
+// can't give more than those builds could.
+LEGACY_LAST_LEVEL :: "III.3"
 
 #assert(content.LEVEL_COUNT <= 32)
 Level_Set :: bit_set[0 ..< 32] // indices into content.LEVELS
@@ -193,16 +204,92 @@ load :: proc() -> Progress {
 	if path == "" {
 		return p
 	}
-	data, err := os.read_entire_file_from_path(path, context.temp_allocator)
-	if err != nil {
+	if data, err := os.read_entire_file_from_path(path, context.temp_allocator); err == nil {
+		if text, ok := unseal(data, context.temp_allocator); ok {
+			parse(text, &p)
+		}
 		return p
 	}
-	parse(string(data), &p)
+	legacy := settings.config_file(LEGACY_FILE_NAME)
+	if data, err := os.read_entire_file_from_path(legacy, context.temp_allocator); err == nil {
+		parse_legacy(string(data), &p)
+		if save(p) {
+			os.remove(legacy)
+		}
+	}
 	return p
 }
 
 save :: proc(p: Progress) -> bool {
-	return settings.write_config_file(FILE_NAME, serialize(p, context.temp_allocator))
+	sealed := seal(serialize(p, context.temp_allocator), context.temp_allocator)
+	return settings.write_config_file(FILE_NAME, string(sealed))
+}
+
+// A plain save, kept only as far as the builds that wrote one could go.
+parse_legacy :: proc(text: string, p: ^Progress) {
+	parse(text, p)
+	last := 0
+	for info, i in content.LEVELS {
+		if info.id == LEGACY_LAST_LEVEL {
+			last = i
+		}
+	}
+	for i in last + 1 ..< content.LEVEL_COUNT {
+		p.completed -= {i}
+	}
+	for f, i in content.FRAGMENTS {
+		if f.level > last {
+			p.fragments -= {i}
+		}
+	}
+	p.achievements &= {.Tale_1, .Tale_2, .No_Wasted_Light}
+}
+
+// --- sealing ------------------------------------------------------------------------
+
+@(private)
+MAGIC :: "PSY1"
+
+@(private)
+KEY := [chacha20poly1305.KEY_SIZE]byte {
+	0x3c, 0x9a, 0x51, 0xe7, 0x08, 0xd4, 0x6b, 0x2f, 0xa1, 0x77, 0xc5, 0x13, 0x8e, 0x40, 0xf9, 0x26,
+	0x5d, 0xb2, 0x0e, 0x94, 0x6a, 0xc8, 0x31, 0x7f, 0xe3, 0x15, 0x9c, 0x48, 0xd7, 0x62, 0xab, 0x04,
+}
+
+// MAGIC, a random nonce, the tag, then the text encrypted; MAGIC is authenticated too.
+seal :: proc(text: string, allocator := context.allocator) -> []byte {
+	N :: chacha20poly1305.IV_SIZE
+	T :: chacha20poly1305.TAG_SIZE
+	out := make([]byte, len(MAGIC) + N + T + len(text), allocator)
+	copy(out, MAGIC)
+	nonce := out[len(MAGIC):][:N]
+	tag := out[len(MAGIC) + N:][:T]
+	body := out[len(MAGIC) + N + T:]
+	crypto.rand_bytes(nonce)
+	ctx: chacha20poly1305.Context
+	chacha20poly1305.init(&ctx, KEY[:])
+	chacha20poly1305.seal(&ctx, body, tag, nonce, transmute([]byte)string(MAGIC), transmute([]byte)text)
+	return out
+}
+
+// The text sealed in data; ok is false when the file was edited, cut or isn't a save.
+unseal :: proc(data: []byte, allocator := context.allocator) -> (text: string, ok: bool) {
+	N :: chacha20poly1305.IV_SIZE
+	T :: chacha20poly1305.TAG_SIZE
+	if len(data) < len(MAGIC) + N + T || string(data[:len(MAGIC)]) != MAGIC {
+		return "", false
+	}
+	nonce := data[len(MAGIC):][:N]
+	tag := data[len(MAGIC) + N:][:T]
+	body := data[len(MAGIC) + N + T:]
+	out := make([]byte, len(body), allocator)
+	ctx: chacha20poly1305.Context
+	chacha20poly1305.init(&ctx, KEY[:])
+	if !chacha20poly1305.open(&ctx, out, nonce, transmute([]byte)string(MAGIC), body, tag) {
+		delete(out, allocator)
+		return "", false
+	}
+	return string(out), true
 }
 
 serialize :: proc(p: Progress, allocator := context.allocator) -> string {
