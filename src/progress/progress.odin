@@ -14,6 +14,7 @@ package progress
 
 import "core:crypto"
 import "core:crypto/chacha20poly1305"
+import "base:runtime"
 import "core:fmt"
 import "core:os"
 import "core:strings"
@@ -220,9 +221,35 @@ load :: proc() -> Progress {
 	return p
 }
 
+// Write the save and read it back: what is on disk must open to the same
+// text (a save that does not is written again, once). Built in the heap, not
+// in the frame's scratch memory.
 save :: proc(p: Progress) -> bool {
-	sealed := seal(serialize(p, context.temp_allocator), context.temp_allocator)
-	return settings.write_config_file(FILE_NAME, string(sealed))
+	heap := runtime.heap_allocator()
+	text := serialize(p, heap)
+	defer delete(text, heap)
+	for _ in 0 ..< 2 {
+		sealed := seal(text, heap)
+		written := settings.write_config_file(FILE_NAME, string(sealed))
+		delete(sealed, heap)
+		if !written {
+			return false
+		}
+		data, err := os.read_entire_file_from_path(settings.config_file(FILE_NAME), heap)
+		if err != nil {
+			continue
+		}
+		back, ok := unseal(data, heap)
+		same := ok && back == text
+		delete(data, heap)
+		if ok {
+			delete(back, heap)
+		}
+		if same {
+			return true
+		}
+	}
+	return false
 }
 
 // A plain save, kept only as far as the builds that wrote one could go.
@@ -257,6 +284,8 @@ KEY := [chacha20poly1305.KEY_SIZE]byte {
 }
 
 // MAGIC, a random nonce, the tag, then the text encrypted; MAGIC is authenticated too.
+// The portable ChaCha20: the SIMD one gets the second 64-byte block wrong in
+// debug builds (it wrote saves that open to garbage, and read good ones so).
 seal :: proc(text: string, allocator := context.allocator) -> []byte {
 	N :: chacha20poly1305.IV_SIZE
 	T :: chacha20poly1305.TAG_SIZE
@@ -267,7 +296,7 @@ seal :: proc(text: string, allocator := context.allocator) -> []byte {
 	body := out[len(MAGIC) + N + T:]
 	crypto.rand_bytes(nonce)
 	ctx: chacha20poly1305.Context
-	chacha20poly1305.init(&ctx, KEY[:])
+	chacha20poly1305.init(&ctx, KEY[:], .Portable)
 	chacha20poly1305.seal(&ctx, body, tag, nonce, transmute([]byte)string(MAGIC), transmute([]byte)text)
 	return out
 }
@@ -284,7 +313,7 @@ unseal :: proc(data: []byte, allocator := context.allocator) -> (text: string, o
 	body := data[len(MAGIC) + N + T:]
 	out := make([]byte, len(body), allocator)
 	ctx: chacha20poly1305.Context
-	chacha20poly1305.init(&ctx, KEY[:])
+	chacha20poly1305.init(&ctx, KEY[:], .Portable)
 	if !chacha20poly1305.open(&ctx, out, nonce, transmute([]byte)string(MAGIC), body, tag) {
 		delete(out, allocator)
 		return "", false

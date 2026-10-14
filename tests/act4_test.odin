@@ -1,6 +1,6 @@
 // Act IV: Charon's boat at the exit (reaching the landing does not end the
-// level: Space boards it), and a level that goes down (the look at its foot
-// follows her down). On small hand-made palaces, through the game.
+// level: Space boards it), a level that goes down (the look at its foot
+// follows her down), Proserpina's flip (the world turned over). On small hand-made palaces, through the game.
 package tests
 
 import "core:testing"
@@ -97,4 +97,60 @@ lightning_flashes_then_thunders :: proc(t: ^testing.T) {
 	testing.expect(t, game.lightning_flash(&g) > 0.4, "and a second flicker")
 	run(&g, 2)
 	testing.expect(t, game.lightning_flash(&g) < 0.01, "then the dark again")
+}
+
+// Three stones on the axle, a rock on the middle one above: the way across
+// is under them, once the world is turned over; the exit is of that world.
+@(private)
+FLIP_PALACE :: `size 5
+setting taenarus
+upside dis
+block 0 2 1
+block 1 2 1
+block 2 2 1
+block 1 2 2
+pomegranate 0 2 2
+start 0 2 2
+under
+stairs 3 2 2 mx
+block 3 2 1
+exit 2 2 2
+end
+`
+
+@(test)
+pomegranate_turns_the_world_over :: proc(t: ^testing.T) {
+	g: game.Game
+	defer game.destroy(&g)
+	if !load_text(t, &g, FLIP_PALACE, slot = 14) { // IV.2
+		return
+	}
+	path: palace.Path
+	testing.expect(t, !palace.find_path(&g.palace, g.psyche.cell, g.data.exit, false, &path), "above, the rock bars the way")
+	testing.expect(t, palace.solid_at(&g.palace, {3, 2, 0}).kind == .Block, "the stairs of the world below hang: flat stone")
+	testing.expect(t, game.at_pomegranate(&g) && game.on_spindle(&g), "on the pomegranate the spindle is ready")
+	game.use_spindle(&g)
+	testing.expect(t, g.phase == .Overturn && g.palace.upside, "the world turns over")
+	testing.expect(t, g.psyche.cell == (palace.Cell{0, 2, 2}), "she stays on her stone")
+	run(&g, game.OVERTURN_TIME + 0.2)
+	testing.expect(t, g.phase == .Play && g.overturn > 0.99 && game.setting_now(&g) == level.Setting.Dis, "turned over: the look of the world below")
+	testing.expect(t, palace.solid_at(&g.palace, {3, 2, 2}).kind == .Stairs, "its stairs stand up")
+	testing.expect(t, palace.solid_at(&g.palace, {1, 2, 0}).kind == .Block, "the rock hangs under the stones now")
+	testing.expect(t, walk(t, &g, g.data.exit), "under the stones she walks to the exit")
+	run(&g, game.EXIT_END + 0.5)
+	testing.expect(t, g.phase == .Finished && g.ending == .Exit, "the exit of the world below ends the level")
+}
+
+@(test)
+solver_turns_the_world_over :: proc(t: ^testing.T) {
+	g: game.Game
+	defer game.destroy(&g)
+	if !load_text(t, &g, FLIP_PALACE, slot = 14) {
+		return
+	}
+	sol := palace.solve(&g.palace, palace.exit_spot(&g.data), nil, context.temp_allocator)
+	testing.expect(t, sol.solved && sol.overturns == 1 && sol.steps == 2, "one turn of the world, two steps")
+	testing.expect(t, !g.palace.upside, "the solver leaves the world as described")
+	no := palace.solve(&g.palace, {g.data.exit, false}, nil, context.temp_allocator)
+	testing.expect(t, !no.solved, "the same cell in the world above is out of reach")
 }

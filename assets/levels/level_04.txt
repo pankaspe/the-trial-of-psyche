@@ -35,7 +35,8 @@
 #                           styx_night (the gorge of the Styx: no moon, the black water) |
 #                           styx_day, styx_evening (the summit of the Styx's crag by day, at evening)
 #                           tower_dusk (the top of a high tower at dusk, a red glow below) |
-#                           taenarus (the mouth of the underworld: a red sky, ash, dark water)
+#                           taenarus (the mouth of the underworld: a red sky, ash, dark water) |
+#                           dis (Proserpina's kingdom: a still violet dark, a pale sun of the dead)
 #   tier h0 h1              a level too tall for the screen: the camera frames one
 #                           band of heights at a time (Psyche's), panning to the next
 #                           when she changes band (through a cave, while she is inside)
@@ -121,6 +122,21 @@
 #   charon x y h dir        Charon's boat moored on side dir of the exit x y h:
 #                           reaching the landing does not end the level; there
 #                           Space (pad South) boards it and he ferries her away
+#   pomegranate x y h       Proserpina's pomegranate on a stone of the axle (the
+#                           size is odd; every pomegranate at y = size/2, all at
+#                           the same h; the axle is that row at z = h - 1):
+#                           standing there, the spindle turns the world over
+#                           about the axle, (x,y,z) -> (x, size-1-y, 2(h-1)-z),
+#                           and she stands on the underside of her stone
+#   under ... end           the world under the palace, described as it stands
+#                           once turned up (the same coordinates as above):
+#                           block, veiled, column, rock, ground, stairs, steps,
+#                           rise, prop, candelabrum, fragment, exit, sigil,
+#                           lawn, voice, hint. While the other world is up it
+#                           hangs below: its stairs are flat stone, its rails
+#                           close nothing. No z above 2(h-1), either world.
+#   upside name             the look with the world turned over
+#   mechanic flip           (the card that presents the pomegranates)
 # Illusions: in the dark two surfaces are joined when they look joined in the
 # current view: (x',y',h) touches (x'+dx+k, y'+dy+k, h+k) in view coordinates,
 # provided the edge where they touch is visible on both tops (a top half

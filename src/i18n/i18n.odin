@@ -145,6 +145,8 @@ Key :: enum u16 {
 	Mech_Time,
 	Mech_Eagle_Title,
 	Mech_Eagle,
+	Mech_Flip_Title,
+	Mech_Flip,
 
 	// the Book
 	Book_Missing,
@@ -191,6 +193,9 @@ Key :: enum u16 {
 	Skill_Sundial_Day, // on a sundial by day: the spindle brings the evening
 	Skill_Sundial_Evening,
 	Skill_Spindle_Away_Time, // a level with sundials: find a handle or a sundial
+	Skill_Pomegranate_Here, // on a pomegranate: the spindle turns the world over
+	Skill_Overturning,
+	Skill_Spindle_Away_Flip, // a level with pomegranates: find one
 	Skill_Lamp_Day, // by day the lamp is not lit
 	Skill_Locked,
 	Turn_Left,
@@ -232,6 +237,7 @@ Key :: enum u16 {
 	Intro_III_4,
 	Intro_III_5,
 	Intro_IV_1,
+	Intro_IV_2,
 	// beside Cupid in the dark, before the end of the game
 	V_Doubt,
 
@@ -258,6 +264,7 @@ Key :: enum u16 {
 	Hint_Veiled,
 	Hint_Handle,
 	Hint_Sundial,
+	Hint_Pomegranate,
 	Hint_Eagle,
 	Hint_Eagle_No_Floor, // the eagle would set her down where there is nothing
 	Hint_Boat, // at the landing: Space boards Charon's boat
@@ -274,6 +281,7 @@ Key :: enum u16 {
 	Mech_Handle_Pad,
 	Mech_Time_Pad,
 	Mech_Eagle_Pad,
+	Mech_Flip_Pad,
 	Hint_No_Rest_Pad,
 	Hint_No_Rest_Twice_Pad,
 	Hint_Again_Twice_Pad,
@@ -296,6 +304,7 @@ Key :: enum u16 {
 	Hint_Turn_Pad,
 	Hint_Handle_Pad,
 	Hint_Sundial_Pad,
+	Hint_Pomegranate_Pad,
 	Hint_Eagle_Pad,
 	Hint_Boat_Pad,
 	Hint_Rest_Pad,
@@ -323,6 +332,7 @@ Key :: enum u16 {
 	Outro_III_4,
 	Outro_III_5,
 	Outro_IV_1,
+	Outro_IV_2,
 
 	// endings
 	End_Trust_Title,
@@ -465,6 +475,7 @@ PAD_TEXT := #partial [Key]Key {
 	.Mech_Handle        = .Mech_Handle_Pad,
 	.Mech_Time          = .Mech_Time_Pad,
 	.Mech_Eagle         = .Mech_Eagle_Pad,
+	.Mech_Flip          = .Mech_Flip_Pad,
 	.Hint_No_Rest       = .Hint_No_Rest_Pad,
 	.Hint_No_Rest_Twice = .Hint_No_Rest_Twice_Pad,
 	.Hint_Again_Twice   = .Hint_Again_Twice_Pad,
@@ -487,6 +498,7 @@ PAD_TEXT := #partial [Key]Key {
 	.Hint_Turn          = .Hint_Turn_Pad,
 	.Hint_Handle        = .Hint_Handle_Pad,
 	.Hint_Sundial       = .Hint_Sundial_Pad,
+	.Hint_Pomegranate   = .Hint_Pomegranate_Pad,
 	.Hint_Eagle         = .Hint_Eagle_Pad,
 	.Hint_Boat          = .Hint_Boat_Pad,
 	.Hint_Rest          = .Hint_Rest_Pad,
@@ -597,7 +609,7 @@ IT := [Key]string {
 	.Level_III_4    = "L'acqua dello Stige",
 	.Level_III_5    = "L'ordine del vaso",
 	.Level_IV_1     = "La torre che parla",
-	.Level_IV_2     = "Il Tenaro e l'asinaio zoppo",
+	.Level_IV_2     = "Il rovescio del mondo",
 	.Level_IV_3     = "Caronte e il morto nel fiume",
 	.Level_IV_4     = "Cerbero e Proserpina",
 	.Level_IV_5     = "Il vaso aperto",
@@ -636,7 +648,7 @@ IT := [Key]string {
 	.Fragment_14c   = "«Prendi questo vaso. E torna presto: devo ungermi della sua bellezza prima di andare al teatro degli dèi.»",
 	.Fragment_15    = "«Ma soprattutto, ti dico: il vaso che porterai, non aprirlo e non guardarci dentro. Non essere curiosa del tesoro della bellezza divina.»",
 	.Fragment_15b   = "«Più avanti, vecchie tessitrici ti pregheranno di dare loro una mano al telaio. Non toccare la tela: sono insidie di Venere, perché ti cada di mano una focaccia.»",
-	.Fragment_16    = "Non lontano c'è il Tenaro, uno spiraglio da cui respira il regno dei morti. Da lì una strada impervia scende fino alla reggia di Dite.",
+	.Fragment_16    = "Psiche passa oltre in silenzio: davanti all'asinaio zoppo, al morto che dal fiume tende le mani, alle vecchie che la chiamano al telaio. Non tocca nulla, non risponde a nessuno: stringe le sue focacce.",
 	.Fragment_17    = "Caronte non fa nulla gratis. Anche tra i morti vive l'avarizia. Chi muore deve portare la moneta in bocca.",
 	.Fragment_18    = "Proserpina le offre un seggio morbido e un ricco banchetto. Psiche siede a terra e chiede solo pane scuro.",
 	.Fragment_19    = "Amore, guarito, non sopporta più la lontananza. Fugge dall'alta finestra della sua prigione e vola da lei.",
@@ -654,6 +666,9 @@ IT := [Key]string {
 	.Mech_Eagle_Title = "L'aquila di Giove",
 	.Mech_Eagle     = "L'aquila aspetta sul suo trespolo di bronzo.\nStando sul trespolo, premi Spazio: l'aquila ti porta dove brilla la luce d'oro. Solo andata: per tornare serve un'altra aquila.",
 	.Mech_Eagle_Pad = "L'aquila aspetta sul suo trespolo di bronzo.\nStando sul trespolo, premi {S}: l'aquila ti porta dove brilla la luce d'oro. Solo andata: per tornare serve un'altra aquila.",
+	.Mech_Flip_Title = "Le melagrane di Proserpina",
+	.Mech_Flip      = "Sotto il mondo ne pende un altro, capovolto. Sulle pietre dell'asse crescono le melagrane di Proserpina.\nStando su una melagrana, premi 2 (o clicca su Psiche): il fuso capovolge il mondo, e cammini sul rovescio delle pietre.",
+	.Mech_Flip_Pad  = "Sotto il mondo ne pende un altro, capovolto. Sulle pietre dell'asse crescono le melagrane di Proserpina.\nStando su una melagrana, premi {RT}: il fuso capovolge il mondo, e cammini sul rovescio delle pietre.",
 
 	.Book_Missing   = "frammento non ancora trovato",
 	.Book_Achievements = "Traguardi",
@@ -697,6 +712,9 @@ IT := [Key]string {
 	.Skill_Sundial_Day = "Meridiana: porta la sera",
 	.Skill_Sundial_Evening = "Meridiana: porta il giorno",
 	.Skill_Spindle_Away_Time = "Cerca una manovella o una meridiana",
+	.Skill_Pomegranate_Here = "Melagrana: capovolgi il mondo",
+	.Skill_Overturning = "Il mondo si capovolge…",
+	.Skill_Spindle_Away_Flip = "Cerca una melagrana",
 	.Skill_Lamp_Day = "Di giorno resta spenta",
 	.Skill_Locked = "Da scoprire",
 	.Turn_Left = "Ruota a sinistra",
@@ -741,6 +759,7 @@ IT := [Key]string {
 	.Intro_III_4    = "Sulla vetta l'acqua nera grida. Le aquile ti portano lassù, ma dove ti posano l'ora resta quella: sceglila prima di volare.",
 	.Intro_III_5    = "Di nuovo nella casa di Venere. Per uscirne servirà ogni cosa imparata: la lucerna, il fuso, la grotta, l'aquila.",
 	.Intro_IV_1     = "La torre ti ha detto la via. Scendi: in fondo, sull'acqua scura, aspetta il traghettatore.",
+	.Intro_IV_2     = "Oltre il fiume, il regno di Proserpina pende sotto la terra dei morti, come un riflesso nell'acqua.",
 	.V_Doubt        = "Dorme. Ti tornano in mente le parole delle sorelle: e se fosse un mostro? La lampada è nella tua mano.",
 
 	.Tutorial_Label = "Come si gioca",
@@ -767,6 +786,7 @@ IT := [Key]string {
 	.Hint_Veiled    = "La lampada mostra in oro ciò che il buio nasconde: avvicinati con la luce, e diventa vero per sempre",
 	.Hint_Handle    = "Sei su una manovella: premi 2 (o clicca su Psiche) per ruotare la parte che muove",
 	.Hint_Sundial   = "Sei sulla meridiana: premi 2 (o clicca su Psiche) e il sole tramonterà",
+	.Hint_Pomegranate = "Sei su una melagrana: premi 2 (o clicca su Psiche) e il mondo si capovolgerà",
 	.Hint_Eagle     = "Sei sul trespolo: premi Spazio e l'aquila ti porterà dove brilla la luce d'oro",
 	.Hint_Eagle_No_Floor = "L'aquila non si muove: dove ti poserebbe non c'è ancora terra",
 	.Hint_Boat      = "Caronte aspetta: premi Spazio per salire sulla barca",
@@ -795,6 +815,7 @@ IT := [Key]string {
 	.Hint_Turn_Pad  = "Il monte non si mostra mai tutto da un lato. Premi {LB} o {RB} per girargli intorno: da un'altra parte le rocce lontane si toccano, e affiorano i frammenti del racconto.",
 	.Hint_Handle_Pad = "Sei su una manovella: premi {RT} per ruotare la parte che muove",
 	.Hint_Sundial_Pad = "Sei sulla meridiana: premi {RT} e il sole tramonterà",
+	.Hint_Pomegranate_Pad = "Sei su una melagrana: premi {RT} e il mondo si capovolgerà",
 	.Hint_Eagle_Pad = "Sei sul trespolo: premi {S} e l'aquila ti porterà dove brilla la luce d'oro",
 	.Hint_Boat_Pad  = "Caronte aspetta: premi {S} per salire sulla barca",
 	.Hint_Rest_Pad  = "Un braciere acceso: se ti perdi, {E} ti riporta qui (tenuto premuto, ricomincia il livello)",
@@ -820,6 +841,7 @@ IT := [Key]string {
 	.Outro_III_4    = "L'aquila affonda l'urna nell'acqua che grida e gliela rende piena. Venere la guarda, e la sua ira cresce.",
 	.Outro_III_5    = "Con il vaso tra le mani Psiche sale sulla torre più alta. Non conosce altra strada per gli inferi che la morte.",
 	.Outro_IV_1     = "Caronte prende di sua mano la moneta dalle labbra di Psiche. Senza una parola, spinge la barca nella nebbia rossa.",
+	.Outro_IV_2     = "Il mondo si ferma, dritto o capovolto: quaggiù è lo stesso. Più avanti il fiume dei morti torna a scorrere, nero, e sull'acqua aspetta di nuovo una barca.",
 	.Outro_III_1    = "A notte Venere torna dal banchetto, accaldata dal vino e profumata di rose. Vede il lavoro compiuto.\n«Non è opera tua», dice, e le getta un tozzo di pane.",
 
 	.End_Trust_Title = "Fiducia",
@@ -931,7 +953,7 @@ EN := [Key]string {
 	.Level_III_4    = "The Water of the Styx",
 	.Level_III_5    = "The Order of the Box",
 	.Level_IV_1     = "The Speaking Tower",
-	.Level_IV_2     = "Taenarus and the Lame Driver",
+	.Level_IV_2     = "The Underside of the World",
 	.Level_IV_3     = "Charon and the Dead Man",
 	.Level_IV_4     = "Cerberus and Proserpina",
 	.Level_IV_5     = "The Open Box",
@@ -970,7 +992,7 @@ EN := [Key]string {
 	.Fragment_14c   = "“Take this box. And come back soon: I must anoint myself with her beauty before I go to the theatre of the gods.”",
 	.Fragment_15    = "«But above all, I tell you: the box you will carry, do not open it, do not look inside. Do not be curious about the treasure of divine beauty.»",
 	.Fragment_15b   = "«Further on, old women weaving will beg you to lend a hand at the loom. Do not touch the cloth: these are Venus's snares, to make you drop a cake.»",
-	.Fragment_16    = "Not far away lies Taenarus, a vent through which the kingdom of the dead breathes. From there a rough road leads down to the palace of Dis.",
+	.Fragment_16    = "Psyche passes on in silence: by the lame driver, by the dead man reaching out of the river, by the old women calling her to the loom. She touches nothing, answers no one: she holds her cakes tight.",
 	.Fragment_17    = "Charon does nothing for free. Even among the dead greed lives on: whoever dies must carry the coin in his mouth.",
 	.Fragment_18    = "Proserpina offers her a soft seat and a rich feast. Psyche sits on the ground and asks only for coarse bread.",
 	.Fragment_19    = "Cupid, healed, can bear the separation no longer. He escapes through the high window of his prison and flies to her.",
@@ -988,6 +1010,9 @@ EN := [Key]string {
 	.Mech_Eagle_Title = "Jupiter's eagle",
 	.Mech_Eagle     = "The eagle waits on its bronze perch.\nStanding on the perch, press Space: the eagle carries you where the golden light shines. One way only: to come back you need another eagle.",
 	.Mech_Eagle_Pad = "The eagle waits on its bronze perch.\nStanding on the perch, press {S}: the eagle carries you where the golden light shines. One way only: to come back you need another eagle.",
+	.Mech_Flip_Title = "Proserpina's pomegranates",
+	.Mech_Flip      = "Under the world hangs another, upside down. On the stones of the axle grow Proserpina's pomegranates.\nStanding on a pomegranate, press 2 (or click Psyche): the spindle turns the world over, and you walk on the underside of the stones.",
+	.Mech_Flip_Pad  = "Under the world hangs another, upside down. On the stones of the axle grow Proserpina's pomegranates.\nStanding on a pomegranate, press {RT}: the spindle turns the world over, and you walk on the underside of the stones.",
 
 	.Book_Missing   = "fragment not found yet",
 	.Book_Achievements = "Achievements",
@@ -1031,6 +1056,9 @@ EN := [Key]string {
 	.Skill_Sundial_Day = "Sundial: bring the evening",
 	.Skill_Sundial_Evening = "Sundial: bring the day",
 	.Skill_Spindle_Away_Time = "Find a handle or a sundial",
+	.Skill_Pomegranate_Here = "Pomegranate: turn the world over",
+	.Skill_Overturning = "The world turns over…",
+	.Skill_Spindle_Away_Flip = "Find a pomegranate",
 	.Skill_Lamp_Day = "Dark by day",
 	.Skill_Locked = "Still to discover",
 	.Turn_Left = "Turn left",
@@ -1075,6 +1103,7 @@ EN := [Key]string {
 	.Intro_III_4    = "At the summit the black water cries out. The eagles carry you up, but where they set you down the hour stays as it was: choose it before you fly.",
 	.Intro_III_5    = "Back in the house of Venus. To leave it she will need everything she has learned: the lamp, the spindle, the cave, the eagle.",
 	.Intro_IV_1     = "The tower has told you the way. Go down: at the bottom, on the dark water, the ferryman waits.",
+	.Intro_IV_2     = "Beyond the river, Proserpina's kingdom hangs under the land of the dead, like a reflection in water.",
 	.V_Doubt        = "He sleeps. Your sisters' words come back to you: what if he is a monster? The lamp is in your hand.",
 
 	.Tutorial_Label = "How to play",
@@ -1101,6 +1130,7 @@ EN := [Key]string {
 	.Hint_Veiled    = "The lamp shows in gold what the dark hides: come near with the light, and it becomes real for good",
 	.Hint_Handle    = "You stand on a handle: press 2 (or click Psyche) to turn the part it moves",
 	.Hint_Sundial   = "You stand on the sundial: press 2 (or click Psyche) and the sun will set",
+	.Hint_Pomegranate = "You stand on a pomegranate: press 2 (or click Psyche) and the world will turn over",
 	.Hint_Eagle     = "You stand on the perch: press Space and the eagle will carry you where the golden light shines",
 	.Hint_Eagle_No_Floor = "The eagle does not stir: where it would set you down there is no ground yet",
 	.Hint_Boat      = "Charon is waiting: press Space to board the boat",
@@ -1129,6 +1159,7 @@ EN := [Key]string {
 	.Hint_Turn_Pad  = "The mountain never shows itself whole from one side. Press {LB} or {RB} to walk around it: from elsewhere, distant rocks touch, and fragments of the tale come to light.",
 	.Hint_Handle_Pad = "You stand on a handle: press {RT} to turn the part it moves",
 	.Hint_Sundial_Pad = "You stand on the sundial: press {RT} and the sun will set",
+	.Hint_Pomegranate_Pad = "You stand on a pomegranate: press {RT} and the world will turn over",
 	.Hint_Eagle_Pad = "You stand on the perch: press {S} and the eagle will carry you where the golden light shines",
 	.Hint_Boat_Pad  = "Charon is waiting: press {S} to board the boat",
 	.Hint_Rest_Pad  = "A lit brazier: if you lose your way, {E} brings you back here (held down, it restarts the level)",
@@ -1154,6 +1185,7 @@ EN := [Key]string {
 	.Outro_III_4    = "The eagle plunges the urn into the crying water and gives it back to her full. Venus looks at her, and her anger grows.",
 	.Outro_III_5    = "With the box in her hands Psyche climbs the highest tower. She knows no other road to the underworld but death.",
 	.Outro_IV_1     = "Charon takes the coin from Psyche's lips with his own hand. Without a word, he pushes the boat into the red mist.",
+	.Outro_IV_2     = "The world comes to rest, upright or upside down: down here it is all one. Further on the river of the dead runs again, black, and on the water a boat waits once more.",
 	.Outro_III_1    = "At night Venus comes back from the feast, flushed with wine and fragrant with roses. She sees the work done.\n“This is not your doing,” she says, and throws her a crust of bread.",
 
 	.End_Trust_Title = "Trust",

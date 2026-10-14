@@ -271,6 +271,7 @@ SETTING_BED := [level.Setting]audio.Bed {
 	.Styx_Evening  = .Styx,
 	.Tower_Dusk    = .Mountain,
 	.Taenarus      = .Styx,
+	.Dis           = .Deep_Night,
 }
 
 // What the mixer plays: the act's music (silent while the screen goes
@@ -821,6 +822,7 @@ MECHANIC_CARD := [level.Mechanic][2]i18n.Key {
 	.Handle  = {.Mech_Handle_Title, .Mech_Handle},
 	.Time    = {.Mech_Time_Title, .Mech_Time},
 	.Eagle   = {.Mech_Eagle_Title, .Mech_Eagle},
+	.Flip    = {.Mech_Flip_Title, .Mech_Flip},
 }
 
 @(private)

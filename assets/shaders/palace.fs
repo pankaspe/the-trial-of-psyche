@@ -34,12 +34,13 @@ uniform int candle_count;
 // per piece
 uniform float material;      // 0 marble, 1 masonry, 2 foliage, 3 bronze, 4 psyche, 5 cupid, 6 mourner, 7 lawn,
                              // 8 rock, 9 wood, 10 the dark of a cave (palette 7 grass, 8 earth, 9 wood),
-                             // 11 seeds, 12 blossom, 13 Venus, 14 golden fleece
+                             // 11 seeds, 12 blossom, 13 Venus, 14 golden fleece, 15 pomegranate
 uniform float detail;        // 0 none, 1 marble block, 2 masonry block; seeds: how far up they are sorted (0..1)
 uniform float hidden;        // 1: visible only in the lamp light, glowing gold; 2: the same, a faint ghost
 uniform float alpha;
 uniform float shade_soft;    // width of the left/right tone blend (curved figures)
 uniform float glow;          // figures: inner light
+uniform float turned;        // 1: the piece hangs upside down (Proserpina's flip): its local up is down
 
 out vec4 finalColor;
 
@@ -88,9 +89,12 @@ void palette(float m, float t, out vec3 night, out vec3 warm) {
     } else if (m < 13.5) {  // Venus: a figure of rose light
         night = mix(vec3(0.62, 0.26, 0.36), vec3(1.0, 0.86, 0.90), t);
         warm = night;
-    } else {                // the Sun's rams: golden fleece, bright in any light
+    } else if (m < 14.5) {  // the Sun's rams: golden fleece, bright in any light
         night = ramp(vec3(0.42, 0.22, 0.06), vec3(0.86, 0.58, 0.18), vec3(1.0, 0.88, 0.50), t);
         warm = night;
+    } else {                // Proserpina's pomegranate: deep crimson, a gleam on top
+        night = ramp(vec3(0.20, 0.02, 0.07), vec3(0.62, 0.08, 0.16), vec3(1.0, 0.52, 0.50), t);
+        warm = ramp(vec3(0.26, 0.02, 0.03), vec3(0.78, 0.10, 0.08), vec3(1.0, 0.62, 0.42), t);
     }
 }
 
@@ -236,7 +240,7 @@ float stone(vec3 n) {
 
 void main() {
     vec3 n = normalize(fragNormal);
-    vec3 L = fragLocal;
+    vec3 L = turned > 0.5 ? vec3(fragLocal.x, 1.0 - fragLocal.y, 1.0 - fragLocal.z) : fragLocal;
 
     if (material > 9.5 && material < 10.5) {
         // the dark inside a cave's mouth: deepest at its back, a breath of the lamp's warmth

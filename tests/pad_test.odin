@@ -130,3 +130,27 @@ pad_texts_name_its_buttons :: proc(t: ^testing.T) {
 	}
 	i18n.set_language(.Italian)
 }
+
+// A stick held through a turn of the view (or of the world) does not carry
+// her on: on screen it points where it did, through the palace another way
+// (often back). Pushed again, it steers.
+@(test)
+stick_waits_after_a_turn :: proc(t: ^testing.T) {
+	g: game.Game
+	defer game.destroy(&g)
+	if !load_text(t, &g, BOAT_PALACE, slot = 13) {
+		return
+	}
+	game.begin(&g, prologue = false)
+	run(&g, 0.1)
+	game.request_turn(&g, 1)
+	run(&g, game.ROTATE_TIME + 0.1)
+	dir := game.step_dir(&g, g.psyche.cell, {1, 2, 1})
+	for _ in 0 ..< 3 {
+		game.steer(&g, dir, false)
+		run(&g, 0.05)
+		testing.expect(t, !g.psyche.walking, "a stick held through the turn waits")
+	}
+	game.steer(&g, dir, true)
+	testing.expect(t, g.psyche.walking, "pushed again, it steers")
+}

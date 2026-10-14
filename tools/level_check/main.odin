@@ -14,7 +14,8 @@
 // into the palace. For the designer, one more report: which pieces the level
 // could do without (each sundial, ram, handle, eagle, pair of caves taken out in
 // turn: a level still solved without one has a piece that does nothing, or a
-// way round it).
+// way round it). A level with Proserpina's pomegranates is reported either
+// way up ("upside": the world turned over, reached from its pomegranates).
 package level_check
 
 import "core:fmt"
@@ -57,15 +58,21 @@ main :: proc() {
 	}
 
 	fmt.printfln("%s: %d x %d grid, %d blocks, %d props, %d rising", path, data.size, data.size, len(data.blocks), len(data.props), len(data.rise))
-	for k in 0 ..< 4 {
-		risen, evening := k % 2 == 1, k >= 2
+	frames := len(data.pomegranates) > 0 ? 2 : 1
+	for k in 0 ..< 4 * frames {
+		risen, evening, upside := k % 2 == 1, k % 4 >= 2, k >= 4
 		if risen && len(data.rise) == 0 || evening && len(data.sundials) == 0 {
 			continue
 		}
 		p.risen = risen ? pl.all_seals(&data) : {}
 		p.day = len(data.sundials) > 0 && !evening
+		p.upside = upside
 		pl.rebuild_graph(&p)
+		from := upside ? data.pomegranates[0] : data.start
 		tag := risen ? "risen" : "base "
+		if upside {
+			tag = fmt.tprintf("%s upside", tag)
+		}
 		if len(data.sundials) > 0 {
 			tag = fmt.tprintf("%s %s", tag, evening ? "evening" : "day    ")
 		}
@@ -73,44 +80,49 @@ main :: proc() {
 			// by day the sun shows the truth: no illusions
 			fmt.printfln("\n%s: %d surfaces and stairs", tag, len(p.nodes))
 			reached := make([]bool, len(p.nodes), alloc)
-			pl.reachable(&p, data.start, false, reached)
+			pl.reachable(&p, from, false, reached)
 			report(&p, &data, fmt.tprintf("%s sun  ", tag), reached)
 			continue
 		}
 		fmt.printfln("\n%s: %d surfaces and stairs", tag, len(p.nodes))
 		reached := make([]bool, len(p.nodes), alloc)
 
-		pl.reachable(&p, data.start, false, reached)
+		pl.reachable(&p, from, false, reached)
 		report(&p, &data, fmt.tprintf("%s light       ", tag), reached)
 		for r in 0 ..< 4 {
 			pl.set_view(&p, r)
-			pl.reachable(&p, data.start, true, reached)
+			pl.reachable(&p, from, true, reached)
 			report(&p, &data, fmt.tprintf("%s dark  view %d", tag, r), reached)
 		}
-		pl.reachable_turning(&p, data.start, reached)
+		pl.reachable_turning(&p, from, reached)
 		report(&p, &data, fmt.tprintf("%s dark  turning", tag), reached)
 	}
 	p.risen = {}
 	p.day = false // the illusions below are those of the dark (at evening)
-	pl.rebuild_graph(&p)
 
-	for r in 0 ..< 4 {
-		pl.set_view(&p, r)
-		fmt.printf("\nview %d stairs usable in the dark:", r)
-		for node, i in p.nodes {
-			if node.stair {
-				fmt.printf(" %v:%v", node.cell, p.stair_seen[i])
+	for upside in 0 ..< frames {
+		p.upside = upside == 1
+		pl.rebuild_graph(&p)
+		side := p.upside ? " upside" : ""
+		for r in 0 ..< 4 {
+			pl.set_view(&p, r)
+			fmt.printf("\nview %d%s stairs usable in the dark:", r, side)
+			for node, i in p.nodes {
+				if node.stair {
+					fmt.printf(" %v:%v", node.cell, p.stair_seen[i])
+				}
 			}
+			fmt.printf("\nview %d%s illusions (%d):", r, side, len(p.illusion.pairs))
+			for e in p.illusion.pairs {
+				fmt.printf(" %v-%v", p.nodes[e[0]].cell, p.nodes[e[1]].cell)
+			}
+			fmt.println()
 		}
-		fmt.printf("\nview %d illusions (%d):", r, len(p.illusion.pairs))
-		for e in p.illusion.pairs {
-			fmt.printf(" %v-%v", p.nodes[e[0]].cell, p.nodes[e[1]].cell)
+		if pl.is_dynamic(&data) {
+			whole_illusions(&p, &data, alloc)
 		}
-		fmt.println()
 	}
-	if pl.is_dynamic(&data) {
-		whole_illusions(&p, &data, alloc)
-	}
+	p.upside = false
 	p.day = len(data.sundials) > 0
 	pl.rebuild_graph(&p)
 
@@ -158,7 +170,9 @@ check_screen :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 		// as loaded (veiled stones hidden), then whole
 		set_whole(p, data, whole)
 		pl.rebuild_graph(p)
-		for c in data.fragments {
+		for c, i in data.fragments {
+			p.upside = i in data.fragments_under
+			pl.rebuild_graph(p)
 			for r in 0 ..< 4 {
 				pl.set_view(p, r)
 				w := pl.node_world(p, c) + {0, 0, 0.22}
@@ -183,10 +197,12 @@ set_whole :: proc(p: ^pl.Palace, data: ^level.Level_Data, whole: bool) {
 	p.risen = whole ? pl.all_seals(data) : {}
 }
 
-// Back to the palace as loaded: nothing changed, parts unturned, view 0.
+// Back to the palace as loaded: nothing changed, parts unturned, the world
+// up as described, view 0.
 as_loaded :: proc(p: ^pl.Palace, data: ^level.Level_Data) {
 	set_whole(p, data, false)
 	p.part_rot = {}
+	p.upside = false
 	pl.set_view(p, 0)
 	pl.rebuild_graph(p)
 }
@@ -194,6 +210,11 @@ as_loaded :: proc(p: ^pl.Palace, data: ^level.Level_Data) {
 // The illusions of the palace changed for good (veiled stones shown, every
 // seal's blocks raised), parts as loaded: those not in the base listing.
 whole_illusions :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Allocator) {
+	upside := p.upside
+	defer {
+		p.upside = upside
+		pl.rebuild_graph(p)
+	}
 	Pair :: [2]iso.Cell
 	base := make(map[Pair]bool, 64, alloc)
 	for r in 0 ..< 4 {
@@ -206,7 +227,7 @@ whole_illusions :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.A
 	pl.rebuild_graph(p)
 	for r in 0 ..< 4 {
 		pl.set_view(p, r)
-		fmt.printf("whole view %d, new illusions:", r)
+		fmt.printf("whole view %d%s, new illusions:", r, p.upside ? " upside" : "")
 		for e in p.illusion.pairs {
 			pair := Pair{p.nodes[e[0]].cell, p.nodes[e[1]].cell}
 			if !base[pair] {
@@ -241,61 +262,92 @@ check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 		}
 		ok^ &&= !fatal
 	}
+	// blocks by the cell they fill in the world as described (the world
+	// under the palace turned over to it)
 	seen := make(map[iso.Cell]bool, len(data.blocks), context.temp_allocator)
 	for e in data.blocks {
-		if e.part == 0 && seen[e.cell] {
-			say(&said, &ok, false, "two blocks at %v", e.cell)
+		c := level.world_cell(data, e.cell, e.under)
+		if e.part == 0 && seen[c] {
+			say(&said, &ok, false, "two blocks at %v%s", e.cell, e.under ? " (under)" : "")
 		}
-		seen[e.cell] = e.part == 0
+		seen[c] = e.part == 0
 	}
 	for e in data.rise {
-		if seen[e.cell] {
+		if seen[level.world_cell(data, e.cell, e.under)] {
 			say(&said, &ok, true, "a rising block at %v, turned a block stands already", e.cell)
 		}
 	}
-	needed := make([dynamic]iso.Cell, 0, 32, context.temp_allocator)
-	append(&needed, data.start)
+	needed := make([dynamic]pl.Spot, 0, 32, context.temp_allocator)
+	append(&needed, pl.Spot{data.start, false})
 	if data.has_exit {
-		append(&needed, data.exit)
+		append(&needed, pl.exit_spot(data))
 	}
-	append(&needed, ..data.fragments[:])
-	append(&needed, ..data.sigils[:])
-	append(&needed, ..data.rests[:])
+	for _, i in data.fragments {
+		append(&needed, pl.fragment_spot(data, i))
+	}
+	for c, k in data.sigils {
+		append(&needed, pl.Spot{c, k in data.sigils_under})
+	}
+	for c in data.rests {
+		append(&needed, pl.Spot{c, false})
+	}
 	for h in data.handles {
-		append(&needed, h.cell)
+		append(&needed, pl.Spot{h.cell, false})
 	}
 	for c in data.caves {
-		append(&needed, c.cell)
+		append(&needed, pl.Spot{c.cell, false})
 	}
-	append(&needed, ..data.sundials[:])
+	for c in data.sundials {
+		append(&needed, pl.Spot{c, false})
+	}
 	for e in data.eagles {
-		append(&needed, e.from, e.to)
+		append(&needed, pl.Spot{e.from, false}, pl.Spot{e.to, false})
+	}
+	for c in data.pomegranates {
+		append(&needed, pl.Spot{c, false}, pl.Spot{c, true})
 	}
 	for prop in data.props {
 		if prop.kind not_in level.BLOCKING_PROPS {
 			continue
 		}
 		for c in needed {
-			if c == prop.cell {
+			if c.cell == prop.cell && c.under == prop.under {
 				say(&said, &ok, true, "%v at %v stands on a cell the level needs", prop.kind, prop.cell)
 			}
 		}
 	}
+	// a pomegranate lies on a stone of the axle, with room on both sides
+	for c in data.pomegranates {
+		for upside in ([2]bool{false, true}) {
+			p.upside = upside
+			pl.rebuild_graph(p)
+			if !pl.can_turn_over(p, c) {
+				say(&said, &ok, true, "the pomegranate at %v cannot turn the world%s: no floor, or no room on the other side", c, upside ? " back" : " over")
+			}
+		}
+	}
+	p.upside = false
 	combos := 1
 	for _ in data.parts {
 		combos *= 4
 	}
 	set_whole(p, data, true)
-	for k in 0 ..< combos {
-		n := k
+	frames := len(data.pomegranates) > 0 ? 2 : 1
+	for k in 0 ..< combos * frames {
+		n := k / frames
 		for i in 0 ..< len(data.parts) {
 			p.part_rot[i] = n % 4
 			n /= 4
 		}
+		// each world checked while it is up
+		p.upside = k % frames == 1
 		pl.rebuild_graph(p)
 		parts := p.part_rot[:len(data.parts)]
-		turned := k > 0 ? fmt.tprintf(" (parts turned %v)", parts) : ""
+		turned := k >= frames ? fmt.tprintf(" (parts turned %v)", parts) : ""
 		for prop in data.props {
+			if prop.under != p.upside {
+				continue
+			}
 			c, d := pl.prop_place(p, prop)
 			v := iso.DIR_VEC[d]
 			in_cell := pl.solid_at(p, c).kind
@@ -321,11 +373,14 @@ check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 			}
 		}
 		for h in data.handles {
-			if !pl.is_surface(p, h.cell) {
+			if !p.upside && !pl.is_surface(p, h.cell) {
 				say(&said, &ok, true, "the handle at %v is not on a floor%s", h.cell, turned)
 			}
 		}
 		for cd in data.candelabra {
+			if cd.under != p.upside {
+				continue
+			}
 			if pl.solid_at(p, cd.cell).kind != .None || pl.solid_at(p, cd.cell - {0, 0, 1}).kind != .Block {
 				say(&said, &ok, true, "the candelabrum at %v does not stand on a floor%s", cd.cell, turned)
 			}
@@ -342,7 +397,7 @@ check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 	// lying, it is a step from the floor behind it to the ledge it faces
 	for m, i in data.rams {
 		for c in needed {
-			if c == m.cell {
+			if c == (pl.Spot{m.cell, false}) {
 				say(&said, &ok, true, "the ram at %v stands on a cell the level needs", m.cell)
 			}
 		}
@@ -403,6 +458,8 @@ check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 			}
 		}
 	}
+	p.upside = false
+	pl.rebuild_graph(p)
 	// what stands on a veiled stone floats while it is hidden (the hand
 	// ropes of a bridge do not: they hang between the posts)
 	for prop in data.props {
@@ -410,7 +467,7 @@ check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 			continue
 		}
 		for e in data.blocks {
-			if e.trait == .Veiled && e.cell == prop.cell - {0, 0, 1} {
+			if e.trait == .Veiled && e.under == prop.under && e.cell == prop.cell - {0, 0, 1} {
 				say(&said, &ok, false, "%v at %v floats until the stone under it is shown", prop.kind, prop.cell)
 			}
 		}
@@ -425,9 +482,12 @@ report :: proc(p: ^pl.Palace, data: ^level.Level_Data, label: string, reached: [
 		count += int(ok)
 	}
 	fmt.printf("  %s  reach %d/%d", label, count, len(p.nodes))
-	for c in data.sigils {
+	at :: proc(p: ^pl.Palace, reached: []bool, c: iso.Cell, under: bool) -> bool {
 		i := pl.node_index(p, c)
-		fmt.printf("  sigil:%v", i >= 0 && reached[i])
+		return i >= 0 && reached[i] && pl.upright(p, under)
+	}
+	for c, k in data.sigils {
+		fmt.printf("  sigil:%v", at(p, reached, c, k in data.sigils_under))
 	}
 	if data.has_amore {
 		near := false
@@ -439,12 +499,13 @@ report :: proc(p: ^pl.Palace, data: ^level.Level_Data, label: string, reached: [
 		fmt.printf("  amore:%v", near)
 	}
 	if data.has_exit {
-		i := pl.node_index(p, data.exit)
-		fmt.printf("  exit:%v", i >= 0 && reached[i])
+		fmt.printf("  exit:%v", at(p, reached, data.exit, data.exit_under))
 	}
-	for c in data.fragments {
-		i := pl.node_index(p, c)
-		fmt.printf("  fragment:%v", i >= 0 && reached[i])
+	for c, i in data.fragments {
+		fmt.printf("  fragment:%v", at(p, reached, c, i in data.fragments_under))
+	}
+	for c in data.pomegranates {
+		fmt.printf("  pomegranate:%v", at(p, reached, c, p.upside))
 	}
 	fmt.println()
 }
@@ -478,12 +539,13 @@ solve_report :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Allo
 	if !print_plan(p, data, alloc) {
 		os.exit(1)
 	}
-	for c in data.fragments {
-		reach := pl.solve(p, c, data.exit, alloc)
-		optional := pl.solve(p, data.exit, c, alloc)
-		fmt.printfln("\nfragment %v: reachable %v, optional %v", c, reach.solved, optional.solved)
+	for c, i in data.fragments {
+		spot := pl.fragment_spot(data, i)
+		reach := pl.solve(p, spot, pl.exit_spot(data), alloc)
+		optional := pl.solve(p, pl.exit_spot(data), spot, alloc)
+		fmt.printfln("\nfragment %v%s: reachable %v, optional %v", c, spot.under ? " (under)" : "", reach.solved, optional.solved)
 		if reach.solved {
-			fmt.printfln("  fragment plan: %d steps, %d turns, %d lightings, %d handles, %d times turned, %d flights", reach.steps, reach.turns, reach.lightings, reach.handles, reach.times, reach.flights)
+			fmt.printfln("  fragment plan: %d steps, %d turns, %d lightings, %d handles, %d times turned, %d flights, %d overturns, %d decisions", reach.steps, reach.turns, reach.lightings, reach.handles, reach.times, reach.flights, reach.overturns, decisions(reach))
 		}
 		if !reach.solved || !optional.solved {
 			fmt.eprintln("error: the fragment must be reachable and never required")
@@ -507,8 +569,8 @@ print_plan :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Alloca
 		fmt.eprintln("error: the exit cannot be reached")
 		return false
 	}
-	fmt.printfln("plan: %d steps (%d in the light), %d turns, %d lightings, %d handles, %d times turned, %d flights", sol.steps, sol.light_steps, sol.turns, sol.lightings, sol.handles, sol.times, sol.flights)
-	fmt.printfln("decisions: %d (turns, lightings, handles, sundials, eagles)", decisions(sol))
+	fmt.printfln("plan: %d steps (%d in the light), %d turns, %d lightings, %d handles, %d times turned, %d flights, %d overturns", sol.steps, sol.light_steps, sol.turns, sol.lightings, sol.handles, sol.times, sol.flights, sol.overturns)
+	fmt.printfln("decisions: %d (turns, lightings, handles, sundials, eagles, pomegranates)", decisions(sol))
 	if data.has_lamp {
 		rules := game.oil_rules(data)
 		least := pl.oil_left(p, sol.plan[:], rules)
@@ -550,6 +612,8 @@ print_plan :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Alloca
 			fmt.printfln("  the sundial at %v: %s", st.cell, day ? "day (the rams stand)" : "evening (the rams lie down)")
 		case .Flight:
 			fmt.printfln("  the eagle carries her to %v%s", st.cell, st.changed > 0 ? fmt.tprintf(" (%d blocks change)", st.changed) : "")
+		case .Overturn:
+			fmt.printfln("  the pomegranate at %v: the world %s", st.cell, st.upside ? "turned over (the world under the palace up)" : "turned back")
 		case .Start, .Step:
 		}
 		_ = i
@@ -574,7 +638,7 @@ needed_report :: proc(text: string) {
 			continue
 		}
 		switch f[0] {
-		case "sundial", "ram", "handle", "eagle":
+		case "sundial", "ram", "handle", "eagle", "pomegranate":
 			append(&tests, [2]int{i, -1})
 		case "cave":
 			append(&caves, i)
@@ -637,23 +701,25 @@ brief :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Allocator) 
 		for st, i in sol.plan {
 			visits += int(st.move == .Handle && (i == 0 || sol.plan[i - 1].move != .Handle))
 		}
-		fmt.printfln("%s steps %d turns %d handles %d visits %d times %d flights %d decisions %d states %d dead %d", tag, sol.steps, sol.turns, sol.handles, visits, sol.times, sol.flights, decisions(sol), sol.states, sol.dead)
+		fmt.printfln("%s steps %d turns %d handles %d visits %d times %d flights %d overturns %d decisions %d states %d dead %d", tag, sol.steps, sol.turns, sol.handles, visits, sol.times, sol.flights, sol.overturns, decisions(sol), sol.states, sol.dead)
 	}
 	sol := pl.solve(p, pl.goal_cell(p), nil, alloc)
 	line("exit", sol)
 	if len(os.args) > 3 && os.args[3] == "--steps" {
 		for st in sol.plan {
-			fmt.printf(" %v%v%s", st.move == .Step ? "" : fmt.tprintf("%v@", st.move), st.cell, st.illusion ? fmt.tprintf("~v%d", st.view) : "")
+			fmt.printf(" %v%v%s%s", st.move == .Step ? "" : fmt.tprintf("%v@", st.move), st.cell, st.upside ? "u" : "", st.illusion ? fmt.tprintf("~v%d", st.view) : "")
 		}
 		fmt.println()
 	}
-	for c, i in data.fragments {
-		line(fmt.tprintf("fragment%d", i), pl.solve(p, c, data.exit, alloc))
-		line(fmt.tprintf("without%d", i), pl.solve(p, data.exit, c, alloc))
+	for _, i in data.fragments {
+		spot := pl.fragment_spot(data, i)
+		line(fmt.tprintf("fragment%d", i), pl.solve(p, spot, pl.exit_spot(data), alloc))
+		line(fmt.tprintf("without%d", i), pl.solve(p, pl.exit_spot(data), spot, alloc))
 	}
 }
 
-// What the player decides along a plan: turns, lightings, handles, sundials, eagles.
+// What the player decides along a plan: turns, lightings, handles, sundials,
+// eagles, pomegranates.
 decisions :: proc(sol: pl.Solution) -> int {
-	return sol.turns + sol.lightings + sol.handles + sol.times + sol.flights
+	return sol.turns + sol.lightings + sol.handles + sol.times + sol.flights + sol.overturns
 }

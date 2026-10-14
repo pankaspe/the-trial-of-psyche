@@ -31,6 +31,7 @@ Mechanic :: enum u8 {
 	Handle,
 	Time, // day and evening, turned at a sundial
 	Eagle, // Jupiter's eagle: a flight one way, from its perch
+	Flip, // Proserpina's flip: the world turned over, from her pomegranate
 }
 
 MECHANIC_NAME := [Mechanic]string {
@@ -39,6 +40,7 @@ MECHANIC_NAME := [Mechanic]string {
 	.Handle  = "handle",
 	.Time    = "time",
 	.Eagle   = "eagle",
+	.Flip    = "flip",
 }
 
 // The cutscene that opens a level (the first of each act has one).
@@ -70,6 +72,7 @@ Setting :: enum u8 {
 	Styx_Evening, // the same at evening: a low red sun, the peaks black against it
 	Tower_Dusk, // the top of the high tower at dusk: the sky still rose, a red glow rising from below
 	Taenarus, // the foot of Taenarus, the mouth of the underworld: a red sky, ash, the dark water
+	Dis, // Proserpina's kingdom, the world turned over: a still violet dark, a pale sun of the dead
 }
 
 SETTING_NAME := [Setting]string {
@@ -91,6 +94,7 @@ SETTING_NAME := [Setting]string {
 	.Styx_Evening  = "styx_evening",
 	.Tower_Dusk    = "tower_dusk",
 	.Taenarus      = "taenarus",
+	.Dis           = "dis",
 }
 
 // How a block behaves (Act II): fixed stone, or one that changes for good.
@@ -112,6 +116,7 @@ Solid_Entry :: struct {
 	trait: Trait,
 	part:  u8, // 0: fixed; n: turns with part n-1
 	seal:  u8, // `rise` entries: the seal (data.sigils index) that raises it
+	under: bool, // the world under the palace: `cell` is in its frame (see `flip_cell`)
 }
 
 // A golden ram of the Sun (Act III), on the surface `cell` (x, y, h): by day
@@ -215,6 +220,7 @@ Candelabrum :: struct {
 	lit:   bool,
 	guard: bool,
 	seal:  u8, // a guard: its seal (data.sigils index)
+	under: bool,
 }
 
 // The mouth of a cave: a dark opening in the rock on side `dir` of the
@@ -253,13 +259,15 @@ Prop :: struct {
 	dir:      Dir,
 	oriented: bool,
 	part:     u8, // 0: fixed; n: turns with part n-1
+	under:    bool,
 }
 
 // A text tied to a cell: a voice line or a hint, given when Psyche first
 // stands there (the start cell: when the level begins).
 Cue :: struct {
-	cell: Cell,
-	key:  i18n.Key,
+	cell:  Cell,
+	key:   i18n.Key,
+	under: bool,
 }
 
 Level_Data :: struct {
@@ -310,6 +318,17 @@ Level_Data :: struct {
 	sundials:     [dynamic]Cell, // Act III: standing on one, the spindle turns the time (day <-> evening); the level starts by day
 	rams:         [dynamic]Ram, // the Sun's rams: standing by day, lying (a step) at evening
 	eagles:       [dynamic]Eagle, // Act III: from a perch, a flight one way
+	// Proserpina's flip (Act IV): the world turned over about the axle, the
+	// horizontal line along x through the middle of row size/2 at height `axle`
+	// (`flip_cell`). The world under the palace (`under` lines) is described
+	// in its own frame, as it stands once turned up.
+	pomegranates: [dynamic]Cell, // her pomegranates, on the axle's stones (x, size/2, axle + 1): the same feet cell either way up
+	axle:         i32,
+	sigils_under: Seals, // the seals of the world under the palace
+	fragments_under: bit_set[0 ..< MAX_FRAGMENTS],
+	exit_under:   bool,
+	upside:       Setting, // the look with the world turned over (`has_upside`)
+	has_upside:   bool,
 }
 
 MAX_PARTS :: 8
@@ -323,6 +342,25 @@ Seals :: bit_set[0 ..< MAX_SEALS; u8] // which seals have been lit
 MAX_SUNDIALS :: 8
 MAX_RAMS :: 12
 MAX_EAGLES :: 4
+
+// A cell of one frame in the other: the world turned over about the axle
+// (x, y, z) -> (x, size-1-y, 2 axle - z). Its own inverse; the axle's stones
+// (x, size/2, axle) stay where they are.
+flip_cell :: proc(d: ^Level_Data, c: Cell) -> Cell {
+	return {c.x, d.size - 1 - c.y, 2 * d.axle - c.z}
+}
+
+// Where a cell of the world under the palace (`under`) or above it is in the
+// frame of the world up now (`upside`: the world turned over).
+frame_cell :: proc(d: ^Level_Data, c: Cell, under, upside: bool) -> Cell {
+	return under == upside ? c : flip_cell(d, c)
+}
+
+// Where a cell of the world under the palace (or above it) stands with the
+// world as described: its `lawn`, `ground` and `planks` marks are kept so.
+world_cell :: proc(d: ^Level_Data, c: Cell, under: bool) -> Cell {
+	return under ? flip_cell(d, c) : c
+}
 
 // The cell of a part's block after `r` quarter turns.
 part_cell :: proc(c: Cell, pivot: [2]i32, r: int) -> Cell {
@@ -363,9 +401,14 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	data.sundials = make([dynamic]Cell, 0, MAX_SUNDIALS)
 	data.rams = make([dynamic]Ram, 0, MAX_RAMS)
 	data.eagles = make([dynamic]Eagle, 0, MAX_EAGLES)
+	data.pomegranates = make([dynamic]Cell, 0, 4)
 	has_evening := false
 	has_start := false
 	part: u8 = 0 // the part being described (between `part` and `end`)
+	under := false // between `under` and `end`: the world under the palace
+	under_line := 0
+	under_marks := make([dynamic][4]int, context.temp_allocator) // lawn and ground entries added under
+	under_planks := make([dynamic][2]int, context.temp_allocator)
 	dynamic_count := 0
 	max_z: i32 = 0
 
@@ -395,6 +438,15 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			continue
 		}
 		args := fields[1:n]
+		if under {
+			switch fields[0] {
+			case "block", "veiled", "column", "ground", "rock", "stairs", "steps", "rise", "prop", "candelabrum", "fragment", "exit", "sigil", "lawn", "voice", "hint", "end":
+			case:
+				return data, fail(line_no, "%s: not in the world under the palace", fields[0])
+			}
+		}
+		// what this line adds: in an `under` section, it belongs to the world under the palace
+		before := [?]int{len(data.blocks), len(data.rise), len(data.props), len(data.candelabra), len(data.voices), len(data.hints), len(data.sigils), len(data.fragments), len(data.lawn), len(data.ground), len(data.planks)}
 
 		ints :: proc(args: []string, out: []i32) -> bool {
 			if len(args) < len(out) {
@@ -435,7 +487,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 					return data, fail(line_no, "too many changing blocks (max %d)", MAX_DYNAMIC)
 				}
 			}
-			append(&data.blocks, Solid_Entry{v, {kind = .Block}, trait, part, 0})
+			append(&data.blocks, Solid_Entry{cell = v, solid = {kind = .Block}, trait = trait, part = part})
 			if len(args) > 3 {
 				switch args[3] {
 				case "rock":
@@ -468,10 +520,28 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			part = u8(len(data.parts))
 
 		case "end":
-			if part == 0 {
-				return data, fail(line_no, "end: no part to close")
+			if part == 0 && !under {
+				return data, fail(line_no, "end: no part or under to close")
 			}
 			part = 0
+			under = false
+
+		case "under":
+			if part != 0 || under {
+				return data, fail(line_no, "under: close the part (or the last under) first")
+			}
+			under, under_line = true, line_no
+
+		case "pomegranate":
+			v: [3]i32
+			if !ints(args, v[:]) {
+				return data, fail(line_no, "pomegranate: expected x y h")
+			}
+			if part != 0 || under {
+				return data, fail(line_no, "pomegranate: on the axle, not inside a part or under")
+			}
+			append(&data.pomegranates, v)
+			max_z = max(max_z, v.z + 1)
 
 		case "handle":
 			v: [4]i32
@@ -499,7 +569,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 			}
 			if !found {
-				return data, fail(line_no, "mechanic: expected veiled, handle, time or eagle")
+				return data, fail(line_no, "mechanic: expected veiled, handle, time, eagle or flip")
 			}
 
 		case "rest":
@@ -578,7 +648,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				return data, fail(line_no, "column: expected x y z0 z1 with z0 <= z1")
 			}
 			for z in v[2] ..= v[3] {
-				append(&data.blocks, Solid_Entry{{v[0], v[1], z}, {kind = .Block}, .Stone, part, 0})
+				append(&data.blocks, Solid_Entry{cell = {v[0], v[1], z}, solid = {kind = .Block}, part = part})
 			}
 			max_z = max(max_z, v[3])
 
@@ -588,7 +658,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				return data, fail(line_no, "%s: expected x y z0 z1 with z0 <= z1", fields[0])
 			}
 			for z in v[2] ..= v[3] {
-				append(&data.blocks, Solid_Entry{{v[0], v[1], z}, {kind = .Block}, .Stone, part, 0})
+				append(&data.blocks, Solid_Entry{cell = {v[0], v[1], z}, solid = {kind = .Block}, part = part})
 				append(&data.ground, Cell{v[0], v[1], z})
 			}
 			if fields[0] == "ground" {
@@ -596,7 +666,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			}
 			max_z = max(max_z, v[3])
 
-		case "setting", "evening", "below":
+		case "setting", "evening", "below", "upside":
 			found := false
 			for name, st in SETTING_NAME {
 				if len(args) == 1 && name == args[0] {
@@ -605,6 +675,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 					case "setting": data.setting = st
 					case "evening": data.evening, has_evening = st, true
 					case "below": data.below, data.has_below = st, true
+					case "upside": data.upside, data.has_upside = st, true
 					}
 				}
 			}
@@ -674,7 +745,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 				s = {.Stairs, d}
 			}
-			append(&data.blocks, Solid_Entry{v, s, .Sunlit, part, 0})
+			append(&data.blocks, Solid_Entry{cell = v, solid = s, trait = .Sunlit, part = part})
 			max_z = max(max_z, v.z)
 
 		case "stairs", "steps":
@@ -686,7 +757,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			if !ok {
 				return data, fail(line_no, "%s: unknown direction '%s'", fields[0], args[3])
 			}
-			append(&data.blocks, Solid_Entry{v, {.Stairs, d}, .Stone, part, 0})
+			append(&data.blocks, Solid_Entry{cell = v, solid = {.Stairs, d}, part = part})
 			if fields[0] == "steps" {
 				append(&data.ground, v)
 			}
@@ -864,10 +935,41 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			if !ok {
 				return data, fail(line_no, "%s: unknown text key '%s'", fields[0], args[3])
 			}
-			append(fields[0] == "voice" ? &data.voices : &data.hints, Cue{v, key})
+			append(fields[0] == "voice" ? &data.voices : &data.hints, Cue{cell = v, key = key})
 
 		case:
 			return data, fail(line_no, "unknown command '%s'", fields[0])
+		}
+		if under {
+			for &e in data.blocks[before[0]:] {
+				e.under = true
+			}
+			for &e in data.rise[before[1]:] {
+				e.under = true
+			}
+			for &e in data.props[before[2]:] {
+				e.under = true
+			}
+			for &e in data.candelabra[before[3]:] {
+				e.under = true
+			}
+			for &e in data.voices[before[4]:] {
+				e.under = true
+			}
+			for &e in data.hints[before[5]:] {
+				e.under = true
+			}
+			for k in before[6] ..< len(data.sigils) {
+				data.sigils_under += {k}
+			}
+			for k in before[7] ..< len(data.fragments) {
+				data.fragments_under += {k}
+			}
+			data.exit_under ||= fields[0] == "exit"
+			// living rock, lawns and planks are looked up by the block's cell in the
+			// world as it stands (`world_cell`): turned over once the axle is known
+			append(&under_marks, [4]int{before[8], len(data.lawn), before[9], len(data.ground)})
+			append(&under_planks, [2]int{before[10], len(data.planks)})
 		}
 	}
 
@@ -876,6 +978,54 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	}
 	if part != 0 {
 		return data, fail(line_no, "the last part has no 'end'")
+	}
+	if under {
+		return data, fail(under_line, "under: no 'end'")
+	}
+	if len(data.pomegranates) > 0 {
+		if data.size % 2 == 0 {
+			return data, fail(0, "pomegranate: the world turns over about the middle row: the size must be odd")
+		}
+		data.axle = data.pomegranates[0].z - 1
+		for f in data.pomegranates {
+			if f.y != data.size / 2 || f.z != data.axle + 1 || f.x < 0 || f.x >= data.size {
+				return data, fail(0, "pomegranate %v: the pomegranates lie on the axle (y %d, all at the same height)", f, data.size / 2)
+			}
+		}
+		if len(data.sundials) > 0 {
+			return data, fail(0, "pomegranate: the world does not turn over in a level with sundials")
+		}
+		// both worlds must fit the grid either way up
+		for e in data.blocks {
+			if e.cell.z > 2 * data.axle {
+				return data, fail(0, "block %v: above twice the axle's height, the world turned over would leave the grid", e.cell)
+			}
+		}
+		for e in data.rise {
+			if e.cell.z > 2 * data.axle {
+				return data, fail(0, "rise %v: above twice the axle's height", e.cell)
+			}
+		}
+		for e in data.blocks {
+			if e.under && e.part != 0 {
+				return data, fail(0, "block %v: no parts under the palace", e.cell)
+			}
+		}
+		for m in under_marks {
+			for &c in data.lawn[m[0]:m[1]] {
+				c = flip_cell(&data, c)
+			}
+			for &c in data.ground[m[2]:m[3]] {
+				c = flip_cell(&data, c)
+			}
+		}
+		for m in under_planks {
+			for &pk in data.planks[m[0]:m[1]] {
+				pk.cell = flip_cell(&data, pk.cell)
+			}
+		}
+	} else if len(under_marks) > 0 {
+		return data, fail(0, "under: a world under the palace needs a pomegranate to be reached")
 	}
 	if len(data.caves) % 2 != 0 {
 		return data, fail(line_no, "cave: caves come in pairs (the last one has no other end)")

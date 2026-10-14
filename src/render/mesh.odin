@@ -43,10 +43,12 @@ quad :: proc(b: ^Mesh_Builder, p0, p1, p2, p3, n: Vec3) {
 	vertex(b, p3, n)
 }
 
-// A box without its bottom face (the camera always looks down on the palace).
+// A box, all six faces: the camera looks down on the palace, but the world
+// turned over (Proserpina's flip) shows the undersides.
 box :: proc(b: ^Mesh_Builder, bx: Box) {
 	l, h := bx.lo, bx.hi
 	quad(b, {l.x, l.y, h.z}, {h.x, l.y, h.z}, {h.x, h.y, h.z}, {l.x, h.y, h.z}, {0, 0, 1})
+	quad(b, {l.x, l.y, l.z}, {h.x, l.y, l.z}, {h.x, h.y, l.z}, {l.x, h.y, l.z}, {0, 0, -1})
 	quad(b, {h.x, l.y, l.z}, {h.x, h.y, l.z}, {h.x, h.y, h.z}, {h.x, l.y, h.z}, {1, 0, 0})
 	quad(b, {l.x, l.y, l.z}, {l.x, h.y, l.z}, {l.x, h.y, h.z}, {l.x, l.y, h.z}, {-1, 0, 0})
 	quad(b, {l.x, h.y, l.z}, {h.x, h.y, l.z}, {h.x, h.y, h.z}, {l.x, h.y, h.z}, {0, 1, 0})

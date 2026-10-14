@@ -31,6 +31,16 @@
 // evening the illusions come back and the rams lie down, each a step up
 // (stairs).
 //
+// Proserpina's flip (Act IV): standing on one of her pomegranates, the
+// spindle turns the world over about the axle (level.flip_cell); she stays on
+// her stone, its underside now her floor. The palace is built in the frame of
+// the world up now (`upside`): every cell it answers in (nodes, Psyche's
+// cell) is of that frame. The world under the palace (`under` entries) stands
+// up when it is turned over; the other world then hangs below: its stairs are
+// flat stone (their undersides), its rails and walls close nothing, its
+// blocking props still fill their cells. Handles, sundials, caves and eagles
+// belong to the world above.
+//
 // Memory: every array is allocated once from the allocator given to `init`
 // (the level arena) and reused; rebuilding the graph or the illusions does not
 // allocate again once the arrays have grown. Scratch work uses the temp allocator.
@@ -76,6 +86,7 @@ Palace :: struct {
 	half_turn:  bit_set[0 ..< level.MAX_PARTS], // parts the same turned a half turn (`half_symmetric`)
 	overlap:    bool, // two blocks share a cell (a part turned into the palace)
 	day:        bool, // a level with sundials: the sun is up (the rams stand)
+	upside:     bool, // the world turned over: the world under the palace stands up (see the top)
 	// world grid, indexed by cell_index
 	solid:      []level.Solid,
 	blocked:    []bool,
@@ -222,22 +233,38 @@ half_symmetric :: proc(d: ^level.Level_Data, n: int) -> bool {
 	return found
 }
 
-// Where block entry i is now (parts turn).
+// Where block entry i is now (parts turn; the world may be turned over).
 block_cell :: proc(p: ^Palace, i: int) -> Cell {
 	e := p.data.blocks[i]
-	if e.part == 0 {
-		return e.cell
+	c := e.cell
+	if e.part != 0 {
+		c = level.part_cell(c, p.data.parts[e.part - 1].pivot, p.part_rot[e.part - 1])
 	}
-	return level.part_cell(e.cell, p.data.parts[e.part - 1].pivot, p.part_rot[e.part - 1])
+	return level.frame_cell(p.data, c, e.under, p.upside)
 }
 
 block_solid :: proc(p: ^Palace, i: int) -> level.Solid {
 	e := p.data.blocks[i]
-	s := e.solid
+	s := hanging(p, e)
 	if e.part != 0 && s.kind == .Stairs {
 		s.dir = iso.rot_dir(s.dir, p.part_rot[e.part - 1])
 	}
 	return s
+}
+
+// What a solid entry is in the frame of the world up now: stairs of the world
+// that hangs below show their flat undersides, a floor like a block's.
+@(private)
+hanging :: proc(p: ^Palace, e: level.Solid_Entry) -> level.Solid {
+	if e.under != p.upside && e.solid.kind == .Stairs {
+		return {kind = .Block}
+	}
+	return e.solid
+}
+
+// Does entry `under` stand up now (and not hang below the other world)?
+upright :: proc(p: ^Palace, under: bool) -> bool {
+	return under == p.upside
 }
 
 // Where a prop is now, and the side it closes.
@@ -287,6 +314,9 @@ lamp_touch :: proc(p: ^Palace, feet: Cell, keep: []Cell) -> bool {
 
 // The handle at feet cell c, or -1.
 handle_at :: proc(p: ^Palace, c: Cell) -> int {
+	if p.upside {
+		return -1 // the world above hangs below
+	}
 	for h, i in p.data.handles {
 		if h.cell == c {
 			return i
@@ -324,7 +354,7 @@ rebuild_real :: proc(p: ^Palace) {
 	}
 	for e in p.data.rise {
 		if int(e.seal) in p.risen {
-			p.solid[cell_index(p, e.cell)] = e.solid
+			p.solid[cell_index(p, level.frame_cell(p.data, e.cell, e.under, p.upside))] = hanging(p, e)
 		}
 	}
 	for m in p.data.rams {
@@ -337,6 +367,14 @@ rebuild_real :: proc(p: ^Palace) {
 	}
 	for prop in p.data.props {
 		c, d := prop_place(p, prop)
+		if !upright(p, prop.under) {
+			// hanging below: a rail closes nothing, a pillar still fills its cell
+			c = level.flip_cell(p.data, c)
+			if prop.kind in level.BLOCKING_PROPS && in_grid(p, c) {
+				p.blocked[cell_index(p, c)] = true
+			}
+			continue
+		}
 		i := cell_index(p, c)
 		if prop.kind in level.BLOCKING_PROPS {
 			p.blocked[i] = true
@@ -387,7 +425,7 @@ rebuild_real :: proc(p: ^Palace) {
 			}
 		}
 	}
-	for k := 0; k + 1 < len(p.data.caves); k += 2 {
+	for k := 0; !p.upside && k + 1 < len(p.data.caves); k += 2 {
 		a, b := node_index(p, p.data.caves[k].cell), node_index(p, p.data.caves[k + 1].cell)
 		if a >= 0 && b >= 0 && !p.nodes[a].stair && !p.nodes[b].stair {
 			add_pair(&p.real, a, b)
@@ -400,6 +438,9 @@ rebuild_real :: proc(p: ^Palace) {
 
 // The sundial at surface c, or -1: standing there, the spindle turns the time.
 sundial_at :: proc(p: ^Palace, c: Cell) -> int {
+	if p.upside {
+		return -1
+	}
 	for d, i in p.data.sundials {
 		if d == c {
 			return i
@@ -418,6 +459,9 @@ set_day :: proc(p: ^Palace, day: bool) {
 
 // The cave whose mouth is at surface c, or -1.
 cave_at :: proc(p: ^Palace, c: Cell) -> int {
+	if p.upside {
+		return -1
+	}
 	for cave, i in p.data.caves {
 		if cave.cell == c {
 			return i
@@ -428,6 +472,9 @@ cave_at :: proc(p: ^Palace, c: Cell) -> int {
 
 // The eagle whose perch is at surface c, or -1.
 eagle_at :: proc(p: ^Palace, c: Cell) -> int {
+	if p.upside {
+		return -1
+	}
 	for e, i in p.data.eagles {
 		if e.from == c {
 			return i
@@ -440,6 +487,36 @@ eagle_at :: proc(p: ^Palace, c: Cell) -> int {
 eagle_flies :: proc(p: ^Palace, i: int) -> bool {
 	e := p.data.eagles[i]
 	return is_surface(p, e.from) && is_surface(p, e.to)
+}
+
+// --- Proserpina's flip ------------------------------------------------------------------
+
+// The pomegranate at feet cell c (either way up: they lie on the axle), or -1.
+pomegranate_at :: proc(p: ^Palace, c: Cell) -> int {
+	for f, i in p.data.pomegranates {
+		if f == c {
+			return i
+		}
+	}
+	return -1
+}
+
+// Can the world turn over with her on feet cell c? A pomegranate there, and
+// room on the other side of its stone: there she will stand.
+can_turn_over :: proc(p: ^Palace, c: Cell) -> bool {
+	if pomegranate_at(p, c) < 0 || !is_surface(p, c) {
+		return false
+	}
+	o := level.flip_cell(p.data, c) // the same cell in the other frame, under the stone
+	return in_grid(p, o) && solid_at(p, o).kind == .None && !p.blocked[cell_index(p, o)]
+}
+
+// Turn the world over (or back).
+set_upside :: proc(p: ^Palace, upside: bool) {
+	if p.upside != upside {
+		p.upside = upside
+		rebuild_graph(p)
+	}
 }
 
 // Is the step a-b a passage through the rock, from one cave's mouth to the other's?

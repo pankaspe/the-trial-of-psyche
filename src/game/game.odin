@@ -39,6 +39,11 @@
 // end the level; standing there, Space (or the card over her) boards it, she
 // gives him the coin and he ferries her away into the mist.
 //
+// Proserpina's flip (Act IV): standing on one of her pomegranates, the
+// spindle turns the world over about the axle while she stays on her stone
+// (phase Overturn); the world under the palace stands up, the other hangs
+// below. Her cell is of the frame of the world up now (palace.upside).
+//
 // A level that goes down (`below`): its look at the foot is blended in as she
 // descends from the start's height to the exit's (`descent`).
 //
@@ -96,6 +101,7 @@ FLIGHT_TAKE :: 0.2 // ...the part of it where the eagle comes down to her...
 FLIGHT_LAND :: 0.86 // ...and where she touches the ground again
 EAGLE_RETURN :: 3.2 // the eagle flying back to its perch
 EAGLE_HOLD :: 0.82 // how far above her feet the eagle holds her
+OVERTURN_TIME :: 2.6 // the world turning over on a pomegranate
 DESCENT_TIME :: 2.0 // the sky following her down (a level that goes down), at most this long from top to foot
 
 Phase :: enum u8 {
@@ -103,6 +109,7 @@ Phase :: enum u8 {
 	Sigil, // the seal is lit: blocks rise, input waits
 	Mechanism, // a handle turns a part of the palace: input waits
 	Time, // a sundial turns the time: the sky changes, the rams stand up or lie down; input waits
+	Overturn, // a pomegranate: the world turns over about the axle; input waits
 	Prologue, // the opening cutscene (prologue.odin): input only skips or starts
 	Arrival, // coming from the last level: the palace rises, Psyche comes down; input waits
 	Ending_Oil,
@@ -204,6 +211,7 @@ Game :: struct {
 	flip_t:         []f32, // per data.blocks entry: time since it changed for good, < 0 before
 	part_turning:   int, // the part a handle is turning (phase Mechanism)
 	evening:        f32, // 0 day .. 1 evening, follows palace.day (the sky, the rams' pose)
+	overturn:       f32, // 0 the world as described .. 1 turned over, follows palace.upside (render turns the world by it)
 	descent:        f32, // a level that goes down: 0 at the start's height .. 1 at the exit's (the look at its foot)
 	ferried:        bool, // the exit was by Charon's boat (phase Ending_Exit: its own timeline)
 	rest:           Rest, // the last brazier Psyche lit
@@ -235,6 +243,8 @@ Game :: struct {
 
 	path:           pl.Path,
 	steering:       bool, // the path is the next step of a stick (or d-pad) held
+	steer_wait:     bool, // the view turned (or the world over) under a stick held: it must be let go, pushed again or pointed elsewhere
+	steer_held:     Vec2, // ...the way it was held then
 	prologue:       Prologue,
 	psyche:         Psyche,
 	amore:          Amore,
@@ -275,6 +285,7 @@ Rest :: struct {
 	flipped:   []bool,
 	part_rot:  [level.MAX_PARTS]int,
 	day:       bool,
+	upside:    bool,
 	oil:       f32,
 	activated: level.Seals,
 	lightings: int,
@@ -371,6 +382,7 @@ oil_rules :: proc(d: ^level.Level_Data) -> pl.Oil_Rules {
 		flight = FLIGHT_TIME,
 		turn = ROTATE_TIME,
 		handle = PART_TIME,
+		overturn = OVERTURN_TIME,
 		rise_delay = RISE_DELAY,
 		rise_time = RISE_TIME,
 	}
@@ -453,6 +465,7 @@ setting_now :: proc(g: ^Game) -> level.Setting {
 	switch {
 	case has_time(g) && g.evening > 0.5: return g.data.evening
 	case g.data.has_below && g.descent > 0.5: return g.data.below
+	case g.data.has_upside && g.overturn > 0.5: return g.data.upside
 	}
 	return g.data.setting
 }
@@ -548,6 +561,7 @@ update :: proc(g: ^Game, dt: f32) {
 	if has_time(g) {
 		g.evening = fx.move_toward(g.evening, g.palace.day ? 0 : 1, dt / TIME_TURN)
 	}
+	g.overturn = fx.move_toward(g.overturn, g.palace.upside ? 1 : 0, dt / OVERTURN_TIME)
 	if g.data.has_below && g.phase != .Prologue {
 		g.descent = fx.move_toward(g.descent, descent_target(g), dt / DESCENT_TIME)
 	}
@@ -605,6 +619,13 @@ update :: proc(g: ^Game, dt: f32) {
 		if g.phase_t >= TIME_TURN {
 			set_phase(g, .Play)
 		}
+	case .Overturn:
+		if crossed(g.phase_t, dt, OVERTURN_TIME * 0.92) {
+			audio.play(.Thud, -9, 0.6)
+		}
+		if g.phase_t >= OVERTURN_TIME {
+			set_phase(g, .Play)
+		}
 	case .Ending_Oil:
 		update_ending_oil(g, dt)
 	case .Ending_Trust:
@@ -652,6 +673,7 @@ request_turn :: proc(g: ^Game, step: int) {
 start_turn :: proc(g: ^Game, step: int) {
 	audio.play(.Turn, -11)
 	learn(g, .Hint_Turn)
+	g.steer_wait = true
 	pl.reachable(&g.palace, g.psyche.cell, dark(g), g.reach_before[:len(g.palace.nodes)])
 	g.turning = true
 	g.turn_from = math.round(g.angle)
@@ -822,7 +844,7 @@ on_spindle :: proc(g: ^Game) -> bool {
 	if !standing(g) || !has_skill(g, .Spindle) {
 		return false
 	}
-	return pl.handle_at(&g.palace, g.psyche.cell) >= 0 || pl.sundial_at(&g.palace, g.psyche.cell) >= 0
+	return pl.handle_at(&g.palace, g.psyche.cell) >= 0 || pl.sundial_at(&g.palace, g.psyche.cell) >= 0 || at_pomegranate(g)
 }
 
 // Psyche stands still at the mouth of a cave whose other end can be reached.
@@ -922,10 +944,22 @@ walk_to :: proc(g: ^Game, target: Cell) -> bool {
 // and keeps walking while it is held. The next step is chosen from where the
 // current one ends, so she does not stop between cells. `dir` zero: she stops
 // at the end of the step. `fresh`: the stick was just pushed (a way that is
-// not there is answered once, not every frame).
+// not there is answered once, not every frame). After a turn of the view
+// (or of the world) the stick held still points where it did on screen, now
+// another way through the palace (often back): it must be let go or pushed
+// again.
 steer :: proc(g: ^Game, dir: Vec2, fresh: bool) {
 	if !g.active || g.phase != .Play || g.turning {
 		return
+	}
+	if g.steer_wait {
+		if g.steer_held == {} {
+			g.steer_held = dir
+		}
+		if dir != {} && !fresh && dir.x * g.steer_held.x + dir.y * g.steer_held.y > 0.8 {
+			return
+		}
+		g.steer_wait, g.steer_held = false, {}
 	}
 	psy := &g.psyche
 	if dir == {} || g.pending_turn != 0 {
@@ -1225,7 +1259,11 @@ face_point :: proc(g: ^Game, p: Vec3) {
 // grassy top), bare rock (lower), or masonry.
 @(private)
 footstep :: proc(g: ^Game, cell: Cell) {
-	below := Cell{cell.x, cell.y, cell.z - 1}
+	// the marks of living rock and lawns are kept in the world as described
+	here, below := cell, Cell{cell.x, cell.y, cell.z - 1}
+	if g.palace.upside {
+		here, below = level.flip_cell(&g.data, here), level.flip_cell(&g.data, below)
+	}
 	vary := fx.rand_range(&g.rng, 0.93, 1.07)
 	for c in g.data.lawn {
 		if c == below {
@@ -1234,7 +1272,7 @@ footstep :: proc(g: ^Game, cell: Cell) {
 		}
 	}
 	for c in g.data.ground {
-		if c == below || c == cell {
+		if c == below || c == here {
 			audio.play(.Step_Stone, -16, vary * 0.88)
 			return
 		}
@@ -1250,7 +1288,7 @@ update_walk :: proc(g: ^Game, dt: f32) {
 	psy.yaw += diff * min(dt * 14, 1)
 
 	if !psy.walking {
-		psy.pos = pl.stand_world(&g.palace, psy.cell) + {0, 0, exit_lift(g)}
+		psy.pos = pl.stand_world(&g.palace, psy.cell) + {0, 0, exit_lift(g) + overturn_lift(g)}
 		return
 	}
 	psy.walk_anim += dt
@@ -1284,12 +1322,12 @@ update_walk :: proc(g: ^Game, dt: f32) {
 @(private)
 cues :: proc(g: ^Game, n: Cell) {
 	for v in g.data.voices {
-		if v.cell == n {
+		if v.cell == n && upright(g, v.under) {
 			say(g, v.key)
 		}
 	}
 	for h in g.data.hints {
-		if h.cell == n {
+		if h.cell == n && upright(g, h.under) {
 			hint(g, h.key, is_tutorial(h.key) ? 0 : 7)
 		}
 	}
@@ -1299,19 +1337,19 @@ cues :: proc(g: ^Game, n: Cell) {
 arrive :: proc(g: ^Game, n: Cell) {
 	cues(g, n)
 	for c, i in g.data.rests {
-		if c == n {
+		if c == n && !g.palace.upside {
 			light_rest(g, i)
 		}
 	}
 	for c, i in g.data.fragments {
-		if n == c && i not_in g.fragments_taken && i not_in g.fragments_known {
+		if n == c && upright(g, i in g.data.fragments_under) && i not_in g.fragments_taken && i not_in g.fragments_known {
 			take_fragment(g, i)
 		}
 	}
 	if g.phase != .Play {
 		return
 	}
-	if g.data.has_exit && n == g.data.exit && !g.data.has_boat {
+	if g.data.has_exit && n == g.data.exit && upright(g, g.data.exit_under) && !g.data.has_boat {
 		start_ending(g, .Ending_Exit)
 	} else if g.data.has_boat && n == g.data.boat.cell {
 		hint(g, .Hint_Boat, 0)
@@ -1336,9 +1374,11 @@ take_fragment :: proc(g: ^Game, i: int) {
 	audio.play(.Good, -8, audio.semitones(7))
 }
 
-// Where fragment i lies (a scroll floating over its cell).
+// Where fragment i lies (a scroll floating over its cell), in the frame of
+// its own world (`fragments_under`).
 fragment_world :: proc(g: ^Game, i: int) -> Vec3 {
-	return pl.node_world(&g.palace, g.data.fragments[i]) + {0, 0, 0.22 + 0.04 * math.sin(g.time * 1.6 + f32(i) * 2.1)}
+	c := g.data.fragments[i]
+	return {f32(c.x) + 0.5, f32(c.y) + 0.5, f32(c.z) + 0.22 + 0.04 * math.sin(g.time * 1.6 + f32(i) * 2.1)}
 }
 
 @(private)
@@ -1381,13 +1421,18 @@ at_sundial :: proc(g: ^Game) -> bool {
 }
 
 // The spindle: on a handle it turns its part of the palace a quarter, on a
-// sundial it turns the time. Anywhere else nothing happens.
+// sundial it turns the time, on a pomegranate it turns the world over.
+// Anywhere else nothing happens.
 use_spindle :: proc(g: ^Game) {
 	if !on_spindle(g) {
 		return
 	}
 	if pl.sundial_at(&g.palace, g.psyche.cell) >= 0 {
 		turn_time(g)
+		return
+	}
+	if at_pomegranate(g) {
+		turn_over(g)
 		return
 	}
 	h := pl.handle_at(&g.palace, g.psyche.cell)
@@ -1428,6 +1473,57 @@ ram_lie :: proc(g: ^Game) -> f32 {
 	return fx.sine_in_out(g.evening)
 }
 
+// --- Proserpina's flip -----------------------------------------------------------------
+
+// Is she on one of Proserpina's pomegranates, with room to stand on the other
+// side of her stone (the spindle turns the world over there)?
+at_pomegranate :: proc(g: ^Game) -> bool {
+	return pl.can_turn_over(&g.palace, g.psyche.cell)
+}
+
+// The spindle on a pomegranate: the world turns over about the axle, she
+// stays on her stone. The palace changes at once (the world under it stands
+// up); the game waits while render turns it.
+@(private)
+turn_over :: proc(g: ^Game) {
+	pl.set_upside(&g.palace, !g.palace.upside)
+	set_phase(g, .Overturn)
+	sa.clear(&g.path)
+	g.steer_wait = true
+	g.markers = {}
+	// the oil spilt stays on its stones: in the frame of the world up now
+	for &st in g.stains[:g.stain_count] {
+		st.pos = turned_point(g, st.pos)
+	}
+	for &d in g.drops {
+		d.active = false
+	}
+	audio.play(.Rumble, -10, 0.55)
+	audio.play(.Wind, -12, 0.6)
+	audio.play(.Reveal, -14, audio.semitones(-7))
+	learn(g, .Hint_Pomegranate)
+}
+
+// How far she is lifted off her stone while it turns over under her feet
+// (a cube on its edge stands taller than on its face).
+overturn_lift :: proc(g: ^Game) -> f32 {
+	if g.phase != .Overturn {
+		return 0
+	}
+	return 0.24 * math.sin(math.PI * fx.clamp01(g.phase_t / OVERTURN_TIME))
+}
+
+// A world point in the frame of the world turned over: the half turn about
+// the axle (level.flip_cell, for points).
+turned_point :: proc(g: ^Game, w: Vec3) -> Vec3 {
+	return {w.x, f32(g.data.size) - w.y, f32(2 * g.data.axle + 1) - w.z}
+}
+
+// Does a thing of the world `under` (or above) stand up now (not hanging below)?
+upright :: proc(g: ^Game, under: bool) -> bool {
+	return pl.upright(&g.palace, under)
+}
+
 // --- braziers -----------------------------------------------------------------------
 
 @(private)
@@ -1446,6 +1542,7 @@ light_rest :: proc(g: ^Game, i: int, quiet := false) {
 	copy(r.flipped, g.palace.flipped)
 	r.part_rot = g.palace.part_rot
 	r.day = g.palace.day
+	r.upside = g.palace.upside
 	r.oil = g.oil
 	r.activated = g.activated
 	r.lightings = g.lightings
@@ -1463,7 +1560,7 @@ return_to_rest :: proc(g: ^Game) -> bool {
 		return false
 	}
 	r := &g.rest
-	if g.psyche.cell == r.cell && !g.psyche.walking && slice.equal(g.palace.flipped, r.flipped) && g.palace.part_rot == r.part_rot && g.palace.day == r.day && g.activated == r.activated {
+	if g.psyche.cell == r.cell && !g.psyche.walking && slice.equal(g.palace.flipped, r.flipped) && g.palace.part_rot == r.part_rot && g.palace.day == r.day && g.palace.upside == r.upside && g.activated == r.activated {
 		return false
 	}
 	set_lamp(g, false)
@@ -1474,6 +1571,11 @@ return_to_rest :: proc(g: ^Game) -> bool {
 	g.palace.part_rot = r.part_rot
 	g.palace.day = r.day
 	g.evening = r.day || !has_time(g) ? 0 : 1
+	if g.palace.upside != r.upside {
+		g.stain_count, g.stain_next = 0, 0 // the oil spilt was of the other frame
+	}
+	g.palace.upside = r.upside
+	g.overturn = r.upside ? 1 : 0
 	g.activated = r.activated
 	g.palace.risen = r.activated
 	for c, i in g.data.candelabra {
@@ -1524,7 +1626,7 @@ amore_world :: proc(g: ^Game) -> Vec3 {
 // The seal at feet cell c (index into data.sigils), or -1.
 seal_at :: proc(g: ^Game, c: Cell) -> int {
 	for s, k in g.data.sigils {
-		if s == c {
+		if s == c && upright(g, k in g.data.sigils_under) {
 			return k
 		}
 	}
@@ -1610,7 +1712,7 @@ start_ending :: proc(g: ^Game, p: Phase) {
 		} else {
 			audio.play(.Wind, -4)
 		}
-	case .Play, .Sigil, .Mechanism, .Time, .Prologue, .Arrival, .Finished:
+	case .Play, .Sigil, .Mechanism, .Time, .Overturn, .Prologue, .Arrival, .Finished:
 	}
 }
 
@@ -2148,7 +2250,7 @@ candelabrum_base :: proc(g: ^Game, i: int) -> Vec3 {
 @(private)
 light_candelabra :: proc(g: ^Game) {
 	for c, i in g.data.candelabra {
-		if i in g.candelabra_lit || c.guard {
+		if i in g.candelabra_lit || c.guard || !upright(g, c.under) {
 			continue
 		}
 		d := candelabrum_base(g, i) - g.psyche.pos
@@ -2174,7 +2276,7 @@ candelabrum_flame :: proc(g: ^Game, i: int) -> f32 {
 is_tutorial :: proc(key: Key) -> bool {
 	#partial switch key {
 	case .Hint_Move, .Hint_Turn, .Hint_Lamp, .Hint_Illusion, .Hint_Sigil, .Hint_Oil,
-	     .Hint_Veiled, .Hint_Handle, .Hint_Sundial, .Hint_Eagle, .Hint_Boat, .Hint_Guard, .Hint_Fragment:
+	     .Hint_Veiled, .Hint_Handle, .Hint_Sundial, .Hint_Pomegranate, .Hint_Eagle, .Hint_Boat, .Hint_Guard, .Hint_Fragment:
 		return true
 	}
 	return false

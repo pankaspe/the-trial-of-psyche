@@ -30,6 +30,9 @@ apply_move :: proc(g: ^Game, st: pl.Plan_Step) -> bool {
 		return g.phase == .Time
 	case .Flight:
 		return call_eagle(g) && g.psyche.step_flight
+	case .Overturn:
+		use_spindle(g)
+		return g.phase == .Overturn
 	}
 	return true
 }

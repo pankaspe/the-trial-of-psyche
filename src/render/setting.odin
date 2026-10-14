@@ -453,6 +453,36 @@ LOOKS := [level.Setting]Look {
 		candles = true,
 		mote = {1.0, 0.45, 0.25, 0.45},
 	},
+	// Proserpina's kingdom, under the land of the dead (the world turned over):
+	// a still violet dark, the pale sun of the dead low and cold, no stars to
+	// speak of, lilac mist; the candles lit
+	.Dis = {
+		sky_top = {0.02, 0.014, 0.05},
+		sky_mid = {0.09, 0.06, 0.16},
+		sky_horizon = {0.30, 0.20, 0.36},
+		orb_pos = {0.70, 0.26},
+		orb_radius = 0.035,
+		orb_color = {0.82, 0.76, 0.96},
+		halo_color = {0.17, 0.11, 0.26},
+		halo_width = 8,
+		stars = 0.25,
+		haze = {0.20, 0.14, 0.28},
+		islands = false,
+		ridges = 1,
+		ridge_color = {{0.17, 0.12, 0.25}, {0.10, 0.07, 0.17}, {0.05, 0.035, 0.09}},
+		ridge_rim = {0.62, 0.50, 0.82},
+		cloud_back = {0.16, 0.11, 0.24},
+		cloud_front = {0.22, 0.16, 0.30},
+		cloud_crest = {0.30, 0.20, 0.40},
+		mist = {0.12, 0.08, 0.18},
+		water = {0.04, 0.03, 0.08, 0.92},
+		glint = {0.8, 0.7, 1.0, 0.4},
+		daylight = 0.25,
+		gloom = 0.15,
+		rock = {0.78, 0.72, 0.90},
+		candles = true,
+		mote = {0.85, 0.75, 1.0, 0.45},
+	},
 	// the palace of voices at twilight: the sun is gone, its last light low on
 	// the clouds, the first stars, the moon rising; the candles are lit
 	.Dusk = {
@@ -541,6 +571,8 @@ look_of :: proc(g: ^game.Game) -> ^Look {
 		blended = blend(LOOKS[g.data.setting], LOOKS[g.data.evening], fx.sine_in_out(g.evening))
 	case g.data.has_below:
 		blended = blend(LOOKS[g.data.setting], LOOKS[g.data.below], fx.sine_in_out(g.descent))
+	case g.data.has_upside:
+		blended = blend(LOOKS[g.data.setting], LOOKS[g.data.upside], fx.sine_in_out(g.overturn))
 	case:
 		return &LOOKS[g.data.setting]
 	}

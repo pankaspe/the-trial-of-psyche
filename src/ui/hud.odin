@@ -98,7 +98,7 @@ draw_hud :: proc(u: ^Ui, g: ^game.Game, input: Hud_Input = {}) -> (act: Hud_Acti
 			point_at(u, g, {q.x, q.y, e.x + e.width - q.x, q.height})
 		case .Hint_Lamp, .Hint_Oil:
 			point_at(u, g, skill_slot(u, 0))
-		case .Hint_Handle, .Hint_Sundial:
+		case .Hint_Handle, .Hint_Sundial, .Hint_Pomegranate:
 			point_at(u, g, skill_slot(u, 1))
 		case .Hint_Fragment:
 			point_at(u, g, fragment_count_rect(u, g))
@@ -209,13 +209,24 @@ slot_of :: proc(g: ^game.Game, i: int) -> (sl: Slot) {
 		case g.phase == .Time:
 			sl.look = .Active
 			sl.status = i18n.tr(.Skill_Time_Turning)
+		case g.phase == .Overturn:
+			sl.look = .Active
+			sl.status = i18n.tr(.Skill_Overturning)
 		case game.on_spindle(g):
 			sl.look = .Ready
-			sl.status = i18n.tr(on_dial ? (g.palace.day ? .Skill_Sundial_Day : .Skill_Sundial_Evening) : .Skill_Handle_Here)
+			switch {
+			case on_dial: sl.status = i18n.tr(g.palace.day ? .Skill_Sundial_Day : .Skill_Sundial_Evening)
+			case game.at_pomegranate(g): sl.status = i18n.tr(.Skill_Pomegranate_Here)
+			case: sl.status = i18n.tr(.Skill_Handle_Here)
+			}
 			sl.action = true
 		case:
 			sl.look = .Off
-			sl.status = i18n.tr(game.has_time(g) ? .Skill_Spindle_Away_Time : .Skill_Handle_Away)
+			switch {
+			case game.has_time(g): sl.status = i18n.tr(.Skill_Spindle_Away_Time)
+			case len(g.data.pomegranates) > 0: sl.status = i18n.tr(.Skill_Spindle_Away_Flip)
+			case: sl.status = i18n.tr(.Skill_Handle_Away)
+			}
 		}
 	}
 	return
@@ -868,6 +879,16 @@ tutorial_sign :: proc(u: ^Ui, g: ^game.Game, key: i18n.Key, c: Vec2, col: rl.Col
 		rl.EndScissorMode()
 		rl.DrawLineEx(c + Vec2{-24, 6} * s, c + Vec2{24, 6} * s, 2.5 * s, col)
 		rl.DrawLineEx(c + Vec2{-14, 13} * s, c + Vec2{14, 13} * s, 2 * s, col)
+	case .Hint_Pomegranate:
+		// a stone turning over about its axle, a pomegranate on the face that is up
+		k := fx.sine_in_out(fx.clamp01(math.mod(g.time, 3.0) / 1.6))
+		a := math.PI * k
+		up := Vec2{math.sin(a), -math.cos(a)}
+		along := Vec2{math.cos(a), math.sin(a)}
+		rl.DrawLineEx(c - along * 22 * s, c + along * 22 * s, 6 * s, col)
+		rl.DrawCircleV(c + up * 11 * s, 6 * s, col)
+		rl.DrawCircleV(c - up * 11 * s, 3 * s, col)
+		rl.DrawCircleV(c, 2 * s, col)
 	case .Hint_Eagle:
 		// a bird gliding, its wings beating slowly
 		beat := 6 * math.sin(g.time * 2.4)

@@ -1,0 +1,105 @@
+# The Trial of Psyche - level IV.2: "The Underside of the World" (format: level_04.txt)
+#
+# Beyond the river the land of the dead is a floating shelf of rock; under
+# it, upside down, hangs Proserpina's kingdom, a palace of pale marble and
+# candles. A bridge of dressed stone runs through the middle of both, the
+# axle (y 5, z 4); on it grow three of Proserpina's pomegranates. Standing on
+# one, the spindle turns the world over about the axle: she stays on her
+# stone, now walking on its underside, the other world hanging below.
+# The level introduces the flip (the mechanic card):
+#   - the crags on the bridge above cut it in three; under it the way is
+#     free as far as a pier of marble;
+#   - from the start (the mound of the north-west, its stairs hidden from the
+#     first view: turn) down to the first pomegranate; over; under the bridge
+#     to the second; back up; over the arch of the east crag (its stairs hide
+#     behind the crag: turn) to the third; over again, and up to the exit, a
+#     door of Proserpina's kingdom on the stair beyond the pier.
+# Fragment: IV.2 (VI.20) in the garden under the mound, on a tower whose
+# missing stone is veiled (the lamp).
+size 11
+setting taenarus
+upside dis
+lamp
+mechanic flip
+intro intro_iv_2
+outro outro_iv_2
+
+# --- the axle: the bridge both worlds share (y 5, z 4) ---------------------------
+block 1 5 4
+block 2 5 4
+block 3 5 4
+block 4 5 4
+block 5 5 4
+block 6 5 4
+block 7 5 4
+block 8 5 4
+block 9 5 4
+pomegranate 2 5 5
+pomegranate 5 5 5
+pomegranate 8 5 5
+hint 2 5 5 hint_pomegranate
+
+# --- the world above: the land of the dead, ash and black rock ------------------
+# the start: a mound in the north-west, its stairs on the far side
+block 1 1 4 rock
+block 2 1 4 rock
+block 1 2 4 rock
+block 2 2 4 rock
+block 2 3 4 rock
+block 2 4 4 rock
+block 1 1 5 rock
+block 2 1 5 rock
+block 1 2 5 rock
+block 2 2 5 rock
+start 1 1 6
+steps 2 3 5 my
+prop lip 1 1 6 mx
+prop lip 1 1 6 my
+prop lip 2 1 6 my
+prop cairn 2 1 6 my
+# crags split the bridge above, west and east
+rock 3 5 5 6
+rock 7 5 5 6
+prop boulder 4 5 5
+# the arch over the east crag
+block 6 4 4 rock
+block 6 3 4 rock
+block 6 2 4 rock
+block 7 2 4 rock
+block 8 2 4 rock
+block 8 3 4 rock
+block 8 4 4 rock
+block 6 2 5 rock
+block 7 2 5 rock
+block 8 2 5 rock
+steps 6 3 5 my
+steps 8 3 5 my
+prop lip 6 2 6 my
+prop lip 7 2 6 my
+prop lip 8 2 6 my
+prop shrub 7 2 6 py
+block 9 4 4 rock
+
+# --- the world under it, Proserpina's kingdom, as it stands once turned up ------
+under
+# a pier of marble under the bridge, between the middle and the east pomegranates
+column 6 5 5 6
+prop sconce 6 5 6 mx
+prop sconce 6 5 6 px
+# the garden under the mound: a tower, its missing stone veiled (the fragment)
+block 1 6 4
+block 1 7 4
+block 1 9 5
+veiled 2 9 5
+stairs 2 8 5 py
+fragment 1 9 6
+prop sconce 1 9 5 mx
+prop cypress 1 6 5
+# the east: the stair to the door of the kingdom
+block 7 6 5
+stairs 7 7 5 my
+exit 7 6 6
+prop urn 6 8 5
+prop sconce 7 6 5 px
+candelabrum 9 6 5 px lit
+end

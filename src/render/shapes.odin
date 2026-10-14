@@ -70,6 +70,8 @@ Mesh_Id :: enum u8 {
 	Eagle_Wing, // ...a wing spread along +y from the shoulder...
 	Eagle_Tail, // ...and its tail fanned along -x
 	Boat, // Charon's boat: its stern at the origin, the prow along +x, the floor at z 0
+	Pomegranate, // Proserpina's pomegranate, in the (-x, +y) corner of its stone...
+	Pomegranate_Dish, // ...on a low bronze dish
 }
 
 // Where the resting brazier's flame burns, in cell space.
@@ -99,6 +101,7 @@ Material :: enum u8 {
 	Blossom, // roses
 	Venus, // the goddess: a figure of rose light
 	Fleece, // the Sun's rams: golden wool
+	Pomegranate, // Proserpina's fruit: a deep crimson, gleaming
 }
 
 PROP_MESH := [level.Prop_Kind]Mesh_Id {
@@ -655,7 +658,20 @@ build_meshes :: proc(meshes: ^[Mesh_Id]rl.Mesh) {
 	meshes[.Eagle_Wing] = one(EAGLE_WING[:])
 	meshes[.Eagle_Tail] = one(EAGLE_TAIL[:])
 	meshes[.Boat] = one(BOAT[:])
+	{
+		// a round fruit with its crown of sepals, on a shallow bronze dish
+		f := POMEGRANATE_AT
+		pb := builder_make()
+		lathe(&pb, {{0.0, 0.035}, {0.06, 0.04}, {0.1, 0.07}, {0.115, 0.11}, {0.105, 0.155}, {0.075, 0.19}, {0.035, 0.205}, {0.03, 0.225}, {0.05, 0.25}, {0.035, 0.252}, {0.0, 0.235}}, 14, {f.x, f.y, 0})
+		meshes[.Pomegranate] = upload(&pb)
+		db := builder_make()
+		lathe(&db, {{0.0, 0.0}, {0.1, 0.0}, {0.15, 0.035}, {0.14, 0.045}, {0.08, 0.03}, {0.0, 0.03}}, 16, {f.x, f.y, 0})
+		meshes[.Pomegranate_Dish] = upload(&db)
+	}
 }
+
+// Where Proserpina's pomegranate lies on its stone, in cell space.
+POMEGRANATE_AT :: [2]f32{0.24, 0.76}
 
 // Charon's boat: a long low hull of dark planks, its floor at z 0 (under it
 // the keel sinks into the water), a square stern at the origin, the sides

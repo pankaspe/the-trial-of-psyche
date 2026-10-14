@@ -7,7 +7,8 @@
 // lie down, steps; the lamp is lit only at evening, and the sun coming up puts
 // it out). The lamp's light makes veiled blocks real within its reach; the
 // lamp lit on a seal raises its `rise` blocks. From an eagle's perch, a flight
-// carries her to its landing, one way.
+// carries her to its landing, one way. On one of Proserpina's pomegranates the
+// spindle turns the world over (she stays on her stone).
 // A state is her cell, the view, the lamp and the palace's configuration
 // (which blocks changed, how each part is turned, the time). The search is a cheapest
 // path (steps cost least; turns, lightings and handles more, so the plan it
@@ -28,6 +29,7 @@ Config :: struct {
 	rots:  u32, // 2 bits per part (modulo 2 for a part in `half_turn`)
 	risen: level.Seals, // the seals that have been lit
 	day:   bool, // the sun is up (a level with sundials)
+	upside: bool, // the world turned over (Proserpina's flip)
 }
 
 // A state of the search: her cell, the view, the lamp, the palace's configuration.
@@ -48,6 +50,7 @@ Move :: enum u8 {
 	Handle,
 	Time, // the spindle on a sundial: day <-> evening
 	Flight, // Jupiter's eagle: from its perch to its landing, one way
+	Overturn, // the spindle on a pomegranate: the world turned over (or back)
 }
 
 COST := [Move]int {
@@ -60,6 +63,7 @@ COST := [Move]int {
 	.Handle     = 6,
 	.Time       = 6,
 	.Flight     = 4,
+	.Overturn   = 6,
 }
 
 // What a move costs more when the lamp burns through it (about a unit per
@@ -74,6 +78,7 @@ LIT_COST := [Move]int {
 	.Handle     = 3,
 	.Time       = 0,
 	.Flight     = 11,
+	.Overturn   = 8,
 }
 LIT_PASSAGE_COST :: 8
 
@@ -83,6 +88,7 @@ Plan_Step :: struct {
 	view:     int,
 	illusion: bool, // a step across an illusion
 	changed:  int, // blocks that changed with this move
+	upside:   bool, // the world turned over after the move (`cell` is of that frame)
 }
 
 Solution :: struct {
@@ -95,6 +101,7 @@ Solution :: struct {
 	handles:     int,
 	times:       int, // the time turned (at a sundial)
 	flights:     int, // carried by an eagle
+	overturns:   int, // the world turned over (or back) on a pomegranate
 	states:      int, // states reached from the start
 	dead:        int, // ...of which cannot reach the goal any more (R restarts)
 	given_up:    bool, // more than `limit` states: the search stopped, nothing is known
@@ -131,6 +138,7 @@ configure :: proc(s: ^Solver, cfg: Config) {
 	}
 	p.risen = cfg.risen
 	p.day = cfg.day
+	p.upside = cfg.upside
 	rebuild_real(p)
 }
 
@@ -151,6 +159,7 @@ state_of :: proc(p: ^Palace, cell: Cell, lamp: bool) -> (st: State) {
 	}
 	st.cfg.risen = p.risen
 	st.cfg.day = p.day
+	st.cfg.upside = p.upside
 	st.cell = cell
 	st.view = u8(p.rot)
 	st.lamp = lamp
@@ -208,11 +217,24 @@ Edge :: struct {
 	from, to: i32,
 }
 
+// A cell of one of the two worlds (`under`: the world under the palace, in
+// its frame): a goal of the search, or a cell it must avoid.
+Spot :: struct {
+	cell:  Cell,
+	under: bool,
+}
+
+// Is she at `spot` in state st?
+@(private = "file")
+at_spot :: proc(st: State, spot: Spot) -> bool {
+	return st.cell == spot.cell && st.cfg.upside == spot.under
+}
+
 // Search from the start to `goal`; `avoid` is never entered (to prove the
 // fragment optional). `limit` > 0: give up past that many states. `dead`:
 // filled with the states that cannot reach the goal any more. The palace is
 // left as loaded (nothing changed, view 0).
-solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := context.allocator, limit := 0, dead: ^[dynamic]State = nil) -> (sol: Solution) {
+solve :: proc(p: ^Palace, goal: Spot, avoid: Maybe(Spot) = nil, allocator := context.allocator, limit := 0, dead: ^[dynamic]State = nil) -> (sol: Solution) {
 	context.allocator = allocator
 	s := Solver{p = p}
 	s.cache = make(map[Config]^Config_Graph)
@@ -221,7 +243,7 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 			append(&s.changing, i)
 		}
 	}
-	avoid_cell, has_avoid := avoid.?
+	avoid_spot, has_avoid := avoid.?
 	saved_view := p.rot
 
 	entries := make([dynamic]Entry, 0, 4096)
@@ -272,10 +294,11 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 				break search
 			}
 			st := entries[id].state
-			if st.cell == goal && goal_id < 0 {
+			if at_spot(st, goal) && goal_id < 0 {
 				goal_id = id
 			}
 			g := graph_of(&s, st.cfg)
+			p.upside = st.cfg.upside // the lookups below read it (graph_of configures only when it builds)
 			a, ok := g.index[st.cell]
 			if !ok {
 				continue
@@ -339,7 +362,7 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 			// an eagle: carried to its landing (the lamp, if lit, burns there)
 			if e := eagle_at(p, st.cell); e >= 0 {
 				to := p.data.eagles[e].to
-				if _, lands := g.index[to]; lands && (!has_avoid || to != avoid_cell) {
+				if _, lands := g.index[to]; lands && !(has_avoid && to == avoid_spot.cell && !avoid_spot.under) {
 					flown := st
 					flown.cell = to
 					changed := 0
@@ -375,11 +398,11 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 						continue
 					}
 					to := g.nodes[b].cell
-					if has_avoid && to == avoid_cell {
-						continue
-					}
 					moved := st
 					moved.cell = to
+					if has_avoid && at_spot(moved, avoid_spot) {
+						continue
+					}
 					changed := 0
 					if st.lamp {
 						n := 0
@@ -390,6 +413,22 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 						extra := is_passage(p, g.nodes[a].cell, to) ? LIT_PASSAGE_COST : -1
 						next(&entries, &seen, &buckets, &edges, id, moved, .Step, pass == 1, changed, extra)
 					}
+				}
+			}
+
+			// a pomegranate: the world turns over (the lamp, if lit, burns on);
+			// last: the lookups above read the palace's frame
+			if pomegranate_at(p, st.cell) >= 0 {
+				turned := st
+				turned.cfg.upside = !st.cfg.upside
+				changed := 0
+				if st.lamp {
+					n := 0
+					turned.cfg, n = touch(&s, turned.cfg, st.cell)
+					turned.cfg, changed = seal(p, turned.cfg, st.cell, n)
+				}
+				if _, still := graph_of(&s, turned.cfg).index[st.cell]; still && !(has_avoid && at_spot(turned, avoid_spot)) {
+					next(&entries, &seen, &buckets, &edges, id, turned, .Overturn, false, changed)
 				}
 			}
 		}
@@ -418,7 +457,7 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 	}
 	queue := make([dynamic]i32, 0, len(entries))
 	for e, i in entries {
-		if e.state.cell == goal {
+		if at_spot(e.state, goal) {
 			alive[i] = true
 			append(&queue, i32(i))
 		}
@@ -450,7 +489,7 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 		slice.reverse(chain[:])
 		for id in chain[1:] {
 			e := entries[id]
-			append(&sol.plan, Plan_Step{e.move, e.state.cell, int(e.state.view), e.illusion, e.changed})
+			append(&sol.plan, Plan_Step{e.move, e.state.cell, int(e.state.view), e.illusion, e.changed, e.state.cfg.upside})
 			#partial switch e.move {
 			case .Step:
 				sol.steps += 1
@@ -465,6 +504,8 @@ solve :: proc(p: ^Palace, goal: Cell, avoid: Maybe(Cell) = nil, allocator := con
 				sol.times += 1
 			case .Flight:
 				sol.flights += 1
+			case .Overturn:
+				sol.overturns += 1
 			}
 		}
 	}
@@ -495,6 +536,7 @@ touch :: proc(s: ^Solver, cfg: Config, feet: Cell) -> (out: Config, changed: int
 		if e.part != 0 {
 			c = level.part_cell(c, d.parts[e.part - 1].pivot, int((cfg.rots >> (2 * u32(e.part - 1))) & 3))
 		}
+		c = level.frame_cell(d, c, e.under, cfg.upside)
 		if !in_truth(feet, c) || c == feet || c == feet - {0, 0, 1} {
 			continue
 		}
@@ -508,7 +550,7 @@ touch :: proc(s: ^Solver, cfg: Config, feet: Cell) -> (out: Config, changed: int
 @(private = "file")
 seal :: proc(p: ^Palace, cfg: Config, feet: Cell, changed: int) -> (Config, int) {
 	for c, k in p.data.sigils {
-		if c != feet || k in cfg.risen {
+		if c != feet || k in cfg.risen || (k in p.data.sigils_under) != cfg.upside {
 			continue
 		}
 		out := cfg
@@ -523,23 +565,31 @@ seal :: proc(p: ^Palace, cfg: Config, feet: Cell, changed: int) -> (Config, int)
 }
 
 // Where the level is won: its exit, or a surface beside Cupid (the lamp is lit there).
-goal_cell :: proc(p: ^Palace) -> Cell {
+goal_cell :: proc(p: ^Palace) -> Spot {
 	d := p.data
 	if d.has_exit || !d.has_amore {
-		return d.exit
+		return exit_spot(d)
 	}
 	for v in iso.DIR_VEC {
 		if c := d.amore + {v.x, v.y, 0}; is_surface(p, c) {
-			return c
+			return {c, false}
 		}
 	}
-	return d.exit
+	return exit_spot(d)
+}
+
+exit_spot :: proc(d: ^level.Level_Data) -> Spot {
+	return {d.exit, d.exit_under}
+}
+
+fragment_spot :: proc(d: ^level.Level_Data, i: int) -> Spot {
+	return {d.fragments[i], i in d.fragments_under}
 }
 
 // Is the level's goal (the exit) reachable? For levels whose palace changes.
 check_dynamic :: proc(p: ^Palace, allocator := context.allocator) -> (solvable: bool) {
 	d := p.data
-	return d.has_exit && solve(p, d.exit, nil, allocator).solved
+	return d.has_exit && solve(p, exit_spot(d), nil, allocator).solved
 }
 
 // Is fragment i reachable, and the exit reachable without it?
@@ -548,13 +598,13 @@ check_dynamic_fragment :: proc(p: ^Palace, i: int, allocator := context.allocato
 	if !d.has_exit {
 		return
 	}
-	c := d.fragments[i]
-	return solve(p, c, d.exit, allocator).solved, solve(p, d.exit, c, allocator).solved
+	c := fragment_spot(d, i)
+	return solve(p, c, exit_spot(d), allocator).solved, solve(p, exit_spot(d), c, allocator).solved
 }
 
 // Does the level have blocks that change or parts that turn?
 is_dynamic :: proc(d: ^level.Level_Data) -> bool {
-	if len(d.parts) > 0 || len(d.sundials) > 0 || len(d.eagles) > 0 {
+	if len(d.parts) > 0 || len(d.sundials) > 0 || len(d.eagles) > 0 || len(d.pomegranates) > 0 {
 		return true
 	}
 	if d.has_sigil && len(d.rise) > 0 && !d.has_amore {
@@ -577,6 +627,7 @@ Oil_Rules :: struct {
 	flight:     f32, // carried by an eagle
 	turn:       f32, // a turn of the view
 	handle:     f32, // a part turning
+	overturn:   f32, // the world turning over
 	rise_delay: f32, // a seal's stones come up one after the other...
 	rise_time:  f32, // ...each taking this long
 }
@@ -590,6 +641,7 @@ oil_left :: proc(p: ^Palace, plan: []Plan_Step, rules: Oil_Rules) -> (least: f32
 	lamp := false
 	risen: level.Seals
 	at := d.start
+	upside := false
 	for st in plan {
 		spent: f32
 		switch st.move {
@@ -609,12 +661,15 @@ oil_left :: proc(p: ^Palace, plan: []Plan_Step, rules: Oil_Rules) -> (least: f32
 			spent = is_passage(p, at, st.cell) ? rules.passage : rules.step
 		case .Flight:
 			spent = rules.flight
+		case .Overturn:
+			spent = rules.overturn
 		}
 		at = st.cell
+		upside = st.upside
 		if lamp {
 			oil -= spent
 			for c, k in d.sigils {
-				if c == at && k not_in risen {
+				if c == at && k not_in risen && (k in d.sigils_under) == upside {
 					// the stones rise while she waits, the lamp burning
 					risen += {k}
 					n := 0
