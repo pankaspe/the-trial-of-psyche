@@ -1,0 +1,181 @@
+# The Trial of Psyche - level IV.3: "The Stone of Two Worlds" (format: level_04.txt)
+#
+# One floor of stone (z 4) for two worlds: the land of the dead stands on it,
+# Proserpina's kingdom hangs from it; turned over, the kingdom stands and the
+# land of the dead hangs. Each stone of the floor is walked on from both
+# sides, and turning the world over mirrors it across the axle (y 6): what
+# lay north lies south. Two seals, one in each world, each raise a stone of
+# the floor: a bridge for both worlds, leading somewhere else in each, and
+# each seal's bridge is crossed in the other world.
+#   - from the start (the north-west crag, its steps hidden from the first
+#     view by a spire: turn) to the first pomegranate; a crag cuts the axle
+#     above; over: the kingdom's axle is free as far as a marble column;
+#   - turned back at the middle pomegranate: the seal of the land of the dead
+#     (its steps behind a spire: one view); its stone rises south of the east
+#     crag, and from above that way only climbs to a crag (a fragment);
+#   - over again at the middle pomegranate: in the kingdom the same stone,
+#     mirrored, leads round the marble column to the east end and
+#     Proserpina's seal (its stairs behind a tall column: two views); her
+#     stone rises north of the third pomegranate, and from her kingdom it only
+#     climbs to a terrace (a fragment);
+#   - turned back at the third pomegranate: from above it leads to the door,
+#     the exit (its steps behind a spire: two views).
+# Fragments: IV.3 (Charon's coin) on the crag beyond the first stone, IV.3b
+# (the lame driver) on a terrace by the first pomegranate, past a veiled
+# stone (the lamp), IV.3c (the dead man in the river) beyond the second.
+size 13
+setting taenarus
+upside dis
+lamp
+intro intro_iv_3
+outro outro_iv_3
+
+# --- the axle: the stones both worlds share (y 6, z 4) ---------------------------
+block 1 6 4
+block 2 6 4
+block 3 6 4
+block 4 6 4
+block 5 6 4
+block 6 6 4
+block 7 6 4
+block 8 6 4
+block 9 6 4
+block 10 6 4
+block 11 6 4
+pomegranate 2 6 5
+pomegranate 6 6 5
+pomegranate 10 6 5
+
+# --- the world above: the land of the dead -----------------------------------------
+# the start: a crag in the north-west, its steps down to the floor
+block 1 1 4 rock
+block 2 1 4 rock
+block 1 2 4 rock
+block 2 2 4 rock
+block 1 1 5 rock
+block 2 1 5 rock
+block 1 2 5 rock
+block 2 2 5 rock
+start 1 1 6
+prop lip 1 1 6 mx
+prop lip 1 1 6 my
+prop lip 2 1 6 my
+prop cairn 2 1 6 my
+prop shrub 1 2 6 py
+block 2 3 4 rock
+steps 2 3 5 my
+block 2 4 4 rock
+block 2 5 4 rock
+# a spire hides the steps from the first view
+rock 3 5 4 6
+# crags cut the axle, west and east
+rock 4 6 5 6
+rock 8 6 5 6
+prop lip 4 6 7 mx
+prop lip 4 6 7 px
+prop lip 4 6 7 my
+prop lip 4 6 7 py
+prop lip 8 6 7 mx
+prop lip 8 6 7 px
+prop lip 8 6 7 my
+prop lip 8 6 7 py
+# the seal of the land of the dead, beside the middle pomegranate
+block 5 7 4 rock
+block 5 8 4 rock
+block 6 8 4 rock
+steps 5 7 5 py
+# a spire hides its steps from three views
+rock 6 7 4 6
+prop lip 6 7 7 px
+prop lip 6 7 7 py
+block 5 8 5 rock
+block 6 8 5 rock
+sigil 6 8 6
+prop lip 5 8 6 mx
+prop lip 5 8 6 py
+prop lip 6 8 6 px
+prop lip 6 8 6 py
+prop lip 6 8 6 my
+# the floor south of the east crag (Proserpina's way round her column):
+# from above, the stone the seal raises leads up to a crag (a fragment)
+block 7 7 4 rock
+block 7 8 4 rock
+block 7 9 4 rock
+block 9 9 4 rock
+block 9 8 4 rock
+block 9 7 4 rock
+steps 9 8 5 my
+rock 9 7 5 5
+fragment 9 7 6
+prop lip 9 7 6 mx
+prop lip 9 7 6 px
+prop lip 9 7 6 my
+prop shrub 9 7 6 px
+# the door: beyond the stone Proserpina's seal raises
+block 10 5 4 rock
+block 10 4 4 rock
+rise 10 3 4 rock 2
+block 10 2 4 rock
+block 10 1 4 rock
+steps 10 2 5 my
+# a spire hides the door's steps from two views
+rock 9 2 4 6
+rock 10 1 5 5
+exit 10 1 6
+prop lip 10 1 6 mx
+prop lip 10 1 6 px
+prop lip 10 1 6 my
+prop cairn 10 1 6 px
+
+# --- the world under it, Proserpina's kingdom, as it stands once turned up ------
+under
+# a marble column cuts the axle east
+column 8 6 5 6
+prop rail 8 6 7 mx
+prop rail 8 6 7 px
+prop rail 8 6 7 my
+prop rail 8 6 7 py
+prop sconce 8 6 6 mx
+prop sconce 8 6 6 px
+# the terrace of a fragment, west of the first pomegranate
+veiled 2 5 4
+block 2 4 4
+block 2 3 4
+block 1 3 4
+stairs 2 4 5 my
+block 2 3 5
+block 1 3 5
+fragment 1 3 6
+prop rail 2 3 6 px
+prop rail 2 3 6 my
+prop rail 1 3 6 mx
+prop rail 1 3 6 my
+prop rail 1 3 6 py
+prop sconce 1 3 5 mx
+# the way round the column: the stone the first seal raises
+rise 8 3 4 1
+# Proserpina's seal at the east end, a tall column hiding its stairs from two views
+column 10 5 4 7
+prop sconce 10 5 7 mx
+prop sconce 10 5 7 py
+block 11 5 4
+block 11 4 4
+block 11 3 4
+stairs 11 5 5 my
+block 11 4 5
+block 11 3 5
+sigil 11 3 6
+prop rail 11 4 6 mx
+prop rail 11 4 6 px
+prop rail 11 3 6 mx
+prop rail 11 3 6 px
+prop rail 11 3 6 my
+# beyond the stone her seal raises, seen from her kingdom: a terrace (a fragment)
+stairs 10 10 5 py
+block 10 11 5
+fragment 10 11 6
+prop rail 10 11 6 mx
+prop rail 10 11 6 px
+prop rail 10 11 6 py
+candelabrum 10 11 6 px lit
+end

@@ -129,6 +129,8 @@ Key :: enum u16 {
 	Fragment_15b,
 	Fragment_16,
 	Fragment_17,
+	Fragment_17b,
+	Fragment_17c,
 	Fragment_18,
 	Fragment_19,
 	Fragment_20,
@@ -238,6 +240,7 @@ Key :: enum u16 {
 	Intro_III_5,
 	Intro_IV_1,
 	Intro_IV_2,
+	Intro_IV_3,
 	// beside Cupid in the dark, before the end of the game
 	V_Doubt,
 
@@ -333,6 +336,7 @@ Key :: enum u16 {
 	Outro_III_5,
 	Outro_IV_1,
 	Outro_IV_2,
+	Outro_IV_3,
 
 	// endings
 	End_Trust_Title,
@@ -610,7 +614,7 @@ IT := [Key]string {
 	.Level_III_5    = "L'ordine del vaso",
 	.Level_IV_1     = "La torre che parla",
 	.Level_IV_2     = "Il rovescio del mondo",
-	.Level_IV_3     = "Caronte e il morto nel fiume",
+	.Level_IV_3     = "La pietra dei due mondi",
 	.Level_IV_4     = "Cerbero e Proserpina",
 	.Level_IV_5     = "Il vaso aperto",
 	.Level_Epilogue = "Il risveglio e le nozze",
@@ -650,6 +654,8 @@ IT := [Key]string {
 	.Fragment_15b   = "«Più avanti, vecchie tessitrici ti pregheranno di dare loro una mano al telaio. Non toccare la tela: sono insidie di Venere, perché ti cada di mano una focaccia.»",
 	.Fragment_16    = "Psiche passa oltre in silenzio: davanti all'asinaio zoppo, al morto che dal fiume tende le mani, alle vecchie che la chiamano al telaio. Non tocca nulla, non risponde a nessuno: stringe le sue focacce.",
 	.Fragment_17    = "Caronte non fa nulla gratis. Anche tra i morti vive l'avarizia. Chi muore deve portare la moneta in bocca.",
+	.Fragment_17b   = "«Sulla via incontrerai un asino zoppo carico di legna, e un asinaio zoppo come lui, che ti chiederà di raccogliergli qualche ramo caduto dal carico. Passa oltre senza una parola.»",
+	.Fragment_17c   = "«Mentre attraversi il fiume, un vecchio morto che galleggia alzerà verso di te le mani disfatte e ti pregherà di tirarlo nella barca. Non cedere a una pietà che non ti è concessa.»",
 	.Fragment_18    = "Proserpina le offre un seggio morbido e un ricco banchetto. Psiche siede a terra e chiede solo pane scuro.",
 	.Fragment_19    = "Amore, guarito, non sopporta più la lontananza. Fugge dall'alta finestra della sua prigione e vola da lei.",
 	.Fragment_20    = "Così si compiono le nozze, e nasce una figlia che chiamano Voluttà.\nQuesta favola raccontava una vecchia a una ragazza prigioniera, nella caverna dei briganti.",
@@ -760,6 +766,7 @@ IT := [Key]string {
 	.Intro_III_5    = "Di nuovo nella casa di Venere. Per uscirne servirà ogni cosa imparata: la lucerna, il fuso, la grotta, l'aquila.",
 	.Intro_IV_1     = "La torre ti ha detto la via. Scendi: in fondo, sull'acqua scura, aspetta il traghettatore.",
 	.Intro_IV_2     = "Oltre il fiume, il regno di Proserpina pende sotto la terra dei morti, come un riflesso nell'acqua.",
+	.Intro_IV_3     = "Qui la terra dei morti e il regno di Proserpina camminano sulla stessa pietra: uno sopra, l'altro sotto.",
 	.V_Doubt        = "Dorme. Ti tornano in mente le parole delle sorelle: e se fosse un mostro? La lampada è nella tua mano.",
 
 	.Tutorial_Label = "Come si gioca",
@@ -841,7 +848,8 @@ IT := [Key]string {
 	.Outro_III_4    = "L'aquila affonda l'urna nell'acqua che grida e gliela rende piena. Venere la guarda, e la sua ira cresce.",
 	.Outro_III_5    = "Con il vaso tra le mani Psiche sale sulla torre più alta. Non conosce altra strada per gli inferi che la morte.",
 	.Outro_IV_1     = "Caronte prende di sua mano la moneta dalle labbra di Psiche. Senza una parola, spinge la barca nella nebbia rossa.",
-	.Outro_IV_2     = "Il mondo si ferma, dritto o capovolto: quaggiù è lo stesso. Più avanti il fiume dei morti torna a scorrere, nero, e sull'acqua aspetta di nuovo una barca.",
+	.Outro_IV_2     = "Il mondo si ferma, dritto o capovolto: quaggiù è lo stesso. Più avanti i due mondi si toccano ancora, pietra contro pietra.",
+	.Outro_IV_3     = "La porta si apre sul fiume dei morti, che torna a scorrere, nero. Sull'acqua aspetta di nuovo una barca.",
 	.Outro_III_1    = "A notte Venere torna dal banchetto, accaldata dal vino e profumata di rose. Vede il lavoro compiuto.\n«Non è opera tua», dice, e le getta un tozzo di pane.",
 
 	.End_Trust_Title = "Fiducia",
@@ -954,7 +962,7 @@ EN := [Key]string {
 	.Level_III_5    = "The Order of the Box",
 	.Level_IV_1     = "The Speaking Tower",
 	.Level_IV_2     = "The Underside of the World",
-	.Level_IV_3     = "Charon and the Dead Man",
+	.Level_IV_3     = "The Stone of Two Worlds",
 	.Level_IV_4     = "Cerberus and Proserpina",
 	.Level_IV_5     = "The Open Box",
 	.Level_Epilogue = "The Awakening and the Wedding",
@@ -994,6 +1002,8 @@ EN := [Key]string {
 	.Fragment_15b   = "«Further on, old women weaving will beg you to lend a hand at the loom. Do not touch the cloth: these are Venus's snares, to make you drop a cake.»",
 	.Fragment_16    = "Psyche passes on in silence: by the lame driver, by the dead man reaching out of the river, by the old women calling her to the loom. She touches nothing, answers no one: she holds her cakes tight.",
 	.Fragment_17    = "Charon does nothing for free. Even among the dead greed lives on: whoever dies must carry the coin in his mouth.",
+	.Fragment_17b   = "«On the way you will meet a lame ass loaded with wood, and a driver as lame as his beast, who will ask you to pick up a few sticks fallen from the load. Pass by without a word.»",
+	.Fragment_17c   = "«As you cross the river, a dead old man floating by will lift his wasted hands to you and beg you to pull him into the boat. Do not give in to a pity that is not allowed you.»",
 	.Fragment_18    = "Proserpina offers her a soft seat and a rich feast. Psyche sits on the ground and asks only for coarse bread.",
 	.Fragment_19    = "Cupid, healed, can bear the separation no longer. He escapes through the high window of his prison and flies to her.",
 	.Fragment_20    = "So the wedding is made, and a daughter is born whom they call Pleasure.\nThis was the tale an old woman told a captive girl, in the robbers' cave.",
@@ -1104,6 +1114,7 @@ EN := [Key]string {
 	.Intro_III_5    = "Back in the house of Venus. To leave it she will need everything she has learned: the lamp, the spindle, the cave, the eagle.",
 	.Intro_IV_1     = "The tower has told you the way. Go down: at the bottom, on the dark water, the ferryman waits.",
 	.Intro_IV_2     = "Beyond the river, Proserpina's kingdom hangs under the land of the dead, like a reflection in water.",
+	.Intro_IV_3     = "Here the land of the dead and Proserpina's kingdom walk on the same stone: one above, the other below.",
 	.V_Doubt        = "He sleeps. Your sisters' words come back to you: what if he is a monster? The lamp is in your hand.",
 
 	.Tutorial_Label = "How to play",
@@ -1185,7 +1196,8 @@ EN := [Key]string {
 	.Outro_III_4    = "The eagle plunges the urn into the crying water and gives it back to her full. Venus looks at her, and her anger grows.",
 	.Outro_III_5    = "With the box in her hands Psyche climbs the highest tower. She knows no other road to the underworld but death.",
 	.Outro_IV_1     = "Charon takes the coin from Psyche's lips with his own hand. Without a word, he pushes the boat into the red mist.",
-	.Outro_IV_2     = "The world comes to rest, upright or upside down: down here it is all one. Further on the river of the dead runs again, black, and on the water a boat waits once more.",
+	.Outro_IV_2     = "The world comes to rest, upright or upside down: down here it is all one. Further on the two worlds touch again, stone against stone.",
+	.Outro_IV_3     = "The door opens on the river of the dead, running again, black. On the water a boat waits once more.",
 	.Outro_III_1    = "At night Venus comes back from the feast, flushed with wine and fragrant with roses. She sees the work done.\n“This is not your doing,” she says, and throws her a crust of bread.",
 
 	.End_Trust_Title = "Trust",
