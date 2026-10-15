@@ -48,6 +48,16 @@ lamp_side :: proc(u: ^Ui, alpha: f32) {
 	rl.DrawRectangleGradientH(0, 0, i32(u.width * 0.55), i32(u.height), fade({26, 12, 10, 255}, 0.74 * alpha), {26, 12, 10, 0})
 }
 
+// The acts' tabs (the level select, the Book).
+@(private)
+ACT_NUMERAL := [content.Act]string {
+	.I        = "I",
+	.II       = "II",
+	.III      = "III",
+	.IV       = "IV",
+	.Epilogue = "E",
+}
+
 // "I.4", or "Epilogue" for the last level.
 level_label :: proc(index: int) -> string {
 	info := content.LEVELS[index]
@@ -232,82 +242,248 @@ ending_card :: proc(u: ^Ui, info: Ending_Info, t: f32) -> (act: Menu_Action) {
 
 // --- level select --------------------------------------------------------------------
 
-// Levels by act: a tile per level with its fragment mark; the hovered level
-// is named at the bottom. Returns the chosen level (-1: none).
-level_select :: proc(u: ^Ui, prog: progress.Progress) -> (chosen: int, back: bool) {
+// The level select: the chosen level's diorama turns behind (main draws it,
+// framed on the right); on the left, a panel tells where it is and what it
+// holds; below, the act's levels in a row of pictures. ← → (the stick) choose
+// the level, ↑ ↓ (LB RB) the act, Enter (South) or a click plays it.
+Level_Select :: struct {
+	level: int, // the chosen level (LEVELS index)
+}
+
+// `thumbs`: a picture per level (id 0: none yet); `shown`: the level drawn
+// behind, whose data the panel reads once it is the chosen one; `veil`: how
+// dark the world is drawn (the picture changing, a level not built).
+level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs: []rl.Texture2D, shown: ^game.Game, veil: f32) -> (chosen: int, back: bool) {
 	chosen = -1
 	s := u.scale
-	shade(u, 0.84)
-	cx := u.width * 0.5
-	text(u, i18n.tr(.Levels_Title), {cx, u.height * 0.5 - 470 * s}, {size = 84, color = TITLE, face = .Display, glow = true, shadow = true})
-	count := fmt.tprintf("%s  %d / %d", i18n.tr(.Fragments_Label), progress.fragment_count(prog), content.FRAGMENT_COUNT)
-	rule_label(u, caps(count), {cx, u.height * 0.5 - 372 * s}, 20, 80 * s)
+	rl.DrawRectangleRec({0, 0, u.width, u.height}, fade({3, 2, 6, 255}, veil))
+	// the panel's side and the row's foot darkened, the diorama left clear
+	rl.DrawRectangleGradientH(0, 0, i32(u.width * 0.6), i32(u.height), fade({9, 7, 14, 255}, 0.93), {9, 7, 14, 0})
+	rl.DrawRectangleGradientV(0, i32(u.height - 380 * s), i32(u.width), i32(380 * s), {5, 4, 9, 0}, fade({5, 4, 9, 255}, 0.9))
 
-	TILE :: Vec2{150, 92}
-	GAP :: 18
-	row_y := u.height * 0.5 - 300 * s
-	left := cx - 760 * s
-	tiles_x := cx - 280 * s
-	hovered := -1
-	for act in content.Act {
-		text(u, caps(i18n.tr(content.ACT_LABEL[act])), {left, row_y + 10 * s}, {size = 20, color = GOLD, face = .Semi, track = 0.18, shadow = true}, .Left, 0.9)
-		text(u, i18n.tr(content.ACT_TITLE[act]), {left, row_y + 40 * s}, {size = 34, color = TEXT, shadow = true}, .Left)
-		x := tiles_x
-		for info, i in content.LEVELS {
-			if info.act != act {
+	act := content.LEVELS[ls.level].act
+	choose_act :: proc(ls: ^Level_Select, act: content.Act) {
+		ls.level = act_first(act)
+	}
+	// the keys and the pad
+	step := input.nav()
+	if rl.IsKeyPressed(.LEFT) {
+		step.x = -1
+	}
+	if rl.IsKeyPressed(.RIGHT) {
+		step.x = 1
+	}
+	if rl.IsKeyPressed(.UP) || input.take(.LB) {
+		step.y = -1
+	}
+	if rl.IsKeyPressed(.DOWN) || input.take(.RB) {
+		step.y = 1
+	}
+	if step.y != 0 {
+		next := int(act) + step.y
+		if next >= 0 && next < len(content.Act) {
+			choose_act(ls, content.Act(next))
+		}
+	} else if next := ls.level + step.x; step.x != 0 && next >= 0 && next < content.LEVEL_COUNT && content.LEVELS[next].act == act {
+		ls.level = next
+	}
+	act = content.LEVELS[ls.level].act
+	play := rl.IsKeyPressed(.ENTER) || rl.IsKeyPressed(.SPACE)
+	if u.pad && u.accept {
+		input.consume(.South)
+		u.accept = false
+		play = true
+	}
+
+	// the acts, as tabs, and the fragments found
+	x0 := 120 * s
+	tab_y := 64 * s
+	x := x0
+	for a in content.Act {
+		label := ACT_NUMERAL[a]
+		st := Style{size = 24, color = a == act ? BRIGHT : fade(DIM, 0.7), face = .Semi, track = 0.18, shadow = true}
+		m := measure(u, label, st)
+		r := rl.Rectangle{x - 12 * s, tab_y - 8 * s, m.x + 24 * s, m.y + 16 * s}
+		add_hot(u, r)
+		if mouse_over(u, r) {
+			st.color = BRIGHT
+			if u.pressed && a != act {
+				choose_act(ls, a)
+			}
+		}
+		text(u, label, {x, tab_y}, st, .Left)
+		if a == act {
+			rl.DrawRectangleRec({x, tab_y + m.y + 4 * s, m.x, max(1.5 * s, 1)}, BRIGHT)
+		}
+		x += m.x + 40 * s
+	}
+	count := fmt.tprintf("·   %s  %d / %d", caps(i18n.tr(.Fragments_Label)), progress.fragment_count(prog), content.FRAGMENT_COUNT)
+	text(u, count, {x, tab_y + 3 * s}, {size = 18, color = fade(DIM, 0.8), face = .Semi, track = 0.16, shadow = true}, .Left)
+
+	// the panel: the chosen level
+	info := content.LEVELS[ls.level]
+	built := content.is_built(ls.level)
+	open := progress.is_unlocked(prog, ls.level)
+	done := ls.level in prog.completed
+	loaded := built && shown.level_index == ls.level
+	y := 168 * s
+	w := 680 * s
+	text(u, fmt.tprintf("%s  ·  %s", caps(i18n.tr(content.ACT_LABEL[act])), level_label(ls.level)), {x0, y}, {size = 20, color = GOLD, face = .Semi, track = 0.22, shadow = true}, .Left)
+	y += 42 * s
+	title := i18n.tr(info.title)
+	tst := Style{size = 64, color = TITLE, face = .Display, glow = true, shadow = true}
+	if tw := measure(u, title, tst).x; tw > w {
+		tst.size *= w / tw
+	}
+	text(u, title, {x0, y}, tst, .Left)
+	y += (tst.size + 22) * s
+	y += paragraph(u, i18n.tr(info.place), {x0, y}, {size = 30, color = DIM, face = .Italic, shadow = true}, w, 1, 1.2, .Left)
+	y += 14 * s
+	text(u, fmt.tprintf("MET.  %s", info.cite), {x0, y}, {size = 19, color = GOLD, face = .Semi, track = 0.2, shadow = true}, .Left)
+	y += 58 * s
+	if loaded && shown.data.has_intro {
+		y += paragraph(u, i18n.tr(shown.data.intro), {x0, y}, {size = 28, color = TEXT, face = .Italic, shadow = true}, w, 1, 1.3, .Left) + 30 * s
+	}
+	if built {
+		first, n := content.level_fragments(ls.level)
+		found := 0
+		for k in 0 ..< n {
+			lit := first + k in prog.fragments
+			found += int(lit)
+			diamond(u, {x0 + 9 * s + f32(k) * 26 * s, y + 14 * s}, 10 * s, GOLD, lit)
+		}
+		text(u, fmt.tprintf("%d / %d  %s", found, n, i18n.tr(.Fragments_Label)), {x0 + f32(n) * 26 * s + 12 * s, y + 1 * s}, {size = 22, color = DIM, face = .Semi, track = 0.06, shadow = true}, .Left)
+		y += 52 * s
+	}
+	if loaded {
+		// what the place holds: the lamp, the devices of the spindle, the actions of the place
+		d := &shown.data
+		guards := card(d.guard_seals)
+		veiled := false
+		for e in d.blocks {
+			veiled ||= e.trait == .Veiled
+		}
+		holds := [?]struct {
+			on:  bool,
+			key: i18n.Key,
+		} {
+			{d.has_lamp, .Lamp_Button},
+			{len(d.sigils) > guards, .Device_Seals},
+			{guards > 0, .Device_Guard},
+			{veiled, .Device_Veiled},
+			{len(d.handles) > 0, .Device_Handles},
+			{len(d.sundials) > 0, .Device_Sundials},
+			{len(d.rams) > 0, .Device_Rams},
+			{len(d.pomegranates) > 0, .Device_Pomegranates},
+			{len(d.caves) > 0, .Device_Caves},
+			{len(d.eagles) > 0, .Device_Eagle},
+			{d.has_boat, .Device_Boat},
+			{len(d.rests) > 0, .Device_Braziers},
+		}
+		hx := x0
+		st := Style{size = 21, color = DIM, face = .Semi, track = 0.08}
+		for h in holds {
+			if !h.on {
 				continue
 			}
-			r := rl.Rectangle{x, row_y, TILE.x * s, TILE.y * s}
-			x += (TILE.x + GAP) * s
-			built := content.is_built(i)
-			open := progress.is_unlocked(prog, i)
-			done := i in prog.completed
-			add_hot(u, r)
-			hover := focusable(u, r)
-			if hover {
-				hovered = i
+			label := i18n.tr(h.key)
+			m := measure(u, label, st)
+			r := rl.Rectangle{hx, y, m.x + 26 * s, m.y + 12 * s}
+			if r.x + r.width > x0 + w {
+				hx = x0
+				y += r.height + 12 * s
+				r.x, r.y = hx, y
 			}
-			alpha: f32 = open ? 1 : (built ? 0.55 : 0.3)
-			rl.DrawRectangleRec(r, fade({13, 11, 20, 255}, (hover && open ? 0.88 : 0.66) * alpha))
-			edge := done ? fade(GOLD, 0.65) : fade(GOLD, 0.22 * alpha)
-			rl.DrawRectangleLinesEx(r, max(1.2 * s, 1), hover && open ? BRIGHT : edge)
-			if hover && open {
-				corner_frame(u, {r.x - 4 * s, r.y - 4 * s, r.width + 8 * s, r.height + 8 * s}, 1, s, BRIGHT)
-			}
-			col := done ? TEXT : DIM
-			if hover && open {
-				col = BRIGHT
-			}
-			label := info.act == .Epilogue ? "E" : info.id
-			text(u, label, {r.x + r.width * 0.5, r.y + 10 * s}, {size = 34, color = col, face = .Semi, shadow = true}, .Center, alpha)
-			if built {
-				// a mark per fragment hidden in the level
-				first, count := content.level_fragments(i)
-				for k in 0 ..< count {
-					dx := (f32(k) - f32(count - 1) * 0.5) * 22 * s
-					diamond(u, {r.x + r.width * 0.5 + dx, r.y + r.height - 18 * s}, 8 * s, fade(GOLD, alpha * 0.9), first + k in prog.fragments)
-				}
-			}
-			if open && activated(u, hover) {
-				audio.play(.Tap, -14)
-				chosen = i
+			rl.DrawRectangleRec(r, fade({13, 11, 20, 255}, 0.7))
+			rl.DrawRectangleLinesEx(r, max(s, 1), fade(GOLD, 0.35))
+			text(u, label, {r.x + 13 * s, r.y + 6 * s}, st, .Left)
+			hx += r.width + 12 * s
+		}
+		if hx > x0 {
+			y += 34 * s + 24 * s
+		}
+	}
+	status := !built ? i18n.tr(.Level_Unbuilt) : (!open ? i18n.tr(.Level_Locked) : (done ? i18n.tr(.Levels_Done) : i18n.tr(.Levels_Open)))
+	text(u, status, {x0, y}, {size = 24, color = done ? GOLD : DIM, face = .Italic, shadow = true}, .Left)
+
+	// the row: the act's levels
+	TILE :: Vec2{256, 144}
+	GAP :: 22
+	tx := x0
+	ty := u.height - 236 * s
+	for i in 0 ..< content.LEVEL_COUNT {
+		if content.LEVELS[i].act != act {
+			continue
+		}
+		on := i == ls.level
+		r := rl.Rectangle{tx, ty - (on ? 12 * s : 0), TILE.x * s, TILE.y * s}
+		tx += (TILE.x + GAP) * s
+		hot := rl.Rectangle{r.x, ty - 12 * s, r.width, r.height + 12 * s}
+		add_hot(u, hot)
+		hover := mouse_over(u, hot)
+		if hover && !on && u.mouse_moved {
+			ls.level = i
+		}
+		tile_open := progress.is_unlocked(prog, i)
+		if hover && u.pressed {
+			ls.level = i
+			play = true
+		}
+		if thumbs[i].id != 0 {
+			tint := tile_open ? rl.WHITE : rl.Color{90, 84, 96, 255}
+			tw, th := f32(thumbs[i].width), f32(thumbs[i].height)
+			rl.DrawTexturePro(thumbs[i], {0, 0, tw, -th}, r, {}, 0, tint)
+		} else {
+			rl.DrawRectangleRec(r, fade({13, 11, 20, 255}, 0.85))
+			if !content.is_built(i) {
+				text(u, i18n.tr(.Level_Unbuilt), {r.x + r.width * 0.5, r.y + r.height * 0.38}, {size = 19, color = fade(DIM, 0.6), face = .Italic}, .Center)
 			}
 		}
-		row_y += 128 * s
+		rl.DrawRectangleGradientV(i32(r.x), i32(r.y + r.height * 0.45), i32(r.width), i32(r.height * 0.55), {5, 4, 9, 0}, {5, 4, 9, 210})
+		text(u, level_label(i), {r.x + 14 * s, r.y + r.height - 40 * s}, {size = 26, color = on ? BRIGHT : TEXT, face = .Semi, shadow = true}, .Left)
+		if content.is_built(i) {
+			first, n := content.level_fragments(i)
+			for k in 0 ..< n {
+				diamond(u, {r.x + r.width - 18 * s - f32(n - 1 - k) * 20 * s, r.y + r.height - 22 * s}, 7 * s, GOLD, first + k in prog.fragments)
+			}
+		}
+		edge := on ? BRIGHT : (i in prog.completed ? fade(GOLD, 0.6) : fade(GOLD, 0.22))
+		rl.DrawRectangleLinesEx(r, max((on ? 2 : 1.2) * s, 1), edge)
+		if on {
+			corner_frame(u, {r.x - 6 * s, r.y - 6 * s, r.width + 12 * s, r.height + 12 * s}, 1, s, BRIGHT)
+		}
+	}
+	if play && open {
+		audio.play(.Tap, -14)
+		chosen = ls.level
 	}
 
-	if hovered >= 0 {
-		y := u.height * 0.5 + 345 * s
-		text(u, level_name(hovered), {cx, y}, {size = 38, color = TEXT, shadow = true})
-		status := ""
-		if !content.is_built(hovered) {
-			status = i18n.tr(.Level_Unbuilt)
-		} else if !progress.is_unlocked(prog, hovered) {
-			status = i18n.tr(.Level_Locked)
+	// how to move about it
+	hint_y := u.height - 66 * s
+	hst := Style{size = 22, color = DIM, face = .Semi, track = 0.1, shadow = true}
+	hx := x0
+	if u.pad {
+		hx += pad_button(u, .LB, {hx, hint_y}, 0.9) + 6 * s
+		hx += pad_button(u, .RB, {hx, hint_y}, 0.9) + 12 * s
+		text(u, i18n.tr(.Levels_Act), {hx, hint_y + 2 * s}, hst, .Left)
+		hx += measure(u, i18n.tr(.Levels_Act), hst).x + 44 * s
+		hx += pad_button(u, .South, {hx, hint_y}, 0.9) + 12 * s
+		text(u, i18n.tr(.Levels_Play), {hx, hint_y + 2 * s}, hst, .Left)
+	} else {
+		cap := 30 * s
+		for d in 0 ..< 4 {
+			arrow_cap(u, {hx, hint_y}, cap, d)
+			hx += cap + 6 * s
+			if d == 1 || d == 3 {
+				label := i18n.tr(d == 1 ? .Levels_Level : .Levels_Act)
+				text(u, label, {hx + 6 * s, hint_y + 2 * s}, hst, .Left)
+				hx += measure(u, label, hst).x + 50 * s
+			}
 		}
-		text(u, status, {cx, y + 50 * s}, {size = 26, color = DIM, face = .Italic, shadow = true})
+		hx += key_cap(u, "Enter", {hx, hint_y}, 0.9) + 12 * s
+		text(u, i18n.tr(.Levels_Play), {hx, hint_y + 2 * s}, hst, .Left)
 	}
-	back = button(u, i18n.tr(.Back), {cx, u.height * 0.5 + 460 * s}, 30)
+	back = button(u, i18n.tr(.Back), {u.width - 160 * s, hint_y - 4 * s}, 30, focus = false)
 	return
 }
 
@@ -432,7 +608,6 @@ book :: proc(u: ^Ui, prog: progress.Progress, b: ^Book_State) -> (back: bool) {
 	corner_frame(u, {book_r.x - 6 * s, book_r.y - 6 * s, book_r.width + 12 * s, book_r.height + 12 * s}, 1)
 
 	// the tabs, out of the right page's edge
-	labels := [BOOK_TABS]string{"I", "II", "III", "IV", "E", ""}
 	for i in 0 ..< BOOK_TABS {
 		r := rl.Rectangle{right.x + right.width, right.y + 50 * s + f32(i) * 66 * s, 60 * s, 54 * s}
 		add_hot(u, r)
@@ -446,7 +621,8 @@ book :: proc(u: ^Ui, prog: progress.Progress, b: ^Book_State) -> (back: bool) {
 			diamond(u, c, 10 * s, ink, true)
 		} else {
 			st := Style{size = 24, color = ink, face = .Semi}
-			text(u, labels[i], {c.x, c.y - measure(u, labels[i], st).y * 0.5}, st)
+			label := ACT_NUMERAL[content.Act(i)]
+			text(u, label, {c.x, c.y - measure(u, label, st).y * 0.5}, st)
 		}
 		if hover && u.pressed {
 			turn(b, i)

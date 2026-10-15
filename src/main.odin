@@ -95,6 +95,7 @@ App :: struct {
 	lamp_down:       bool, // the lamp's key, button or slot was held last frame
 	dead_ends:       Dead_Ends,
 	focus_screen:    Screen, // the screen the UI's focus belongs to
+	levels:          Levels_Screen,
 }
 
 REST_TAP :: 0.25 // a press of R shorter than this is a tap: back to the brazier
@@ -186,6 +187,7 @@ startup :: proc(app: ^App) -> bool {
 shutdown :: proc(app: ^App) {
 	save_settings(app)
 	game.destroy(&app.game)
+	shutdown_levels(app)
 	if app.has_target {
 		rl.UnloadRenderTexture(app.target)
 	}
@@ -532,7 +534,10 @@ frame :: proc(app: ^App) {
 		// a new screen: the pad's focus starts on its first choice (the
 		// level to continue from, in the level select)
 		app.focus_screen = app.screen
-		ui.reset_focus(u, app.screen == .Levels ? progress.current_level(app.prog) : 0)
+		ui.reset_focus(u)
+		if app.screen == .Levels {
+			enter_levels(app)
+		}
 	}
 	ui.begin_frame(u, w, h)
 	global_keys(app)
@@ -588,6 +593,7 @@ frame :: proc(app: ^App) {
 	}
 	update_toasts(app, dt)
 	update_black(app, dt)
+	update_levels(app, dt)
 	update_sound(app)
 	shot := ""
 	if app.shooting {
@@ -604,6 +610,7 @@ frame :: proc(app: ^App) {
 	// the settings sheet is glass: the world frosted under it comes from the
 	// canvas (drawn there apart at High, so the picture beside the sheet keeps
 	// its MSAA while the quality is judged)
+	draw_level_picture(app)
 	app.ui.has_glass = app.screen == .Settings
 	if app.ui.has_glass && k == 0 {
 		render.post_begin(&app.post, w, h)
@@ -750,7 +757,9 @@ back :: proc(app: ^App) -> bool {
 		app.screen = .Play
 	case .Settings:
 		close_settings(app)
-	case .Levels, .Book:
+	case .Levels:
+		leave_levels(app, true)
+	case .Book:
 		app.screen = .Title
 	case .Card:
 		dismiss_act_card(app)
@@ -975,11 +984,12 @@ draw_screens :: proc(app: ^App) {
 		case .None, .Resume, .Restart, .Main_Menu, .Retry, .Next, .Back:
 		}
 	case .Levels:
-		chosen, back := ui.level_select(u, app.prog)
+		chosen, back := ui.level_select(u, app.prog, &app.levels.sel, app.levels.pictures[:], g, levels_veil(app))
 		if chosen >= 0 {
+			leave_levels(app, false)
 			start_level(app, chosen)
 		} else if back {
-			app.screen = .Title
+			leave_levels(app, true)
 		}
 	case .Book:
 		if ui.book(u, app.prog, &app.book) {

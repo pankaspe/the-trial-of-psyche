@@ -48,29 +48,31 @@ Level_Info :: struct {
 	id:     string, // stable name, used in the save file: never change it
 	act:    Act,
 	title:  i18n.Key,
+	place:  i18n.Key, // where it is, in a line (the level select)
+	cite:   string, // where it happens in the tale (Metamorphoses book.chapter)
 	source: string, // the level file; "" while the level is not built
 }
 
 LEVELS := [?]Level_Info {
-	{"I.1", .I, .Level_I_1, #load("../../assets/levels/level_01.txt", string)},
-	{"I.2", .I, .Level_I_2, #load("../../assets/levels/level_02.txt", string)},
-	{"I.3", .I, .Level_I_3, #load("../../assets/levels/level_03.txt", string)},
-	{"I.4", .I, .Level_I_4, #load("../../assets/levels/level_04.txt", string)},
-	{"II.1", .II, .Level_II_1, #load("../../assets/levels/level_05.txt", string)},
-	{"II.2", .II, .Level_II_2, #load("../../assets/levels/level_06.txt", string)},
-	{"II.3", .II, .Level_II_3, #load("../../assets/levels/level_07.txt", string)},
-	{"II.4", .II, .Level_II_4, #load("../../assets/levels/level_08.txt", string)},
-	{"III.1", .III, .Level_III_1, #load("../../assets/levels/level_09.txt", string)},
-	{"III.2", .III, .Level_III_2, #load("../../assets/levels/level_10.txt", string)},
-	{"III.3", .III, .Level_III_3, #load("../../assets/levels/level_11.txt", string)},
-	{"III.4", .III, .Level_III_4, #load("../../assets/levels/level_12.txt", string)},
-	{"III.5", .III, .Level_III_5, #load("../../assets/levels/level_13.txt", string)},
-	{"IV.1", .IV, .Level_IV_1, #load("../../assets/levels/level_14.txt", string)},
-	{"IV.2", .IV, .Level_IV_2, #load("../../assets/levels/level_15.txt", string)},
-	{"IV.3", .IV, .Level_IV_3, #load("../../assets/levels/level_16.txt", string)},
-	{"IV.4", .IV, .Level_IV_4, ""},
-	{"IV.5", .IV, .Level_IV_5, ""},
-	{"E", .Epilogue, .Level_Epilogue, ""},
+	{"I.1", .I, .Level_I_1, .Where_I_1, "IV.33–35", #load("../../assets/levels/level_01.txt", string)},
+	{"I.2", .I, .Level_I_2, .Where_I_2, "V.1–3", #load("../../assets/levels/level_02.txt", string)},
+	{"I.3", .I, .Level_I_3, .Where_I_3, "V.4–21", #load("../../assets/levels/level_03.txt", string)},
+	{"I.4", .I, .Level_I_4, .Where_I_4, "V.21–23", #load("../../assets/levels/level_04.txt", string)},
+	{"II.1", .II, .Level_II_1, .Where_II_1, "V.24", #load("../../assets/levels/level_05.txt", string)},
+	{"II.2", .II, .Level_II_2, .Where_II_2, "V.25", #load("../../assets/levels/level_06.txt", string)},
+	{"II.3", .II, .Level_II_3, .Where_II_3, "V.26–27", #load("../../assets/levels/level_07.txt", string)},
+	{"II.4", .II, .Level_II_4, .Where_II_4, "VI.1–4", #load("../../assets/levels/level_08.txt", string)},
+	{"III.1", .III, .Level_III_1, .Where_III_1, "VI.5–10", #load("../../assets/levels/level_09.txt", string)},
+	{"III.2", .III, .Level_III_2, .Where_III_2, "VI.11–13", #load("../../assets/levels/level_10.txt", string)},
+	{"III.3", .III, .Level_III_3, .Where_III_3, "VI.13–15", #load("../../assets/levels/level_11.txt", string)},
+	{"III.4", .III, .Level_III_4, .Where_III_4, "VI.14–15", #load("../../assets/levels/level_12.txt", string)},
+	{"III.5", .III, .Level_III_5, .Where_III_5, "VI.16", #load("../../assets/levels/level_13.txt", string)},
+	{"IV.1", .IV, .Level_IV_1, .Where_IV_1, "VI.17–19", #load("../../assets/levels/level_14.txt", string)},
+	{"IV.2", .IV, .Level_IV_2, .Where_IV_2, "VI.20", #load("../../assets/levels/level_15.txt", string)},
+	{"IV.3", .IV, .Level_IV_3, .Where_IV_3, "VI.18–20", #load("../../assets/levels/level_16.txt", string)},
+	{"IV.4", .IV, .Level_IV_4, .Where_IV_4, "VI.19–20", ""},
+	{"IV.5", .IV, .Level_IV_5, .Where_IV_5, "VI.21", ""},
+	{"E", .Epilogue, .Level_Epilogue, .Where_Epilogue, "VI.22–24", ""},
 }
 
 LEVEL_COUNT :: len(LEVELS)

@@ -71,6 +71,7 @@ Ui :: struct {
 	glass:     rl.Texture2D, // the picture frosted (upside down), when a glass panel is up
 	has_glass: bool,
 	mouse:     Vec2,
+	mouse_moved: bool, // the mouse moved this frame (it, not the keys, chooses what it is over)
 	pressed:   bool, // left button went down this frame
 	down:      bool,
 	hot:       [MAX_HOT]rl.Rectangle,
@@ -193,7 +194,9 @@ begin_frame :: proc(u: ^Ui, width, height: f32) {
 	u.scale = min(height / 1080, width / 1600)
 	ensure_fonts(u)
 	u.dt = min(rl.GetFrameTime(), 0.1)
-	u.mouse = rl.GetMousePosition()
+	mouse := rl.GetMousePosition()
+	u.mouse_moved = mouse != u.mouse
+	u.mouse = mouse
 	u.pressed = rl.IsMouseButtonPressed(.LEFT)
 	u.down = rl.IsMouseButtonDown(.LEFT)
 	if !u.down {
