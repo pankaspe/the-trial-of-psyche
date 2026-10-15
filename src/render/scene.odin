@@ -547,15 +547,6 @@ scene_view :: proc(s: ^Scene, g: ^game.Game, width, height: f32) -> View {
 	if len(g.data.tiers) > 0 {
 		v.center.y = fx.lerp(s.pan_from, tier_center(s, s.tier), fx.sine_in_out(fx.clamp01(s.pan_t / PAN_TIME)))
 	}
-	if s.stage > 0 {
-		// the level select: the whole diorama (every band of a tall level),
-		// smaller, its middle right of the screen's, where the panel leaves room
-		st := make_view(s.fit, width * STAGE_SIZE.x, height * STAGE_SIZE.y, g.angle, g.data.size, g.data.height, {})
-		center := Vec2{s.fit.x + s.fit.w * 0.5, s.fit.y + s.fit.h * 0.5} - STAGE_SHIFT * Vec2{width, height} / st.zoom
-		k := fx.sine_in_out(s.stage)
-		v.zoom = fx.lerp(v.zoom, st.zoom, k)
-		v.center = fx.lerp(v.center, center, k)
-	}
 	if lift := game.exit_lift(g); lift > 0 {
 		// the camera follows her a little way up as the wind takes her
 		v.center.y -= lift * 64 * 0.55
@@ -570,6 +561,16 @@ scene_view :: proc(s: ^Scene, g: ^game.Game, width, height: f32) -> View {
 		}
 		v.center = fx.lerp(v.center, her, cam.focus) - {0, cam.look_up * CINE_LOOK_UP}
 		v.zoom *= cam.zoom
+	}
+	v.backdrop_center, v.backdrop_zoom = v.center, v.zoom // far away, the backdrop stays
+	if s.stage > 0 {
+		// a side panel (the level select, the settings): the whole diorama (every band of a tall level),
+		// smaller, its middle right of the screen's, where the panel leaves room
+		st := make_view(s.fit, width * STAGE_SIZE.x, height * STAGE_SIZE.y, g.angle, g.data.size, g.data.height, {})
+		center := Vec2{s.fit.x + s.fit.w * 0.5, s.fit.y + s.fit.h * 0.5} - STAGE_SHIFT * Vec2{width, height} / st.zoom
+		k := fx.sine_in_out(s.stage)
+		v.zoom = fx.lerp(v.zoom, st.zoom, k)
+		v.center = fx.lerp(v.center, center, k)
 	}
 	return v
 }
@@ -2322,11 +2323,13 @@ draw_ridges :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	rl.EndShaderMode()
 }
 
-// The far backdrop of a tall level follows the camera's pan only by `k`
-// (0: not at all, 1: as the level): the horizon sinks slowly as she climbs.
+// The far backdrop (not moved aside with the diorama for a side panel); in a
+// tall level it follows the camera's pan only by `k` (0: not at all, 1: as the
+// level): the horizon sinks slowly as she climbs.
 @(private)
 backdrop_view :: proc(s: ^Scene, g: ^game.Game, v: View, k: f32) -> View {
 	out := v
+	out.center, out.zoom = v.backdrop_center, v.backdrop_zoom
 	if len(g.data.tiers) > 0 {
 		base := tier_center(s, 0)
 		out.center.y = base + (v.center.y - base) * k

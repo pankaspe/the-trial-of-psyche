@@ -391,6 +391,9 @@ Key :: enum u16 {
 
 	// settings
 	Set_Title,
+	Set_Hint_Choose,
+	Set_Hint_Change,
+	Set_Hint_Tab,
 	Set_General,
 	Set_Audio,
 	Set_Language,
@@ -936,6 +939,9 @@ IT := [Key]string {
 	.Restart        = "Ricomincia il livello",
 
 	.Set_Title      = "Impostazioni",
+	.Set_Hint_Choose = "scegli",
+	.Set_Hint_Change = "cambia",
+	.Set_Hint_Tab   = "scheda",
 	.Set_General    = "Generale",
 	.Set_Audio      = "Audio",
 	.Set_Language   = "Lingua",
@@ -1318,6 +1324,9 @@ EN := [Key]string {
 	.Restart        = "Restart the level",
 
 	.Set_Title      = "Settings",
+	.Set_Hint_Choose = "choose",
+	.Set_Hint_Change = "change",
+	.Set_Hint_Tab   = "tab",
 	.Set_General    = "General",
 	.Set_Audio      = "Audio",
 	.Set_Language   = "Language",

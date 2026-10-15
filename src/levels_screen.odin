@@ -14,14 +14,12 @@ import "ui"
 
 LEVEL_SPIN :: 0.035 // quarter turns a second: the diorama behind the level select
 LEVEL_SWAP :: 0.2 // the world darkening out, then in, when the chosen level changes
-STAGE_TIME :: 0.7 // the diorama moving to its place on the right
 THUMB_SIZE :: [2]i32{512, 288}
 
 Levels_Screen :: struct {
 	sel:      ui.Level_Select,
 	from:     int, // the level behind the title when the screen opened: back to it on leaving
 	swap_t:   f32, // < 0, or time since the world began to darken for another level
-	stage:    f32, // 0 .. 1: the diorama on its way to the right
 	thumbs:   [content.LEVEL_COUNT]rl.RenderTexture2D, // a picture per built level (made on demand)
 	pictures: [content.LEVEL_COUNT]rl.Texture2D, // their textures, for the ui (id 0: none yet)
 	tried:    [content.LEVEL_COUNT]bool,
@@ -35,30 +33,29 @@ enter_levels :: proc(app: ^App) {
 	l.sel.level = progress.current_level(app.prog)
 	l.from = app.game.level_index
 	l.swap_t = -1
-	l.stage = 0
 }
 
 // Leave the level select: to play (the level chosen is loaded anew), or back
 // to the title, over the level that was behind it.
 leave_levels :: proc(app: ^App, to_title: bool) {
 	l := &app.levels
-	l.stage = 0
 	l.swap_t = -1
-	app.scene.stage = 0
+	if !to_title {
+		app.stage = 0 // the level chosen is framed for play at once
+	}
 	if to_title {
 		app.screen = .Title
 		new_level(app, l.from)
 	}
 }
 
-// Each frame: the diorama to its place and turning; the chosen level loaded
+// Each frame: the diorama turning; the chosen level loaded
 // behind while the world is dark.
 update_levels :: proc(app: ^App, dt: f32) {
 	l := &app.levels
 	if app.screen != .Levels {
 		return
 	}
-	l.stage = min(l.stage + dt / STAGE_TIME, 1)
 	g := &app.game
 	if !app.cfg.reduce_motion {
 		g.angle += dt * LEVEL_SPIN
@@ -81,7 +78,6 @@ update_levels :: proc(app: ^App, dt: f32) {
 			l.swap_t = -1
 		}
 	}
-	app.scene.stage = l.stage
 }
 
 // How dark the world is drawn under the level select.

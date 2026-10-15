@@ -28,6 +28,8 @@ View :: struct {
 	center:        Vec2, // proto pixel shown at the centre of the screen
 	shake:         Vec2, // screen pixels
 	angle:         f32, // view angle in quarter turns
+	backdrop_center: Vec2, // the framing the far backdrop keeps (`center` and `zoom`
+	backdrop_zoom:   f32, // before the diorama moves aside for a side panel)
 	size:          i32, // grid size
 	depth_mid:     f32,
 	depth_range:   f32,
@@ -35,12 +37,15 @@ View :: struct {
 
 // Frame the diorama: it must fit the screen from all four views.
 make_view :: proc(fit: Rect, width, height, angle: f32, size, height_cells: i32, shake: Vec2) -> View {
-	z := min(width / (fit.w + 260), height / (fit.h + 300))
+	zoom := clamp(min(width / (fit.w + 260), height / (fit.h + 300)), 0.35, 4.0)
+	center := Vec2{fit.x + fit.w * 0.5, fit.y + fit.h * 0.5 + 40}
 	return {
 		width = width,
 		height = height,
-		zoom = clamp(z, 0.35, 4.0),
-		center = {fit.x + fit.w * 0.5, fit.y + fit.h * 0.5 + 40},
+		zoom = zoom,
+		center = center,
+		backdrop_center = center,
+		backdrop_zoom = zoom,
 		shake = shake,
 		angle = angle,
 		size = size,

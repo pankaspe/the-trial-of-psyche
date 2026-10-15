@@ -2,8 +2,8 @@
 //
 // The look is "lamplight", squared: titles in Mystery Quest with a warm halo,
 // text in Cormorant Garamond, warm gold and ivory; cards and key caps are
-// square, framed by four small gold corners (`corner_frame`); the settings
-// sheet is dark glass over the game (`glass_panel`).
+// square, framed by four small gold corners (`corner_frame`); the level
+// select and the settings are a panel on the lamp's side (`side_panel`).
 //
 // Layout is designed for a 1920 x 1080 screen and scaled by `scale`.
 // Widgets record their rectangles every frame; the game asks `over_ui` (with
@@ -37,7 +37,6 @@ TITLE :: rl.Color{251, 235, 200, 255}
 FAINT :: rl.Color{196, 178, 150, 200}
 SHADOW :: rl.Color{8, 3, 0, 204}
 HALO :: rl.Color{240, 160, 70, 255} // the warm glow around titles
-NIGHT :: rl.Color{16, 12, 34, 255} // the tint of the glass sheet
 
 // The faces of the UI. Atlases are rebuilt for the UI scale (sizes at 1080p):
 // text stays crisp from 720p to 4K. Titles are drawn from a large atlas with
@@ -68,8 +67,6 @@ Ui :: struct {
 	height:    f32,
 	settings_tab: Settings_Tab, // the page of the settings panel on screen
 	toast_visible: bool, // an achievement notice is in the top left corner
-	glass:     rl.Texture2D, // the picture frosted (upside down), when a glass panel is up
-	has_glass: bool,
 	mouse:     Vec2,
 	mouse_moved: bool, // the mouse moved this frame (it, not the keys, chooses what it is over)
 	pressed:   bool, // left button went down this frame
@@ -661,26 +658,6 @@ warm_card :: proc(u: ^Ui, r: rl.Rectangle, alpha: f32, edge: f32 = 0.3, k: f32 =
 	rl.DrawRectangleRec(r, fade({13, 11, 20, 255}, 0.82 * alpha))
 	rl.DrawRectangleLinesEx(r, max(s, 1), fade(GOLD, edge * 0.5 * alpha))
 	corner_frame(u, r, alpha, s)
-}
-
-// Dark glass: the picture under `r` frosted, darkened and tinted night blue,
-// with a hairline on its right edge and a soft shadow beyond it.
-glass_panel :: proc(u: ^Ui, r: rl.Rectangle) {
-	s := u.scale
-	if u.has_glass {
-		tw, th := f32(u.glass.width), f32(u.glass.height)
-		kx, ky := tw / u.width, th / u.height
-		src := rl.Rectangle{r.x * kx, (u.height - r.y - r.height) * ky, r.width * kx, -r.height * ky}
-		rl.DrawTexturePro(u.glass, src, r, {}, 0, rl.WHITE)
-		rl.DrawRectangleRec(r, fade(NIGHT, 0.52))
-	} else {
-		rl.DrawRectangleRec(r, fade(NIGHT, 0.9))
-	}
-	// the light catching the glass at the top, the edge, the shadow it casts
-	rl.DrawRectangleGradientV(i32(r.x), i32(r.y), i32(r.width), i32(220 * s), {255, 255, 255, 10}, {255, 255, 255, 0})
-	right := r.x + r.width
-	rl.DrawRectangleRec({right - max(s, 1), r.y, max(s, 1), r.height}, {255, 255, 255, 34})
-	rl.DrawRectangleGradientH(i32(right), i32(r.y), i32(70 * s), i32(r.height), {0, 0, 0, 90}, {0, 0, 0, 0})
 }
 
 // A hairline across a panel.

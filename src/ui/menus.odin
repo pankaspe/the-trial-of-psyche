@@ -44,19 +44,134 @@ shade :: proc(u: ^Ui, alpha: f32) {
 // The lamp's side of the screen: the left half warmed and darkened, for the
 // title and the pause menu.
 @(private)
-lamp_side :: proc(u: ^Ui, alpha: f32) {
-	rl.DrawRectangleGradientH(0, 0, i32(u.width * 0.55), i32(u.height), fade({26, 12, 10, 255}, 0.74 * alpha), {26, 12, 10, 0})
+lamp_side :: proc(u: ^Ui, alpha: f32, reach: f32 = 0.55) {
+	rl.DrawRectangleGradientH(0, 0, i32(u.width * reach), i32(u.height), fade({26, 12, 10, 255}, min(0.74 * alpha, 1)), {26, 12, 10, 0})
+}
+
+// --- the side panel (the level select, the settings) ------------------------------------
+//
+// The world clear on the right (the diorama moved there, `Scene.stage`); on
+// the left the lamp's side, darker, and on it: tabs along the top, an eyebrow
+// in capitals and a title, the panel's content, and at the foot how to move
+// about it, "Back" in the right corner.
+
+PANEL_X :: 120 // the panel's left edge (1080p units)
+PANEL_W :: 680
+TABS_Y :: 64
+HEAD_Y :: 168
+FOOT_Y :: 66 // from the bottom
+
+side_panel :: proc(u: ^Ui) {
+	lamp_side(u, 1.26, 0.6)
+}
+
+// The tabs along the top: the one on is lit and underlined; returns the one
+// clicked (-1: none) and where the row ends.
+tab_row :: proc(u: ^Ui, labels: []string, on: int) -> (clicked: int, end: f32) {
+	clicked = -1
+	s := u.scale
+	x := PANEL_X * s
+	y := TABS_Y * s
+	for label, i in labels {
+		st := Style{size = 24, color = i == on ? BRIGHT : fade(DIM, 0.7), face = .Semi, track = 0.18, shadow = true}
+		m := measure(u, label, st)
+		r := rl.Rectangle{x - 12 * s, y - 8 * s, m.x + 24 * s, m.y + 16 * s}
+		add_hot(u, r)
+		if mouse_over(u, r) {
+			st.color = BRIGHT
+			if u.pressed && i != on {
+				audio.play(.Tap, -14)
+				clicked = i
+			}
+		}
+		text(u, label, {x, y}, st, .Left)
+		if i == on {
+			rl.DrawRectangleRec({x, y + m.y + 4 * s, m.x, max(1.5 * s, 1)}, BRIGHT)
+		}
+		x += m.x + 40 * s
+	}
+	return clicked, x
+}
+
+// The eyebrow and the title at the head of the panel; returns the y below them.
+panel_head :: proc(u: ^Ui, eyebrow, title: string) -> f32 {
+	s := u.scale
+	x := PANEL_X * s
+	y := HEAD_Y * s
+	text(u, eyebrow, {x, y}, {size = 20, color = GOLD, face = .Semi, track = 0.22, shadow = true}, .Left)
+	y += 42 * s
+	st := Style{size = 64, color = TITLE, face = .Display, glow = true, shadow = true}
+	if w := measure(u, title, st).x; w > PANEL_W * s {
+		st.size *= PANEL_W * s / w
+	}
+	text(u, title, {x, y}, st, .Left)
+	return y + (st.size + 22) * s
+}
+
+// What a hint's keys are: the keyboard's caps, or the pad's buttons.
+Hint_Keys :: enum u8 {
+	Left_Right,
+	Up_Down,
+	Enter,
+	Shoulders,
+	South,
+}
+
+Hint :: struct {
+	keys:  Hint_Keys,
+	label: i18n.Key,
+}
+
+// How to move about a screen, in a row at `pos` (its left end, or its middle).
+hint_row :: proc(u: ^Ui, pos: Vec2, hints: []Hint, centred := false) {
+	s := u.scale
+	st := Style{size = 22, color = DIM, face = .Semi, track = 0.1, shadow = true}
+	keys_width :: proc(u: ^Ui, k: Hint_Keys) -> f32 {
+		s := u.scale
+		switch k {
+		case .Left_Right, .Up_Down: return 66 * s
+		case .Enter: return key_cap_width(u, "Enter", s)
+		case .Shoulders: return pad_button_width(u, .LB) + 6 * s + pad_button_width(u, .RB)
+		case .South: return pad_button_width(u, .South)
+		}
+		return 0
+	}
+	x := pos.x
+	if centred {
+		total: f32 = 0
+		for h in hints {
+			total += keys_width(u, h.keys) + 12 * s + measure(u, i18n.tr(h.label), st).x + 44 * s
+		}
+		x -= (total - 44 * s) * 0.5
+	}
+	for h in hints {
+		switch h.keys {
+		case .Left_Right, .Up_Down:
+			d := h.keys == .Left_Right ? 0 : 2
+			arrow_cap(u, {x, pos.y}, 30 * s, d)
+			arrow_cap(u, {x + 36 * s, pos.y}, 30 * s, d + 1)
+		case .Enter:
+			key_cap(u, "Enter", {x, pos.y}, 0.9)
+		case .Shoulders:
+			pad_button(u, .RB, {x + pad_button_width(u, .LB) + 6 * s, pos.y}, 0.9)
+			pad_button(u, .LB, {x, pos.y}, 0.9)
+		case .South:
+			pad_button(u, .South, {x, pos.y}, 0.9)
+		}
+		x += keys_width(u, h.keys) + 12 * s
+		text(u, i18n.tr(h.label), {x, pos.y + 2 * s}, st, .Left)
+		x += measure(u, i18n.tr(h.label), st).x + 44 * s
+	}
+}
+
+// "[Esc] Back" in the panel's bottom right corner.
+panel_back :: proc(u: ^Ui, focus := true) -> bool {
+	return back_key(u, {u.width - PANEL_X * u.scale, u.height - FOOT_Y * u.scale}, .Right, focus)
 }
 
 // The acts' tabs (the level select, the Book).
 @(private)
-ACT_NUMERAL := [content.Act]string {
-	.I        = "I",
-	.II       = "II",
-	.III      = "III",
-	.IV       = "IV",
-	.Epilogue = "E",
-}
+ACT_NUMERAL := [len(content.Act)]string{"I", "II", "III", "IV", "E"} // by content.Act
 
 // "I.4", or "Epilogue" for the last level.
 level_label :: proc(index: int) -> string {
@@ -258,7 +373,7 @@ level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs:
 	s := u.scale
 	rl.DrawRectangleRec({0, 0, u.width, u.height}, fade({3, 2, 6, 255}, veil))
 	// the panel's side and the row's foot darkened, the diorama left clear
-	rl.DrawRectangleGradientH(0, 0, i32(u.width * 0.6), i32(u.height), fade({9, 7, 14, 255}, 0.93), {9, 7, 14, 0})
+	side_panel(u)
 	rl.DrawRectangleGradientV(0, i32(u.height - 380 * s), i32(u.width), i32(380 * s), {5, 4, 9, 0}, fade({5, 4, 9, 255}, 0.9))
 
 	act := content.LEVELS[ls.level].act
@@ -296,29 +411,13 @@ level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs:
 	}
 
 	// the acts, as tabs, and the fragments found
-	x0 := 120 * s
-	tab_y := 64 * s
-	x := x0
-	for a in content.Act {
-		label := ACT_NUMERAL[a]
-		st := Style{size = 24, color = a == act ? BRIGHT : fade(DIM, 0.7), face = .Semi, track = 0.18, shadow = true}
-		m := measure(u, label, st)
-		r := rl.Rectangle{x - 12 * s, tab_y - 8 * s, m.x + 24 * s, m.y + 16 * s}
-		add_hot(u, r)
-		if mouse_over(u, r) {
-			st.color = BRIGHT
-			if u.pressed && a != act {
-				choose_act(ls, a)
-			}
-		}
-		text(u, label, {x, tab_y}, st, .Left)
-		if a == act {
-			rl.DrawRectangleRec({x, tab_y + m.y + 4 * s, m.x, max(1.5 * s, 1)}, BRIGHT)
-		}
-		x += m.x + 40 * s
+	x0 := PANEL_X * s
+	clicked, tabs_end := tab_row(u, ACT_NUMERAL[:], int(act))
+	if clicked >= 0 {
+		choose_act(ls, content.Act(clicked))
 	}
 	count := fmt.tprintf("·   %s  %d / %d", caps(i18n.tr(.Fragments_Label)), progress.fragment_count(prog), content.FRAGMENT_COUNT)
-	text(u, count, {x, tab_y + 3 * s}, {size = 18, color = fade(DIM, 0.8), face = .Semi, track = 0.16, shadow = true}, .Left)
+	text(u, count, {tabs_end, TABS_Y * s + 3 * s}, {size = 18, color = fade(DIM, 0.8), face = .Semi, track = 0.16, shadow = true}, .Left)
 
 	// the panel: the chosen level
 	info := content.LEVELS[ls.level]
@@ -326,17 +425,8 @@ level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs:
 	open := progress.is_unlocked(prog, ls.level)
 	done := ls.level in prog.completed
 	loaded := built && shown.level_index == ls.level
-	y := 168 * s
-	w := 680 * s
-	text(u, fmt.tprintf("%s  ·  %s", caps(i18n.tr(content.ACT_LABEL[act])), level_label(ls.level)), {x0, y}, {size = 20, color = GOLD, face = .Semi, track = 0.22, shadow = true}, .Left)
-	y += 42 * s
-	title := i18n.tr(info.title)
-	tst := Style{size = 64, color = TITLE, face = .Display, glow = true, shadow = true}
-	if tw := measure(u, title, tst).x; tw > w {
-		tst.size *= w / tw
-	}
-	text(u, title, {x0, y}, tst, .Left)
-	y += (tst.size + 22) * s
+	w := PANEL_W * s
+	y := panel_head(u, fmt.tprintf("%s  ·  %s", caps(i18n.tr(content.ACT_LABEL[act])), level_label(ls.level)), i18n.tr(info.title))
 	y += paragraph(u, i18n.tr(info.place), {x0, y}, {size = 30, color = DIM, face = .Italic, shadow = true}, w, 1, 1.2, .Left)
 	y += 14 * s
 	text(u, fmt.tprintf("MET.  %s", info.cite), {x0, y}, {size = 19, color = GOLD, face = .Semi, track = 0.2, shadow = true}, .Left)
@@ -459,31 +549,13 @@ level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs:
 	}
 
 	// how to move about it
-	hint_y := u.height - 66 * s
-	hst := Style{size = 22, color = DIM, face = .Semi, track = 0.1, shadow = true}
-	hx := x0
+	foot := Vec2{x0, u.height - FOOT_Y * s}
 	if u.pad {
-		hx += pad_button(u, .LB, {hx, hint_y}, 0.9) + 6 * s
-		hx += pad_button(u, .RB, {hx, hint_y}, 0.9) + 12 * s
-		text(u, i18n.tr(.Levels_Act), {hx, hint_y + 2 * s}, hst, .Left)
-		hx += measure(u, i18n.tr(.Levels_Act), hst).x + 44 * s
-		hx += pad_button(u, .South, {hx, hint_y}, 0.9) + 12 * s
-		text(u, i18n.tr(.Levels_Play), {hx, hint_y + 2 * s}, hst, .Left)
+		hint_row(u, foot, {{.Shoulders, .Levels_Act}, {.South, .Levels_Play}})
 	} else {
-		cap := 30 * s
-		for d in 0 ..< 4 {
-			arrow_cap(u, {hx, hint_y}, cap, d)
-			hx += cap + 6 * s
-			if d == 1 || d == 3 {
-				label := i18n.tr(d == 1 ? .Levels_Level : .Levels_Act)
-				text(u, label, {hx + 6 * s, hint_y + 2 * s}, hst, .Left)
-				hx += measure(u, label, hst).x + 50 * s
-			}
-		}
-		hx += key_cap(u, "Enter", {hx, hint_y}, 0.9) + 12 * s
-		text(u, i18n.tr(.Levels_Play), {hx, hint_y + 2 * s}, hst, .Left)
+		hint_row(u, foot, {{.Left_Right, .Levels_Level}, {.Up_Down, .Levels_Act}, {.Enter, .Levels_Play}})
 	}
-	back = button(u, i18n.tr(.Back), {u.width - 160 * s, hint_y - 4 * s}, 30, focus = false)
+	back = panel_back(u, focus = false)
 	return
 }
 
@@ -621,7 +693,7 @@ book :: proc(u: ^Ui, prog: progress.Progress, b: ^Book_State) -> (back: bool) {
 			diamond(u, c, 10 * s, ink, true)
 		} else {
 			st := Style{size = 24, color = ink, face = .Semi}
-			label := ACT_NUMERAL[content.Act(i)]
+			label := ACT_NUMERAL[i]
 			text(u, label, {c.x, c.y - measure(u, label, st).y * 0.5}, st)
 		}
 		if hover && u.pressed {
@@ -757,39 +829,15 @@ book :: proc(u: ^Ui, prog: progress.Progress, b: ^Book_State) -> (back: bool) {
 	}
 
 	// how to move about it
-	hint_y := book_r.y + book_r.height + 26 * s
-	st := Style{size = 22, color = DIM, face = .Semi, track = 0.1}
+	foot := Vec2{cx, book_r.y + book_r.height + 26 * s}
 	if u.pad {
-		x := cx - 260 * s
-		x += pad_button(u, .LB, {x, hint_y}, 0.9) + 6 * s
-		x += pad_button(u, .RB, {x, hint_y}, 0.9) + 12 * s
-		text(u, i18n.tr(.Book_Turn), {x, hint_y + 2 * s}, st, .Left)
+		hint_row(u, foot, {{.Shoulders, .Book_Turn}}, centred = true)
+	} else if b.tab < BOOK_ACHIEVEMENTS {
+		hint_row(u, foot, {{.Left_Right, .Book_Turn}, {.Up_Down, .Book_Choose}}, centred = true)
 	} else {
-		// key caps with drawn arrows (the fonts have none)
-		turn_w := measure(u, i18n.tr(.Book_Turn), st).x
-		choose_w := measure(u, i18n.tr(.Book_Choose), st).x
-		cap := 30 * s
-		reading := b.tab < BOOK_ACHIEVEMENTS
-		total := reading ? 4 * cap + 3 * 6 * s + 2 * 12 * s + turn_w + choose_w + 50 * s : 2 * cap + 12 * s + turn_w
-		x := cx - total * 0.5
-		for d in ([4]int{0, 1, 2, 3}) {
-			if d == 2 && !reading {
-				break
-			}
-			arrow_cap(u, {x, hint_y}, cap, d)
-			x += cap + 6 * s
-			if d == 1 {
-				x += 6 * s
-				text(u, i18n.tr(.Book_Turn), {x, hint_y + 2 * s}, st, .Left)
-				x += turn_w + 50 * s
-			}
-		}
-		if reading {
-			x += 6 * s
-			text(u, i18n.tr(.Book_Choose), {x, hint_y + 2 * s}, st, .Left)
-		}
+		hint_row(u, foot, {{.Left_Right, .Book_Turn}}, centred = true)
 	}
-	back = button(u, i18n.tr(.Back), {cx, cy + 470 * s}, 30)
+	back = panel_back(u, focus = false)
 	return
 }
 
@@ -892,60 +940,33 @@ QUALITY_DESC := [settings.Quality]i18n.Key {
 settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, native: [2]i32) -> (changes: Setting_Changes, back: bool) {
 	s := u.scale
 	tab := &u.settings_tab
-	// a sheet of dark glass on the left; the game stays in view on the right
-	// (clear on the Graphics tab, so the visual style can be judged)
-	sheet := 705 * s
-	rl.DrawRectangleRec({sheet, 0, u.width - sheet, u.height}, fade({3, 3, 10, 255}, tab^ == .Graphics ? 0 : 0.3))
-	glass_panel(u, {0, 0, sheet, u.height})
-	left := 84 * s
-	right := sheet - 72 * s
-	text(u, i18n.tr(.Set_Title), {left, 76 * s}, {size = 80, color = TITLE, face = .Display, shadow = true}, .Left)
+	// the lamp's side, the game clear on the right (the diorama moved there)
+	side_panel(u)
+	left := PANEL_X * s
+	right := left + PANEL_W * s
 
-	// the tabs
-	ty := 196 * s
-	x := left
+	// the tabs; the pad's shoulders go through them
+	labels: [len(Settings_Tab)]string
 	for t in Settings_Tab {
-		label := i18n.tr(TAB_KEY[t])
-		st := Style{size = 30, color = t == tab^ ? BRIGHT : fade(TEXT, 0.6)}
-		m := measure(u, label, st)
-		r := rl.Rectangle{x - 12 * s, ty - 6 * s, m.x + 24 * s, m.y + 12 * s}
-		add_hot(u, r)
-		hover := mouse_over(u, r)
-		if hover && t != tab^ {
-			st.color = TEXT
-		}
-		text(u, label, {x, ty}, st, .Left)
-		if t == tab^ {
-			rl.DrawRectangleRec({x, ty + 50 * s, m.x, max(3 * s, 1)}, BRIGHT)
-		}
-		if hover && u.pressed && t != tab^ {
-			audio.play(.Tap, -14)
-			tab^ = t
-			reset_focus(u)
-		}
-		x += m.x + 42 * s
+		labels[int(t)] = caps(i18n.tr(TAB_KEY[t]))
 	}
-	// the pad's shoulders go through the tabs
-	if u.pad {
-		pad_button(u, .RB, {x - 20 * s, ty + 4 * s}, 0.9)
-		pad_button(u, .LB, {left - pad_button_width(u, .LB) - 22 * s, ty + 4 * s}, 0.9)
+	turn := 0
+	if clicked, _ := tab_row(u, labels[:], int(tab^)); clicked >= 0 {
+		turn = clicked - int(tab^)
+	}
+	if input.take(.LB) {
+		turn = -1
+	}
+	if input.take(.RB) {
+		turn = 1
+	}
+	if turn != 0 {
 		n := len(Settings_Tab)
-		step := 0
-		if input.take(.LB) {
-			step = -1
-		}
-		if input.take(.RB) {
-			step = 1
-		}
-		if step != 0 {
-			audio.play(.Tap, -14)
-			tab^ = Settings_Tab((int(tab^) + step + n) % n)
-			reset_focus(u)
-		}
+		audio.play(.Tap, -14)
+		tab^ = Settings_Tab((int(tab^) + turn + n) % n)
+		reset_focus(u)
 	}
-	hairline(u, left, ty + 52 * s, right - left, {255, 255, 255, 30})
-
-	y := ty + 92 * s
+	y := panel_head(u, caps(i18n.tr(.Set_Title)), i18n.tr(TAB_KEY[tab^])) + 10 * s
 	row := 72 * s
 	// a hairline under each row
 	line :: proc(u: ^Ui, left, right, y: f32) {
@@ -1107,20 +1128,30 @@ settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, na
 			changes += {.Access}
 		}
 	}
-	back = back_key(u, {left, u.height - 100 * s})
+	foot := Vec2{left, u.height - FOOT_Y * s}
+	if u.pad {
+		hint_row(u, foot, {{.Shoulders, .Set_Hint_Tab}})
+	} else {
+		hint_row(u, foot, {{.Up_Down, .Set_Hint_Choose}, {.Left_Right, .Set_Hint_Change}})
+	}
+	back = panel_back(u)
 	return
 }
 
 // "[Esc] Back" at the foot of a panel; true when clicked.
 @(private)
-back_key :: proc(u: ^Ui, pos: Vec2) -> bool {
+back_key :: proc(u: ^Ui, at: Vec2, align := Align.Left, focus := true) -> bool {
 	s := u.scale
 	label := i18n.tr(.Back)
-	st := Style{size = 30, color = TEXT}
+	st := Style{size = 30, color = TEXT, shadow = true}
 	m := measure(u, label, st)
+	pos := at
+	if align == .Right {
+		pos.x -= (u.pad ? pad_button_width(u, .East) : key_cap_width(u, "Esc", s)) + 14 * s + m.x
+	}
 	r := rl.Rectangle{pos.x - 8 * s, pos.y - 8 * s, m.x + 90 * s, 46 * s}
 	add_hot(u, r)
-	hover := focusable(u, r)
+	hover := focus ? focusable(u, r) : mouse_over(u, r)
 	cw := control(u, "Esc", .East, pos)
 	if hover {
 		st.color = BRIGHT

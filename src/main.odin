@@ -96,7 +96,10 @@ App :: struct {
 	dead_ends:       Dead_Ends,
 	focus_screen:    Screen, // the screen the UI's focus belongs to
 	levels:          Levels_Screen,
+	stage:           f32, // 0 .. 1: the diorama moved to the right for a side panel (the level select, the settings)
 }
+
+STAGE_TIME :: 0.7 // the diorama moving aside for a side panel, and back
 
 REST_TAP :: 0.25 // a press of R shorter than this is a tap: back to the brazier
 REST_TWICE :: 1.5 // R pressed twice within this restarts the level (accessibility)
@@ -168,7 +171,6 @@ startup :: proc(app: ^App) -> bool {
 	audio.init()
 	audio.set_volumes(app.cfg.master, app.cfg.music, app.cfg.sfx)
 	render.init(&app.renderer)
-	render.post_init(&app.post)
 	if app.shots.has_quality {
 		app.cfg.quality = app.shots.quality
 	}
@@ -594,6 +596,9 @@ frame :: proc(app: ^App) {
 	update_toasts(app, dt)
 	update_black(app, dt)
 	update_levels(app, dt)
+	side := app.screen == .Levels || app.screen == .Settings
+	app.stage = clamp(app.stage + (side ? dt : -dt) / STAGE_TIME, 0, 1)
+	app.scene.stage = app.stage
 	update_sound(app)
 	shot := ""
 	if app.shooting {
@@ -607,17 +612,7 @@ frame :: proc(app: ^App) {
 	// the graphics quality draws the world through a canvas (smaller, or twice
 	// the size), or straight to the screen (High, with the window's MSAA)
 	k := render.canvas_scale(app.cfg.quality, w, h)
-	// the settings sheet is glass: the world frosted under it comes from the
-	// canvas (drawn there apart at High, so the picture beside the sheet keeps
-	// its MSAA while the quality is judged)
 	draw_level_picture(app)
-	app.ui.has_glass = app.screen == .Settings
-	if app.ui.has_glass && k == 0 {
-		render.post_begin(&app.post, w, h)
-		draw_world(app, w, h)
-		render.post_end(&app.post)
-		app.ui.glass = render.post_glass(&app.post)
-	}
 	if k > 0 {
 		render.post_begin(&app.post, w * k, h * k)
 	} else if app.has_target {
@@ -626,9 +621,6 @@ frame :: proc(app: ^App) {
 	draw_world(app, k > 0 ? w * k : w, k > 0 ? h * k : h)
 	if k > 0 {
 		render.post_end(&app.post)
-		if app.ui.has_glass {
-			app.ui.glass = render.post_glass(&app.post)
-		}
 		if app.has_target {
 			rl.BeginTextureMode(app.target)
 		}
