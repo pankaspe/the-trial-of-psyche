@@ -13,10 +13,6 @@ from Apuleius' tale of Cupid and Psyche.*
 
 <img src="docs/screenshots/title.jpg" alt="The title screen: the temple of Ceres and Juno at dusk over a sea of clouds" width="100%">
 
-<br><br>
-
-<a href="https://github.com/pankaspe/the-trial-of-psyche/releases"><img src="https://img.shields.io/github/v/release/pankaspe/the-trial-of-psyche?include_prereleases&style=for-the-badge&label=download%20for%20linux&labelColor=e8792b&color=e8792b&logo=linux&logoColor=white" alt="Download for Linux" height="44"></a>
-
 </div>
 
 <br>
@@ -38,8 +34,7 @@ every sound, footsteps included. There is not a single image or audio file in th
 game.
 
 Four acts and an epilogue, in Italian and English, with hidden fragments of the
-tale to gather in the Book. **Now playable:** Acts I, II and III; Act IV, the
-descent to the underworld, is on its way.
+tale to gather in the Book. It will be released once the whole tale is told.
 
 <table>
 <tr>
@@ -47,8 +42,8 @@ descent to the underworld, is on its way.
 <td width="50%"><img src="docs/screenshots/venus.jpg" alt="The house of Venus at evening over a sea of clouds"><br><sub><i>III · The House of Venus</i></sub></td>
 </tr>
 <tr>
-<td><img src="docs/screenshots/tower.jpg" alt="A tower of stairs and candles against the red sky of the underworld"><br><sub><i>IV · The Speaking Tower</i> (in development)</sub></td>
-<td><img src="docs/screenshots/upside_down.jpg" alt="The world turning over, between the red sky and the violet of Dis"><br><sub><i>IV · The Underside of the World</i> (in development)</sub></td>
+<td><img src="docs/screenshots/tower.jpg" alt="A tower of stairs and candles against the red sky of the underworld"><br><sub><i>IV · The Speaking Tower</i></sub></td>
+<td><img src="docs/screenshots/upside_down.jpg" alt="The world turning over, between the red sky and the violet of Dis"><br><sub><i>IV · The Underside of the World</i></sub></td>
 </tr>
 <tr>
 <td><img src="docs/screenshots/levels.jpg" alt="The level select: the chosen place sleeping behind its panel"><br><sub>Choosing a level</sub></td>
@@ -56,11 +51,7 @@ descent to the underworld, is on its way.
 </tr>
 </table>
 
-## Play
-
-Download the Linux build (x86_64) from the
-[Releases](https://github.com/pankaspe/the-trial-of-psyche/releases) page, unpack it
-and run `./trial-of-psyche`.
+## Controls
 
 | | Keyboard and mouse | Gamepad |
 |---|---|---|
