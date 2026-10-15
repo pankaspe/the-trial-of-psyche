@@ -16,7 +16,7 @@ XF=0.6          # dissolve between segments (s)
 END=6           # the end card (s)
 TITLE=${TITLE:-The Trial of Psyche}
 SUBTITLE=${SUBTITLE:-a puzzle tale from Apuleius}
-END_LINES=${END_LINES:-Free and open source  ·  Linux|github.com/pankaspe/the-trial-of-psyche}
+END_LINES=${END_LINES-}   # lines under the end card's title, "|" between them
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 cd "$D"
 
@@ -47,9 +47,10 @@ done < "$LIST"
 
 # the end card: the title on the dark, the lines below it
 ec="color=c=0x07060c:s=1920x1080:r=$FPS:d=$END,format=yuv420p"
-ec+=",drawtext=fontfile=$F/MysteryQuest-Regular.ttf:textfile=$(text te "$TITLE"):fontsize=130:fontcolor=0xFBEBC8:x=(w-tw)/2:y=h*0.33:$(alpha 0.3 $((END + 1)))"
+lines=(); [[ -n $END_LINES ]] && IFS='|' read -ra lines <<< "$END_LINES"
+ty="h*0.33"; ((${#lines[@]})) || ty="(h-th)/2"   # the title alone: centred
+ec+=",drawtext=fontfile=$F/MysteryQuest-Regular.ttf:textfile=$(text te "$TITLE"):fontsize=130:fontcolor=0xFBEBC8:x=(w-tw)/2:y=$ty:$(alpha 0.3 $((END + 1)))"
 y=0
-IFS='|' read -ra lines <<< "$END_LINES"
 for k in "${!lines[@]}"; do
 	ec+=",drawtext=$CAP:fontsize=52:textfile=$(text e$k "${lines[$k]}"):x=(w-tw)/2:y=h*0.33+190+$y:$(alpha "$(echo "0.9 + 0.4 * $k" | bc -l)" $((END + 1)))"
 	y=$((y + 72))
