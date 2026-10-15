@@ -38,7 +38,23 @@ every sound, footsteps included. There is not a single image or audio file in th
 game.
 
 Four acts and an epilogue, in Italian and English, with hidden fragments of the
-tale to gather in the Book. **Now playable:** Acts I, II and III.
+tale to gather in the Book. **Now playable:** Acts I, II and III; Act IV, the
+descent to the underworld, is on its way.
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/lamp.jpg" alt="Night over the palace: the lamp lit, a bridge raised by a seal"><br><sub><i>I · The Lamp and the Razor</i></sub></td>
+<td width="50%"><img src="docs/screenshots/venus.jpg" alt="The house of Venus at evening over a sea of clouds"><br><sub><i>III · The House of Venus</i></sub></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/tower.jpg" alt="A tower of stairs and candles against the red sky of the underworld"><br><sub><i>IV · The Speaking Tower</i> (in development)</sub></td>
+<td><img src="docs/screenshots/upside_down.jpg" alt="The world turning over, between the red sky and the violet of Dis"><br><sub><i>IV · The Underside of the World</i> (in development)</sub></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/levels.jpg" alt="The level select: the chosen place sleeping behind its panel"><br><sub>Choosing a level</sub></td>
+<td><img src="docs/screenshots/book.jpg" alt="The Book, where the fragments of the tale are gathered"><br><sub>The Book of fragments</sub></td>
+</tr>
+</table>
 
 ## Play
 
