@@ -23,6 +23,7 @@
 # Format: see level_04.txt.
 size 11
 setting crag_day
+floor basin rock 0 0 10 10
 tier 1 7
 tier 11 13
 tier 19 26

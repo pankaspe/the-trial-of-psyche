@@ -178,6 +178,8 @@ LOOKS := [level.Setting]Look {
 		cloud_front = {0.90, 0.92, 0.96},
 		cloud_crest = {0.20, 0.18, 0.12},
 		mist = {0.68, 0.75, 0.84},
+		water = {0.20, 0.42, 0.60, 0.88}, // the sea at the foot of the crag
+		glint = {1.0, 0.98, 0.88, 0.6},
 		daylight = 1,
 		mote = {1.0, 1.0, 0.95, 0.3},
 	},
