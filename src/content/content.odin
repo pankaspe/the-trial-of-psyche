@@ -72,7 +72,7 @@ LEVELS := [?]Level_Info {
 	{"IV.3", .IV, .Level_IV_3, .Where_IV_3, "VI.18–20", #load("../../assets/levels/level_16.txt", string)},
 	{"IV.4", .IV, .Level_IV_4, .Where_IV_4, "VI.19–20", #load("../../assets/levels/level_17.txt", string)},
 	{"IV.5", .IV, .Level_IV_5, .Where_IV_5, "VI.20", #load("../../assets/levels/level_18.txt", string)},
-	{"IV.6", .IV, .Level_IV_6, .Where_IV_6, "VI.21", ""},
+	{"IV.6", .IV, .Level_IV_6, .Where_IV_6, "VI.20–21", #load("../../assets/levels/level_19.txt", string)},
 	{"E", .Epilogue, .Level_Epilogue, .Where_Epilogue, "VI.22–24", ""},
 }
 
@@ -123,7 +123,10 @@ FRAGMENTS := [?]Fragment_Info {
 	{"IV.4", 16, .Fragment_18, "VI.19"},
 	{"IV.4b", 16, .Fragment_18b, "VI.20"},
 	{"IV.5", 17, .Fragment_19, "VI.21"},
-	{"IV.6", 18, .Fragment_19b, "VI.21"},
+	{"IV.6", 18, .Fragment_19c, "VI.20"},
+	{"IV.6b", 18, .Fragment_19d, "VI.21"},
+	{"IV.6c", 18, .Fragment_19e, "VI.20"},
+	{"IV.6d", 18, .Fragment_19b, "VI.21"},
 	{"E", 19, .Fragment_20, "VI.24–25"},
 }
 
@@ -131,7 +134,7 @@ FRAGMENT_COUNT :: len(FRAGMENTS)
 
 // The Book shows the fragments in the order of Apuleius' text, not of the
 // levels: fragment indices, in reading order.
-BOOK_ORDER := [FRAGMENT_COUNT]int{0, 1, 4, 7, 2, 3, 6, 5, 9, 8, 10, 12, 11, 13, 14, 15, 17, 16, 18, 20, 21, 19, 22, 24, 23, 25, 30, 29, 31, 27, 32, 26, 28, 33, 35, 34, 36}
+BOOK_ORDER := [FRAGMENT_COUNT]int{0, 1, 4, 7, 2, 3, 6, 5, 9, 8, 10, 12, 11, 13, 14, 15, 17, 16, 18, 20, 21, 19, 22, 24, 23, 25, 30, 29, 31, 27, 32, 26, 28, 33, 35, 37, 36, 38, 34, 39}
 
 // The fragments of a level: FRAGMENTS[first:][:count].
 level_fragments :: proc(level: int) -> (first, count: int) {

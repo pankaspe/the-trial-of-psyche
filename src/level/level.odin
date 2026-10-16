@@ -326,6 +326,7 @@ Level_Data :: struct {
 	has_below:    bool,
 	boat:         Boat, // Charon's boat at the exit (`has_boat`): Space boards it
 	has_boat:     bool,
+	has_box:      bool, // the act's last level (`box`): at the exit she opens Proserpina's box and the sleep takes her
 	evening:      Setting, // a level with sundials: the look at evening
 	sundials:     [dynamic]Cell, // Act III: standing on one, the spindle turns the time (day <-> evening); the level starts by day
 	rams:         [dynamic]Ram, // the Sun's rams: standing by day, lying (a step) at evening
@@ -342,6 +343,7 @@ Level_Data :: struct {
 	exit_under:   bool,
 	upside:       Setting, // the look with the world turned over (`has_upside`)
 	has_upside:   bool,
+	duality:      bool, // the axle's floor shows bare rock to the world above, marble to the world under (`duality`)
 }
 
 MAX_PARTS :: 8
@@ -942,6 +944,12 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			case "tower": data.prologue, data.has_prologue, data.scene = v, true, .Tower
 			}
 			max_z = max(max_z, v.z)
+
+		case "duality":
+			data.duality = true
+
+		case "box":
+			data.has_box = true
 
 		case "lamp":
 			data.has_lamp = true

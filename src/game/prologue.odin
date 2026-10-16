@@ -360,6 +360,14 @@ Cine :: struct {
 
 cine :: proc(g: ^Game) -> (c: Cine) {
 	c.zoom = 1
+	if t, ok := box_time(g); ok {
+		// Proserpina's box opened: close on her, the bars come in
+		closer := fx.sine_in_out(fx.progress(t, 0, 1.8))
+		c.bars = closer
+		c.zoom = 1 + 1.4 * closer
+		c.focus = closer
+		return
+	}
 	if g.phase != .Prologue {
 		if g.cine_out >= 0 {
 			c.bars = 1 - fx.sine_in_out(fx.clamp01(g.cine_out / CINE_BARS_OUT))

@@ -435,6 +435,16 @@ plan_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool)
 		return "p000_start", false
 	}
 	if s.step == 3 {
+		if g.boxed && s.shot >= 0 && g.phase_t > game.BOX_OPEN + game.BOX_OPEN_TIME {
+			// the box opened, the sleep pouring out
+			s.shot = -4
+			return "p996_box", false
+		}
+		if g.boxed && s.shot == -4 && g.phase_t > game.BOX_FALL + game.BOX_FALL_TIME + 0.3 {
+			// the sleep has laid her down
+			s.shot = -5
+			return "p997_sleep", false
+		}
 		if g.ferried && s.shot >= 0 && game.lightning_flash(g) > 0.6 {
 			// the lightning as he takes the coin
 			s.shot = -3

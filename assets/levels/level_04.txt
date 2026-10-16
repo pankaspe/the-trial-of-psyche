@@ -130,6 +130,12 @@
 #                           poles her across to the other, where it stays (world
 #                           above only)
 #   mechanic ferry          (the card that presents the ferry)
+#   duality                 the floor of the axle (z = axle) is bare rock seen from the
+#                           world above, marble seen from the world under (a level with
+#                           pomegranates: the two worlds look like themselves)
+#   box                     the exit is the end of the way back: there she opens
+#                           Proserpina's box and the Stygian sleep takes her (a short
+#                           scene instead of Zephyr's wind)
 #   pomegranate x y h       Proserpina's pomegranate on a stone of the axle (the
 #                           size is odd; every pomegranate at y = size/2, all at
 #                           the same h; the axle is that row at z = h - 1):

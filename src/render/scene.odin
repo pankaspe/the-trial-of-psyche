@@ -240,6 +240,7 @@ Scene :: struct {
 	dust:       fx.Pool(192), // falling from the cracks (world)
 	debris:     fx.Pool(160), // gold gathering where a veiled stone becomes real (world)
 	wind:       fx.Pool(96), // Zephyr's breath over the exit (world)
+	mist:       fx.Pool(128), // the Stygian sleep out of Proserpina's box (world, dark)
 	rng:        fx.Rng,
 	mote:       Color4, // the colour of the drifting motes (from the setting)
 	moon_cover: f32, // how much the night clouds hide the moon now (0..1)
@@ -551,7 +552,7 @@ scene_view :: proc(s: ^Scene, g: ^game.Game, width, height: f32) -> View {
 		// the camera follows her a little way up as the wind takes her
 		v.center.y -= lift * 64 * 0.55
 	}
-	if g.phase == .Prologue {
+	if g.phase == .Prologue || g.boxed {
 		cam := game.cine(g)
 		her := world_to_proto(v, g.psyche.pos + {0, 0, 0.3})
 		if cam.venus > 0 {
@@ -629,11 +630,11 @@ scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
 	// Zephyr's breath: motes spiralling up from the exit, a gust when it takes Psyche
 	alone_wind := game.procession(g) && g.phase_t > game.prologue_alone(g) - 0.5
 	if (g.data.has_exit && g.phase != .Finished && exit_alpha(g) > 0) || alone_wind {
-		gust := g.phase == .Ending_Exit || alone_wind
+		gust := g.phase == .Ending_Exit && !g.boxed || alone_wind
 		want := gust ? 60 : 40
 		if s.wind.count < want && fx.randf(&s.rng) < dt * f32(want) / 3 * 2 {
 			c := g.data.has_exit ? shown(g, exit_point(g), g.data.exit_under) : g.psyche.pos
-			if gust && (g.phase == .Ending_Exit || fx.randf(&s.rng) < 0.7) {
+			if gust && (g.phase == .Ending_Exit && !g.boxed || fx.randf(&s.rng) < 0.7) {
 				c = g.psyche.pos
 			}
 			a := fx.rand_range(&s.rng, 0, math.TAU)
@@ -739,6 +740,21 @@ scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
 	fx.update(&s.sparks, dt)
 	fx.update(&s.dust, dt)
 	fx.update(&s.wind, dt)
+	// the Stygian sleep: a black cloud pouring out of the box, spreading over her
+	if k := game.sleep_mist(g); k > 0 && fx.randf(&s.rng) < dt * 110 * k {
+		box, _, _ := game.box_pose(g)
+		a := fx.rand_range(&s.rng, 0, math.TAU)
+		v := fx.rand_range(&s.rng, 0.08, 0.3)
+		fx.emit(&s.mist, {
+			pos   = box + {0, 0, 0.06},
+			vel   = {math.cos(a) * v, math.sin(a) * v, fx.rand_range(&s.rng, 0.15, 0.4)},
+			accel = {-math.cos(a) * v * 0.2, -math.sin(a) * v * 0.2, -0.12},
+			life  = 3.2,
+			size  = 32 * fx.rand_range(&s.rng, 0.6, 1.1),
+			color = {0.02, 0.01, 0.04, 0.8},
+		})
+	}
+	fx.update(&s.mist, dt)
 }
 
 // The exit's floor, in the frame of its world.
@@ -754,6 +770,9 @@ exit_point :: proc(g: ^game.Game) -> Vec3 {
 exit_alpha :: proc(g: ^game.Game) -> f32 {
 	if g.data.has_boat {
 		return 0
+	}
+	if g.boxed {
+		return 1 - fx.progress(g.phase_t, 0, 1) // the light goes out as she opens the box
 	}
 	if g.phase != .Prologue {
 		return 1
@@ -812,6 +831,7 @@ draw_world :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 	draw_pieces(r, s, g, true)
 	draw_decals(g)
 	draw_glows(r, s, g, v)
+	draw_mist(r, s, v)
 	end_3d()
 
 	draw_clouds(r, s, g, v, time, true)
@@ -1235,9 +1255,15 @@ draw_pieces :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, transparent: bool) {
 			covered := pl.solid_at(&g.palace, piece_cell(g, p) + {0, 0, up}).kind != .None
 			material = covered ? .Masonry : .Marble
 			detail = covered ? 2 : 1
-			if p.ground {
-				material, detail = covered || !p.lawn ? .Rock : .Lawn, 0
-			} else if p.lawn {
+			ground, lawn := p.ground, p.lawn
+			if g.data.duality && level.world_cell(&g.data, p.cell, p.under).z == g.data.axle {
+				// the floor of both worlds: rock to the dead, marble to her kingdom
+				ground = g.overturn <= 0.5
+				lawn &&= ground
+			}
+			if ground {
+				material, detail = covered || !lawn ? .Rock : .Lawn, 0
+			} else if lawn {
 				material, detail = .Lawn, 0
 			}
 		}
@@ -1277,15 +1303,26 @@ psyche_dark :: proc(g: ^game.Game) -> f32 {
 draw_figures :: proc(r: ^Renderer, g: ^game.Game) {
 	psy := g.psyche
 	bob: f32 = psy.walking ? math.abs(math.sin(psy.walk_anim * 11)) * 0.02 : 0
-	base := psy.pos + {0, 0, bob}
-	rot := rl.MatrixRotateZ(psy.yaw)
+	// the Stygian sleep lays her down on the path, forward over the box
+	fall := game.sleep_fall(g)
+	base := psy.pos + {0, 0, bob + 0.1 * fall}
+	rot := rl.MatrixRotateZ(psy.yaw) * rl.MatrixRotateY(1.42 * fall)
+	body := rl.MatrixTranslate(base.x, base.y, base.z) * rot
 	set_piece_uniforms(r, .Psyche, 0, 0, game.psyche_alpha(g), 0.9, 0.04 + 0.07 * psyche_dark(g))
-	rl.DrawMesh(r.meshes[.Robe], r.material, rl.MatrixTranslate(base.x, base.y, base.z) * rot)
-	rl.DrawMesh(r.meshes[.Head], r.material, rl.MatrixTranslate(base.x, base.y, base.z + 0.548) * rl.MatrixScale(0.046, 0.046, 0.05))
-	if g.data.has_lamp && g.phase != .Prologue {
+	rl.DrawMesh(r.meshes[.Robe], r.material, body)
+	rl.DrawMesh(r.meshes[.Head], r.material, body * rl.MatrixTranslate(0, 0, 0.548) * rl.MatrixScale(0.046, 0.046, 0.05))
+	if g.data.has_lamp && g.phase != .Prologue && fall < 0.3 {
 		lamp := game.lamp_world(g)
-		set_piece_uniforms(r, .Bronze, 0, 0, game.psyche_alpha(g), 0.9, 0)
+		set_piece_uniforms(r, .Bronze, 0, 0, game.psyche_alpha(g) * (1 - fall / 0.3), 0.9, 0)
 		rl.DrawMesh(r.meshes[.Lamp], r.material, rl.MatrixTranslate(lamp.x, lamp.y, lamp.z - 0.05))
+	}
+	// Proserpina's box in her hands, its lid lifting
+	if box, lid, alpha := game.box_pose(g); alpha > 0.003 {
+		turn := rl.MatrixTranslate(box.x, box.y, box.z) * rl.MatrixRotateZ(psy.yaw)
+		set_piece_uniforms(r, .Bronze, 0, 0, alpha, 0.9, 0.05)
+		rl.DrawMesh(r.meshes[.Block], r.material, turn * rl.MatrixScale(0.13, 0.1, 0.08) * rl.MatrixTranslate(-0.5, -0.5, 0))
+		// the lid hinged on the far side, swinging up toward her
+		rl.DrawMesh(r.meshes[.Block], r.material, turn * rl.MatrixTranslate(0.065, 0, 0.08) * rl.MatrixRotateY(-1.9 * lid) * rl.MatrixScale(0.14, 0.11, 0.018) * rl.MatrixTranslate(-1, -0.5, 0))
 	}
 
 	draw_fragments(r, g)
@@ -1875,6 +1912,30 @@ glow :: proc(v: View, at: Vec3, radius: f32, c: Color4, stretch_y: f32 = 1, towa
 	vtx(center + rx + uy)
 }
 
+// The Stygian sleep: dark puffs over everything (alpha, not light).
+@(private)
+draw_mist :: proc(r: ^Renderer, s: ^Scene, v: View) {
+	if s.mist.count == 0 {
+		return
+	}
+	rlgl.DrawRenderBatchActive()
+	rlgl.DisableDepthMask()
+	// darken the colour, keep the canvas opaque (its alpha untouched)
+	rlgl.SetBlendFactorsSeparate(rlgl.SRC_ALPHA, rlgl.ONE_MINUS_SRC_ALPHA, rlgl.ZERO, rlgl.ONE, rlgl.FUNC_ADD, rlgl.FUNC_ADD)
+	rl.BeginBlendMode(.CUSTOM_SEPARATE)
+	rlgl.SetTexture(r.radial.id)
+	rlgl.Begin(rlgl.QUADS)
+	for p in fx.alive(&s.mist) {
+		col := p.color
+		col.a *= fx.mote_alpha(p)
+		glow(v, p.pos, p.size * (0.6 + 0.6 * p.age / p.life), col)
+	}
+	rlgl.End()
+	rlgl.SetTexture(0)
+	rl.EndBlendMode()
+	rlgl.EnableDepthMask()
+}
+
 // Additive light: lamp, aura, seal, Cupid, drops, wings and particles.
 @(private)
 draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
@@ -2185,7 +2246,7 @@ draw_wings :: proc(g: ^game.Game, v: View) {
 		// the wing plane folds back from the side toward the back
 		fold := (1 - open) * 1.2
 		u := side * sgn * math.cos(fold) - fwd * math.sin(fold)
-		pa := game.psyche_alpha(g)
+		pa := game.psyche_alpha(g) * (1 - game.sleep_fall(g)) // gone as the sleep lays her down
 		ellipse_3d(root + u * 0.12 + up * 0.06, u, up, 0.13, 0.085, sgn * 0.6, {0.62, 0.74, 1.0, 0.32 * pa})
 		ellipse_3d(root + u * 0.09 - up * 0.08, u, up, 0.085, 0.055, -sgn * 0.5, {0.86, 0.7, 1.0, 0.26 * pa})
 	}

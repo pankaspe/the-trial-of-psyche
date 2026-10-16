@@ -1,0 +1,346 @@
+# The Trial of Psyche - level IV.6: "The Open Box" (format: level_04.txt)
+#
+# The act's last level: the way up out of the underworld, everything of Act IV
+# at many heights, so that the dark joins stones across the water. One floor
+# (z 4) for both worlds, as in IV.3-IV.5: the land of the dead stands on it,
+# Proserpina's kingdom hangs from it, the river lies between its stones.
+# Islands: the south bank (the start), three on the axle (a pomegranate each),
+# islets in the north-west, north-east and south-east.
+#   - Charon's first ferry from the bank to the middle island; over at its
+#     pomegranate: her tower (top h7). In the dark, seen from one side (turn)
+#     its top joins her stairs' foot; seen from another, it joins the west
+#     island: down onto it across the water;
+#   - her seal on the west island (its stairs behind a column) raises the steps
+#     of the guard's crag in the north-west; back at the west pomegranate, the
+#     second ferry (it waited there) to the north-west islet;
+#   - the guard candelabrum, lit with the lamp from its crag, shows the stones
+#     of a bridge to the north-east ledge (seal 1, they appear in its light);
+#   - the third ferry waits at the north-east islet: to the east island; over at
+#     its pomegranate, her seal (behind a column) raises two stones of the floor
+#     south, a bridge for both worlds; back, across them to the south-east
+#     islet, where the seal of the dead raises the steps of the way out;
+#   - back to the east island, the third ferry again (it stayed with her), up to
+#     the light at the north-east (the exit): she opens the box, the Stygian
+#     sleep takes her (`box`).
+# Solution (solver: 81 steps, 3 turns, 4 lightings, 4 overturns, 4 crossings,
+# 15 decisions; every pomegranate and ferry needed).
+# Two souls (`duality`): the floor is bare rock to the dead, marble to her
+# kingdom; above, crags topped by boulders, dead pines, stones; under, a temple
+# of slender pillars, arches over the ways, urns and candelabra. Every piece of
+# decoration was kept only if the plan and the fragments' plans stayed the same.
+# Fragments: IV.6 (VI.20, the second cake) on a rock floating off the bank,
+# reached by an illusion after two turns; IV.6b (VI.21, the light and the
+# curiosity) on a rock floating east of the east island, reached by an
+# illusion from her floor stones to the south-east, late; IV.6c (VI.20, the
+# second coin) on her bridge of veiled planks between the middle and the west
+# (the lamp, in her world); IV.6d (VI.21, the sleep) on the lost tile: a stone
+# of her world by the guard's bridge, which in her world lies drowned under the
+# water; once the guard has shown it, she walks its underside, ankle-deep, by
+# a chain of illusions in three views (the hardest of the game).
+size 17
+setting taenarus
+upside dis
+duality
+lamp
+box
+intro intro_iv_6
+outro outro_iv_6
+water 0 0 16 16 5
+block 4 14 4 rock
+block 4 15 4 rock
+block 4 16 4 rock
+block 5 14 4 rock
+block 5 15 4 rock
+block 5 16 4 rock
+block 6 14 4 rock
+block 6 15 4 rock
+block 6 16 4 rock
+block 7 14 4 rock
+block 7 15 4 rock
+block 7 16 4 rock
+block 8 14 4 rock
+block 8 15 4 rock
+block 8 16 4 rock
+block 9 14 4 rock
+block 9 15 4 rock
+block 9 16 4 rock
+block 10 14 4 rock
+block 10 15 4 rock
+block 10 16 4 rock
+block 13 13 4 rock
+block 13 14 4 rock
+block 13 15 4 rock
+block 14 13 4 rock
+block 14 14 4 rock
+block 14 15 4 rock
+block 15 13 4 rock
+block 15 14 4 rock
+block 15 15 4 rock
+block 1 6 4 rock
+block 1 7 4 rock
+block 1 8 4
+block 1 9 4 rock
+block 1 10 4 rock
+block 2 6 4 rock
+block 2 7 4 rock
+block 2 8 4
+block 2 9 4 rock
+block 2 10 4 rock
+block 3 6 4 rock
+block 3 7 4 rock
+block 3 8 4
+block 3 9 4 rock
+block 3 10 4 rock
+block 4 6 4 rock
+block 4 7 4 rock
+block 4 8 4
+block 4 9 4 rock
+block 4 10 4 rock
+block 7 5 4 rock
+block 7 6 4 rock
+block 7 7 4 rock
+block 7 8 4
+block 7 9 4 rock
+block 7 10 4 rock
+block 7 11 4 rock
+block 8 5 4 rock
+block 8 6 4 rock
+block 8 7 4 rock
+block 8 8 4
+block 8 9 4 rock
+block 8 10 4 rock
+block 8 11 4 rock
+block 9 5 4 rock
+block 9 6 4 rock
+block 9 7 4 rock
+block 9 8 4
+block 9 9 4 rock
+block 9 10 4 rock
+block 9 11 4 rock
+block 12 6 4 rock
+block 12 7 4 rock
+block 12 8 4
+block 12 9 4 rock
+block 12 10 4 rock
+block 13 6 4 rock
+block 13 7 4 rock
+block 13 8 4
+block 13 9 4 rock
+block 13 10 4 rock
+block 14 6 4 rock
+block 14 7 4 rock
+block 14 8 4
+block 14 9 4 rock
+block 14 10 4 rock
+block 15 6 4 rock
+block 15 7 4 rock
+block 15 8 4
+block 15 9 4 rock
+block 15 10 4 rock
+block 1 0 4 rock
+block 1 1 4 rock
+block 1 2 4 rock
+block 2 0 4 rock
+block 2 1 4 rock
+block 2 2 4 rock
+block 3 0 4 rock
+block 3 1 4 rock
+block 3 2 4 rock
+block 4 0 4 rock
+block 4 1 4 rock
+block 4 2 4 rock
+block 12 0 4 rock
+block 12 1 4 rock
+block 12 2 4 rock
+block 13 0 4 rock
+block 13 1 4 rock
+block 13 2 4 rock
+block 14 0 4 rock
+block 14 1 4 rock
+block 14 2 4 rock
+block 15 0 4 rock
+block 15 1 4 rock
+block 15 2 4 rock
+pomegranate 2 8 5
+pomegranate 8 8 5
+pomegranate 14 8 5
+start 6 15 5
+rest 7 10 5
+rest 15 9 5
+rest 13 2 5
+prop cairn 4 16 5 mx
+prop shrub 4 10 5 py
+prop cairn 1 6 5 my
+prop shrub 15 15 5 px
+prop cairn 12 6 5 my
+prop shrub 1 0 5 my
+ferry 9 14 5 my  7 11 5 py
+ferry 3 6 5 my  1 2 5 py
+ferry 12 2 5 py  15 6 5 my
+block 3 0 5 rock
+block 3 1 5 rock
+block 4 0 5 rock
+block 4 1 5 rock
+rise 2 1 5 px rock 3
+candelabrum 4 1 6 px guard
+prop lip 3 0 6 mx
+prop lip 3 0 6 my
+prop lip 4 0 6 my
+prop lip 4 0 6 px
+prop lip 4 1 6 py
+prop lip 3 1 6 py
+prop lip 1 2 5 px
+prop lip 1 0 5 px
+rise 5 1 5 rock 1
+rise 6 1 5 rock 1
+rise 7 1 5 rock 1
+rise 8 1 5 rock 1
+rise 9 1 5 rock 1
+rise 10 1 5 rock 1
+rise 11 1 5 rock 1
+block 12 1 5 rock
+block 12 0 5 rock
+block 13 0 5 rock
+steps 13 1 5 mx
+block 14 0 5 rock
+rock 15 0 5 6
+rise 14 0 6 px rock 2
+exit 15 0 7
+rock 15 2 5 6
+prop lip 15 2 7 mx
+prop lip 15 2 7 px
+prop lip 15 2 7 my
+prop lip 15 2 7 py
+block 1 14 6 rock
+fragment 1 14 7
+block 16 8 7 rock
+fragment 16 8 8
+block 14 15 5 rock
+steps 14 14 5 py
+sigil 14 15 6
+prop lip 14 15 6 mx
+prop lip 14 15 6 px
+prop lip 14 15 6 py
+prop lip 5 7 4 mx
+prop lip 5 7 4 px
+prop lip 5 7 4 my
+prop lip 5 7 4 py
+prop lip 6 7 4 mx
+prop lip 6 7 4 px
+prop lip 6 7 4 my
+prop lip 6 7 4 py
+rock 1 10 5 6
+prop boulder 1 10 7
+rock 10 16 5 6
+prop boulder 10 16 7
+rock 10 15 5 5
+prop lip 10 15 6 mx
+prop lip 10 15 6 px
+prop lip 10 15 6 my
+prop lip 10 15 6 py
+rock 5 16 5 5
+prop boulder 5 16 6
+rock 10 14 5 5
+prop boulder 10 14 6
+rock 12 10 5 5
+prop boulder 12 10 6
+rock 15 7 5 5
+prop boulder 15 7 6
+rock 15 13 5 5
+prop boulder 15 13 6
+rock 9 11 5 5
+prop boulder 9 11 6
+prop boulder 5 14 5
+prop boulder 3 9 5
+prop pine 8 16 5 px
+prop pine 12 7 5 my
+prop boulder 2 0 5
+prop pine 3 10 5
+prop boulder 15 1 5
+under
+stairs 6 9 5 mx
+veiled 5 9 5 plank
+stairs 4 9 5 px
+prop rail 5 9 6 py
+prop rail 5 9 6 my
+block 7 11 5
+block 7 11 6
+block 8 11 5
+block 8 11 6
+block 9 11 5
+block 9 11 6
+block 7 10 5
+block 7 10 6
+block 9 10 5
+block 8 10 5
+stairs 9 9 5 py
+stairs 8 10 6 mx
+prop rail 12 9 5 mx
+rise 13 5 4 4
+rise 13 4 4 4
+fragment 5 9 6
+block 11 14 5
+fragment 11 14 6
+block 1 6 5
+stairs 1 7 5 my
+sigil 1 6 6
+column 2 6 5 7
+prop rail 2 6 8 mx
+prop rail 2 6 8 px
+prop rail 2 6 8 py
+prop rail 2 6 8 my
+prop rail 1 6 6 mx
+prop rail 1 6 6 px
+prop rail 1 6 6 my
+block 12 6 5
+stairs 12 7 5 my
+sigil 12 6 6
+column 13 6 5 7
+prop rail 13 6 8 mx
+prop rail 13 6 8 px
+prop rail 13 6 8 py
+prop rail 13 6 8 my
+prop rail 12 6 6 mx
+prop rail 12 6 6 px
+prop rail 12 6 6 my
+candelabrum 9 7 5 py lit
+candelabrum 3 7 5 py lit
+candelabrum 15 7 5 py lit
+candelabrum 7 6 5 mx lit
+prop sconce 2 6 6 mx
+prop sconce 13 6 6 px
+prop sconce 9 11 6 px
+column 15 6 5 7
+prop rail 15 6 8 mx
+prop rail 15 6 8 px
+prop rail 15 6 8 my
+prop rail 15 6 8 py
+prop pillar 1 10 5
+prop pillar 4 10 5
+prop pillar 4 6 5
+prop pillar 15 10 5
+prop pillar 12 10 5
+prop pillar 9 5 5
+prop pillar 4 2 5
+prop pillar 10 2 5
+prop pillar 4 0 5
+prop pillar 10 0 5
+prop pillar 1 16 5
+prop pillar 4 14 5
+prop pillar 13 1 5
+prop pillar 15 3 5
+prop arch 3 8 5 px
+prop arch 13 8 5 px
+prop arch 8 7 5 py
+prop arch 7 2 5 py
+prop arch 14 15 5 py
+prop urn 8 1 5
+prop urn 15 8 5
+prop urn 2 10 5
+prop urn 6 0 5
+candelabrum 13 2 5 px lit
+candelabrum 14 15 5 my lit
+candelabrum 2 15 5 my lit
+candelabrum 5 1 5 py lit
+end
+

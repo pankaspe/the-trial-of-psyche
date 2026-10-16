@@ -220,6 +220,7 @@ Game :: struct {
 	overturn:       f32, // 0 the world as described .. 1 turned over, follows palace.upside (render turns the world by it)
 	descent:        f32, // a level that goes down: 0 at the start's height .. 1 at the exit's (the look at its foot)
 	ferried:        bool, // the exit was by Charon's boat (phase Ending_Exit: its own timeline)
+	boxed:          bool, // the exit opened Proserpina's box (phase Ending_Exit: its own timeline)
 	rest:           Rest, // the last brazier Psyche lit
 	eagle_flying:   int, // the eagle carrying her (while psyche.step_flight)
 	eagle_back:     [level.MAX_EAGLES]f32, // per eagle: time since it let her go, < 0 before
@@ -642,6 +643,9 @@ update :: proc(g: ^Game, dt: f32) {
 	case .Ending_Exit:
 		if g.ferried {
 			update_ferry(g, dt)
+		}
+		if g.boxed {
+			update_box(g, dt)
 		}
 		if g.phase_t >= exit_end(g) {
 			g.ending = .Exit
@@ -1777,10 +1781,11 @@ start_ending :: proc(g: ^Game, p: Phase) {
 		face_point(g, amore_world(g))
 		audio.play(.Good, -2)
 	case .Ending_Exit:
-		if g.ferried {
-			audio.play(.Oar, -10)
-		} else {
-			audio.play(.Wind, -4)
+		g.boxed = g.data.has_box && !g.ferried
+		switch {
+		case g.ferried: audio.play(.Oar, -10)
+		case g.boxed: audio.play(.Wind, -16, 0.5)
+		case: audio.play(.Wind, -4)
 		}
 	case .Play, .Sigil, .Mechanism, .Time, .Overturn, .Prologue, .Arrival, .Finished:
 	}
@@ -1818,9 +1823,13 @@ arrival_rise :: proc(g: ^Game, d: f32, jitter: f32) -> f32 {
 	return fx.cubic_out(fx.progress(g.arrive_t, 0.45 + d * 0.08 + jitter * 0.15, 1.0))
 }
 
-// How long the exit lasts: the wind's, or the crossing in Charon's boat.
+// How long the exit lasts: the wind's, the crossing in Charon's boat, or the box opened.
 exit_end :: proc(g: ^Game) -> f32 {
-	return g.ferried ? BOAT_END : EXIT_END
+	switch {
+	case g.ferried: return BOAT_END
+	case g.boxed: return BOX_END
+	}
+	return EXIT_END
 }
 
 // The veil between the levels over the world: closing as Psyche flies away
@@ -1829,7 +1838,8 @@ exit_end :: proc(g: ^Game) -> f32 {
 veil :: proc(g: ^Game) -> f32 {
 	switch {
 	case g.phase == .Ending_Exit:
-		return fx.sine_in_out(fx.progress(g.phase_t, g.ferried ? BOAT_VEIL : VEIL_IN, VEIL_IN_TIME))
+		start: f32 = g.ferried ? BOAT_VEIL : g.boxed ? BOX_VEIL : VEIL_IN
+		return fx.sine_in_out(fx.progress(g.phase_t, start, g.boxed ? BOX_VEIL_TIME : VEIL_IN_TIME))
 	case g.phase == .Finished && g.ending == .Exit:
 		return 1
 	case g.phase == .Arrival:
@@ -1840,7 +1850,7 @@ veil :: proc(g: ^Game) -> f32 {
 
 // How high the wind has lifted Psyche (cells) at the exit.
 exit_lift :: proc(g: ^Game) -> f32 {
-	if g.ferried || g.phase != .Ending_Exit && !(g.phase == .Finished && g.ending == .Exit) {
+	if g.ferried || g.boxed || g.phase != .Ending_Exit && !(g.phase == .Finished && g.ending == .Exit) {
 		return 0
 	}
 	t := g.phase == .Finished ? EXIT_END : g.phase_t
@@ -2088,6 +2098,73 @@ update_ferry :: proc(g: ^Game, dt: f32) {
 	}
 	if crossed(t, dt, BOAT_PUSH) {
 		audio.play(.Oar, -12, 0.85)
+	}
+}
+
+// --- Proserpina's box ------------------------------------------------------------------
+
+// Timeline of the box opened at the exit of the act's last level (`box`): she
+// takes it out, lifts its lid, the Stygian sleep pours out and wraps her, she
+// sinks down on the path, the dark closes over her.
+BOX_SHOW :: 0.5 // the box in her hands
+BOX_OPEN :: 1.4 // the lid lifts...
+BOX_OPEN_TIME :: 0.9
+BOX_FALL :: 2.9 // she sinks down...
+BOX_FALL_TIME :: 1.6
+BOX_VEIL :: 5.0 // the dark closes...
+BOX_VEIL_TIME :: 2.2
+BOX_END :: 7.6
+
+// Time into the box's scene (ok: it is playing, or over).
+@(private)
+box_time :: proc(g: ^Game) -> (t: f32, ok: bool) {
+	if !g.boxed || !(g.phase == .Ending_Exit || g.phase == .Finished && g.ending == .Exit) {
+		return
+	}
+	return g.phase == .Finished ? BOX_END : g.phase_t, true
+}
+
+// The box in her hands: where it is, how far its lid is open (0..1), how much
+// of it is seen (it slips from her hands as she falls).
+box_pose :: proc(g: ^Game) -> (pos: Vec3, lid, alpha: f32) {
+	t, ok := box_time(g)
+	if !ok {
+		return
+	}
+	fwd := Vec3{math.cos(g.psyche.yaw), math.sin(g.psyche.yaw), 0}
+	slip := fx.progress(t, BOX_FALL + 0.3, 0.9)
+	pos = g.psyche.pos + fwd * (0.17 + 0.1 * slip) + {0, 0, 0.3 * (1 - fx.quad_in(slip)) + 0.05}
+	lid = fx.sine_in_out(fx.progress(t, BOX_OPEN, BOX_OPEN_TIME))
+	alpha = fx.progress(t, 0, BOX_SHOW)
+	return
+}
+
+// How much of the Stygian sleep pours out of the box now (0..1).
+sleep_mist :: proc(g: ^Game) -> f32 {
+	t, ok := box_time(g)
+	if !ok {
+		return 0
+	}
+	return fx.progress(t, BOX_OPEN + 0.3, 0.6) * (1 - fx.progress(t, BOX_FALL + BOX_FALL_TIME, 1.4))
+}
+
+// How far the sleep has laid her down (0 standing .. 1 lying on the path).
+sleep_fall :: proc(g: ^Game) -> f32 {
+	t, ok := box_time(g)
+	if !ok {
+		return 0
+	}
+	return fx.sine_in_out(fx.progress(t, BOX_FALL, BOX_FALL_TIME))
+}
+
+@(private)
+update_box :: proc(g: ^Game, dt: f32) {
+	t := g.phase_t
+	if crossed(t, dt, BOX_OPEN) {
+		audio.play(.Thunder, -16, 0.55) // a dark breath out of the box
+	}
+	if crossed(t, dt, BOX_FALL + BOX_FALL_TIME * 0.8) {
+		audio.play(.Thud, -16, 0.6)
 	}
 }
 
