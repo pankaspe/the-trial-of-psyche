@@ -1690,6 +1690,10 @@ draw_floors :: proc(g: ^game.Game, time: f32) {
 	begin_turn(g, false) // of the world above, in a level with pomegranates
 	for f in g.data.floors {
 		w := f.area
+		surface := surface
+		if f.fluid == .Swamp {
+			surface = fx.lerp(surface, SWAMP, 0.85)
+		}
 		x0, y0 := f32(w[0]), f32(w[1])
 		x1, y1 := f32(w[2] + 1), f32(w[3] + 1)
 		// a river fades into the mist over its last 1.2 cells, a basin holds it to the rim
@@ -1720,8 +1724,14 @@ draw_floors :: proc(g: ^game.Game, time: f32) {
 			}
 		}
 		rlgl.End()
-		// glints of moonlight drifting with the current
+		if f.fluid == .Swamp {
+			draw_swamp(f, z, time)
+		}
+		// glints of moonlight drifting with the current (a swamp has none)
 		for cy in w[1] ..= w[3] {
+			if f.fluid == .Swamp {
+				break
+			}
 			for cx in w[0] ..= w[2] {
 				for k in 0 ..< 3 {
 					h := u32(cx * 73 + cy * 151 + i32(k) * 31)
@@ -1740,13 +1750,48 @@ draw_floors :: proc(g: ^game.Game, time: f32) {
 			if c.z != g.data.floor_h - 1 || e.under || c.x < w[0] || c.x > w[2] || c.y < w[1] || c.y > w[3] || !pl.block_present(&g.palace, i) {
 				continue
 			}
-			t := math.mod(time * 0.35 + fx.hash01(u32(i) * 7), 1)
-			floor_ring({f32(c.x) + 0.5, f32(c.y) + 0.5, z + 0.002}, 0.68 + 0.12 * t, 0.025, {0.7, 0.8, 1.0, 0.3 * (1 - t)})
+			t := math.mod(time * (f.fluid == .Swamp ? 0.12 : 0.35) + fx.hash01(u32(i) * 7), 1)
+			foam := f.fluid == .Swamp ? Color4{0.55, 0.62, 0.35, 0.18} : Color4{0.7, 0.8, 1.0, 0.3}
+			floor_ring({f32(c.x) + 0.5, f32(c.y) + 0.5, z + 0.002}, 0.68 + 0.12 * t, 0.025, {foam.r, foam.g, foam.b, foam.a * (1 - t)})
 		}
 	}
 	end_turn()
 	rlgl.DrawRenderBatchActive()
 	rlgl.EnableDepthMask()
+}
+
+SWAMP :: Color4{0.07, 0.08, 0.05, 0.95} // a swamp's water, mixed into the setting's
+
+// A swamp's still surface: duckweed in a few cells, a bubble coming up now and then.
+@(private)
+draw_swamp :: proc(f: level.Floor, z: f32, time: f32) {
+	WEED :: Color4{0.26, 0.34, 0.14, 0.6}
+	a := f.area
+	for cy in a[1] ..= a[3] {
+		for cx in a[0] ..= a[2] {
+			h := u32(cx * 97 + cy * 211)
+			if fx.hash01(h) < 0.18 {
+				for k in 0 ..< 3 {
+					hk := h + u32(k) * 13
+					p := Vec3{f32(cx) + 0.15 + 0.7 * fx.hash01(hk + 1), f32(cy) + 0.15 + 0.7 * fx.hash01(hk + 2), z + 0.003}
+					r := 0.04 + 0.05 * fx.hash01(hk + 3)
+					floor_ellipse(p, r, r * 0.8, WEED)
+				}
+			}
+			if fx.hash01(h + 5) < 0.25 {
+				// a bubble: it rises (a dot), breaks, and its ring spreads
+				period := 5 + 6 * fx.hash01(h + 6)
+				t := math.mod(time / period + fx.hash01(h + 7), 1)
+				p := Vec3{f32(cx) + 0.2 + 0.6 * fx.hash01(h + 8), f32(cy) + 0.2 + 0.6 * fx.hash01(h + 9), z + 0.004}
+				if t < 0.08 {
+					floor_ellipse(p, 0.035, 0.035, {0.6, 0.66, 0.42, 0.5})
+				} else if t < 0.4 {
+					u := (t - 0.08) / 0.32
+					floor_ring(p, 0.04 + 0.22 * u, 0.012, {0.6, 0.68, 0.42, 0.35 * (1 - u)})
+				}
+			}
+		}
+	}
 }
 
 // Oil stains, Psyche's shadow and the cracks of the illusions.

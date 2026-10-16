@@ -259,10 +259,22 @@ RIM_NAME := [Rim]string {
 	.Earth  = "earth",
 }
 
+// What fills a floor: its colour comes from the setting (night, day, the dead).
+Fluid :: enum u8 {
+	Water,
+	Swamp, // still, green-brown, duckweed and slow bubbles
+}
+
+FLUID_NAME := [Fluid]string {
+	.Water = "water",
+	.Swamp = "swamp",
+}
+
 Floor :: struct {
-	kind: Floor_Kind,
-	rim:  Rim, // a basin's
-	area: [4]i32,
+	kind:  Floor_Kind,
+	rim:   Rim, // a basin's
+	fluid: Fluid,
+	area:  [4]i32,
 }
 
 // Jupiter's eagle (Act III) waits on a perch on the surface `from`
@@ -755,16 +767,27 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 					f.kind, found = kind, true
 				}
 			}
-			at := 1 // where the area begins: after a basin's rim, if given
-			if found && f.kind == .Basin && len(args) > 1 {
+			at := 1 // where the area begins: after a basin's rim and the fluid, if given
+			if found && f.kind == .Basin && at < len(args) {
 				for name, rim in RIM_NAME {
-					if name == args[1] {
-						f.rim, at = rim, 2
+					if name == args[at] {
+						f.rim = rim
+						at += 1
+						break
+					}
+				}
+			}
+			if found && at < len(args) {
+				for name, fluid in FLUID_NAME {
+					if name == args[at] {
+						f.fluid = fluid
+						at += 1
+						break
 					}
 				}
 			}
 			if !found || !ints(args[at:], f.area[:]) || f.area[2] < f.area[0] || f.area[3] < f.area[1] {
-				return data, fail(line_no, "floor: expected water x0 y0 x1 y1 [h] or basin [marble|rock|earth] x0 y0 x1 y1 [h], with x0 <= x1, y0 <= y1")
+				return data, fail(line_no, "floor: expected water [swamp] x0 y0 x1 y1 [h] or basin [marble|rock|earth] [water|swamp] x0 y0 x1 y1 [h], with x0 <= x1, y0 <= y1")
 			}
 			if len(args) > at + 4 {
 				h: [1]i32
