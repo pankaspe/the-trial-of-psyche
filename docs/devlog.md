@@ -142,3 +142,29 @@ The same day the look became **one side panel** shared by the levels, the settin
 Book: the lamp's side darkened, tabs in capitals along the top, the controls at the foot,
 "[Esc] Back" in the corner. The frosted glass of the old settings, with its blur shader, was
 removed.
+
+## A basin for every diorama
+
+Later on October 16, before the playtest, a pass of coherence across all the levels: the first
+acts floated over the void while the later ones stood in water. Now every place stands on
+something of its own.
+
+![IV.5 The Way Back by night: fires on the islands, Charon's boats waiting](devlog/act4_iv5.jpg)
+
+*IV.5 — The Way Back, by night: the land of the dead under a cold moon, fires on the islands.*
+
+- **The basin**: a low wall on a plinth around the diorama, water inside. Its rim is marble for
+  the palaces and temples, living rock for the crags and the Styx, earth for the woods and the
+  pasture; the whole diorama stays inside it (the level loader refuses anything on the rim).
+- **The fluid**: water coloured by the setting (blue at night, rose at sunset, black on the
+  Styx), or a swamp, still and dark, with algae and slow bubbles (II.1).
+- **The underworld**: where the world turns over the basin has no bottom, so Proserpina's
+  kingdom still hangs beneath it; the rim opens where Charon's boat leaves. IV.2 and IV.3 keep
+  their void: there it *is* the hanging world.
+- **Two souls**: IV.4 and IV.5 took IV.6's crags above and temple below, every piece kept only
+  if the solver's plans stayed the same; IV.5 went to night, with fires that light the stones
+  and crackle as she passes, and Charon's boats are now pale wood against the dark.
+
+![IV.6 turned over: Proserpina's temple of marble inside the rim](devlog/act4_iv6_under.jpg)
+
+*IV.6 turned over: Proserpina's temple, pillars and candelabra under a violet sky.*

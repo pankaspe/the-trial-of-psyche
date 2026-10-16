@@ -11,7 +11,7 @@ from Apuleius' tale of Cupid and Psyche.*
 
 <br><br>
 
-<img src="docs/screenshots/title.jpg" alt="The title screen: the temple of Ceres and Juno at dusk over a sea of clouds" width="100%">
+<img src="docs/screenshots/title.jpg" alt="The title screen: the temple of Ceres and Juno at dusk, standing in a marble basin over a sea of clouds" width="100%">
 
 <br><br>
 
@@ -31,7 +31,12 @@ to win him back.
 Turn the diorama and two stones that only *seem* to touch become a bridge. Light
 the lamp and the truth shows — until the oil runs out. Later the spindle turns
 parts of the palace, and even the time of day, and Jupiter's eagle carries her
-where no road goes.
+where no road goes. In the underworld it turns the whole world over, onto
+Proserpina's kingdom hanging beneath it, and Charon ferries her across the dark
+water.
+
+Every place is a small world of its own, standing in its basin over the clouds:
+marble for the palaces, living rock for the crags, earth for the woods.
 
 Everything you see and hear is made by code: the pieces, the sky, the music and
 every sound, footsteps included. There is not a single image or audio file in the
@@ -42,12 +47,16 @@ tale to gather in the Book. It will be released once the whole tale is told.
 
 <table>
 <tr>
-<td width="50%"><img src="docs/devlog/act1_i2.jpg" alt="A small palace of white stone at dusk over a sea of pink clouds"><br><sub><i>I · The Invisible Palace</i></sub></td>
-<td width="50%"><img src="docs/devlog/act2_ii1.jpg" alt="A forest of rock pillars and pines at night"><br><sub><i>II · Cupid's Flight</i></sub></td>
+<td width="50%"><img src="docs/devlog/act1_i2.jpg" alt="A small palace of white stone in a marble basin at dusk, over a sea of pink clouds"><br><sub><i>I · The Invisible Palace</i></sub></td>
+<td width="50%"><img src="docs/devlog/act2_ii1.jpg" alt="A forest of rock pillars and pines at night, Cupid flying away"><br><sub><i>II · Cupid's Flight</i></sub></td>
 </tr>
 <tr>
-<td><img src="docs/devlog/act3_iii4.jpg" alt="Stairs of living rock on the top of a crag by day"><br><sub><i>III · The Water of the Styx</i></sub></td>
+<td><img src="docs/devlog/act3_iii4.jpg" alt="Stairs of living rock over the black water of the Styx, by day"><br><sub><i>III · The Water of the Styx</i></sub></td>
 <td><img src="docs/devlog/act4_iv6.jpg" alt="Islands of dark rock under the red sky of the underworld"><br><sub><i>IV · The Open Box</i></sub></td>
+</tr>
+<tr>
+<td><img src="docs/devlog/act4_iv5.jpg" alt="Islands of rock by night in the land of the dead, fires burning, Charon's boats waiting"><br><sub><i>IV · The Way Back, by night</i></sub></td>
+<td><img src="docs/devlog/act4_iv6_under.jpg" alt="The world turned over: Proserpina's temple of white marble, pillars and candelabra under a violet sky"><br><sub><i>IV · Proserpina's kingdom, the world turned over</i></sub></td>
 </tr>
 <tr>
 <td colspan="2"><img src="docs/devlog/levels.jpg" alt="The level select: the chosen place sleeping behind its panel"><br><sub>Choosing a level</sub></td>
