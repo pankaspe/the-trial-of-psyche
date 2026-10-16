@@ -15,6 +15,7 @@
 # Format: see level_04.txt.
 size 13
 setting night_candles
+floor basin 1 0 11 12
 
 # the lawn (h1), where she starts
 column 4 10 0 0
