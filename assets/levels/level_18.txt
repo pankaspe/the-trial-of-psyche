@@ -26,10 +26,11 @@
 intro intro_iv_5
 outro outro_iv_5
 size 15
-setting taenarus
+setting taenarus_night
 upside dis
 lamp
-floor water 0 0 14 14 5
+floor basin rock 0 -1 14 15 5
+duality
 block 1 5 4 rock
 block 1 6 4 rock
 block 1 7 4
@@ -141,6 +142,25 @@ prop lip 10 6 4 mx
 prop lip 10 6 4 px
 prop lip 10 6 4 my
 prop lip 10 6 4 py
+# the land of the dead: crags, boulders, pines
+rock 1 6 5 5
+prop boulder 1 6 6
+rock 6 0 5 5
+prop boulder 6 0 6
+rock 8 5 5 5
+prop boulder 8 5 6
+rock 13 5 5 5
+prop boulder 13 5 6
+rock 5 12 5 5
+prop boulder 5 12 6
+prop boulder 1 9 5
+prop boulder 6 9 5
+prop boulder 5 13 5
+prop pine 3 5 5 mx
+prop pine 11 9 5 py
+prop pine 7 14 5 py
+prop shrub 2 6 5 px
+prop shrub 8 2 5 py
 under
 block 11 9 4
 block 11 8 4
@@ -196,5 +216,24 @@ candelabrum 1 9 5 py lit
 candelabrum 7 5 5 mx lit
 prop sconce 7 9 6 px
 prop sconce 3 9 6 mx
+# her temple: pillars, arches, urns
+prop pillar 5 14 5
+prop pillar 9 14 5
+prop pillar 5 12 5
+prop pillar 9 12 5
+prop pillar 5 2 5
+prop pillar 5 0 5
+prop pillar 8 2 5
+prop pillar 1 8 5
+prop pillar 6 5 5
+prop pillar 8 5 5
+prop pillar 13 8 5
+prop pillar 11 5 5
+prop urn 3 5 5
+prop urn 13 6 5
+candelabrum 6 0 5 px lit
+prop arch 2 7 5 px
+prop arch 7 8 5 px
+prop arch 12 7 5 px
 end
 

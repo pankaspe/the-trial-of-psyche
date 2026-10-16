@@ -31,6 +31,7 @@ upside dis
 lamp
 mechanic ferry
 floor basin rock 0 0 12 12 5
+duality
 block 1 4 4 rock
 block 1 5 4 rock
 block 1 6 4
@@ -120,6 +121,23 @@ fragment 11 3 6
 prop lip 11 3 6 mx
 prop lip 11 3 6 px
 prop lip 11 3 6 my
+# the land of the dead: crags, boulders, pines
+rock 1 4 5 5
+prop boulder 1 4 6
+rock 3 6 5 5
+prop boulder 3 6 6
+rock 7 4 5 5
+prop boulder 7 4 6
+rock 11 7 5 5
+prop boulder 11 7 6
+rock 9 9 5 5
+prop boulder 9 9 6
+prop boulder 5 3 5
+prop boulder 5 6 5
+prop pine 3 8 5 px
+prop pine 9 4 5 my
+prop shrub 1 6 5 mx
+prop shrub 5 9 5 px
 under
 block 9 8 4
 block 9 7 4
@@ -173,4 +191,20 @@ candelabrum 9 6 5 my lit
 candelabrum 11 6 5 px lit
 candelabrum 5 6 5 mx lit
 candelabrum 2 8 5 py lit
+# her temple: pillars, arches, urns
+prop pillar 1 8 5
+prop pillar 1 6 5
+prop pillar 2 3 5
+prop pillar 3 9 5
+prop pillar 5 5 5
+prop pillar 7 5 5
+prop pillar 5 3 5
+prop pillar 7 3 5
+prop pillar 11 9 5
+prop urn 3 6 5
+prop urn 6 8 5
+candelabrum 11 7 5 px lit
+prop arch 6 6 5 px
+prop arch 1 5 5 px
+prop arch 10 6 5 px
 end

@@ -275,6 +275,7 @@ SETTING_BED := [level.Setting]audio.Bed {
 	.Styx_Evening  = .Styx,
 	.Tower_Dusk    = .Mountain,
 	.Taenarus      = .Styx,
+	.Taenarus_Night = .Styx,
 	.Dis           = .Deep_Night,
 }
 

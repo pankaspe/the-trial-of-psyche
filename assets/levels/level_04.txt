@@ -36,6 +36,7 @@
 #                           styx_day, styx_evening (the summit of the Styx's crag by day, at evening)
 #                           tower_dusk (the top of a high tower at dusk, a red glow below) |
 #                           taenarus (the mouth of the underworld: a red sky, ash, dark water) |
+#                           taenarus_night (the same by night: embers on the horizon, a cold moon) |
 #                           dis (Proserpina's kingdom: a still violet dark, a pale sun of the dead)
 #   tier h0 h1              a level too tall for the screen: the camera frames one
 #                           band of heights at a time (Psyche's), panning to the next

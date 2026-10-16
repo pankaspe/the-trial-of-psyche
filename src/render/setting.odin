@@ -457,6 +457,36 @@ LOOKS := [level.Setting]Look {
 		candles = true,
 		mote = {1.0, 0.45, 0.25, 0.45},
 	},
+	// the land of the dead by night: the ash has swallowed the sun, a cold pale
+	// moon, a few stars, embers glowing low on the horizon behind black crags;
+	// the candles lit
+	.Taenarus_Night = {
+		sky_top = {0.012, 0.008, 0.02},
+		sky_mid = {0.06, 0.025, 0.04},
+		sky_horizon = {0.34, 0.09, 0.06},
+		orb_pos = {0.72, 0.22},
+		orb_radius = 0.018,
+		orb_color = {0.80, 0.76, 0.72},
+		halo_color = {0.12, 0.06, 0.06},
+		halo_width = 5,
+		stars = 0.35,
+		haze = {0.16, 0.05, 0.05},
+		islands = false,
+		ridges = 1,
+		ridge_color = {{0.14, 0.05, 0.06}, {0.08, 0.03, 0.04}, {0.035, 0.012, 0.02}},
+		ridge_rim = {0.70, 0.22, 0.10},
+		cloud_back = {0.14, 0.05, 0.05},
+		cloud_front = {0.20, 0.07, 0.06},
+		cloud_crest = {0.40, 0.12, 0.05},
+		mist = {0.10, 0.03, 0.04},
+		water = {0.03, 0.01, 0.02, 0.94},
+		glint = {0.90, 0.72, 0.62, 0.4},
+		daylight = 0.32,
+		gloom = 0.3,
+		rock = {0.56, 0.46, 0.48},
+		candles = true,
+		mote = {1.0, 0.45, 0.25, 0.4},
+	},
 	// Proserpina's kingdom, under the land of the dead (the world turned over):
 	// a still violet dark, the pale sun of the dead low and cold, no stars to
 	// speak of, lilac mist; the candles lit
