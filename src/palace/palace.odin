@@ -372,20 +372,20 @@ rebuild_real :: proc(p: ^Palace) {
 	}
 	for prop in p.data.props {
 		c, d := prop_place(p, prop)
+		fill := level.PROPS[prop.kind].fill
 		if !upright(p, prop.under) {
 			// hanging below: a rail closes nothing, a pillar still fills its cell
 			c = level.flip_cell(p.data, c)
-			if prop.kind in level.BLOCKING_PROPS && in_grid(p, c) {
+			if fill == .Cell && in_grid(p, c) {
 				p.blocked[cell_index(p, c)] = true
 			}
 			continue
 		}
 		i := cell_index(p, c)
-		if prop.kind in level.BLOCKING_PROPS {
-			p.blocked[i] = true
-		}
-		if prop.kind in level.EDGE_PROPS {
-			p.fences[i] += {d}
+		switch fill {
+		case .None:
+		case .Side: p.fences[i] += {d}
+		case .Cell: p.blocked[i] = true
 		}
 	}
 

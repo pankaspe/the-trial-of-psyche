@@ -2534,7 +2534,7 @@ FIRE_HEARD :: 4.5 // cells: how far off a fire is still heard
 fire_near :: proc(g: ^Game) -> (near, pan: f32) {
 	best := f32(FIRE_HEARD)
 	for prop in g.data.props {
-		if prop.kind != .Fire || prop.under != g.palace.upside {
+		if level.PROPS[prop.kind].flame != .Fire || prop.under != g.palace.upside {
 			continue
 		}
 		c := level.frame_cell(&g.data, prop.cell, prop.under, g.palace.upside)

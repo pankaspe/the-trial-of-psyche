@@ -143,79 +143,6 @@ Handle :: struct {
 	part: int,
 }
 
-Prop_Kind :: enum u8 {
-	// edge props: close one side of the cell they stand in
-	Rail,
-	Wall,
-	Wall_Half,
-	Wall_Battlement,
-	Fence,
-	Rope, // the hand ropes of a rope bridge, along one side
-	Log, // a fallen trunk lying along one side
-	Lip, // a low lip of rock along one side: the parapet of a crag's ledge
-	// blocking props: nobody can stand in their cell
-	Pillar,
-	Plinth,
-	Cypress,
-	Urn,
-	Brazier,
-	Bed,
-	Statue, // a marble woman on a plinth, calling with her arm raised toward `dir`
-	Spruce, // a tall fir of the forest
-	Heap, // a mound of mixed seeds (Venus's task)
-	// decoration only
-	Arch,
-	Vase, // small, in one corner of the cell: px (+x,+y), py (-x,+y), mx (-x,-y), my (+x,-y)
-	Reeds, // a clump of reeds in one corner of the cell (as the vase)
-	Sconce, // a candle on the side `dir` of the block at (x,y,z): lit where the setting lights them
-	// the mountain: blocking
-	Pine, // a wind-bent pine
-	Boulder, // a heap of fallen rocks
-	// the mountain: decoration only, in one corner of the cell (as the vase)
-	Shrub, // a low bush
-	Cairn, // a few stones piled up by passers-by
-	// the house of Venus: decoration only, in one corner of the cell (as the vase)
-	Rose, // a rose bush in flower
-	Myrtle, // a small myrtle, Venus's tree, in a pot
-	Fire, // a fire in a ring of stones: it burns in any setting and lights the stones around it
-}
-
-EDGE_PROPS :: bit_set[Prop_Kind]{.Rail, .Wall, .Wall_Half, .Wall_Battlement, .Fence, .Rope, .Log, .Lip}
-BLOCKING_PROPS :: bit_set[Prop_Kind]{.Pillar, .Plinth, .Cypress, .Urn, .Brazier, .Bed, .Statue, .Spruce, .Pine, .Boulder, .Heap, .Fire}
-ORIENTED_PROPS :: EDGE_PROPS + bit_set[Prop_Kind]{.Bed, .Statue, .Arch, .Vase, .Reeds, .Sconce, .Pine, .Boulder, .Shrub, .Cairn, .Rose, .Myrtle}
-NEEDS_DIR :: EDGE_PROPS + bit_set[Prop_Kind]{.Statue, .Vase, .Reeds, .Sconce, .Shrub, .Cairn, .Rose, .Myrtle}
-
-PROP_NAME := [Prop_Kind]string {
-	.Rail            = "rail",
-	.Wall            = "wall",
-	.Wall_Half       = "wallHalf",
-	.Wall_Battlement = "wallBattlement",
-	.Fence           = "fence",
-	.Rope            = "rope",
-	.Log             = "log",
-	.Lip             = "lip",
-	.Pillar          = "pillar",
-	.Plinth          = "plinth",
-	.Cypress         = "cypress",
-	.Urn             = "urn",
-	.Brazier         = "brazier",
-	.Bed             = "bed",
-	.Statue          = "statue",
-	.Spruce          = "spruce",
-	.Heap            = "heap",
-	.Arch            = "arch",
-	.Vase            = "vase",
-	.Reeds           = "reeds",
-	.Sconce          = "sconce",
-	.Pine            = "pine",
-	.Boulder         = "boulder",
-	.Shrub           = "shrub",
-	.Cairn           = "cairn",
-	.Rose            = "rose",
-	.Myrtle          = "myrtle",
-	.Fire            = "fire",
-}
-
 // A standing candelabrum in a corner of a surface: lit from the start, or
 // waiting for the lamp's flame. A guard (Act IV) is a seal of its own: the
 // lamp lit beside it lights it, and its light shows the way through the
@@ -962,8 +889,8 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				return data, fail(line_no, "prop: expected name x y z [dir]")
 			}
 			kind, found := Prop_Kind(0), false
-			for name, k in PROP_NAME {
-				if name == args[0] {
+			for info, k in PROPS {
+				if info.name == args[0] {
 					kind, found = k, true
 				}
 			}
@@ -982,7 +909,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 				p.dir, p.oriented = d, true
 			}
-			if kind in NEEDS_DIR && !p.oriented {
+			if PROPS[kind].dir == .Needed && !p.oriented {
 				return data, fail(line_no, "prop: '%s' needs a direction", args[0])
 			}
 			append(&data.props, p)

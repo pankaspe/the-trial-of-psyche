@@ -279,25 +279,13 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 		append(&s.pieces, p)
 	}
 	for prop in g.data.props {
-		mesh := PROP_MESH[prop.kind]
-		if prop.kind in level.ORIENTED_PROPS {
-			mesh = oriented_mesh(mesh, prop.dir)
-		}
-		append(&s.pieces, piece(prop.cell, mesh, PROP_MATERIAL[prop.kind], prop.part, prop.under))
-		#partial switch prop.kind {
-		case .Sconce:
-			// the candle, in wax
-			append(&s.pieces, piece(prop.cell, oriented_mesh(.Candle_PX, prop.dir), .Psyche, prop.part, prop.under))
-		case .Pine:
-			append(&s.pieces, piece(prop.cell, oriented_mesh(.Trunk_PX, prop.dir), .Wood, prop.part, prop.under))
-		case .Spruce:
-			append(&s.pieces, piece(prop.cell, .Spruce_Trunk, .Wood, prop.part, prop.under))
-		case .Rose:
-			append(&s.pieces, piece(prop.cell, oriented_mesh(.Rose_Bloom_PX, prop.dir), .Blossom, prop.part, prop.under))
-		case .Myrtle:
-			append(&s.pieces, piece(prop.cell, oriented_mesh(.Myrtle_Pot_PX, prop.dir), .Bronze, prop.part, prop.under))
-		case .Fire:
-			append(&s.pieces, piece(prop.cell, .Fire_Logs, .Wood, prop.part, prop.under))
+		look := PROP_LOOK[prop.kind]
+		for each in ([2]Maybe(Prop_Piece){look.body, look.extra}) {
+			pc := each.? or_continue
+			if level.PROPS[prop.kind].dir != .None {
+				pc.mesh = oriented_mesh(pc.mesh, prop.dir)
+			}
+			append(&s.pieces, piece(prop.cell, pc.mesh, pc.material, prop.part, prop.under))
 		}
 	}
 	for c in g.data.candelabra {
@@ -1056,7 +1044,7 @@ candle_lights :: proc(g: ^game.Game) -> []Flame {
 	list := make([dynamic]Flame, 0, len(g.data.props), context.temp_allocator)
 	t := g.time
 	for prop, i in g.data.props {
-		if prop.kind != .Sconce || prop.part > 0 {
+		if level.PROPS[prop.kind].flame != .Candle || prop.part > 0 {
 			continue
 		}
 		fp, a := prop_flame(g, prop, candle_flame(prop.dir))
@@ -1074,7 +1062,7 @@ fire_lights :: proc(g: ^game.Game) -> []Flame {
 	list := make([dynamic]Flame, 0, 8, context.temp_allocator)
 	t := g.time
 	for prop, i in g.data.props {
-		if prop.kind != .Fire || prop.part > 0 {
+		if level.PROPS[prop.kind].flame != .Fire || prop.part > 0 {
 			continue
 		}
 		fp, a := prop_flame(g, prop, FIRE_FLAME)

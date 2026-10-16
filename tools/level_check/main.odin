@@ -310,7 +310,7 @@ check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 		append(&needed, pl.Spot{c, false}, pl.Spot{c, true})
 	}
 	for prop in data.props {
-		if prop.kind not_in level.BLOCKING_PROPS {
+		if level.PROPS[prop.kind].fill != .Cell {
 			continue
 		}
 		for c in needed {
@@ -356,13 +356,13 @@ check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 			in_cell := pl.solid_at(p, c).kind
 			below := pl.solid_at(p, c - {0, 0, 1}).kind
 			switch {
-			case prop.kind == .Sconce:
+			case level.PROPS[prop.kind].rest == .Wall:
 				if in_cell != .Block {
-					say(&said, &ok, true, "the candle at %v has no wall%s", c, turned)
+					say(&said, &ok, true, "%v at %v has no wall%s", prop.kind, c, turned)
 				} else if pl.solid_at(p, c + {v.x, v.y, 0}).kind != .None {
-					say(&said, &ok, true, "the candle at %v %v is inside a wall%s", c, d, turned)
+					say(&said, &ok, true, "%v at %v %v is inside a wall%s", prop.kind, c, d, turned)
 				}
-			case prop.kind in level.EDGE_PROPS:
+			case level.PROPS[prop.kind].fill == .Side:
 				// a rail beside a stair is its handrail; inside a block it is lost
 				if in_cell == .Block {
 					say(&said, &ok, false, "%v at %v is hidden in a block%s", prop.kind, c, turned)
@@ -422,7 +422,7 @@ check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 			say(&said, &ok, true, "the ram at %v does not stand on a fixed floor", m.cell)
 		}
 		for prop in data.props {
-			if prop.cell == m.cell && prop.kind not_in level.EDGE_PROPS {
+			if prop.cell == m.cell && level.PROPS[prop.kind].fill != .Side {
 				say(&said, &ok, true, "%v at %v stands where a ram is", prop.kind, m.cell)
 			}
 		}
@@ -474,10 +474,11 @@ check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 			}
 		}
 	}
-	// what stands on a veiled stone floats while it is hidden (the hand
-	// ropes of a bridge do not: they hang between the posts)
+	// what stands on a veiled stone floats while it is hidden (what rests
+	// elsewhere does not: a candle on its wall, the hand ropes of a bridge
+	// between the posts)
 	for prop in data.props {
-		if prop.part != 0 || prop.kind == .Sconce || prop.kind == .Rope {
+		if prop.part != 0 || level.PROPS[prop.kind].rest != .Floor {
 			continue
 		}
 		for e in data.blocks {
