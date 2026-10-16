@@ -12,7 +12,7 @@
 // fewest decisions, how many states can be reached and how many of them are
 // dead ends (the level must be restarted), and checks that no part turns
 // into the palace. For the designer, one more report: which pieces the level
-// could do without (each sundial, ram, handle, eagle, pair of caves taken out in
+// could do without (each sundial, ram, handle, eagle, ferry, pair of caves taken out in
 // turn: a level still solved without one has a piece that does nothing, or a
 // way round it). A level with Proserpina's pomegranates is reported either
 // way up ("upside": the world turned over, reached from its pomegranates).
@@ -303,6 +303,9 @@ check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 	for e in data.eagles {
 		append(&needed, pl.Spot{e.from, false}, pl.Spot{e.to, false})
 	}
+	for f in data.ferries {
+		append(&needed, pl.Spot{f.ends[0].cell, false}, pl.Spot{f.ends[1].cell, false})
+	}
 	for c in data.pomegranates {
 		append(&needed, pl.Spot{c, false}, pl.Spot{c, true})
 	}
@@ -458,6 +461,16 @@ check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 			}
 		}
 	}
+	for f in data.ferries {
+		for e in f.ends {
+			if !pl.is_surface(p, e.cell) {
+				say(&said, &ok, true, "the ferry's landing at %v is not on a floor", e.cell)
+			}
+			if w := e.cell + {iso.DIR_VEC[e.dir].x, iso.DIR_VEC[e.dir].y, -1}; pl.in_grid(p, w) && pl.solid_at(p, w).kind != .None {
+				say(&said, &ok, true, "the ferry's boat at %v is moored into stone (%v)", e.cell, w)
+			}
+		}
+	}
 	p.upside = false
 	pl.rebuild_graph(p)
 	// what stands on a veiled stone floats while it is hidden (the hand
@@ -545,7 +558,7 @@ solve_report :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Allo
 		optional := pl.solve(p, pl.exit_spot(data), spot, alloc)
 		fmt.printfln("\nfragment %v%s: reachable %v, optional %v", c, spot.under ? " (under)" : "", reach.solved, optional.solved)
 		if reach.solved {
-			fmt.printfln("  fragment plan: %d steps, %d turns, %d lightings, %d handles, %d times turned, %d flights, %d overturns, %d decisions", reach.steps, reach.turns, reach.lightings, reach.handles, reach.times, reach.flights, reach.overturns, decisions(reach))
+			fmt.printfln("  fragment plan: %d steps, %d turns, %d lightings, %d handles, %d times turned, %d flights, %d overturns, %d crossings, %d decisions", reach.steps, reach.turns, reach.lightings, reach.handles, reach.times, reach.flights, reach.overturns, reach.crossings, decisions(reach))
 		}
 		if !reach.solved || !optional.solved {
 			fmt.eprintln("error: the fragment must be reachable and never required")
@@ -569,8 +582,8 @@ print_plan :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Alloca
 		fmt.eprintln("error: the exit cannot be reached")
 		return false
 	}
-	fmt.printfln("plan: %d steps (%d in the light), %d turns, %d lightings, %d handles, %d times turned, %d flights, %d overturns", sol.steps, sol.light_steps, sol.turns, sol.lightings, sol.handles, sol.times, sol.flights, sol.overturns)
-	fmt.printfln("decisions: %d (turns, lightings, handles, sundials, eagles, pomegranates)", decisions(sol))
+	fmt.printfln("plan: %d steps (%d in the light), %d turns, %d lightings, %d handles, %d times turned, %d flights, %d overturns, %d crossings", sol.steps, sol.light_steps, sol.turns, sol.lightings, sol.handles, sol.times, sol.flights, sol.overturns, sol.crossings)
+	fmt.printfln("decisions: %d (turns, lightings, handles, sundials, eagles, pomegranates, ferries)", decisions(sol))
 	if data.has_lamp {
 		rules := game.oil_rules(data)
 		least := pl.oil_left(p, sol.plan[:], rules)
@@ -614,6 +627,8 @@ print_plan :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Alloca
 			fmt.printfln("  the eagle carries her to %v%s", st.cell, st.changed > 0 ? fmt.tprintf(" (%d blocks change)", st.changed) : "")
 		case .Overturn:
 			fmt.printfln("  the pomegranate at %v: the world %s", st.cell, st.upside ? "turned over (the world under the palace up)" : "turned back")
+		case .Ferry:
+			fmt.printfln("  Charon ferries her across to %v%s", st.cell, st.changed > 0 ? fmt.tprintf(" (%d blocks change)", st.changed) : "")
 		case .Start, .Step:
 		}
 		_ = i
@@ -623,7 +638,7 @@ print_plan :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Alloca
 }
 
 // Take out each piece of the puzzle in turn (a sundial, a handle, a pair
-// of caves; a ram's step: a block of rock takes its place, solid as the ram
+// of caves, a ferry; a ram's step: a block of rock takes its place, solid as the ram
 // lying, with a boulder on it, as nobody passes the ram standing) and solve
 // again: a level still solved without it
 // has a piece that is not needed (a way round it, or a decoy: say which in
@@ -638,7 +653,7 @@ needed_report :: proc(text: string) {
 			continue
 		}
 		switch f[0] {
-		case "sundial", "ram", "handle", "eagle", "pomegranate":
+		case "sundial", "ram", "handle", "eagle", "pomegranate", "ferry":
 			append(&tests, [2]int{i, -1})
 		case "cave":
 			append(&caves, i)
@@ -701,7 +716,7 @@ brief :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Allocator) 
 		for st, i in sol.plan {
 			visits += int(st.move == .Handle && (i == 0 || sol.plan[i - 1].move != .Handle))
 		}
-		fmt.printfln("%s steps %d turns %d handles %d visits %d times %d flights %d overturns %d decisions %d states %d dead %d", tag, sol.steps, sol.turns, sol.handles, visits, sol.times, sol.flights, sol.overturns, decisions(sol), sol.states, sol.dead)
+		fmt.printfln("%s steps %d turns %d handles %d visits %d times %d flights %d overturns %d crossings %d decisions %d states %d dead %d", tag, sol.steps, sol.turns, sol.handles, visits, sol.times, sol.flights, sol.overturns, sol.crossings, decisions(sol), sol.states, sol.dead)
 	}
 	sol := pl.solve(p, pl.goal_cell(p), nil, alloc)
 	line("exit", sol)
@@ -719,7 +734,7 @@ brief :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Allocator) 
 }
 
 // What the player decides along a plan: turns, lightings, handles, sundials,
-// eagles, pomegranates.
+// eagles, pomegranates, ferries.
 decisions :: proc(sol: pl.Solution) -> int {
-	return sol.turns + sol.lightings + sol.handles + sol.times + sol.flights + sol.overturns
+	return sol.turns + sol.lightings + sol.handles + sol.times + sol.flights + sol.overturns + sol.crossings
 }

@@ -32,6 +32,7 @@ Mechanic :: enum u8 {
 	Time, // day and evening, turned at a sundial
 	Eagle, // Jupiter's eagle: a flight one way, from its perch
 	Flip, // Proserpina's flip: the world turned over, from her pomegranate
+	Ferry, // Charon's ferry: his boat across the water, from one landing to the other
 }
 
 MECHANIC_NAME := [Mechanic]string {
@@ -41,6 +42,7 @@ MECHANIC_NAME := [Mechanic]string {
 	.Time    = "time",
 	.Eagle   = "eagle",
 	.Flip    = "flip",
+	.Ferry   = "ferry",
 }
 
 // The cutscene that opens a level (the first of each act has one).
@@ -247,6 +249,15 @@ Boat :: struct {
 	dir:  Dir,
 }
 
+// Charon's ferry (Act IV): one boat between two landings (`ends`, each
+// moored on its side `dir`). It waits at the first; standing where it is
+// moored, Space boards it and he poles her across to the other landing, where
+// it stays: from a landing it has left, nothing brings it back but crossing
+// again from the other.
+Ferry :: struct {
+	ends: [2]Boat,
+}
+
 // A block drawn as the deck of a rope bridge (it holds like any block).
 Plank :: struct {
 	cell:    Cell,
@@ -297,7 +308,8 @@ Level_Data :: struct {
 	candelabra:   [dynamic]Candelabrum,
 	ground:       [dynamic]Cell, // blocks and stairs of living rock (earth, not masonry)
 	planks:       [dynamic]Plank, // blocks that are the wooden deck of a rope bridge
-	water:        [dynamic][4]i32, // rectangles of water (x0 y0 x1 y1), just under the h1 surfaces
+	water:        [dynamic][4]i32, // rectangles of water (x0 y0 x1 y1), just under the `water_h` surfaces
+	water_h:      i32, // the height of the surfaces the water lies just under (1 unless given)
 	caves:        [dynamic]Cave, // in pairs: each leads to the other of its pair
 	tiers:        [dynamic][2]i32, // a tall level: the camera frames one band of heights (h0 h1) at a time
 	outro:        i18n.Key, // the text of the ending card at the exit
@@ -318,6 +330,7 @@ Level_Data :: struct {
 	sundials:     [dynamic]Cell, // Act III: standing on one, the spindle turns the time (day <-> evening); the level starts by day
 	rams:         [dynamic]Ram, // the Sun's rams: standing by day, lying (a step) at evening
 	eagles:       [dynamic]Eagle, // Act III: from a perch, a flight one way
+	ferries:      [dynamic]Ferry, // Act IV: Charon's boat between two landings
 	// Proserpina's flip (Act IV): the world turned over about the axle, the
 	// horizontal line along x through the middle of row size/2 at height `axle`
 	// (`flip_cell`). The world under the palace (`under` lines) is described
@@ -342,6 +355,8 @@ Seals :: bit_set[0 ..< MAX_SEALS; u8] // which seals have been lit
 MAX_SUNDIALS :: 8
 MAX_RAMS :: 12
 MAX_EAGLES :: 4
+MAX_FERRIES :: 4
+Boats :: bit_set[0 ..< MAX_FERRIES; u8] // the ferries whose boat is moored at their second landing
 
 // A cell of one frame in the other: the world turned over about the axle
 // (x, y, z) -> (x, size-1-y, 2 axle - z). Its own inverse; the axle's stones
@@ -392,6 +407,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	data.ground = make([dynamic]Cell, 0, 16)
 	data.planks = make([dynamic]Plank, 0, 8)
 	data.water = make([dynamic][4]i32, 0, 2)
+	data.water_h = 1
 	data.caves = make([dynamic]Cave, 0, 4)
 	data.tiers = make([dynamic][2]i32, 0, MAX_TIERS)
 	data.sigils = make([dynamic]Cell, 0, MAX_SEALS)
@@ -401,6 +417,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	data.sundials = make([dynamic]Cell, 0, MAX_SUNDIALS)
 	data.rams = make([dynamic]Ram, 0, MAX_RAMS)
 	data.eagles = make([dynamic]Eagle, 0, MAX_EAGLES)
+	data.ferries = make([dynamic]Ferry, 0, MAX_FERRIES)
 	data.pomegranates = make([dynamic]Cell, 0, 4)
 	has_evening := false
 	has_start := false
@@ -424,7 +441,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 		if i := strings.index_byte(line, '#'); i >= 0 {
 			line = line[:i]
 		}
-		fields: [8]string
+		fields: [9]string
 		n := 0
 		it := line
 		for f in strings.fields_iterator(&it) {
@@ -569,7 +586,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 			}
 			if !found {
-				return data, fail(line_no, "mechanic: expected veiled, handle, time, eagle or flip")
+				return data, fail(line_no, "mechanic: expected veiled, handle, time, eagle, flip or ferry")
 			}
 
 		case "rest":
@@ -700,7 +717,14 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 		case "water":
 			v: [4]i32
 			if !ints(args, v[:]) || v[2] < v[0] || v[3] < v[1] {
-				return data, fail(line_no, "water: expected x0 y0 x1 y1 with x0 <= x1, y0 <= y1")
+				return data, fail(line_no, "water: expected x0 y0 x1 y1 [h] with x0 <= x1, y0 <= y1")
+			}
+			if len(args) > 4 {
+				h: [1]i32
+				if !ints(args[4:], h[:]) || h[0] < 1 || len(data.water) > 0 && h[0] != data.water_h {
+					return data, fail(line_no, "water: h is the height of the surfaces it lies under, the same for every river")
+				}
+				data.water_h = h[0]
 			}
 			append(&data.water, v)
 
@@ -730,6 +754,31 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			}
 			data.boat, data.has_boat = Boat{v, d}, true
 			max_z = max(max_z, v.z + 1)
+
+		case "ferry":
+			v0, v1: [3]i32
+			if len(args) < 8 || !ints(args[0:3], v0[:]) || !ints(args[4:7], v1[:]) {
+				return data, fail(line_no, "ferry: expected x y h dir (where the boat waits) and x y h dir (the other landing)")
+			}
+			f: Ferry
+			for v, k in ([2][3]i32{v0, v1}) {
+				d, ok := iso.dir_from_name(args[3 + 4 * k])
+				if !ok {
+					return data, fail(line_no, "ferry: unknown direction '%s'", args[3 + 4 * k])
+				}
+				f.ends[k] = {v, d}
+				max_z = max(max_z, v.z + 1)
+			}
+			if part != 0 || under {
+				return data, fail(line_no, "ferry: of the world above, not inside a part")
+			}
+			if f.ends[0].cell == f.ends[1].cell {
+				return data, fail(line_no, "ferry: it must take her somewhere else")
+			}
+			if len(data.ferries) == MAX_FERRIES {
+				return data, fail(line_no, "ferry: at most %d per level", MAX_FERRIES)
+			}
+			append(&data.ferries, f)
 
 		case "sunlit":
 			// a block, or stairs toward dir, standing only by day
@@ -1091,6 +1140,13 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	for e in data.eagles {
 		if !check(e.from, data.size, data.height) || !check(e.to, data.size, data.height) {
 			return data, fail(0, "eagle %v -> %v outside the grid", e.from, e.to)
+		}
+	}
+	for f in data.ferries {
+		for e in f.ends {
+			if !check(e.cell, data.size, data.height) {
+				return data, fail(0, "ferry landing %v outside the grid", e.cell)
+			}
 		}
 	}
 	// a part must stay inside the grid in all four positions

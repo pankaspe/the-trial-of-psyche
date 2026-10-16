@@ -240,6 +240,7 @@ Shots :: struct {
 	plan:  bool, // --plan: play the solver's plan of the level, a shot after every decision
 	record: bool, // --record (with --plan): every frame at RECORD_FPS instead, for a video
 	cave_shot: int, // --plan: the last move shot at a cave's mouth or a perch (the action of the place shows)
+	cross_shot: int, // --plan: the last move shot halfway across in Charon's boat
 	cine_shot: int, // --plan: shots taken of the opening cutscene (one every CINE_SHOT_EVERY s)
 	no_ui: bool, // --no-ui: the world only (backdrops for mockups and stills)
 	survey: bool, // --survey: the level from the four views, band by band (a tall level), no walking
@@ -450,6 +451,11 @@ plan_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool)
 		virtual.arena_destroy(&s.arena)
 		return "", true
 	}
+	if g.psyche.step_ferry && s.cross_shot < s.move && g.psyche.step_t > game.FERRY_TIME * 0.5 {
+		// halfway across in Charon's boat
+		s.cross_shot = s.move
+		return fmt.tprintf("p%03d_crossing", s.move), false
+	}
 	if !game.idle(g) || s.t < 0.15 {
 		return "", false
 	}
@@ -495,8 +501,8 @@ plan_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool)
 		s.t = 0
 		return "", false
 	}
-	if next := s.moves[s.move]; (next.move == .Flight || next.move == .Step && pl.is_passage(&g.palace, g.psyche.cell, next.cell)) && s.cave_shot <= s.move {
-		// at a cave's mouth or an eagle's perch: a shot with the action of the place over her
+	if next := s.moves[s.move]; (next.move == .Flight || next.move == .Ferry || next.move == .Step && pl.is_passage(&g.palace, g.psyche.cell, next.cell)) && s.cave_shot <= s.move {
+		// at a cave's mouth, an eagle's perch, a ferry's landing: a shot with the action of the place over her
 		if s.t < 0.6 {
 			return "", false
 		}

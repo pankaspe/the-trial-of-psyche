@@ -1291,7 +1291,7 @@ draw_figures :: proc(r: ^Renderer, g: ^game.Game) {
 	draw_fragments(r, g)
 	draw_rams(r, g)
 	draw_eagles(r, g)
-	draw_boat(r, g)
+	draw_boats(r, g)
 
 	// the prologue's procession: veiled mourners, a little taller than Psyche
 	if game.procession(g) {
@@ -1474,35 +1474,34 @@ draw_eagles :: proc(r: ^Renderer, g: ^game.Game) {
 	}
 }
 
-// Charon's boat, in dark wood, moored at the landing; Charon standing at
-// its far end in his dark cloak, a pole in his hands: waiting, facing her;
-// then poling the boat away into the mist (game.charon_pose).
+// Charon's boats, in dark wood: at the exit and on the ferries (game.charons);
+// Charon standing at the far end in his dark cloak, a pole in his hands:
+// waiting, facing the landing; poling the boat across, or away into the mist.
 @(private)
-draw_boat :: proc(r: ^Renderer, g: ^game.Game) {
-	if !g.data.has_boat {
-		return
+draw_boats :: proc(r: ^Renderer, g: ^game.Game) {
+	for c in game.charons(g) {
+		if c.alpha < 0.003 {
+			continue
+		}
+		m := c.boat.above ? turn_matrix(g, false) : rl.Matrix(1)
+		yaw := c.boat.yaw
+		d := Vec3{math.cos(yaw), math.sin(yaw), 0}
+		stern := game.boat_at(c.boat, game.BOAT_STERN)
+		set_piece_uniforms(r, .Wood, 0, 0, c.alpha, 0.9, 0)
+		rl.DrawMesh(r.meshes[.Boat], r.material, m * rl.MatrixTranslate(stern.x, stern.y, stern.z) * rl.MatrixRotateZ(yaw))
+		// the pole: from the water beside him up past his shoulder, leaning
+		// back as he thrusts
+		side := Vec3{-d.y, d.x, 0}
+		lean := 0.18 + 0.42 * c.pole
+		up := Vec3{-d.x * math.sin(lean), -d.y * math.sin(lean), math.cos(lean)}
+		foot := c.pos + side * 0.17 - up * 0.55 + {0, 0, 0.3}
+		axis := Vec3{-up.y, up.x, 0}
+		rl.DrawMesh(r.meshes[.Block], r.material, m * rl.MatrixTranslate(foot.x, foot.y, foot.z) * rl.MatrixRotate(axis, lean) * rl.MatrixScale(0.035, 0.035, 1.75) * rl.MatrixTranslate(-0.5, -0.5, 0))
+		// Charon, a head taller than the mourners, his hood bowed
+		set_piece_uniforms(r, .Mourner, 0, 0, c.alpha, 0.9, 0)
+		rl.DrawMesh(r.meshes[.Robe], r.material, m * rl.MatrixTranslate(c.pos.x, c.pos.y, c.pos.z) * rl.MatrixRotateZ(c.face) * rl.MatrixScale(1.12, 1.12, 1.24))
+		rl.DrawMesh(r.meshes[.Head], r.material, m * rl.MatrixTranslate(c.pos.x, c.pos.y, c.pos.z + 0.66) * rl.MatrixRotateZ(c.face) * rl.MatrixTranslate(0.012, 0, 0) * rl.MatrixScale(0.056, 0.054, 0.062))
 	}
-	d := game.boat_dir(g)
-	yaw := math.atan2(d.y, d.x)
-	pos, face, pole, alpha := game.charon_pose(g)
-	if alpha < 0.003 {
-		return
-	}
-	stern := game.boat_point(g, game.BOAT_STERN)
-	set_piece_uniforms(r, .Wood, 0, 0, alpha, 0.9, 0)
-	rl.DrawMesh(r.meshes[.Boat], r.material, rl.MatrixTranslate(stern.x, stern.y, stern.z) * rl.MatrixRotateZ(yaw))
-	// the pole: from the water beside him up past his shoulder, leaning back
-	// as he thrusts
-	side := Vec3{-d.y, d.x, 0}
-	lean := 0.18 + 0.42 * pole
-	up := Vec3{-d.x * math.sin(lean), -d.y * math.sin(lean), math.cos(lean)}
-	foot := pos + side * 0.17 - up * 0.55 + {0, 0, 0.3}
-	axis := Vec3{-up.y, up.x, 0}
-	rl.DrawMesh(r.meshes[.Block], r.material, rl.MatrixTranslate(foot.x, foot.y, foot.z) * rl.MatrixRotate(axis, lean) * rl.MatrixScale(0.035, 0.035, 1.75) * rl.MatrixTranslate(-0.5, -0.5, 0))
-	// Charon, a head taller than the mourners, his hood bowed
-	set_piece_uniforms(r, .Mourner, 0, 0, alpha, 0.9, 0)
-	rl.DrawMesh(r.meshes[.Robe], r.material, rl.MatrixTranslate(pos.x, pos.y, pos.z) * rl.MatrixRotateZ(face) * rl.MatrixScale(1.12, 1.12, 1.24))
-	rl.DrawMesh(r.meshes[.Head], r.material, rl.MatrixTranslate(pos.x, pos.y, pos.z + 0.66) * rl.MatrixRotateZ(face) * rl.MatrixTranslate(0.012, 0, 0) * rl.MatrixScale(0.056, 0.054, 0.062))
 }
 
 // How visible fragment i's scroll is: faint when collected in an earlier
@@ -1611,7 +1610,7 @@ floor_strip :: proc(a, b, side: Vec3, width: f32, c: Color4) {
 	rlgl.End()
 }
 
-WATER_Z :: 0.72 // the river's surface: just under the h1 platforms
+WATER_DEPTH :: 0.28 // the river's surface: this far under the platforms it lies by (level water_h)
 
 // The river: a dark surface that fades out at the edges of its rectangle,
 // glints of moonlight drifting with the current (along x), the lamp's warmth
@@ -1629,13 +1628,15 @@ draw_water :: proc(g: ^game.Game, time: f32) {
 	lk := look_of(g)
 	surface := lk.water.a > 0 ? lk.water : Color4{0.08, 0.12, 0.27, 0.8}
 	glint := lk.glint.a > 0 ? lk.glint : Color4{0.65, 0.75, 1.0, 0.4}
+	z := f32(g.data.water_h) - WATER_DEPTH
+	begin_turn(g, false) // of the world above, in a level with pomegranates
 	for w in g.data.water {
 		x0, y0 := f32(w[0]), f32(w[1])
 		x1, y1 := f32(w[2] + 1), f32(w[3] + 1)
 		edge :: proc(v, lo, hi: f32) -> f32 {
 			return fx.clamp01(min(v - lo, hi - v) / 1.2)
 		}
-		point :: proc(x, y, x0, y0, x1, y1: f32, lamp: Vec3, warm: f32, surface: Color4) {
+		point :: proc(x, y, z, x0, y0, x1, y1: f32, lamp: Vec3, warm: f32, surface: Color4) {
 			a := edge(x, x0, x1) * edge(y, y0, y1)
 			a = a * a * (3 - 2 * a)
 			d := Vec2{x - lamp.x, y - lamp.y}
@@ -1643,18 +1644,18 @@ draw_water :: proc(g: ^game.Game, time: f32) {
 			c := fx.lerp(surface, Color4{0.4, 0.25, 0.1, 0.85}, lit)
 			c.a *= a
 			color(c)
-			vtx({x, y, WATER_Z})
+			vtx({x, y, z})
 		}
 		STEP :: 0.5
 		rlgl.Begin(rlgl.TRIANGLES)
 		for y := y0; y < y1 - 0.001; y += STEP {
 			for x := x0; x < x1 - 0.001; x += STEP {
-				point(x, y, x0, y0, x1, y1, lamp, warm, surface)
-				point(x + STEP, y, x0, y0, x1, y1, lamp, warm, surface)
-				point(x + STEP, y + STEP, x0, y0, x1, y1, lamp, warm, surface)
-				point(x, y, x0, y0, x1, y1, lamp, warm, surface)
-				point(x + STEP, y + STEP, x0, y0, x1, y1, lamp, warm, surface)
-				point(x, y + STEP, x0, y0, x1, y1, lamp, warm, surface)
+				point(x, y, z, x0, y0, x1, y1, lamp, warm, surface)
+				point(x + STEP, y, z, x0, y0, x1, y1, lamp, warm, surface)
+				point(x + STEP, y + STEP, z, x0, y0, x1, y1, lamp, warm, surface)
+				point(x, y, z, x0, y0, x1, y1, lamp, warm, surface)
+				point(x + STEP, y + STEP, z, x0, y0, x1, y1, lamp, warm, surface)
+				point(x, y + STEP, z, x0, y0, x1, y1, lamp, warm, surface)
 			}
 		}
 		rlgl.End()
@@ -1668,20 +1669,21 @@ draw_water :: proc(g: ^game.Game, time: f32) {
 					py := f32(cy) + 0.15 + 0.7 * fx.hash01(h + 2)
 					a := edge(px, x0, x1) * edge(py, y0, y1) * math.sin(u * math.PI)
 					len := 0.12 + 0.18 * fx.hash01(h + 3)
-					floor_strip({px, py, WATER_Z + 0.003}, {px + len, py, WATER_Z + 0.003}, {0, 1, 0}, 0.022, {glint.r, glint.g, glint.b, glint.a * a})
+					floor_strip({px, py, z + 0.003}, {px + len, py, z + 0.003}, {0, 1, 0}, 0.022, {glint.r, glint.g, glint.b, glint.a * a})
 				}
 			}
 		}
 		// foam where the stones stand in the river
 		for e, i in g.data.blocks {
 			c := e.cell
-			if c.z != 0 || c.x < w[0] || c.x > w[2] || c.y < w[1] || c.y > w[3] || !pl.block_present(&g.palace, i) {
+			if c.z != g.data.water_h - 1 || e.under || c.x < w[0] || c.x > w[2] || c.y < w[1] || c.y > w[3] || !pl.block_present(&g.palace, i) {
 				continue
 			}
 			t := math.mod(time * 0.35 + fx.hash01(u32(i) * 7), 1)
-			floor_ring({f32(c.x) + 0.5, f32(c.y) + 0.5, WATER_Z + 0.002}, 0.68 + 0.12 * t, 0.025, {0.7, 0.8, 1.0, 0.3 * (1 - t)})
+			floor_ring({f32(c.x) + 0.5, f32(c.y) + 0.5, z + 0.002}, 0.68 + 0.12 * t, 0.025, {0.7, 0.8, 1.0, 0.3 * (1 - t)})
 		}
 	}
+	end_turn()
 	rlgl.DrawRenderBatchActive()
 	rlgl.EnableDepthMask()
 }
@@ -2081,17 +2083,19 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 			glow(v, p, 12, {1.0, 0.9, 0.72, 0.85 * a})
 		}
 	}
-	// Charon's boat: a pale lantern on its prow; the coin passing from her lips to his hand
-	if g.data.has_boat {
-		_, _, _, alpha := game.charon_pose(g)
-		p := game.boat_point(g, game.BOAT_STERN + game.BOAT_LENGTH) + {0, 0, 0.42}
-		breath := 0.85 + 0.15 * math.sin(t * 1.1)
-		glow(v, p, 60, {0.9, 0.55, 0.45, 0.22 * breath * alpha})
-		glow(v, p, 10, {1.0, 0.86, 0.72, 0.6 * breath * alpha})
-		if c, ok := game.boat_coin(g); ok {
-			glow(v, c, 14, {1.0, 0.82, 0.4, 0.55})
-			glow(v, c, 4, {1.0, 0.95, 0.8, 0.95})
+	// Charon's boats: a pale lantern on each prow; the coin passing from her lips to his hand
+	for c in game.charons(g) {
+		p := game.boat_at(c.boat, game.BOAT_STERN + game.BOAT_LENGTH) + {0, 0, 0.42}
+		if c.boat.above {
+			p = shown(g, p, false)
 		}
+		breath := 0.85 + 0.15 * math.sin(t * 1.1)
+		glow(v, p, 60, {0.9, 0.55, 0.45, 0.22 * breath * c.alpha})
+		glow(v, p, 10, {1.0, 0.86, 0.72, 0.6 * breath * c.alpha})
+	}
+	if c, ok := game.boat_coin(g); ok {
+		glow(v, c, 14, {1.0, 0.82, 0.4, 0.55})
+		glow(v, c, 4, {1.0, 0.95, 0.8, 0.95})
 	}
 	// Venus: a rose light, her star's
 	if vp, alpha := game.venus_figure(g); alpha > 0.003 {
@@ -2504,7 +2508,7 @@ draw_teach :: proc(g: ^game.Game, v: View, time: f32) {
 		case .None:
 		case .Veiled: want = e.trait == .Veiled && !g.palace.flipped[i]
 		case .Handle: want = e.part > 0
-		case .Time, .Eagle, .Flip:
+		case .Time, .Eagle, .Flip, .Ferry:
 		}
 		if !want || pl.solid_at(&g.palace, pl.block_cell(&g.palace, i) + {0, 0, 1}).kind != .None {
 			continue
@@ -2515,7 +2519,7 @@ draw_teach :: proc(g: ^game.Game, v: View, time: f32) {
 		outline(v, top(g, i, J, J), top(g, i, 1 - J, J), top(g, i, 1 - J, 1 - J), top(g, i, J, 1 - J), {col.r, col.g, col.b, col.a * 0.5}, width * 0.7)
 	}
 	// the floors the spindle works from (the sundials that turn the time, the
-	// handles), the eagles' perches
+	// handles), the eagles' perches, the ferries' landings
 	floors := make([dynamic]Cell, 0, 8, context.temp_allocator)
 	#partial switch mech {
 	case .Time:
@@ -2530,6 +2534,10 @@ draw_teach :: proc(g: ^game.Game, v: View, time: f32) {
 		}
 	case .Flip:
 		append(&floors, ..g.data.pomegranates[:]) // either way up: they lie on the axle
+	case .Ferry:
+		for f in g.data.ferries {
+			append(&floors, f.ends[0].cell, f.ends[1].cell)
+		}
 	}
 	for c in floors {
 		p := Vec3{f32(c.x), f32(c.y), f32(c.z) + 0.01}

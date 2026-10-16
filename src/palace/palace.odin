@@ -21,6 +21,10 @@
 // way: not an edge of the walk graph (the graph is undirected, and walks never
 // take it), a move of its own (game.call_eagle, the solver's Flight).
 //
+// Charon's ferry (Act IV) is the same: a move of its own (game.board_ferry,
+// the solver's Ferry), only from the landing where his boat is moored now
+// (`boats`); the boat stays where it took her.
+//
 // Act II: veiled blocks (hidden in the dark) become real for good where the
 // lamp's light reaches them (`flipped`). Parts of the palace turn a quarter at
 // a time about a pivot (`part_rot`). The graph is rebuilt after every change.
@@ -38,8 +42,8 @@
 // cell) is of that frame. The world under the palace (`under` entries) stands
 // up when it is turned over; the other world then hangs below: its stairs are
 // flat stone (their undersides), its rails and walls close nothing, its
-// blocking props still fill their cells. Handles, sundials, caves and eagles
-// belong to the world above.
+// blocking props still fill their cells. Handles, sundials, caves, eagles and
+// ferries belong to the world above.
 //
 // Memory: every array is allocated once from the allocator given to `init`
 // (the level arena) and reused; rebuilding the graph or the illusions does not
@@ -87,6 +91,7 @@ Palace :: struct {
 	overlap:    bool, // two blocks share a cell (a part turned into the palace)
 	day:        bool, // a level with sundials: the sun is up (the rams stand)
 	upside:     bool, // the world turned over: the world under the palace stands up (see the top)
+	boats:      level.Boats, // the ferries whose boat is at their second landing (the graph does not change)
 	// world grid, indexed by cell_index
 	solid:      []level.Solid,
 	blocked:    []bool,
@@ -487,6 +492,27 @@ eagle_at :: proc(p: ^Palace, c: Cell) -> int {
 eagle_flies :: proc(p: ^Palace, i: int) -> bool {
 	e := p.data.eagles[i]
 	return is_surface(p, e.from) && is_surface(p, e.to)
+}
+
+// The ferry with a landing at surface c and which of its two ends that is,
+// or -1.
+ferry_at :: proc(p: ^Palace, c: Cell) -> (ferry, end: int) {
+	if p.upside {
+		return -1, 0
+	}
+	for f, i in p.data.ferries {
+		for e, k in f.ends {
+			if e.cell == c {
+				return i, k
+			}
+		}
+	}
+	return -1, 0
+}
+
+// Is ferry i's boat moored at its end k now?
+boat_moored :: proc(boats: level.Boats, i, k: int) -> bool {
+	return (i in boats) == (k == 1)
 }
 
 // --- Proserpina's flip ------------------------------------------------------------------

@@ -154,3 +154,47 @@ solver_turns_the_world_over :: proc(t: ^testing.T) {
 	no := palace.solve(&g.palace, {g.data.exit, false}, nil, context.temp_allocator)
 	testing.expect(t, !no.solved, "the same cell in the world above is out of reach")
 }
+
+// Two banks with the water between them; Charon's ferry waits at the west landing.
+@(private)
+FERRY_PALACE :: `size 8
+setting taenarus
+water 3 0 4 7
+column 1 2 0 0
+column 2 2 0 0
+column 5 2 0 0
+column 6 2 0 0
+start 1 2 1
+exit 6 2 1
+ferry 2 2 1 px  5 2 1 mx
+`
+
+@(test)
+ferry_takes_her_across :: proc(t: ^testing.T) {
+	g: game.Game
+	defer game.destroy(&g)
+	if !load_text(t, &g, FERRY_PALACE, slot = 16) { // IV.4
+		return
+	}
+	sol := palace.solve(&g.palace, palace.exit_spot(&g.data), nil, context.temp_allocator)
+	testing.expect(t, sol.solved && sol.crossings == 1, "the solver crosses once")
+	path: palace.Path
+	testing.expect(t, !palace.find_path(&g.palace, g.data.start, g.data.exit, false, &path), "walks never take the ferry")
+	testing.expect(t, !game.board_ferry(&g), "no landing where she stands")
+	testing.expect(t, walk(t, &g, {2, 2, 1}), "to the landing")
+	testing.expect(t, game.at_ferry(&g) && g.hud.hint.key == .Hint_Boat, "Charon waits, and she is told how to board")
+	testing.expect(t, game.board_ferry(&g) && g.psyche.step_ferry, "Space: into the boat")
+	run(&g, game.FERRY_TIME * 0.5)
+	testing.expect(t, g.psyche.pos.x > 3 && g.psyche.pos.x < 5, "out on the water, in the boat")
+	run(&g, game.FERRY_TIME * 0.5 + 0.3)
+	testing.expect(t, g.psyche.cell == {5, 2, 1} && !g.psyche.walking, "on the other landing")
+	testing.expect(t, 0 in g.palace.boats && game.at_ferry(&g), "the boat stays where it left her")
+	// as if she had come back to this bank another way, the boat left on the far one
+	g.palace.boats -= {0}
+	testing.expect(t, !game.at_ferry(&g), "no boat here")
+	testing.expect(t, game.board_ferry(&g) && !g.psyche.walking && g.hud.hint.key == .Hint_Ferry_Away, "Space: nothing, she is told the boat is away")
+	g.palace.boats += {0}
+	testing.expect(t, walk(t, &g, {6, 2, 1}), "on to the exit")
+	run(&g, 1)
+	testing.expect(t, game.is_over(&g), "the exit ends the level")
+}

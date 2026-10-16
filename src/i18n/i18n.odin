@@ -90,6 +90,7 @@ Key :: enum u16 {
 	Level_IV_3,
 	Level_IV_4,
 	Level_IV_5,
+	Level_IV_6,
 	Level_Epilogue,
 
 	// level select
@@ -112,6 +113,7 @@ Key :: enum u16 {
 	Where_IV_3,
 	Where_IV_4,
 	Where_IV_5,
+	Where_IV_6,
 	Where_Epilogue,
 	Device_Seals,
 	Device_Veiled,
@@ -166,7 +168,9 @@ Key :: enum u16 {
 	Fragment_17b,
 	Fragment_17c,
 	Fragment_18,
+	Fragment_18b,
 	Fragment_19,
+	Fragment_19b,
 	Fragment_20,
 	Fragment_Found,
 	Fragment_Continue,
@@ -181,6 +185,8 @@ Key :: enum u16 {
 	Mech_Time,
 	Mech_Eagle_Title,
 	Mech_Eagle,
+	Mech_Ferry_Title,
+	Mech_Ferry,
 	Mech_Flip_Title,
 	Mech_Flip,
 
@@ -275,6 +281,7 @@ Key :: enum u16 {
 	Intro_IV_1,
 	Intro_IV_2,
 	Intro_IV_3,
+	Intro_IV_4,
 	// beside Cupid in the dark, before the end of the game
 	V_Doubt,
 
@@ -305,6 +312,7 @@ Key :: enum u16 {
 	Hint_Eagle,
 	Hint_Eagle_No_Floor, // the eagle would set her down where there is nothing
 	Hint_Boat, // at the landing: Space boards Charon's boat
+	Hint_Ferry_Away, // at a ferry's landing the boat has left
 	Hint_Guard, // a dark way: the lamp beside a guard candelabrum lights it, its light shows the way
 	Hint_Fragment,
 	Hint_Lamp_Day,
@@ -318,6 +326,7 @@ Key :: enum u16 {
 	Mech_Handle_Pad,
 	Mech_Time_Pad,
 	Mech_Eagle_Pad,
+	Mech_Ferry_Pad,
 	Mech_Flip_Pad,
 	Hint_No_Rest_Pad,
 	Hint_No_Rest_Twice_Pad,
@@ -371,6 +380,7 @@ Key :: enum u16 {
 	Outro_IV_1,
 	Outro_IV_2,
 	Outro_IV_3,
+	Outro_IV_4,
 
 	// endings
 	End_Trust_Title,
@@ -516,6 +526,7 @@ PAD_TEXT := #partial [Key]Key {
 	.Mech_Handle        = .Mech_Handle_Pad,
 	.Mech_Time          = .Mech_Time_Pad,
 	.Mech_Eagle         = .Mech_Eagle_Pad,
+	.Mech_Ferry         = .Mech_Ferry_Pad,
 	.Mech_Flip          = .Mech_Flip_Pad,
 	.Hint_No_Rest       = .Hint_No_Rest_Pad,
 	.Hint_No_Rest_Twice = .Hint_No_Rest_Twice_Pad,
@@ -654,6 +665,7 @@ IT := [Key]string {
 	.Level_IV_3     = "La pietra dei due mondi",
 	.Level_IV_4     = "Cerbero e Proserpina",
 	.Level_IV_5     = "Il vaso aperto",
+	.Level_IV_6     = "Il ritorno",
 	.Level_Epilogue = "Il risveglio e le nozze",
 
 	.Level_Unbuilt  = "Ancora in costruzione",
@@ -675,6 +687,7 @@ IT := [Key]string {
 	.Where_IV_3     = "Un solo pavimento per due mondi",
 	.Where_IV_4     = "La soglia di Proserpina",
 	.Where_IV_5     = "La via del ritorno",
+	.Where_IV_6     = "Verso la luce",
 	.Where_Epilogue = "Il cielo, alle nozze",
 	.Device_Seals   = "Sigilli",
 	.Device_Veiled  = "Pietre velate",
@@ -727,8 +740,10 @@ IT := [Key]string {
 	.Fragment_17    = "Caronte non fa nulla gratis. Anche tra i morti vive l'avarizia. Chi muore deve portare la moneta in bocca.",
 	.Fragment_17b   = "«Sulla via incontrerai un asino zoppo carico di legna, e un asinaio zoppo come lui, che ti chiederà di raccogliergli qualche ramo caduto dal carico. Passa oltre senza una parola.»",
 	.Fragment_17c   = "«Mentre attraversi il fiume, un vecchio morto che galleggia alzerà verso di te le mani disfatte e ti pregherà di tirarlo nella barca. Non cedere a una pietà che non ti è concessa.»",
-	.Fragment_18    = "Proserpina le offre un seggio morbido e un ricco banchetto. Psiche siede a terra e chiede solo pane scuro.",
+	.Fragment_18    = "«Un cane enorme, con tre teste, veglia sempre sulla soglia della casa di Proserpina e latra contro i morti, che ormai non può più ferire. Gettagli una delle focacce e passerai.»",
+	.Fragment_18b   = "Proserpina le offre un seggio morbido e un ricco banchetto. Psiche siede a terra e chiede solo pane scuro.",
 	.Fragment_19    = "Amore, guarito, non sopporta più la lontananza. Fugge dall'alta finestra della sua prigione e vola da lei.",
+	.Fragment_19b   = "Nel vaso non c'è bellezza: c'è solo un sonno dell'inferno, un sonno stigio, che esce e l'avvolge. Psiche cade sul sentiero, come morta.",
 	.Fragment_20    = "Così si compiono le nozze, e nasce una figlia che chiamano Voluttà.\nQuesta favola raccontava una vecchia a una ragazza prigioniera, nella caverna dei briganti.",
 	.Fragment_Found = "Frammento del racconto",
 	.Fragment_Continue = "Clic o Invio per continuare",
@@ -743,6 +758,9 @@ IT := [Key]string {
 	.Mech_Eagle_Title = "L'aquila di Giove",
 	.Mech_Eagle     = "L'aquila aspetta sul suo trespolo di bronzo.\nStando sul trespolo, premi Spazio: l'aquila ti porta dove brilla la luce d'oro. Solo andata: per tornare serve un'altra aquila.",
 	.Mech_Eagle_Pad = "L'aquila aspetta sul suo trespolo di bronzo.\nStando sul trespolo, premi {S}: l'aquila ti porta dove brilla la luce d'oro. Solo andata: per tornare serve un'altra aquila.",
+	.Mech_Ferry_Title = "Il traghetto di Caronte",
+	.Mech_Ferry     = "Caronte fa la spola fra due approdi.\nSull'approdo dove aspetta, premi Spazio: ti porta all'altro. La barca resta dove ti ha lasciata: dall'approdo che ha lasciato non la richiami.",
+	.Mech_Ferry_Pad = "Caronte fa la spola fra due approdi.\nSull'approdo dove aspetta, premi {S}: ti porta all'altro. La barca resta dove ti ha lasciata: dall'approdo che ha lasciato non la richiami.",
 	.Mech_Flip_Title = "Le melagrane di Proserpina",
 	.Mech_Flip      = "Sotto il mondo ne pende un altro, capovolto. Sulle pietre dell'asse crescono le melagrane di Proserpina.\nStando su una melagrana, premi 2 (o clicca su Psiche): il fuso capovolge il mondo, e cammini sul rovescio delle pietre.",
 	.Mech_Flip_Pad  = "Sotto il mondo ne pende un altro, capovolto. Sulle pietre dell'asse crescono le melagrane di Proserpina.\nStando su una melagrana, premi {RT}: il fuso capovolge il mondo, e cammini sul rovescio delle pietre.",
@@ -838,6 +856,7 @@ IT := [Key]string {
 	.Intro_IV_1     = "La torre ti ha detto la via. Scendi: in fondo, sull'acqua scura, aspetta il traghettatore.",
 	.Intro_IV_2     = "Oltre il fiume, il regno di Proserpina pende sotto la terra dei morti, come un riflesso nell'acqua.",
 	.Intro_IV_3     = "Qui la terra dei morti e il regno di Proserpina camminano sulla stessa pietra: uno sopra, l'altro sotto.",
+	.Intro_IV_4     = "Caronte fa la spola sul fiume nero. Al di là, sotto l'acqua, la casa di Proserpina.",
 	.V_Doubt        = "Dorme. Ti tornano in mente le parole delle sorelle: e se fosse un mostro? La lampada è nella tua mano.",
 
 	.Tutorial_Label = "Come si gioca",
@@ -868,6 +887,7 @@ IT := [Key]string {
 	.Hint_Eagle     = "Sei sul trespolo: premi Spazio e l'aquila ti porterà dove brilla la luce d'oro",
 	.Hint_Eagle_No_Floor = "L'aquila non si muove: dove ti poserebbe non c'è ancora terra",
 	.Hint_Boat      = "Caronte aspetta: premi Spazio per salire sulla barca",
+	.Hint_Ferry_Away = "La barca è sull'altra riva: Caronte non torna a prenderti",
 	.Hint_Guard     = "Qui è buio: accendi la lucerna accanto al candelabro, e la sua luce ti mostrerà la via",
 	.Hint_Lamp_Day  = "Il sole mostra già la verità: la fiamma aspetta la sera",
 	.Hint_Rest      = "Un braciere acceso: se ti perdi, R ti riporta qui (tenuto premuto, ricomincia il livello)",
@@ -921,6 +941,7 @@ IT := [Key]string {
 	.Outro_IV_1     = "Caronte prende di sua mano la moneta dalle labbra di Psiche. Senza una parola, spinge la barca nella nebbia rossa.",
 	.Outro_IV_2     = "Il mondo si ferma, dritto o capovolto: quaggiù è lo stesso. Più avanti i due mondi si toccano ancora, pietra contro pietra.",
 	.Outro_IV_3     = "La porta si apre sul fiume dei morti, che torna a scorrere, nero. Sull'acqua aspetta di nuovo una barca.",
+	.Outro_IV_4     = "Psiche siede a terra ai piedi di Proserpina e mangia pane scuro. La dea riempie il vaso in segreto e lo chiude. Ora, la via del ritorno.",
 	.Outro_III_1    = "A notte Venere torna dal banchetto, accaldata dal vino e profumata di rose. Vede il lavoro compiuto.\n«Non è opera tua», dice, e le getta un tozzo di pane.",
 
 	.End_Trust_Title = "Fiducia",
@@ -1039,6 +1060,7 @@ EN := [Key]string {
 	.Level_IV_3     = "The Stone of Two Worlds",
 	.Level_IV_4     = "Cerberus and Proserpina",
 	.Level_IV_5     = "The Open Box",
+	.Level_IV_6     = "The Return",
 	.Level_Epilogue = "The Awakening and the Wedding",
 
 	.Level_Unbuilt  = "Still being built",
@@ -1060,6 +1082,7 @@ EN := [Key]string {
 	.Where_IV_3     = "One floor for two worlds",
 	.Where_IV_4     = "Proserpina's threshold",
 	.Where_IV_5     = "The way back",
+	.Where_IV_6     = "Toward the light",
 	.Where_Epilogue = "Heaven, at the wedding",
 	.Device_Seals   = "Seals",
 	.Device_Veiled  = "Veiled stones",
@@ -1112,8 +1135,10 @@ EN := [Key]string {
 	.Fragment_17    = "Charon does nothing for free. Even among the dead greed lives on: whoever dies must carry the coin in his mouth.",
 	.Fragment_17b   = "«On the way you will meet a lame ass loaded with wood, and a driver as lame as his beast, who will ask you to pick up a few sticks fallen from the load. Pass by without a word.»",
 	.Fragment_17c   = "«As you cross the river, a dead old man floating by will lift his wasted hands to you and beg you to pull him into the boat. Do not give in to a pity that is not allowed you.»",
-	.Fragment_18    = "Proserpina offers her a soft seat and a rich feast. Psyche sits on the ground and asks only for coarse bread.",
+	.Fragment_18    = "«A huge dog with three heads keeps watch forever on the threshold of Proserpina's house, barking at the dead, whom it can no longer harm. Throw it one of the cakes and you will pass.»",
+	.Fragment_18b   = "Proserpina offers her a soft seat and a rich feast. Psyche sits on the ground and asks only for coarse bread.",
 	.Fragment_19    = "Cupid, healed, can bear the separation no longer. He escapes through the high window of his prison and flies to her.",
+	.Fragment_19b   = "There is no beauty in the box: only a sleep of the underworld, a Stygian sleep, that rises and wraps her. Psyche falls on the path, as if dead.",
 	.Fragment_20    = "So the wedding is made, and a daughter is born whom they call Pleasure.\nThis was the tale an old woman told a captive girl, in the robbers' cave.",
 	.Fragment_Found = "Fragment of the Tale",
 	.Fragment_Continue = "Click or Enter to continue",
@@ -1128,6 +1153,9 @@ EN := [Key]string {
 	.Mech_Eagle_Title = "Jupiter's eagle",
 	.Mech_Eagle     = "The eagle waits on its bronze perch.\nStanding on the perch, press Space: the eagle carries you where the golden light shines. One way only: to come back you need another eagle.",
 	.Mech_Eagle_Pad = "The eagle waits on its bronze perch.\nStanding on the perch, press {S}: the eagle carries you where the golden light shines. One way only: to come back you need another eagle.",
+	.Mech_Ferry_Title = "Charon's ferry",
+	.Mech_Ferry     = "Charon plies between two landings.\nOn the landing where he waits, press Space: he takes you to the other. The boat stays where it left you: from the landing it has left you cannot call it back.",
+	.Mech_Ferry_Pad = "Charon plies between two landings.\nOn the landing where he waits, press {S}: he takes you to the other. The boat stays where it left you: from the landing it has left you cannot call it back.",
 	.Mech_Flip_Title = "Proserpina's pomegranates",
 	.Mech_Flip      = "Under the world hangs another, upside down. On the stones of the axle grow Proserpina's pomegranates.\nStanding on a pomegranate, press 2 (or click Psyche): the spindle turns the world over, and you walk on the underside of the stones.",
 	.Mech_Flip_Pad  = "Under the world hangs another, upside down. On the stones of the axle grow Proserpina's pomegranates.\nStanding on a pomegranate, press {RT}: the spindle turns the world over, and you walk on the underside of the stones.",
@@ -1223,6 +1251,7 @@ EN := [Key]string {
 	.Intro_IV_1     = "The tower has told you the way. Go down: at the bottom, on the dark water, the ferryman waits.",
 	.Intro_IV_2     = "Beyond the river, Proserpina's kingdom hangs under the land of the dead, like a reflection in water.",
 	.Intro_IV_3     = "Here the land of the dead and Proserpina's kingdom walk on the same stone: one above, the other below.",
+	.Intro_IV_4     = "Charon plies the black river. Beyond it, under the water, Proserpina's house.",
 	.V_Doubt        = "He sleeps. Your sisters' words come back to you: what if he is a monster? The lamp is in your hand.",
 
 	.Tutorial_Label = "How to play",
@@ -1253,6 +1282,7 @@ EN := [Key]string {
 	.Hint_Eagle     = "You stand on the perch: press Space and the eagle will carry you where the golden light shines",
 	.Hint_Eagle_No_Floor = "The eagle does not stir: where it would set you down there is no ground yet",
 	.Hint_Boat      = "Charon is waiting: press Space to board the boat",
+	.Hint_Ferry_Away = "The boat is on the other bank: Charon does not come back for you",
 	.Hint_Guard     = "It is dark here: light the lamp beside the candelabrum, and its light will show you the way",
 	.Hint_Lamp_Day  = "The sun already shows the truth: the flame waits for the evening",
 	.Hint_Rest      = "A lit brazier: if you lose your way, R brings you back here (held down, it restarts the level)",
@@ -1306,6 +1336,7 @@ EN := [Key]string {
 	.Outro_IV_1     = "Charon takes the coin from Psyche's lips with his own hand. Without a word, he pushes the boat into the red mist.",
 	.Outro_IV_2     = "The world comes to rest, upright or upside down: down here it is all one. Further on the two worlds touch again, stone against stone.",
 	.Outro_IV_3     = "The door opens on the river of the dead, running again, black. On the water a boat waits once more.",
+	.Outro_IV_4     = "Psyche sits on the ground at Proserpina's feet and eats coarse bread. The goddess fills the box in secret and closes it. Now, the way back.",
 	.Outro_III_1    = "At night Venus comes back from the feast, flushed with wine and fragrant with roses. She sees the work done.\n“This is not your doing,” she says, and throws her a crust of bread.",
 
 	.End_Trust_Title = "Trust",

@@ -71,7 +71,9 @@
 #                           top block grassy
 #   rock x y z0 z1          the same, bare rock on top too
 #   steps x y z dir         stairs cut in the rock (as stairs, earth and grass)
-#   water x0 y0 x1 y1       a river over these cells, just under the h1 surfaces
+#   water x0 y0 x1 y1 [h]   a river over these cells, just under the surfaces of
+#                           height h (default 1, the same for every river; in a
+#                           level with pomegranates it belongs to the world above)
 #                           (decoration: it holds nobody)
 #   cave x y h dir          the mouth of a cave in the rock on side dir of surface
 #                           x y h (the rock there must rise above it); caves pair
@@ -122,6 +124,12 @@
 #   charon x y h dir        Charon's boat moored on side dir of the exit x y h:
 #                           reaching the landing does not end the level; there
 #                           Space (pad South) boards it and he ferries her away
+#   ferry x y h dir  x y h dir   Charon's ferry between two landings, the boat
+#                           moored on side dir of each: it waits at the first;
+#                           where it is moored, Space (pad South) boards it and he
+#                           poles her across to the other, where it stays (world
+#                           above only)
+#   mechanic ferry          (the card that presents the ferry)
 #   pomegranate x y h       Proserpina's pomegranate on a stone of the axle (the
 #                           size is odd; every pomegranate at y = size/2, all at
 #                           the same h; the axle is that row at z = h - 1):

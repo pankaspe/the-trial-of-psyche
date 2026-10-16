@@ -823,6 +823,7 @@ MECHANIC_CARD := [level.Mechanic][2]i18n.Key {
 	.Handle  = {.Mech_Handle_Title, .Mech_Handle},
 	.Time    = {.Mech_Time_Title, .Mech_Time},
 	.Eagle   = {.Mech_Eagle_Title, .Mech_Eagle},
+	.Ferry   = {.Mech_Ferry_Title, .Mech_Ferry},
 	.Flip    = {.Mech_Flip_Title, .Mech_Flip},
 }
 
@@ -906,9 +907,9 @@ update_lamp :: proc(app: ^App, slot_down: bool) {
 }
 
 // The action of the place: into the cave at her feet, the eagle called,
-// Charon's boat boarded.
+// Charon's boat boarded (at the exit, or a ferry's).
 place :: proc(g: ^game.Game) -> bool {
-	return game.enter_cave(g) || game.call_eagle(g) || game.board_boat(g)
+	return game.enter_cave(g) || game.call_eagle(g) || game.board_boat(g) || game.board_ferry(g)
 }
 
 // The pad in play: the stick (or the d-pad) steers Psyche; the two tools on

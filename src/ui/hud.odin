@@ -534,7 +534,7 @@ flame :: proc(u: ^Ui, c: Vec2, k: f32, col: rl.Color) {
 @(private)
 draw_place :: proc(u: ^Ui, g: ^game.Game, hud: Hud_Input, act: ^Hud_Action) {
 	k := hud_k(u)
-	cave, eagle, boat := game.at_cave(g), game.on_perch(g), game.at_boat(g)
+	cave, eagle, boat := game.at_cave(g), game.on_perch(g), game.at_boat(g) || game.at_ferry(g)
 	here := cave || eagle || boat
 	switch {
 	case cave: u.place_key = .Place_Cave

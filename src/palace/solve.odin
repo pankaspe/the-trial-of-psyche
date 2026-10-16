@@ -7,7 +7,8 @@
 // lie down, steps; the lamp is lit only at evening, and the sun coming up puts
 // it out). The lamp's light makes veiled blocks real within its reach; the
 // lamp lit on a seal raises its `rise` blocks. From an eagle's perch, a flight
-// carries her to its landing, one way. On one of Proserpina's pomegranates the
+// carries her to its landing, one way; Charon's ferry, from the landing where
+// his boat waits, across to the other (the boat stays there). On one of Proserpina's pomegranates the
 // spindle turns the world over (she stays on her stone).
 // A state is her cell, the view, the lamp and the palace's configuration
 // (which blocks changed, how each part is turned, the time). The search is a cheapest
@@ -32,12 +33,15 @@ Config :: struct {
 	upside: bool, // the world turned over (Proserpina's flip)
 }
 
-// A state of the search: her cell, the view, the lamp, the palace's configuration.
+// A state of the search: her cell, the view, the lamp, the palace's
+// configuration, where the ferries' boats are (not in Config: the walk graph
+// does not change with them).
 State :: struct {
-	cfg:  Config,
-	cell: Cell,
-	view: u8,
-	lamp: bool,
+	cfg:   Config,
+	cell:  Cell,
+	view:  u8,
+	lamp:  bool,
+	boats: level.Boats,
 }
 
 Move :: enum u8 {
@@ -51,6 +55,7 @@ Move :: enum u8 {
 	Time, // the spindle on a sundial: day <-> evening
 	Flight, // Jupiter's eagle: from its perch to its landing, one way
 	Overturn, // the spindle on a pomegranate: the world turned over (or back)
+	Ferry, // Charon's ferry: from the landing where the boat waits to the other
 }
 
 COST := [Move]int {
@@ -64,6 +69,7 @@ COST := [Move]int {
 	.Time       = 6,
 	.Flight     = 4,
 	.Overturn   = 6,
+	.Ferry      = 4,
 }
 
 // What a move costs more when the lamp burns through it (about a unit per
@@ -79,6 +85,7 @@ LIT_COST := [Move]int {
 	.Time       = 0,
 	.Flight     = 11,
 	.Overturn   = 8,
+	.Ferry      = 12,
 }
 LIT_PASSAGE_COST :: 8
 
@@ -102,6 +109,7 @@ Solution :: struct {
 	times:       int, // the time turned (at a sundial)
 	flights:     int, // carried by an eagle
 	overturns:   int, // the world turned over (or back) on a pomegranate
+	crossings:   int, // ferried across by Charon
 	states:      int, // states reached from the start
 	dead:        int, // ...of which cannot reach the goal any more (R restarts)
 	given_up:    bool, // more than `limit` states: the search stopped, nothing is known
@@ -163,6 +171,7 @@ state_of :: proc(p: ^Palace, cell: Cell, lamp: bool) -> (st: State) {
 	st.cell = cell
 	st.view = u8(p.rot)
 	st.lamp = lamp
+	st.boats = p.boats
 	return
 }
 
@@ -280,7 +289,7 @@ solve :: proc(p: ^Palace, goal: Spot, avoid: Maybe(Spot) = nil, allocator := con
 	}
 
 	start_cfg := Config{day = len(p.data.sundials) > 0}
-	push(&entries, &seen, &buckets, &edges, Entry{state = {start_cfg, p.data.start, 0, false}, parent = -1, move = .Start})
+	push(&entries, &seen, &buckets, &edges, Entry{state = {start_cfg, p.data.start, 0, false, {}}, parent = -1, move = .Start})
 	goal_id: i32 = -1
 	search: for cost := 0; cost < len(buckets); cost += 1 {
 		for k := 0; k < len(buckets[cost]); k += 1 {
@@ -373,6 +382,26 @@ solve :: proc(p: ^Palace, goal: Spot, avoid: Maybe(Spot) = nil, allocator := con
 					}
 					if _, still := graph_of(&s, flown.cfg).index[to]; still {
 						next(&entries, &seen, &buckets, &edges, id, flown, .Flight, false, changed)
+					}
+				}
+			}
+
+			// a ferry: across, if the boat waits here (the lamp, if lit, burns
+			// on); the boat stays on the other side
+			if f, end := ferry_at(p, st.cell); f >= 0 && boat_moored(st.boats, f, end) {
+				to := p.data.ferries[f].ends[1 - end].cell
+				if _, lands := g.index[to]; lands && !(has_avoid && to == avoid_spot.cell && !avoid_spot.under) {
+					crossed := st
+					crossed.cell = to
+					crossed.boats = st.boats ~ {f}
+					changed := 0
+					if st.lamp {
+						n := 0
+						crossed.cfg, n = touch(&s, crossed.cfg, to)
+						crossed.cfg, changed = seal(p, crossed.cfg, to, n)
+					}
+					if _, still := graph_of(&s, crossed.cfg).index[to]; still {
+						next(&entries, &seen, &buckets, &edges, id, crossed, .Ferry, false, changed)
 					}
 				}
 			}
@@ -506,6 +535,8 @@ solve :: proc(p: ^Palace, goal: Spot, avoid: Maybe(Spot) = nil, allocator := con
 				sol.flights += 1
 			case .Overturn:
 				sol.overturns += 1
+			case .Ferry:
+				sol.crossings += 1
 			}
 		}
 	}
@@ -604,7 +635,7 @@ check_dynamic_fragment :: proc(p: ^Palace, i: int, allocator := context.allocato
 
 // Does the level have blocks that change or parts that turn?
 is_dynamic :: proc(d: ^level.Level_Data) -> bool {
-	if len(d.parts) > 0 || len(d.sundials) > 0 || len(d.eagles) > 0 || len(d.pomegranates) > 0 {
+	if len(d.parts) > 0 || len(d.sundials) > 0 || len(d.eagles) > 0 || len(d.pomegranates) > 0 || len(d.ferries) > 0 {
 		return true
 	}
 	if d.has_sigil && len(d.rise) > 0 && !d.has_amore {
@@ -625,6 +656,7 @@ Oil_Rules :: struct {
 	step:       f32, // a step
 	passage:    f32, // a step through a cave
 	flight:     f32, // carried by an eagle
+	ferry:      f32, // across in Charon's boat
 	turn:       f32, // a turn of the view
 	handle:     f32, // a part turning
 	overturn:   f32, // the world turning over
@@ -661,6 +693,8 @@ oil_left :: proc(p: ^Palace, plan: []Plan_Step, rules: Oil_Rules) -> (least: f32
 			spent = is_passage(p, at, st.cell) ? rules.passage : rules.step
 		case .Flight:
 			spent = rules.flight
+		case .Ferry:
+			spent = rules.ferry
 		case .Overturn:
 			spent = rules.overturn
 		}

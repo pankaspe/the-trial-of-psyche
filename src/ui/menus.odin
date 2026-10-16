@@ -467,7 +467,7 @@ level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs:
 			{len(d.pomegranates) > 0, .Device_Pomegranates},
 			{len(d.caves) > 0, .Device_Caves},
 			{len(d.eagles) > 0, .Device_Eagle},
-			{d.has_boat, .Device_Boat},
+			{d.has_boat || len(d.ferries) > 0, .Device_Boat},
 			{len(d.rests) > 0, .Device_Braziers},
 		}
 		hx := x0

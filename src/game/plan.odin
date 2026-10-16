@@ -33,6 +33,8 @@ apply_move :: proc(g: ^Game, st: pl.Plan_Step) -> bool {
 	case .Overturn:
 		use_spindle(g)
 		return g.phase == .Overturn
+	case .Ferry:
+		return board_ferry(g) && g.psyche.step_ferry
 	}
 	return true
 }

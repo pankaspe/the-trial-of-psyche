@@ -1,0 +1,176 @@
+# The Trial of Psyche - level IV.4: "Cerberus and Proserpina" (format: level_04.txt)
+#
+# The black river of the dead runs between three islands of one floor (z 4):
+# the land of the dead stands on it, Proserpina's house hangs from it; turned
+# over, her house stands and the land of the dead hangs (as in IV.3). The
+# water lies in the floor between the stones, seen from both worlds.
+# Charon's ferries (introduced here) are of the land of the dead: the boat
+# stays where it took her.
+#   - from the crag in the west (its steps hidden behind it from the first
+#     view: turn) to the north landing; Charon takes her to the middle island;
+#   - the second ferry waits at the east island, across the water: no way to
+#     call it. Over at the middle pomegranate: in her house a marble bridge
+#     runs east, a stone of it veiled (the lamp); over the bridge, back at the
+#     east pomegranate, and there the boat waits;
+#   - the boat takes her to the south of the middle island, walled from the
+#     rest by crags: the seal of the land of the dead, which raises the last
+#     stone of the stairs to Proserpina's seat;
+#   - back with the boat (it stayed with her), over at the east pomegranate,
+#     up to her seat (the exit).
+# Solution (solver: 33 steps, 1 turn, 2 lightings, 3 overturns, 3 crossings,
+# 9 decisions).
+# Fragments: IV.4 (VI.20, the seat and the bread) on a marble terrace of her
+# house on the west island (the west pomegranate, a turn); IV.4b (VI.19,
+# Cerberus) on a crag north of the east island, past a veiled stone of the
+# floor (the lamp lit while she crosses the bridge, or once more).
+intro intro_iv_4
+outro outro_iv_4
+size 13
+setting taenarus
+upside dis
+lamp
+mechanic ferry
+water 0 0 12 12 5
+block 1 4 4 rock
+block 1 5 4 rock
+block 1 6 4
+block 1 7 4 rock
+block 1 8 4 rock
+block 1 9 4 rock
+block 2 3 4 rock
+block 2 4 4 rock
+block 2 5 4 rock
+block 2 6 4
+block 2 7 4 rock
+block 2 8 4 rock
+block 2 9 4 rock
+block 3 3 4 rock
+block 3 4 4 rock
+block 3 5 4 rock
+block 3 6 4
+block 3 7 4 rock
+block 3 8 4 rock
+block 5 3 4 rock
+block 5 4 4 rock
+block 5 5 4 rock
+block 5 6 4
+block 5 7 4 rock
+block 5 8 4 rock
+block 5 9 4 rock
+block 6 3 4 rock
+block 6 4 4 rock
+block 6 5 4 rock
+block 6 6 4
+block 6 7 4 rock
+block 6 8 4 rock
+block 6 9 4 rock
+block 7 4 4 rock
+block 7 5 4 rock
+block 7 6 4
+block 7 7 4 rock
+block 7 8 4 rock
+block 7 9 4 rock
+pomegranate 2 6 5
+pomegranate 6 6 5
+pomegranate 10 6 5
+rock 1 9 5 5
+rock 1 8 5 5
+start 1 9 6
+steps 1 7 5 py
+prop lip 1 9 6 mx
+prop lip 1 9 6 px
+prop lip 1 9 6 py
+prop lip 1 8 6 mx
+prop lip 1 8 6 px
+rock 2 8 5 6
+prop lip 2 8 7 mx
+prop lip 2 8 7 px
+prop lip 2 8 7 my
+prop lip 2 8 7 py
+ferry 2 3 5 my  6 3 5 my
+rock 5 7 5 6
+prop lip 5 7 7 mx
+prop lip 5 7 7 px
+prop lip 5 7 7 my
+prop lip 5 7 7 py
+rock 6 7 5 6
+prop lip 6 7 7 mx
+prop lip 6 7 7 px
+prop lip 6 7 7 my
+prop lip 6 7 7 py
+rock 7 7 5 6
+prop lip 7 7 7 mx
+prop lip 7 7 7 px
+prop lip 7 7 7 my
+prop lip 7 7 7 py
+ferry 10 9 5 py  6 9 5 py
+block 7 8 5 rock
+steps 6 8 5 px
+sigil 7 8 6
+prop lip 7 8 6 px
+prop lip 7 8 6 my
+prop lip 7 8 6 py
+prop cairn 3 3 5 my
+prop shrub 1 9 6 py
+prop cairn 7 8 6 px
+prop shrub 11 3 6 my
+block 11 3 5 rock
+steps 11 4 5 my
+fragment 11 3 6
+prop lip 11 3 6 mx
+prop lip 11 3 6 px
+prop lip 11 3 6 my
+under
+block 9 8 4
+block 9 7 4
+block 9 6 4
+block 9 5 4
+block 9 4 4
+block 9 3 4
+block 10 9 4
+block 10 8 4
+block 10 7 4
+block 10 6 4
+block 10 5 4
+block 10 4 4
+block 10 3 4
+block 11 9 4
+block 11 8 4
+veiled 11 7 4
+block 11 6 4
+block 11 5 4
+block 11 4 4
+block 11 3 4
+stairs 7 7 5 px
+veiled 8 7 5
+stairs 9 7 5 mx
+prop rail 8 7 6 py
+prop rail 8 7 6 my
+block 10 3 5
+exit 10 3 6
+rise 10 4 5 1
+stairs 10 5 5 my
+prop rail 10 3 6 mx
+prop rail 10 3 6 px
+prop rail 10 3 6 my
+prop rail 10 4 6 mx
+prop rail 10 4 6 px
+prop pillar 9 4 5
+prop pillar 11 4 5
+prop pillar 9 3 5
+prop pillar 11 3 5
+prop rail 9 5 5 my
+prop rail 11 5 5 my
+block 1 3 5
+stairs 1 4 5 my
+fragment 1 3 6
+prop rail 1 3 6 mx
+prop rail 1 3 6 px
+prop rail 1 3 6 my
+prop sconce 10 3 5 mx
+prop sconce 10 3 5 px
+candelabrum 9 6 5 my lit
+candelabrum 11 6 5 px lit
+candelabrum 5 6 5 mx lit
+candelabrum 2 8 5 py lit
+end

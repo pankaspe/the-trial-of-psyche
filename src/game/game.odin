@@ -39,6 +39,11 @@
 // end the level; standing there, Space (or the card over her) boards it, she
 // gives him the coin and he ferries her away into the mist.
 //
+// Charon's ferry (Act IV): his boat between two landings, moored where it took
+// her last (palace.boats). Standing where it waits, Space (or the card over
+// her) boards it and he poles her across: a step of its own, like the eagle's
+// flight; walks never take it.
+//
 // Proserpina's flip (Act IV): standing on one of her pomegranates, the
 // spindle turns the world over about the axle while she stays on her stone
 // (phase Overturn); the world under the palace stands up, the other hangs
@@ -154,6 +159,7 @@ Psyche :: struct {
 	step_illusion: bool,
 	step_passage:  bool, // the step is a passage between two caves
 	step_flight:   bool, // the step is a flight in the eagle's talons
+	step_ferry:    bool, // the step is a crossing in Charon's boat
 	pos:           Vec3, // feet, world space
 	yaw:           f32, // facing, radians in the world xy plane
 	target_yaw:    f32,
@@ -217,6 +223,7 @@ Game :: struct {
 	rest:           Rest, // the last brazier Psyche lit
 	eagle_flying:   int, // the eagle carrying her (while psyche.step_flight)
 	eagle_back:     [level.MAX_EAGLES]f32, // per eagle: time since it let her go, < 0 before
+	ferry_crossing: int, // the ferry taking her across (while psyche.step_ferry)
 	rests_lit:      []bool, // per data.rests entry
 	teach_pending:  bool, // the level's new mechanic is still to be presented
 	mechanic_new:   bool, // event for the app: present the new mechanic now (it clears it)
@@ -286,6 +293,7 @@ Rest :: struct {
 	part_rot:  [level.MAX_PARTS]int,
 	day:       bool,
 	upside:    bool,
+	boats:     level.Boats,
 	oil:       f32,
 	activated: level.Seals,
 	lightings: int,
@@ -380,6 +388,7 @@ oil_rules :: proc(d: ^level.Level_Data) -> pl.Oil_Rules {
 		step = STEP_TIME,
 		passage = PASSAGE_TIME,
 		flight = FLIGHT_TIME,
+		ferry = FERRY_TIME,
 		turn = ROTATE_TIME,
 		handle = PART_TIME,
 		overturn = OVERTURN_TIME,
@@ -926,6 +935,49 @@ board_boat :: proc(g: ^Game) -> bool {
 	return true
 }
 
+// Psyche stands still on a landing of Charon's ferry where his boat waits.
+at_ferry :: proc(g: ^Game) -> bool {
+	if !standing(g) {
+		return false
+	}
+	f, k := pl.ferry_at(&g.palace, g.psyche.cell)
+	return f >= 0 && pl.boat_moored(g.palace.boats, f, k)
+}
+
+// Into the ferry's boat, across to its other landing; at a landing the boat
+// has left, nothing (and she is told why).
+board_ferry :: proc(g: ^Game) -> bool {
+	if !standing(g) {
+		return false
+	}
+	f, k := pl.ferry_at(&g.palace, g.psyche.cell)
+	if f < 0 {
+		return false
+	}
+	to := g.data.ferries[f].ends[1 - k].cell
+	if !pl.boat_moored(g.palace.boats, f, k) || !pl.is_surface(&g.palace, to) {
+		audio.play(.Blocked, -8)
+		hint(g, .Hint_Ferry_Away, 4, true)
+		return true
+	}
+	psy := &g.psyche
+	sa.clear(&g.path)
+	g.pending_turn = 0
+	g.steering = false
+	g.ferry_crossing = f
+	psy.step_from = psy.cell
+	psy.step_to = to
+	psy.step_t = 0
+	psy.step_illusion = false
+	psy.step_passage = false
+	psy.step_flight = false
+	psy.step_ferry = true
+	psy.walking = true
+	face_toward(g, crossing_point(g, FERRY_IN) - psy.pos)
+	learn(g, .Hint_Boat)
+	return true
+}
+
 // Start walking to `target` as a click on it would (tests, scripted scenes).
 walk_to :: proc(g: ^Game, target: Cell) -> bool {
 	from := g.psyche.walking ? g.psyche.step_to : g.psyche.cell
@@ -1093,6 +1145,7 @@ next_step :: proc(g: ^Game) {
 	psy.step_illusion = illusion && !passage
 	psy.step_passage = passage
 	psy.step_flight = false
+	psy.step_ferry = false
 	psy.walking = true
 	if psy.step_illusion {
 		audio.play(.Seam, -18)
@@ -1110,6 +1163,9 @@ next_step :: proc(g: ^Game) {
 step_time :: proc(g: ^Game) -> f32 {
 	if g.psyche.step_flight {
 		return FLIGHT_TIME
+	}
+	if g.psyche.step_ferry {
+		return FERRY_TIME
 	}
 	return g.psyche.step_passage ? PASSAGE_TIME : STEP_TIME
 }
@@ -1173,6 +1229,9 @@ step_points :: proc(g: ^Game, u: f32) -> (pos: Vec3, second_half: bool) {
 	}
 	if psy.step_flight {
 		return flight_point(g, a, b, u), u >= 0.5
+	}
+	if psy.step_ferry {
+		return crossing_point(g, u), u >= 0.5
 	}
 	if !psy.step_illusion {
 		return walk_point(g, psy.step_from, psy.step_to, u), u >= 0.5
@@ -1284,8 +1343,7 @@ footstep :: proc(g: ^Game, cell: Cell) {
 update_walk :: proc(g: ^Game, dt: f32) {
 	psy := &g.psyche
 	// turn smoothly toward the target yaw, the short way round
-	diff := math.mod(psy.target_yaw - psy.yaw + 3 * math.PI, 2 * math.PI) - math.PI
-	psy.yaw += diff * min(dt * 14, 1)
+	psy.yaw += short_turn(psy.yaw, psy.target_yaw) * min(dt * 14, 1)
 
 	if !psy.walking {
 		psy.pos = pl.stand_world(&g.palace, psy.cell) + {0, 0, exit_lift(g) + overturn_lift(g)}
@@ -1296,6 +1354,9 @@ update_walk :: proc(g: ^Game, dt: f32) {
 	psy.step_t += dt
 	u := min(psy.step_t / step_time(g), 1)
 	psy.pos, _ = step_points(g, u)
+	if psy.step_ferry {
+		update_crossing(g, dt)
+	}
 	if psy.step_passage && before < PASSAGE_TIME * 0.5 && psy.step_t >= PASSAGE_TIME * 0.5 {
 		// in the dark of the rock: she comes out of the other mouth, facing out
 		out, _ := step_points(g, 0.51)
@@ -1312,6 +1373,11 @@ update_walk :: proc(g: ^Game, dt: f32) {
 		// the eagle lets her go and flies home
 		psy.step_flight = false
 		g.eagle_back[g.eagle_flying] = 0
+	}
+	if psy.step_ferry {
+		// the boat stays at this landing
+		psy.step_ferry = false
+		g.palace.boats ~= {g.ferry_crossing}
 	}
 	footstep(g, psy.cell)
 	arrive(g, psy.cell)
@@ -1352,6 +1418,8 @@ arrive :: proc(g: ^Game, n: Cell) {
 	if g.data.has_exit && n == g.data.exit && upright(g, g.data.exit_under) && !g.data.has_boat {
 		start_ending(g, .Ending_Exit)
 	} else if g.data.has_boat && n == g.data.boat.cell {
+		hint(g, .Hint_Boat, 0)
+	} else if f, k := pl.ferry_at(&g.palace, n); f >= 0 && pl.boat_moored(g.palace.boats, f, k) {
 		hint(g, .Hint_Boat, 0)
 	} else if !g.lamp_on && g.data.has_amore && adjacent_to_amore(g, n) {
 		if g.trust_allowed {
@@ -1543,6 +1611,7 @@ light_rest :: proc(g: ^Game, i: int, quiet := false) {
 	r.part_rot = g.palace.part_rot
 	r.day = g.palace.day
 	r.upside = g.palace.upside
+	r.boats = g.palace.boats
 	r.oil = g.oil
 	r.activated = g.activated
 	r.lightings = g.lightings
@@ -1560,7 +1629,7 @@ return_to_rest :: proc(g: ^Game) -> bool {
 		return false
 	}
 	r := &g.rest
-	if g.psyche.cell == r.cell && !g.psyche.walking && slice.equal(g.palace.flipped, r.flipped) && g.palace.part_rot == r.part_rot && g.palace.day == r.day && g.palace.upside == r.upside && g.activated == r.activated {
+	if g.psyche.cell == r.cell && !g.psyche.walking && slice.equal(g.palace.flipped, r.flipped) && g.palace.part_rot == r.part_rot && g.palace.day == r.day && g.palace.upside == r.upside && g.palace.boats == r.boats && g.activated == r.activated {
 		return false
 	}
 	set_lamp(g, false)
@@ -1575,6 +1644,7 @@ return_to_rest :: proc(g: ^Game) -> bool {
 		g.stain_count, g.stain_next = 0, 0 // the oil spilt was of the other frame
 	}
 	g.palace.upside = r.upside
+	g.palace.boats = r.boats
 	g.overturn = r.upside ? 1 : 0
 	g.activated = r.activated
 	g.palace.risen = r.activated
@@ -1794,13 +1864,48 @@ BOAT_SEAT :: 1.0 // where she stands in it, cells out from the landing's centre
 BOAT_CHARON :: 1.85 // where Charon stands, at the far end (cells out)
 BOAT_DRAFT :: 0.22 // its floor under the landing's surface
 
-// The way the boat lies: out from the landing, along its side `dir`.
+BOAT_MID :: BOAT_STERN + BOAT_LENGTH * 0.5 // the middle of the hull, cells out from the landing's centre
+
+// A boat as it floats: the middle of its hull (its floor) and the way its
+// prow points; a ferry's is of the world above (render turns it with it).
+Boat_Pose :: struct {
+	mid:   Vec3,
+	yaw:   f32,
+	above: bool,
+}
+
+// Charon in his boat: where he stands, which way he faces, how far his pole
+// leans (0 upright .. 1 thrust), how much of him is seen (the mist takes him).
+Charon :: struct {
+	boat:  Boat_Pose,
+	pos:   Vec3,
+	face:  f32,
+	pole:  f32,
+	alpha: f32,
+}
+
+// A point of a boat, `out` cells along it from the landing's centre (as moored).
+boat_at :: proc(b: Boat_Pose, out: f32) -> Vec3 {
+	return b.mid + Vec3{math.cos(b.yaw), math.sin(b.yaw), 0} * (out - BOAT_MID)
+}
+
+// A boat moored on its side of a landing, rocking on the water, `away` cells further out.
+@(private)
+moored :: proc(g: ^Game, e: level.Boat, away: f32 = 0) -> Boat_Pose {
+	d := iso.DIR_VEC[e.dir]
+	out := Vec3{f32(d.x), f32(d.y), 0}
+	land := Vec3{f32(e.cell.x) + 0.5, f32(e.cell.y) + 0.5, f32(e.cell.z)}
+	bob := 0.015 * math.sin(g.time * 1.4)
+	return {land + out * (BOAT_MID + away) + {0, 0, bob - BOAT_DRAFT}, math.atan2(out.y, out.x), false}
+}
+
+// The way the boat at the exit lies: out from the landing, along its side `dir`.
 boat_dir :: proc(g: ^Game) -> Vec3 {
 	d := iso.DIR_VEC[g.data.boat.dir]
 	return {f32(d.x), f32(d.y), 0}
 }
 
-// Cells the boat has gone out from its mooring.
+// Cells the boat at the exit has gone out from its mooring.
 @(private)
 boat_away :: proc(g: ^Game) -> f32 {
 	if !g.ferried || !(g.phase == .Ending_Exit || g.phase == .Finished) {
@@ -1810,32 +1915,32 @@ boat_away :: proc(g: ^Game) -> f32 {
 	return BOAT_GONE * fx.quad_in(fx.clamp01((t - BOAT_PUSH) / (BOAT_END - BOAT_PUSH)))
 }
 
-// A point of the boat (`out` cells from the landing's centre, along its
-// length), as it floats now: rocking on the water, then going away.
+// A point of the boat at the exit (`out` cells from the landing's centre, along
+// its length), as it floats now: rocking on the water, then going away.
 boat_point :: proc(g: ^Game, out: f32) -> Vec3 {
-	land := pl.node_world(&g.palace, g.data.boat.cell)
-	bob := 0.015 * math.sin(g.time * 1.4)
-	return land + boat_dir(g) * (out + boat_away(g)) + {0, 0, bob - BOAT_DRAFT}
+	return boat_at(moored(g, g.data.boat, boat_away(g)), out)
 }
 
-// Charon in his boat: where he stands, which way he faces, how far his pole
-// leans (0 upright .. 1 thrust), how much of him is seen (the mist takes him).
-charon_pose :: proc(g: ^Game) -> (pos: Vec3, yaw, pole, alpha: f32) {
-	pos = boat_point(g, BOAT_CHARON)
-	d := boat_dir(g)
-	// he faces the landing while he waits; out over the water once he poles
-	away := g.ferried && (g.phase == .Finished || g.phase == .Ending_Exit && g.phase_t > BOAT_PUSH - 0.4)
-	yaw = math.atan2(-d.y, -d.x)
-	if away {
-		yaw = math.atan2(d.y, d.x)
+// Charon at the exit: facing the landing while he waits, out over the water
+// once he poles.
+exit_charon :: proc(g: ^Game) -> Charon {
+	b := moored(g, g.data.boat, boat_away(g))
+	c := Charon{boat = b, pos = boat_at(b, BOAT_CHARON), face = b.yaw + math.PI, alpha = 1 - boat_fade(g)}
+	if g.ferried && (g.phase == .Finished || g.phase == .Ending_Exit && g.phase_t > BOAT_PUSH - 0.4) {
 		t := g.phase == .Finished ? BOAT_END : g.phase_t
-		pole = 0.5 + 0.5 * math.sin((t - BOAT_PUSH) * 1.6 - math.PI * 0.5)
+		c.face = b.yaw
+		c.pole = poling(t - BOAT_PUSH)
 	}
-	alpha = 1 - boat_fade(g)
-	return
+	return c
 }
 
-// How much the mist has taken the boat (0 there .. 1 gone).
+// How far the pole leans, `t` seconds after he pushes off.
+@(private)
+poling :: proc(t: f32) -> f32 {
+	return 0.5 + 0.5 * math.sin(t * 1.6 - math.PI * 0.5)
+}
+
+// How much the mist has taken the boat at the exit (0 there .. 1 gone).
 boat_fade :: proc(g: ^Game) -> f32 {
 	return fx.clamp01((boat_away(g) - BOAT_GONE * 0.45) / (BOAT_GONE * 0.55))
 }
@@ -1847,8 +1952,121 @@ boat_coin :: proc(g: ^Game) -> (pos: Vec3, ok: bool) {
 	}
 	u := fx.sine_in_out((g.phase_t - BOAT_COIN) / BOAT_COIN_TIME)
 	her := g.psyche.pos + {0, 0, 0.52}
-	him, _, _, _ := charon_pose(g)
+	him := exit_charon(g).pos
 	return fx.lerp(her, him + {0, 0, 0.5}, u) + {0, 0, 0.12 * math.sin(math.PI * u)}, true
+}
+
+// Every Charon of the level as he is now: at the exit, then on each ferry.
+charons :: proc(g: ^Game, allocator := context.temp_allocator) -> []Charon {
+	list := make([dynamic]Charon, 0, len(g.data.ferries) + 1, allocator)
+	if g.data.has_boat {
+		append(&list, exit_charon(g))
+	}
+	for _, i in g.data.ferries {
+		append(&list, ferry_charon(g, i))
+	}
+	return list[:]
+}
+
+// --- Charon's ferry ---------------------------------------------------------------------
+
+// Timeline of a crossing (a step, `step_t` over FERRY_TIME): she steps down
+// into the boat, he poles it round and across, she steps up onto the other
+// landing.
+FERRY_TIME :: 5.0
+FERRY_IN :: 0.18 // she is in the boat; he pushes off...
+FERRY_OUT :: 0.84 // ...it is moored at the other landing; she steps up
+FERRY_SWING :: 0.3 // the part of the way the boat takes to come round, out and in
+
+// The angle from a to b, the short way round.
+@(private)
+short_turn :: proc(a, b: f32) -> f32 {
+	return math.mod(b - a + 3 * math.PI, 2 * math.PI) - math.PI
+}
+
+// Ferry i's boat at `u` of a crossing from where it is moored (u < 0: moored,
+// still): the way it goes (`heading`) and whether it is under way.
+@(private)
+ferry_boat :: proc(g: ^Game, i: int, u: f32) -> (b: Boat_Pose, under_way: bool, heading: f32) {
+	f := g.data.ferries[i]
+	k := i in g.palace.boats ? 1 : 0
+	b = moored(g, f.ends[k])
+	b.above = true
+	heading = b.yaw
+	if u < 0 {
+		return
+	}
+	to := moored(g, f.ends[1 - k])
+	way := to.mid - b.mid
+	heading = math.atan2(way.y, way.x)
+	s := fx.progress(u, FERRY_IN, FERRY_OUT - FERRY_IN)
+	under_way = s > 0 && s < 1
+	b.mid = fx.lerp(b.mid, to.mid, fx.sine_in_out(s))
+	// round from its mooring to the way, then round to the other mooring
+	b.yaw += short_turn(b.yaw, heading) * fx.sine_in_out(fx.clamp01(s / FERRY_SWING))
+	b.yaw += short_turn(b.yaw, to.yaw) * fx.sine_in_out(fx.clamp01((s - 1 + FERRY_SWING) / FERRY_SWING))
+	return
+}
+
+// How far along the crossing ferry i is (-1: not crossing).
+@(private)
+crossing_u :: proc(g: ^Game, i: int) -> f32 {
+	psy := &g.psyche
+	if !psy.walking || !psy.step_ferry || g.ferry_crossing != i {
+		return -1
+	}
+	return psy.step_t / FERRY_TIME
+}
+
+// Charon on ferry i: facing the landing while he waits, the way on as he poles.
+ferry_charon :: proc(g: ^Game, i: int) -> Charon {
+	u := crossing_u(g, i)
+	b, under_way, heading := ferry_boat(g, i, u)
+	c := Charon{boat = b, pos = boat_at(b, BOAT_CHARON), face = b.yaw + math.PI, alpha = 1}
+	if under_way {
+		s := fx.progress(u, FERRY_IN, FERRY_OUT - FERRY_IN)
+		c.face += short_turn(c.face, heading) * fx.sine_in_out(fx.clamp01(min(s, 1 - s) / 0.12))
+		c.pole = poling((u - FERRY_IN) * FERRY_TIME)
+	}
+	return c
+}
+
+// Where she is along a crossing (u = 0..1): down from the landing into the
+// boat, carried in it, up onto the other landing.
+@(private)
+crossing_point :: proc(g: ^Game, u: f32) -> Vec3 {
+	psy := &g.psyche
+	i := g.ferry_crossing
+	if u < FERRY_IN {
+		b, _, _ := ferry_boat(g, i, 0)
+		w := fx.sine_in_out(u / FERRY_IN)
+		return fx.lerp(pl.stand_world(&g.palace, psy.step_from), boat_at(b, BOAT_SEAT), w) + {0, 0, 0.12 * math.sin(math.PI * w)}
+	}
+	if u > FERRY_OUT {
+		b, _, _ := ferry_boat(g, i, 1)
+		w := fx.sine_in_out((u - FERRY_OUT) / (1 - FERRY_OUT))
+		return fx.lerp(boat_at(b, BOAT_SEAT), pl.stand_world(&g.palace, psy.step_to), w) + {0, 0, 0.12 * math.sin(math.PI * w)}
+	}
+	b, _, _ := ferry_boat(g, i, u)
+	return boat_at(b, BOAT_SEAT)
+}
+
+// The crossing's sounds, and she faces the way on.
+@(private)
+update_crossing :: proc(g: ^Game, dt: f32) {
+	t := g.psyche.step_t
+	if crossed(t, dt, FERRY_TIME * FERRY_IN * 0.8) || crossed(t, dt, FERRY_TIME * (FERRY_OUT + (1 - FERRY_OUT) * 0.8)) {
+		audio.play(.Thud, -20, 1.4)
+	}
+	if crossed(t, dt, FERRY_TIME * FERRY_IN) {
+		audio.play(.Oar, -12, 0.85)
+	}
+	u := t / FERRY_TIME
+	if _, under_way, heading := ferry_boat(g, g.ferry_crossing, u); under_way {
+		g.psyche.target_yaw = heading
+	} else if u > FERRY_OUT {
+		face_toward(g, pl.stand_world(&g.palace, g.psyche.step_to) - g.psyche.pos)
+	}
 }
 
 @(private)
