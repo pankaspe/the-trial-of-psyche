@@ -359,6 +359,9 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 				for d in iso.Dir {
 					step := iso.DIR_VEC[d]
 					if x + step.x < a[0] || x + step.x > a[2] || y + step.y < a[1] || y + step.y > a[3] {
+						if boat_gap(g, c, d) {
+							continue // the mouth Charon's boat leaves by
+						}
 						append(&s.pieces, piece(c, oriented_mesh(.Rim_PX, d), RIM_MATERIAL[f.rim]))
 					}
 				}
@@ -387,6 +390,19 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 	for _ in 0 ..< 40 {
 		emit_mote(s, true)
 	}
+}
+
+// The rim's side `d` of cell c lies on the way Charon's boat leaves the level
+// by (out from the exit's landing, along its side): it is left open.
+@(private)
+boat_gap :: proc(g: ^game.Game, c: Cell, d: iso.Dir) -> bool {
+	if !g.data.has_boat || d != g.data.boat.dir {
+		return false
+	}
+	b := g.data.boat.cell
+	step := iso.DIR_VEC[d]
+	along := (c.x - b.x) * step.x + (c.y - b.y) * step.y
+	return along > 0 && (step.x != 0 ? c.y == b.y : c.x == b.x)
 }
 
 // A piece of decoration (or of a part, n > 0) at cell c.

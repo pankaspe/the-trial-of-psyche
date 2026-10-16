@@ -35,7 +35,7 @@ tier 17 21
 lamp 1
 intro intro_iv_1
 outro outro_iv_1
-floor water 0 0 15 11
+floor basin rock -1 1 13 10
 start 5 5 21
 tower 6 5 21
 prop wallBattlement 5 5 21 mx
