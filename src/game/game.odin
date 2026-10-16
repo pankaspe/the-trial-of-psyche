@@ -1877,11 +1877,10 @@ BOAT_DRAFT :: 0.22 // its floor under the landing's surface
 BOAT_MID :: BOAT_STERN + BOAT_LENGTH * 0.5 // the middle of the hull, cells out from the landing's centre
 
 // A boat as it floats: the middle of its hull (its floor) and the way its
-// prow points; a ferry's is of the world above (render turns it with it).
+// prow points. Every boat is of the world above (render turns it with it).
 Boat_Pose :: struct {
-	mid:   Vec3,
-	yaw:   f32,
-	above: bool,
+	mid: Vec3,
+	yaw: f32,
 }
 
 // Charon in his boat: where he stands, which way he faces, how far his pole
@@ -1906,7 +1905,7 @@ moored :: proc(g: ^Game, e: level.Boat, away: f32 = 0) -> Boat_Pose {
 	out := Vec3{f32(d.x), f32(d.y), 0}
 	land := Vec3{f32(e.cell.x) + 0.5, f32(e.cell.y) + 0.5, f32(e.cell.z)}
 	bob := 0.015 * math.sin(g.time * 1.4)
-	return {land + out * (BOAT_MID + away) + {0, 0, bob - BOAT_DRAFT}, math.atan2(out.y, out.x), false}
+	return {land + out * (BOAT_MID + away) + {0, 0, bob - BOAT_DRAFT}, math.atan2(out.y, out.x)}
 }
 
 // The way the boat at the exit lies: out from the landing, along its side `dir`.
@@ -2001,7 +2000,6 @@ ferry_boat :: proc(g: ^Game, i: int, u: f32) -> (b: Boat_Pose, under_way: bool, 
 	f := g.data.ferries[i]
 	k := i in g.palace.boats ? 1 : 0
 	b = moored(g, f.ends[k])
-	b.above = true
 	heading = b.yaw
 	if u < 0 {
 		return
@@ -2527,6 +2525,35 @@ start_cues_time :: proc(g: ^Game) -> f32 {
 
 // Tutorial hints stay on screen until Psyche does what they teach.
 CANDELABRUM_REACH :: 1.5 // cells from Psyche: the lamp's flame lights a candelabrum
+
+FIRE_HEARD :: 4.5 // cells: how far off a fire is still heard
+
+// The fire nearest Psyche, as heard: 0 (none within FIRE_HEARD, or its world
+// hangs under the other) .. 1 (beside her), and where it is across the
+// screen (-1 left .. 1 right).
+fire_near :: proc(g: ^Game) -> (near, pan: f32) {
+	best := f32(FIRE_HEARD)
+	for prop in g.data.props {
+		if prop.kind != .Fire || prop.under != g.palace.upside {
+			continue
+		}
+		c := level.frame_cell(&g.data, prop.cell, prop.under, g.palace.upside)
+		d := Vec3{f32(c.x) + 0.5, f32(c.y) + 0.5, f32(c.z)} - g.psyche.pos
+		dist := math.sqrt(d.x * d.x + d.y * d.y + 2 * d.z * d.z)
+		if dist >= best {
+			continue
+		}
+		best = dist
+		// across the screen in the current view: x' - y' (a delta turns as a cell does)
+		dx, dy := d.x, d.y
+		for _ in 0 ..< g.palace.rot {
+			dx, dy = -dy, dx
+		}
+		pan = clamp((dx - dy) / 5, -0.7, 0.7)
+	}
+	k := 1 - math.smoothstep(f32(0.8), FIRE_HEARD, best)
+	return k * k, pan
+}
 
 // Where candelabrum i stands, in world space (its foot, in the corner of its surface).
 candelabrum_base :: proc(g: ^Game, i: int) -> Vec3 {

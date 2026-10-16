@@ -74,6 +74,7 @@ Bed :: enum u8 {
 	Pasture_Day, // the Sun's pastures at noon: a slow river, a warm breeze, cicadas far off
 	Pasture_Evening, // the same at evening: the river, crickets, the reeds stirring
 	Styx, // the gorge of the Styx: a low wind, the black water falling far off
+	Fire, // a fire close by (played near one, set_near): the flames' soft roar, its crackles
 }
 
 BED_SECONDS :: 24
@@ -644,6 +645,7 @@ synthesize_bed :: proc(bed: Bed, allocator := context.allocator) -> []f32 {
 		crickets, cricket_level = 4, 0.022
 	case .Styx:
 		wind = {0.15, 100, 360, 0.55}
+	case .Fire:
 	}
 	for ch in 0 ..< 2 {
 		pk: Pink
@@ -706,6 +708,9 @@ synthesize_bed :: proc(bed: Bed, allocator := context.allocator) -> []f32 {
 		water_wash(raw, m, &rng, {0.09, 0.04}, 240, 110, 0.19)
 		water_wash(raw, m, &rng, {0.17, 0.07}, 1100, 300, 0.03)
 	}
+	if bed == .Fire {
+		fire(raw, m, &rng)
+	}
 	// the wrap: the last XF seconds fade into the first, equal power
 	out := make([]f32, n * 2, allocator)
 	xf := m - n
@@ -720,6 +725,51 @@ synthesize_bed :: proc(bed: Bed, allocator := context.allocator) -> []f32 {
 		}
 	}
 	return out
+}
+
+// A fire close by: the soft roar of its flames (low noise that breathes) and
+// its crackles, rounded (short bursts of a band of noise with soft onsets),
+// coming in little clusters, now and then the deeper pop of a log.
+@(private)
+fire :: proc(raw: []f32, m: int, rng: ^fx.Rng) {
+	for ch in 0 ..< 2 {
+		pk: Pink
+		f: Svf
+		ph := fx.rand_range(rng, 0, 10)
+		for i in 0 ..< m {
+			t := time_of(i)
+			breath := 0.65 + 0.35 * (0.6 * math.sin(1.3 * t + ph) + 0.4 * math.sin(3.1 * t + 2 * ph))
+			lp, _, _ := svf(&f, pink(&pk, rng), 360, 0.7)
+			raw[2 * i + ch] += lp * 0.15 * breath
+		}
+	}
+	end := f32(m) / RATE - 0.2
+	for t := fx.rand_range(rng, 0, 0.3); t < end; t += fx.rand_range(rng, 0.25, 1.4) {
+		// a cluster of crackles
+		n := 1 + int(fx.randf(rng) * 5)
+		at := t
+		for _ in 0 ..< n {
+			pop := fx.randf(rng) < 0.08
+			hz := pop ? fx.rand_range(rng, 380, 650) : fx.rand_range(rng, 1100, 2600)
+			amp := (pop ? 0.26 : 0.16) * fx.rand_range(rng, 0.3, 1)
+			length := pop ? fx.rand_range(rng, 0.012, 0.025) : fx.rand_range(rng, 0.002, 0.005)
+			left, right := pan_gains(fx.rand_range(rng, -0.5, 0.5))
+			f: Svf
+			s0 := int(at * RATE)
+			for k in 0 ..< int(length * 6 * RATE) {
+				i := s0 + k
+				if i >= m {
+					break
+				}
+				u := time_of(k)
+				env := (1 - math.exp(-u / 0.0012)) * math.exp(-u / length)
+				_, bp, _ := svf(&f, noise(rng), hz, 1.6)
+				raw[2 * i] += bp * amp * env * left
+				raw[2 * i + 1] += bp * amp * env * right
+			}
+			at += fx.rand_range(rng, 0.02, 0.12)
+		}
+	}
 }
 
 // Equal-power gains for a source at `pan` (-1 left .. 1 right).

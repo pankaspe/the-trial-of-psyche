@@ -39,6 +39,9 @@ Mixer :: struct {
 	bed_gain:   f32,
 	duck:       f32,
 	veil:       f32,
+	want_near:  Bed,
+	near_gain:  f32,
+	near_pan:   f32,
 	// audio thread only
 	bed:        Bed,
 	mood:       Mood_Id,
@@ -47,6 +50,8 @@ Mixer :: struct {
 	gen_fade:   [2]f32,
 	gen_target: [2]f32,
 	beds:       [2]Bed_Voice,
+	near:       Bed_Voice, // a sound of something near her (fade: its gain now)
+	pan_now:    f32, // where it is now, smoothed
 	duck_now:   f32,
 	veil_now:   f32,
 	lp:         [2][2]f32, // two one-pole stages per channel
@@ -102,6 +107,13 @@ set_veil :: proc(amount: f32) {
 	mx.veil = amount
 }
 
+// A loop of something near Psyche (a fire), `gain` 0 (far) .. 1 (beside her),
+// from `pan` (-1 left .. 1 right of the screen); .None for nothing.
+set_near :: proc(b: Bed, gain, pan: f32) {
+	sync.guard(&mx.lock)
+	mx.want_near, mx.near_gain, mx.near_pan = b, gain, pan
+}
+
 @(private)
 mixer_gains :: proc(music, bed: f32) {
 	sync.guard(&mx.lock)
@@ -120,6 +132,7 @@ mix_callback :: proc "c" (buffer: rawptr, frames: c.uint) {
 	want_bed, want_mood := mx.want_bed, mx.want_mood
 	music_gain, bed_gain := mx.music_gain, mx.bed_gain
 	duck, veil := mx.duck, mx.veil
+	want_near, near_gain, near_pan := mx.want_near, mx.near_gain, mx.near_pan
 	sync.unlock(&mx.lock)
 
 	if want_bed != mx.bed {
@@ -213,6 +226,25 @@ mix_callback :: proc "c" (buffer: rawptr, frames: c.uint) {
 		}
 		if b.fade <= 0 && b.target <= 0 {
 			b = {}
+		}
+	}
+
+	// something near her: its gain and place follow her, smoothed
+	if want_near != mx.near.bed && mx.near.fade <= 0 {
+		mx.near = {bed = want_near}
+	}
+	target := want_near == mx.near.bed ? near_gain : 0
+	if mx.near.bed != .None && sync.atomic_load(&beds_ready) && len(beds[mx.near.bed]) > 0 {
+		loop := beds[mx.near.bed]
+		glide := f32(1) / (0.4 * MUSIC_RATE)
+		for i in 0 ..< n {
+			mx.near.fade += clamp(target - mx.near.fade, -glide, glide)
+			mx.pan_now += clamp(near_pan - mx.pan_now, -glide, glide)
+			left, right := pan_gains(mx.pan_now)
+			g := mx.near.fade * bed_gain * (1 - 0.4 * mx.duck_now) * math.SQRT_TWO / 32768
+			out[2 * i] += f32(loop[mx.near.pos]) * g * left
+			out[2 * i + 1] += f32(loop[mx.near.pos + 1]) * g * right
+			mx.near.pos = (mx.near.pos + 2) % len(loop)
 		}
 	}
 }

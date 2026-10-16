@@ -1587,7 +1587,7 @@ draw_boats :: proc(r: ^Renderer, g: ^game.Game) {
 		if c.alpha < 0.003 {
 			continue
 		}
-		m := c.boat.above ? turn_matrix(g, false) : rl.Matrix(1)
+		m := turn_matrix(g, false) // of the world above, in a level with pomegranates
 		yaw := c.boat.yaw
 		d := Vec3{math.cos(yaw), math.sin(yaw), 0}
 		stern := game.boat_at(c.boat, game.BOAT_STERN)
@@ -2295,10 +2295,7 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	}
 	// Charon's boats: a pale lantern on each prow; the coin passing from her lips to his hand
 	for c in game.charons(g) {
-		p := game.boat_at(c.boat, game.BOAT_STERN + game.BOAT_LENGTH) + {0, 0, 0.42}
-		if c.boat.above {
-			p = shown(g, p, false)
-		}
+		p := shown(g, game.boat_at(c.boat, game.BOAT_STERN + game.BOAT_LENGTH) + {0, 0, 0.42}, false)
 		breath := 0.85 + 0.15 * math.sin(t * 1.1)
 		glow(v, p, 60, {0.9, 0.55, 0.45, 0.22 * breath * c.alpha})
 		glow(v, p, 10, {1.0, 0.86, 0.72, 0.6 * breath * c.alpha})

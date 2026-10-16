@@ -292,6 +292,8 @@ update_sound :: proc(app: ^App) {
 	audio.set_mood(going_black ? .None : mood)
 	audio.set_key(ACT_KEY[act])
 	audio.set_bed(going_black ? .None : SETTING_BED[game.setting_now(g)])
+	fire, pan := game.fire_near(g)
+	audio.set_near(.Fire, g.active && !going_black ? fire : 0, pan)
 	duck: f32 = 0
 	#partial switch app.screen {
 	case .Fragment, .Mechanic, .Pause, .Settings, .Ending, .Card, .Levels, .Book:
