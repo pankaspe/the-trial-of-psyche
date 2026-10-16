@@ -161,6 +161,11 @@ prop pine 11 9 5 py
 prop pine 7 14 5 py
 prop shrub 2 6 5 px
 prop shrub 8 2 5 py
+# fires in the night of the dead
+prop fire 3 8 5
+prop fire 7 5 5
+prop fire 13 7 5
+prop fire 6 13 5
 under
 block 11 9 4
 block 11 8 4

@@ -10,6 +10,8 @@
 #                           n: raised by the n-th sigil of the file, default 1)
 #   prop name x y z [dir]   decoration in cell (x,y,z); oriented props take a dir.
 #                           pillar/bed/plinth/cypress/urn/brazier block the cell;
+#                           fire (a fire in a ring of stones, burning in any
+#                           setting, lighting the stones around) blocks it too;
 #                           statue dir (a sister in marble on a plinth, her arm
 #                           raised toward dir) blocks it too;
 #                           rail/wall/wallHalf/wallBattlement/fence close side `dir`;

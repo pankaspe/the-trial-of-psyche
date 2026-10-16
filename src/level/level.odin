@@ -177,10 +177,11 @@ Prop_Kind :: enum u8 {
 	// the house of Venus: decoration only, in one corner of the cell (as the vase)
 	Rose, // a rose bush in flower
 	Myrtle, // a small myrtle, Venus's tree, in a pot
+	Fire, // a fire in a ring of stones: it burns in any setting and lights the stones around it
 }
 
 EDGE_PROPS :: bit_set[Prop_Kind]{.Rail, .Wall, .Wall_Half, .Wall_Battlement, .Fence, .Rope, .Log, .Lip}
-BLOCKING_PROPS :: bit_set[Prop_Kind]{.Pillar, .Plinth, .Cypress, .Urn, .Brazier, .Bed, .Statue, .Spruce, .Pine, .Boulder, .Heap}
+BLOCKING_PROPS :: bit_set[Prop_Kind]{.Pillar, .Plinth, .Cypress, .Urn, .Brazier, .Bed, .Statue, .Spruce, .Pine, .Boulder, .Heap, .Fire}
 ORIENTED_PROPS :: EDGE_PROPS + bit_set[Prop_Kind]{.Bed, .Statue, .Arch, .Vase, .Reeds, .Sconce, .Pine, .Boulder, .Shrub, .Cairn, .Rose, .Myrtle}
 NEEDS_DIR :: EDGE_PROPS + bit_set[Prop_Kind]{.Statue, .Vase, .Reeds, .Sconce, .Shrub, .Cairn, .Rose, .Myrtle}
 
@@ -212,6 +213,7 @@ PROP_NAME := [Prop_Kind]string {
 	.Cairn           = "cairn",
 	.Rose            = "rose",
 	.Myrtle          = "myrtle",
+	.Fire            = "fire",
 }
 
 // A standing candelabrum in a corner of a surface: lit from the start, or

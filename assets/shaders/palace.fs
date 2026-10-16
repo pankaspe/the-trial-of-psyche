@@ -34,7 +34,8 @@ uniform int candle_count;
 // per piece
 uniform float material;      // 0 marble, 1 masonry, 2 foliage, 3 bronze, 4 psyche, 5 cupid, 6 mourner, 7 lawn,
                              // 8 rock, 9 wood, 10 the dark of a cave (palette 7 grass, 8 earth, 9 wood),
-                             // 11 seeds, 12 blossom, 13 Venus, 14 golden fleece, 15 pomegranate
+                             // 11 seeds, 12 blossom, 13 Venus, 14 golden fleece, 15 pomegranate,
+                             // 16 pale wood (Charon's boats)
 uniform float detail;        // 0 none, 1 marble block, 2 masonry block; seeds: how far up they are sorted (0..1)
 uniform float hidden;        // 1: visible only in the lamp light, glowing gold; 2: the same, a faint ghost
 uniform float alpha;
@@ -92,9 +93,12 @@ void palette(float m, float t, out vec3 night, out vec3 warm) {
     } else if (m < 14.5) {  // the Sun's rams: golden fleece, bright in any light
         night = ramp(vec3(0.42, 0.22, 0.06), vec3(0.86, 0.58, 0.18), vec3(1.0, 0.88, 0.50), t);
         warm = night;
-    } else {                // Proserpina's pomegranate: deep crimson, a gleam on top
+    } else if (m < 15.5) {  // Proserpina's pomegranate: deep crimson, a gleam on top
         night = ramp(vec3(0.20, 0.02, 0.07), vec3(0.62, 0.08, 0.16), vec3(1.0, 0.52, 0.50), t);
         warm = ramp(vec3(0.26, 0.02, 0.03), vec3(0.78, 0.10, 0.08), vec3(1.0, 0.62, 0.42), t);
+    } else {                // pale wood: Charon's boats, light against the dark water
+        night = ramp(vec3(0.12, 0.09, 0.10), vec3(0.40, 0.32, 0.30), vec3(0.70, 0.60, 0.52), t);
+        warm = ramp(vec3(0.30, 0.17, 0.09), vec3(0.72, 0.50, 0.30), vec3(0.94, 0.80, 0.58), t);
     }
 }
 
@@ -282,7 +286,12 @@ void main() {
         }
     }
     float m = material;
-    if (material > 10.5) {
+    if (material > 15.5) {
+        // pale wood: the grain of its planks
+        m = 16.0;
+        float u = abs(n.x) > 0.5 ? L.y : L.x;
+        tone *= 0.9 + 0.12 * hash(vec2(floor(u * 40.0), floor(fragWorld.x + fragWorld.y)));
+    } else if (material > 10.5) {
         // seeds, blossom, Venus: their own colours below
     } else if (material > 8.5) {
         // bark: vertical grain

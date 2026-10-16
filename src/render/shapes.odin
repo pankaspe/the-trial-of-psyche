@@ -74,6 +74,8 @@ Mesh_Id :: enum u8 {
 	Pomegranate_Dish, // ...on a low bronze dish
 	Rim_PX, Rim_MX, Rim_PY, Rim_MY, // a marble basin's rim along the +x side of an edge cell...
 	Basin_Floor, // ...and its bottom, under the water
+	Fire_Stones, // a fire: its ring of stones...
+	Fire_Logs, // ...and the logs burning in it
 }
 
 // Where the resting brazier's flame burns, in cell space.
@@ -104,6 +106,7 @@ Material :: enum u8 {
 	Venus, // the goddess: a figure of rose light
 	Fleece, // the Sun's rams: golden wool
 	Pomegranate, // Proserpina's fruit: a deep crimson, gleaming
+	Pale_Wood, // Charon's boats: light planks against the dark water
 }
 
 PROP_MESH := [level.Prop_Kind]Mesh_Id {
@@ -134,6 +137,7 @@ PROP_MESH := [level.Prop_Kind]Mesh_Id {
 	.Cairn           = .Cairn_PX,
 	.Rose            = .Rose_PX,
 	.Myrtle          = .Myrtle_PX,
+	.Fire            = .Fire_Stones,
 }
 
 PROP_MATERIAL := [level.Prop_Kind]Material {
@@ -164,6 +168,7 @@ PROP_MATERIAL := [level.Prop_Kind]Material {
 	.Cairn           = .Rock,
 	.Rose            = .Foliage,
 	.Myrtle          = .Foliage,
+	.Fire            = .Rock,
 }
 
 RIM_MATERIAL := [level.Rim]Material {
@@ -427,6 +432,26 @@ RIM_PX := [?]Box {
 }
 @(private)
 BASIN_FLOOR := [?]Box{{{0, 0, 0}, {1, 1, 0.2}}}
+// a fire in the middle of the cell: a ring of stones, crossed logs in it
+// (its flames are glows, FIRE_FLAME)
+@(private)
+FIRE_STONES := [?]Box {
+	{{0.26, 0.42, 0}, {0.36, 0.56, 0.09}},
+	{{0.64, 0.44, 0}, {0.74, 0.58, 0.08}},
+	{{0.42, 0.26, 0}, {0.57, 0.35, 0.1}},
+	{{0.44, 0.65, 0}, {0.58, 0.74, 0.09}},
+	{{0.31, 0.31, 0}, {0.41, 0.4, 0.07}},
+	{{0.6, 0.6, 0}, {0.69, 0.7, 0.08}},
+	{{0.6, 0.3, 0}, {0.7, 0.39, 0.07}},
+	{{0.3, 0.6, 0}, {0.39, 0.69, 0.08}},
+}
+@(private)
+FIRE_LOGS := [?]Box {
+	{{0.34, 0.46, 0.02}, {0.66, 0.54, 0.09}},
+	{{0.46, 0.34, 0.07}, {0.54, 0.66, 0.14}},
+	{{0.4, 0.4, 0.12}, {0.6, 0.6, 0.16}},
+}
+FIRE_FLAME :: [3]f32{0.5, 0.5, 0.24} // where its flames burn, in cell space
 // a fir: a straight trunk, the crown in tiers narrowing to the tip
 @(private)
 SPRUCE_TRUNK := [?]Box{{{0.44, 0.44, 0}, {0.56, 0.56, 0.42}}}
@@ -593,6 +618,8 @@ build_meshes :: proc(meshes: ^[Mesh_Id]rl.Mesh) {
 	four(meshes, .Cave_PX, CAVE_PX[:])
 	four(meshes, .Cave_Dark_PX, CAVE_DARK_PX[:])
 	meshes[.Basin_Floor] = one(BASIN_FLOOR[:])
+	meshes[.Fire_Stones] = one(FIRE_STONES[:])
+	meshes[.Fire_Logs] = one(FIRE_LOGS[:])
 	meshes[.Pillar] = one(PILLAR[:])
 	meshes[.Plinth] = one(PLINTH[:])
 	meshes[.Cypress] = one(cypress())

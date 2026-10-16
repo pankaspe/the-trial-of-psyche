@@ -296,6 +296,8 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 			append(&s.pieces, piece(prop.cell, oriented_mesh(.Rose_Bloom_PX, prop.dir), .Blossom, prop.part, prop.under))
 		case .Myrtle:
 			append(&s.pieces, piece(prop.cell, oriented_mesh(.Myrtle_Pot_PX, prop.dir), .Bronze, prop.part, prop.under))
+		case .Fire:
+			append(&s.pieces, piece(prop.cell, .Fire_Logs, .Wood, prop.part, prop.under))
 		}
 	}
 	for c in g.data.candelabra {
@@ -993,6 +995,7 @@ set_frame_uniforms :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	set_f(r, .Moonlight, (1 - lk.gloom) * (1 - 0.45 * s.moon_cover))
 	all := make([dynamic]Flame, 0, len(g.data.props) + len(g.data.candelabra), context.temp_allocator)
 	append(&all, ..candle_lights(g))
+	append(&all, ..fire_lights(g))
 	// the candelabra burning light far more of the palace than a candle
 	for _, i in g.data.candelabra {
 		f := game.candelabrum_flame(g, i)
@@ -1056,18 +1059,44 @@ candle_lights :: proc(g: ^game.Game) -> []Flame {
 		if prop.kind != .Sconce || prop.part > 0 {
 			continue
 		}
-		fp := Vec3{f32(prop.cell.x), f32(prop.cell.y), f32(prop.cell.z)} + candle_flame(prop.dir)
-		a := f32(1)
-		if g.phase == .Arrival {
-			c := prop.cell - g.data.start
-			k := game.arrival_rise(g, math.sqrt(f32(c.x * c.x + c.y * c.y)) + f32(abs(c.z)) * 0.3, 1)
-			fp.z -= 9 * (1 - k)
-			a = k * k
-		}
+		fp, a := prop_flame(g, prop, candle_flame(prop.dir))
 		fl := 0.85 + 0.1 * math.sin(t * 13 + f32(i) * 1.7) + 0.05 * math.sin(t * 31 + f32(i))
-		append(&list, Flame{shown(g, fp, prop.under), fl * a, 1.7})
+		append(&list, Flame{fp, fl * a, 1.7})
 	}
 	return list[:]
+}
+
+FIRE_STRENGTH :: 1.4 // a fire lights the stones more than a candle...
+FIRE_REACH :: 2.8 // ...and further
+
+// The fires (`prop fire`), burning in any setting: their flames, flickering.
+fire_lights :: proc(g: ^game.Game) -> []Flame {
+	list := make([dynamic]Flame, 0, 8, context.temp_allocator)
+	t := g.time
+	for prop, i in g.data.props {
+		if prop.kind != .Fire || prop.part > 0 {
+			continue
+		}
+		fp, a := prop_flame(g, prop, FIRE_FLAME)
+		fl := 0.8 + 0.12 * math.sin(t * 9 + f32(i) * 2.1) + 0.08 * math.sin(t * 23 + f32(i) * 0.7)
+		append(&list, Flame{fp, FIRE_STRENGTH * fl * a, FIRE_REACH})
+	}
+	return list[:]
+}
+
+// Where the flame of a prop burns now (`at`: in its cell), shown as its world
+// is, and how much of it is seen: on arrival it comes up with its stone.
+@(private)
+prop_flame :: proc(g: ^game.Game, prop: level.Prop, at: Vec3) -> (pos: Vec3, seen: f32) {
+	pos = Vec3{f32(prop.cell.x), f32(prop.cell.y), f32(prop.cell.z)} + at
+	seen = 1
+	if g.phase == .Arrival {
+		c := prop.cell - g.data.start
+		k := game.arrival_rise(g, math.sqrt(f32(c.x * c.x + c.y * c.y)) + f32(abs(c.z)) * 0.3, 1)
+		pos.z -= 9 * (1 - k)
+		seen = k * k
+	}
+	return shown(g, pos, prop.under), seen
 }
 
 // A flame that lights the stones: where, how strong, how far it reaches.
@@ -1549,7 +1578,7 @@ draw_eagles :: proc(r: ^Renderer, g: ^game.Game) {
 	}
 }
 
-// Charon's boats, in dark wood: at the exit and on the ferries (game.charons);
+// Charon's boats, in pale wood: at the exit and on the ferries (game.charons);
 // Charon standing at the far end in his dark cloak, a pole in his hands:
 // waiting, facing the landing; poling the boat across, or away into the mist.
 @(private)
@@ -1562,7 +1591,7 @@ draw_boats :: proc(r: ^Renderer, g: ^game.Game) {
 		yaw := c.boat.yaw
 		d := Vec3{math.cos(yaw), math.sin(yaw), 0}
 		stern := game.boat_at(c.boat, game.BOAT_STERN)
-		set_piece_uniforms(r, .Wood, 0, 0, c.alpha, 0.9, 0)
+		set_piece_uniforms(r, .Pale_Wood, 0, 0, c.alpha, 0.9, 0)
 		rl.DrawMesh(r.meshes[.Boat], r.material, m * rl.MatrixTranslate(stern.x, stern.y, stern.z) * rl.MatrixRotateZ(yaw))
 		// the pole: from the water beside him up past his shoulder, leaning
 		// back as he thrusts
@@ -2170,6 +2199,18 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 			glow(v, fp, 18, {1.0, 0.7, 0.35, 0.35 * fl}, toward = 0.5)
 			glow(v, fp + {0, 0, 0.02}, 6, {1.0, 0.78, 0.42, fl}, 1.8, 0.2)
 			glow(v, fp + {0, 0, 0.02}, 2.6, {1.0, 0.96, 0.85, fl}, 1.6, 0.2)
+		}
+	}
+	// the fires: a wide warm halo, tongues of flame leaping
+	for c, i in fire_lights(g) {
+		fp, fl := c.pos, c.strength / FIRE_STRENGTH
+		glow(v, fp, 130, {1.0, 0.48, 0.18, 0.28 * fl}, toward = 1.2)
+		glow(v, fp, 34, {1.0, 0.6, 0.24, 0.45 * fl}, toward = 0.6)
+		for k in 0 ..< 3 {
+			ph := t * (6 + f32(k)) + f32(i * 5 + k) * 2.1
+			tongue := fp + {0.07 * f32(k - 1), 0.05 * math.sin(ph * 0.7), 0.04 + 0.05 * math.sin(ph)}
+			glow(v, tongue, 10, {1.0, 0.62, 0.22, 0.9 * fl}, 2.2, 0.4)
+			glow(v, tongue + {0, 0, 0.03}, 4.5, {1.0, 0.92, 0.7, fl}, 2.0, 0.4)
 		}
 	}
 	// the candelabra: three flames each, a warm halo; one just lit flares up
