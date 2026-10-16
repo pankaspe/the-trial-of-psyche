@@ -26,7 +26,7 @@ setting venus_day
 evening venus_evening
 mechanic time
 lamp 2
-floor water 0 0 10 10
+floor basin 0 0 10 8
 
 # the court (h1): Venus in marble, the sundial, the veiled stones
 column 4 4 0 0
