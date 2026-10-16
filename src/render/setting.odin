@@ -152,6 +152,8 @@ LOOKS := [level.Setting]Look {
 		cloud_front = {0.68, 0.46, 0.54},
 		cloud_crest = {0.55, 0.30, 0.12},
 		mist = {0.42, 0.28, 0.38},
+		water = {0.30, 0.24, 0.40, 0.85}, // the spring on the crag: the sunset in it
+		glint = {1.0, 0.76, 0.52, 0.6},
 		daylight = 1,
 		mote = {1.0, 0.8, 0.5, 0.45},
 	},

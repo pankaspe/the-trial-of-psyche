@@ -77,8 +77,10 @@
 #                           for every floor; in a level with pomegranates it
 #                           belongs to the world above) (decoration: it holds
 #                           nobody): water (a river, its edges fading into the
-#                           mist) | basin (a marble basin brimming with water,
-#                           its rim on the edge cells)
+#                           mist) | basin [marble|rock|earth] (a basin brimming
+#                           with water, its rim on the edge cells, of marble
+#                           unless given; the whole diorama inside the rim:
+#                           nothing on its cells, the area may go past the grid)
 #   cave x y h dir          the mouth of a cave in the rock on side dir of surface
 #                           x y h (the rock there must rise above it); caves pair
 #                           up in file order (1st with 2nd, 3rd with 4th...):
@@ -173,7 +175,7 @@
 # another view (3, 2, 1, 0).
 size 16
 setting deep_night
-floor basin 0 0 15 15
+floor basin -1 0 16 15
 
 # the arrival lawn (h1)
 column 9 12 0 0

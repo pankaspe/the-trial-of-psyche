@@ -166,6 +166,12 @@ PROP_MATERIAL := [level.Prop_Kind]Material {
 	.Myrtle          = .Foliage,
 }
 
+RIM_MATERIAL := [level.Rim]Material {
+	.Marble = .Marble,
+	.Rock   = .Rock,
+	.Earth  = .Lawn, // grass on top, earth on the sides
+}
+
 // --- box lists ---------------------------------------------------------------------
 
 @(private)

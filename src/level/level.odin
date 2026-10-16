@@ -246,8 +246,22 @@ FLOOR_NAME := [Floor_Kind]string {
 	.Basin = "basin",
 }
 
+// What a basin's rim and bottom are made of.
+Rim :: enum u8 {
+	Marble,
+	Rock, // living rock
+	Earth, // earth, grass on top
+}
+
+RIM_NAME := [Rim]string {
+	.Marble = "marble",
+	.Rock   = "rock",
+	.Earth  = "earth",
+}
+
 Floor :: struct {
 	kind: Floor_Kind,
+	rim:  Rim, // a basin's
 	area: [4]i32,
 }
 
@@ -741,12 +755,20 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 					f.kind, found = kind, true
 				}
 			}
-			if !found || !ints(args[1:], f.area[:]) || f.area[2] < f.area[0] || f.area[3] < f.area[1] {
-				return data, fail(line_no, "floor: expected water|basin x0 y0 x1 y1 [h] with x0 <= x1, y0 <= y1")
+			at := 1 // where the area begins: after a basin's rim, if given
+			if found && f.kind == .Basin && len(args) > 1 {
+				for name, rim in RIM_NAME {
+					if name == args[1] {
+						f.rim, at = rim, 2
+					}
+				}
 			}
-			if len(args) > 5 {
+			if !found || !ints(args[at:], f.area[:]) || f.area[2] < f.area[0] || f.area[3] < f.area[1] {
+				return data, fail(line_no, "floor: expected water x0 y0 x1 y1 [h] or basin [marble|rock|earth] x0 y0 x1 y1 [h], with x0 <= x1, y0 <= y1")
+			}
+			if len(args) > at + 4 {
 				h: [1]i32
-				if !ints(args[5:], h[:]) || h[0] < 1 || len(data.floors) > 0 && h[0] != data.floor_h {
+				if !ints(args[at + 4:], h[:]) || h[0] < 1 || len(data.floors) > 0 && h[0] != data.floor_h {
 					return data, fail(line_no, "floor: h is the height of the surfaces it lies under, the same for every floor")
 				}
 				data.floor_h = h[0]
@@ -1139,6 +1161,42 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	for p in data.props {
 		if !check(p.cell, data.size, data.height) {
 			return data, fail(0, "prop %v outside the grid", p.cell)
+		}
+	}
+	// a basin holds the whole diorama: nothing stands on or over its rim (a
+	// part in any of its positions)
+	for f in data.floors {
+		if f.kind != .Basin {
+			continue
+		}
+		inside :: proc(data: ^Level_Data, a: [4]i32, c: Cell, under: bool, part: u8) -> bool {
+			for turn in 0 ..< (part > 0 ? 4 : 1) {
+				w := world_cell(data, part > 0 ? part_cell(c, data.parts[part - 1].pivot, turn) : c, under)
+				if w.x <= a[0] || w.x >= a[2] || w.y <= a[1] || w.y >= a[3] {
+					return false
+				}
+			}
+			return true
+		}
+		for e in data.blocks {
+			if !inside(&data, f.area, e.cell, e.under, e.part) {
+				return data, fail(0, "block %v on or past the basin's rim: the diorama stays inside it", e.cell)
+			}
+		}
+		for e in data.rise {
+			if !inside(&data, f.area, e.cell, e.under, 0) {
+				return data, fail(0, "rise %v on or past the basin's rim: the diorama stays inside it", e.cell)
+			}
+		}
+		for p in data.props {
+			if !inside(&data, f.area, p.cell, p.under, p.part) {
+				return data, fail(0, "prop %v on or past the basin's rim: the diorama stays inside it", p.cell)
+			}
+		}
+		for c in data.candelabra {
+			if !inside(&data, f.area, c.cell, c.under, 0) {
+				return data, fail(0, "candelabrum %v on or past the basin's rim: the diorama stays inside it", c.cell)
+			}
 		}
 	}
 	if len(data.sundials) > 0 && !has_evening {
