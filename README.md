@@ -42,18 +42,19 @@ tale to gather in the Book. It will be released once the whole tale is told.
 
 <table>
 <tr>
-<td width="50%"><img src="docs/screenshots/lamp.jpg" alt="Night over the palace: the lamp lit, a bridge raised by a seal"><br><sub><i>I · The Lamp and the Razor</i></sub></td>
-<td width="50%"><img src="docs/screenshots/venus.jpg" alt="The house of Venus at evening over a sea of clouds"><br><sub><i>III · The House of Venus</i></sub></td>
+<td width="50%"><img src="docs/devlog/act1_i2.jpg" alt="A small palace of white stone at dusk over a sea of pink clouds"><br><sub><i>I · The Invisible Palace</i></sub></td>
+<td width="50%"><img src="docs/devlog/act2_ii1.jpg" alt="A forest of rock pillars and pines at night"><br><sub><i>II · Cupid's Flight</i></sub></td>
 </tr>
 <tr>
-<td><img src="docs/screenshots/tower.jpg" alt="A tower of stairs and candles against the red sky of the underworld"><br><sub><i>IV · The Speaking Tower</i></sub></td>
-<td><img src="docs/screenshots/upside_down.jpg" alt="The world turning over, between the red sky and the violet of Dis"><br><sub><i>IV · The Underside of the World</i></sub></td>
+<td><img src="docs/devlog/act3_iii4.jpg" alt="Stairs of living rock on the top of a crag by day"><br><sub><i>III · The Water of the Styx</i></sub></td>
+<td><img src="docs/devlog/act4_iv6.jpg" alt="Islands of dark rock under the red sky of the underworld"><br><sub><i>IV · The Open Box</i></sub></td>
 </tr>
 <tr>
-<td><img src="docs/screenshots/levels.jpg" alt="The level select: the chosen place sleeping behind its panel"><br><sub>Choosing a level</sub></td>
-<td><img src="docs/screenshots/book.jpg" alt="The Book, where the fragments of the tale are gathered"><br><sub>The Book of fragments</sub></td>
+<td colspan="2"><img src="docs/devlog/levels.jpg" alt="The level select: the chosen place sleeping behind its panel"><br><sub>Choosing a level</sub></td>
 </tr>
 </table>
+
+How it was made, act by act: the [devlog](docs/devlog.md).
 
 ## Controls
 
