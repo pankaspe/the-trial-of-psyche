@@ -47,19 +47,12 @@ tale to gather in the Book. It will be released once the whole tale is told.
 
 <table>
 <tr>
-<td width="50%"><img src="docs/devlog/act1_i2.jpg" alt="A small palace of white stone in a marble basin at dusk, over a sea of pink clouds"><br><sub><i>I · The Invisible Palace</i></sub></td>
-<td width="50%"><img src="docs/devlog/act2_ii1.jpg" alt="A forest of rock pillars and pines at night, Cupid flying away"><br><sub><i>II · Cupid's Flight</i></sub></td>
+<td width="50%"><img src="docs/screenshots/act1_invisible_palace.jpg" alt="Act I, The Invisible Palace: a small palace of white stone in a marble basin at dusk, its title above"><br><sub><i>Act I · The Invisible Palace</i></sub></td>
+<td width="50%"><img src="docs/screenshots/act2_river_and_pan.jpg" alt="Act II, The River and Pan: a crag of living rock and firs over the river at dawn, its title above"><br><sub><i>Act II · The River and Pan</i></sub></td>
 </tr>
 <tr>
-<td><img src="docs/devlog/act3_iii4.jpg" alt="Stairs of living rock over the black water of the Styx, by day"><br><sub><i>III · The Water of the Styx</i></sub></td>
-<td><img src="docs/devlog/act4_iv6.jpg" alt="Islands of dark rock under the red sky of the underworld"><br><sub><i>IV · The Open Box</i></sub></td>
-</tr>
-<tr>
-<td><img src="docs/devlog/act4_iv5.jpg" alt="Islands of rock by night in the land of the dead, fires burning, Charon's boats waiting"><br><sub><i>IV · The Way Back, by night</i></sub></td>
-<td><img src="docs/devlog/act4_iv6_under.jpg" alt="The world turned over: Proserpina's temple of white marble, pillars and candelabra under a violet sky"><br><sub><i>IV · Proserpina's kingdom, the world turned over</i></sub></td>
-</tr>
-<tr>
-<td colspan="2"><img src="docs/devlog/levels.jpg" alt="The level select: the chosen place sleeping behind its panel"><br><sub>Choosing a level</sub></td>
+<td><img src="docs/screenshots/act3_flock_of_the_sun.jpg" alt="Act III, The Flock of the Sun: grassy islands, rope bridges and golden rams at noon, its title above"><br><sub><i>Act III · The Flock of the Sun</i></sub></td>
+<td><img src="docs/screenshots/act4_open_box.jpg" alt="Act IV, The Open Box: islands of dark rock under the red sky of the underworld, its title above"><br><sub><i>Act IV · The Open Box</i></sub></td>
 </tr>
 </table>
 
