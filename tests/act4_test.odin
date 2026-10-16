@@ -14,7 +14,7 @@ import "../src/palace"
 BOAT_PALACE :: `size 8
 setting tower_dusk
 below taenarus
-water 0 0 7 7
+floor water 0 0 7 7
 column 0 2 0 1
 column 1 2 0 0
 stairs 1 2 1 mx
@@ -159,7 +159,7 @@ solver_turns_the_world_over :: proc(t: ^testing.T) {
 @(private)
 FERRY_PALACE :: `size 8
 setting taenarus
-water 3 0 4 7
+floor water 3 0 4 7
 column 1 2 0 0
 column 2 2 0 0
 column 5 2 0 0

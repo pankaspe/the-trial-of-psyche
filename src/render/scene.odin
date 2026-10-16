@@ -346,6 +346,25 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 		s.fit = first ? rect : rect_merge(s.fit, rect)
 		first = false
 	}
+	// what the diorama stands on: after the framing, which holds the palace alone
+	for f in g.data.floors {
+		if f.kind != .Basin {
+			continue
+		}
+		a := f.area
+		for y in a[1] ..= a[3] {
+			for x in a[0] ..= a[2] {
+				c := Cell{x, y, g.data.floor_h - 1}
+				append(&s.pieces, piece(c, .Basin_Floor, .Marble))
+				for d in iso.Dir {
+					step := iso.DIR_VEC[d]
+					if x + step.x < a[0] || x + step.x > a[2] || y + step.y < a[1] || y + step.y > a[3] {
+						append(&s.pieces, piece(c, oriented_mesh(.Rim_PX, d), .Marble))
+					}
+				}
+			}
+		}
+	}
 	s.see = make([]f32, len(s.pieces), allocator)
 	// a tall level: each band of heights framed from every view (the pieces of
 	// the band, a little of the rock under it and the figure over it)
@@ -827,7 +846,7 @@ draw_world :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 	set_frame_uniforms(r, s, g, v)
 	draw_pieces(r, s, g, false)
 	draw_figures(r, g)
-	draw_water(g, time)
+	draw_floors(g, time)
 	draw_pieces(r, s, g, true)
 	draw_decals(g)
 	draw_glows(r, s, g, v)
@@ -1647,14 +1666,16 @@ floor_strip :: proc(a, b, side: Vec3, width: f32, c: Color4) {
 	rlgl.End()
 }
 
-WATER_DEPTH :: 0.28 // the river's surface: this far under the platforms it lies by (level water_h)
+WATER_DEPTH :: 0.28 // the water's surface: this far under the platforms it lies by (level floor_h)
 
-// The river: a dark surface that fades out at the edges of its rectangle,
-// glints of moonlight drifting with the current (along x), the lamp's warmth
-// near Psyche, and a ring of foam around every stone standing in it.
+// What the diorama stands on (`floor` lines; a basin's marble is built as
+// pieces): the water, a dark surface (fading out at the edges of a river's
+// rectangle, brimming to a basin's rim), glints of moonlight drifting with the
+// current (along x), the lamp's warmth near Psyche, and a ring of foam around
+// every stone standing in it.
 @(private)
-draw_water :: proc(g: ^game.Game, time: f32) {
-	if len(g.data.water) == 0 {
+draw_floors :: proc(g: ^game.Game, time: f32) {
+	if len(g.data.floors) == 0 {
 		return
 	}
 	rlgl.DrawRenderBatchActive()
@@ -1665,16 +1686,19 @@ draw_water :: proc(g: ^game.Game, time: f32) {
 	lk := look_of(g)
 	surface := lk.water.a > 0 ? lk.water : Color4{0.08, 0.12, 0.27, 0.8}
 	glint := lk.glint.a > 0 ? lk.glint : Color4{0.65, 0.75, 1.0, 0.4}
-	z := f32(g.data.water_h) - WATER_DEPTH
+	z := f32(g.data.floor_h) - WATER_DEPTH
 	begin_turn(g, false) // of the world above, in a level with pomegranates
-	for w in g.data.water {
+	for f in g.data.floors {
+		w := f.area
 		x0, y0 := f32(w[0]), f32(w[1])
 		x1, y1 := f32(w[2] + 1), f32(w[3] + 1)
-		edge :: proc(v, lo, hi: f32) -> f32 {
-			return fx.clamp01(min(v - lo, hi - v) / 1.2)
+		// a river fades into the mist over its last 1.2 cells, a basin holds it to the rim
+		fade: f32 = f.kind == .Water ? 1.2 : 0
+		edge :: proc(v, lo, hi, fade: f32) -> f32 {
+			return fade > 0 ? fx.clamp01(min(v - lo, hi - v) / fade) : 1
 		}
-		point :: proc(x, y, z, x0, y0, x1, y1: f32, lamp: Vec3, warm: f32, surface: Color4) {
-			a := edge(x, x0, x1) * edge(y, y0, y1)
+		point :: proc(x, y, z, x0, y0, x1, y1, fade: f32, lamp: Vec3, warm: f32, surface: Color4) {
+			a := edge(x, x0, x1, fade) * edge(y, y0, y1, fade)
 			a = a * a * (3 - 2 * a)
 			d := Vec2{x - lamp.x, y - lamp.y}
 			lit := warm * fx.clamp01(1 - math.sqrt(d.x * d.x + d.y * d.y) / 3)
@@ -1687,12 +1711,12 @@ draw_water :: proc(g: ^game.Game, time: f32) {
 		rlgl.Begin(rlgl.TRIANGLES)
 		for y := y0; y < y1 - 0.001; y += STEP {
 			for x := x0; x < x1 - 0.001; x += STEP {
-				point(x, y, z, x0, y0, x1, y1, lamp, warm, surface)
-				point(x + STEP, y, z, x0, y0, x1, y1, lamp, warm, surface)
-				point(x + STEP, y + STEP, z, x0, y0, x1, y1, lamp, warm, surface)
-				point(x, y, z, x0, y0, x1, y1, lamp, warm, surface)
-				point(x + STEP, y + STEP, z, x0, y0, x1, y1, lamp, warm, surface)
-				point(x, y + STEP, z, x0, y0, x1, y1, lamp, warm, surface)
+				point(x, y, z, x0, y0, x1, y1, fade, lamp, warm, surface)
+				point(x + STEP, y, z, x0, y0, x1, y1, fade, lamp, warm, surface)
+				point(x + STEP, y + STEP, z, x0, y0, x1, y1, fade, lamp, warm, surface)
+				point(x, y, z, x0, y0, x1, y1, fade, lamp, warm, surface)
+				point(x + STEP, y + STEP, z, x0, y0, x1, y1, fade, lamp, warm, surface)
+				point(x, y + STEP, z, x0, y0, x1, y1, fade, lamp, warm, surface)
 			}
 		}
 		rlgl.End()
@@ -1704,7 +1728,7 @@ draw_water :: proc(g: ^game.Game, time: f32) {
 					u := math.mod(time * (0.08 + 0.05 * fx.hash01(h)) + fx.hash01(h + 1), 1)
 					px := f32(cx) + u
 					py := f32(cy) + 0.15 + 0.7 * fx.hash01(h + 2)
-					a := edge(px, x0, x1) * edge(py, y0, y1) * math.sin(u * math.PI)
+					a := edge(px, x0, x1, fade) * edge(py, y0, y1, fade) * math.sin(u * math.PI)
 					len := 0.12 + 0.18 * fx.hash01(h + 3)
 					floor_strip({px, py, z + 0.003}, {px + len, py, z + 0.003}, {0, 1, 0}, 0.022, {glint.r, glint.g, glint.b, glint.a * a})
 				}
@@ -1713,7 +1737,7 @@ draw_water :: proc(g: ^game.Game, time: f32) {
 		// foam where the stones stand in the river
 		for e, i in g.data.blocks {
 			c := e.cell
-			if c.z != g.data.water_h - 1 || e.under || c.x < w[0] || c.x > w[2] || c.y < w[1] || c.y > w[3] || !pl.block_present(&g.palace, i) {
+			if c.z != g.data.floor_h - 1 || e.under || c.x < w[0] || c.x > w[2] || c.y < w[1] || c.y > w[3] || !pl.block_present(&g.palace, i) {
 				continue
 			}
 			t := math.mod(time * 0.35 + fx.hash01(u32(i) * 7), 1)

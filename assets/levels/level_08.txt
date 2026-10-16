@@ -30,7 +30,7 @@ size 15
 setting temple_dusk
 oil 20
 lamp 3
-water 0 0 14 14
+floor water 0 0 14 14
 
 # the porch (h2), where Psyche comes in; the handle of the middle ring
 column 6 13 0 1

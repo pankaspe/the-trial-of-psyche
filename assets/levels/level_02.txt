@@ -8,6 +8,7 @@
 # Format: see level_04.txt.
 size 10
 setting dusk
+floor basin 2 0 7 9
 
 # the lawn (h1)
 column 4 7 0 0

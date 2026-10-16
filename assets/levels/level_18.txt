@@ -29,7 +29,7 @@ size 15
 setting taenarus
 upside dis
 lamp
-water 0 0 14 14 5
+floor water 0 0 14 14 5
 block 1 5 4 rock
 block 1 6 4 rock
 block 1 7 4

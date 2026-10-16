@@ -234,6 +234,23 @@ Cave :: struct {
 	dir:  Dir,
 }
 
+// What the diorama stands on (decoration: it holds nobody): a rectangle of
+// cells (x0 y0 x1 y1) just under the surfaces of height `Level_Data.floor_h`.
+Floor_Kind :: enum u8 {
+	Water, // a river or a lake, its edges fading into the mist
+	Basin, // a marble basin brimming with water, its rim just under the surfaces
+}
+
+FLOOR_NAME := [Floor_Kind]string {
+	.Water = "water",
+	.Basin = "basin",
+}
+
+Floor :: struct {
+	kind: Floor_Kind,
+	area: [4]i32,
+}
+
 // Jupiter's eagle (Act III) waits on a perch on the surface `from`
 // (x, y, h): standing there, Space calls it, and it carries Psyche to the
 // surface `to`. One way only: nothing brings her back but another eagle.
@@ -308,8 +325,8 @@ Level_Data :: struct {
 	candelabra:   [dynamic]Candelabrum,
 	ground:       [dynamic]Cell, // blocks and stairs of living rock (earth, not masonry)
 	planks:       [dynamic]Plank, // blocks that are the wooden deck of a rope bridge
-	water:        [dynamic][4]i32, // rectangles of water (x0 y0 x1 y1), just under the `water_h` surfaces
-	water_h:      i32, // the height of the surfaces the water lies just under (1 unless given)
+	floors:       [dynamic]Floor, // what the diorama stands on, just under the `floor_h` surfaces
+	floor_h:      i32, // the height of the surfaces the floors lie just under (1 unless given)
 	caves:        [dynamic]Cave, // in pairs: each leads to the other of its pair
 	tiers:        [dynamic][2]i32, // a tall level: the camera frames one band of heights (h0 h1) at a time
 	outro:        i18n.Key, // the text of the ending card at the exit
@@ -408,8 +425,8 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	data.candelabra = make([dynamic]Candelabrum, 0, MAX_CANDELABRA)
 	data.ground = make([dynamic]Cell, 0, 16)
 	data.planks = make([dynamic]Plank, 0, 8)
-	data.water = make([dynamic][4]i32, 0, 2)
-	data.water_h = 1
+	data.floors = make([dynamic]Floor, 0, 2)
+	data.floor_h = 1
 	data.caves = make([dynamic]Cave, 0, 4)
 	data.tiers = make([dynamic][2]i32, 0, MAX_TIERS)
 	data.sigils = make([dynamic]Cell, 0, MAX_SEALS)
@@ -716,19 +733,25 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			}
 			append(&data.tiers, v)
 
-		case "water":
-			v: [4]i32
-			if !ints(args, v[:]) || v[2] < v[0] || v[3] < v[1] {
-				return data, fail(line_no, "water: expected x0 y0 x1 y1 [h] with x0 <= x1, y0 <= y1")
-			}
-			if len(args) > 4 {
-				h: [1]i32
-				if !ints(args[4:], h[:]) || h[0] < 1 || len(data.water) > 0 && h[0] != data.water_h {
-					return data, fail(line_no, "water: h is the height of the surfaces it lies under, the same for every river")
+		case "floor":
+			f: Floor
+			found := false
+			for name, kind in FLOOR_NAME {
+				if len(args) > 0 && name == args[0] {
+					f.kind, found = kind, true
 				}
-				data.water_h = h[0]
 			}
-			append(&data.water, v)
+			if !found || !ints(args[1:], f.area[:]) || f.area[2] < f.area[0] || f.area[3] < f.area[1] {
+				return data, fail(line_no, "floor: expected water|basin x0 y0 x1 y1 [h] with x0 <= x1, y0 <= y1")
+			}
+			if len(args) > 5 {
+				h: [1]i32
+				if !ints(args[5:], h[:]) || h[0] < 1 || len(data.floors) > 0 && h[0] != data.floor_h {
+					return data, fail(line_no, "floor: h is the height of the surfaces it lies under, the same for every floor")
+				}
+				data.floor_h = h[0]
+			}
+			append(&data.floors, f)
 
 		case "cave":
 			v: [3]i32

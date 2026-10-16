@@ -30,7 +30,7 @@ setting taenarus
 upside dis
 lamp
 mechanic ferry
-water 0 0 12 12 5
+floor water 0 0 12 12 5
 block 1 4 4 rock
 block 1 5 4 rock
 block 1 6 4

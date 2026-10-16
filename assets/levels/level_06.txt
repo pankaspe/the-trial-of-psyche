@@ -9,7 +9,7 @@ size 16
 setting river_dawn
 
 # --- below: the river -----------------------------------------------------------
-water 0 0 15 15
+floor water 0 0 15 15
 
 # the bank where the river set her (h1)
 ground 12 13 0 0

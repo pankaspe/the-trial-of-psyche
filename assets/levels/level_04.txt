@@ -71,10 +71,14 @@
 #                           top block grassy
 #   rock x y z0 z1          the same, bare rock on top too
 #   steps x y z dir         stairs cut in the rock (as stairs, earth and grass)
-#   water x0 y0 x1 y1 [h]   a river over these cells, just under the surfaces of
-#                           height h (default 1, the same for every river; in a
-#                           level with pomegranates it belongs to the world above)
-#                           (decoration: it holds nobody)
+#   floor kind x0 y0 x1 y1 [h]
+#                           what the diorama stands on, over these cells, just
+#                           under the surfaces of height h (default 1, the same
+#                           for every floor; in a level with pomegranates it
+#                           belongs to the world above) (decoration: it holds
+#                           nobody): water (a river, its edges fading into the
+#                           mist) | basin (a marble basin brimming with water,
+#                           its rim on the edge cells)
 #   cave x y h dir          the mouth of a cave in the rock on side dir of surface
 #                           x y h (the rock there must rise above it); caves pair
 #                           up in file order (1st with 2nd, 3rd with 4th...):

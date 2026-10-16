@@ -72,6 +72,8 @@ Mesh_Id :: enum u8 {
 	Boat, // Charon's boat: its stern at the origin, the prow along +x, the floor at z 0
 	Pomegranate, // Proserpina's pomegranate, in the (-x, +y) corner of its stone...
 	Pomegranate_Dish, // ...on a low bronze dish
+	Rim_PX, Rim_MX, Rim_PY, Rim_MY, // a marble basin's rim along the +x side of an edge cell...
+	Basin_Floor, // ...and its bottom, under the water
 }
 
 // Where the resting brazier's flame burns, in cell space.
@@ -406,6 +408,19 @@ LIP_PX := [?]Box {
 	{{0.72, 0.66, 0}, {0.96, 1.0, 0.25}},
 	{{0.8, 0.42, 0.15}, {0.95, 0.6, 0.23}},
 }
+// a basin's pieces (`floor basin`): the rim stands on the +x side of the
+// edge cells on a plinth, its coping just under the surfaces; the bottom a
+// slab under the water. What stands proud of the wall runs on past the cell
+// along it, so the outer corners close.
+BASIN_FOOT :: 0.14 // the plinth's height, from the floor of the layer
+@(private)
+RIM_PX := [?]Box {
+	{{0.7, -0.06, 0}, {1.06, 1.06, BASIN_FOOT}}, // the plinth
+	{{0.78, 0.0, BASIN_FOOT}, {1.0, 1.0, 0.82}},
+	{{0.74, -0.02, 0.82}, {1.02, 1.02, 0.9}}, // the coping, a little proud of the wall
+}
+@(private)
+BASIN_FLOOR := [?]Box{{{0, 0, 0}, {1, 1, 0.2}}}
 // a fir: a straight trunk, the crown in tiers narrowing to the tip
 @(private)
 SPRUCE_TRUNK := [?]Box{{{0.44, 0.44, 0}, {0.56, 0.56, 0.42}}}
@@ -554,6 +569,7 @@ build_meshes :: proc(meshes: ^[Mesh_Id]rl.Mesh) {
 	four(meshes, .Rope_PX, ROPE_PX[:])
 	four(meshes, .Log_PX, LOG_PX[:])
 	four(meshes, .Lip_PX, LIP_PX[:])
+	four(meshes, .Rim_PX, RIM_PX[:])
 	four(meshes, .Bed_PX, bed_px())
 	four(meshes, .Arch_PX, ARCH_PX[:])
 	four(meshes, .Sconce_PX, SCONCE_PX[:])
@@ -570,6 +586,7 @@ build_meshes :: proc(meshes: ^[Mesh_Id]rl.Mesh) {
 	four(meshes, .Myrtle_Pot_PX, MYRTLE_POT_PX[:])
 	four(meshes, .Cave_PX, CAVE_PX[:])
 	four(meshes, .Cave_Dark_PX, CAVE_DARK_PX[:])
+	meshes[.Basin_Floor] = one(BASIN_FLOOR[:])
 	meshes[.Pillar] = one(PILLAR[:])
 	meshes[.Plinth] = one(PLINTH[:])
 	meshes[.Cypress] = one(cypress())

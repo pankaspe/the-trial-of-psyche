@@ -42,7 +42,7 @@ evening venus_evening
 lamp 3
 intro intro_iii_5
 outro outro_iii_5
-water 0 0 14 14
+floor water 0 0 14 14
 
 # --- C: the court of arrival (h2) --------------------------------------------
 column 11 5 0 1
