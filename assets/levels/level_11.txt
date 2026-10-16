@@ -21,7 +21,7 @@ lamp 3
 oil 7
 intro intro_iii_3
 outro outro_iii_3
-floor water 0 0 10 10
+floor basin rock -1 0 11 10
 # S: the bank where she starts (h1)
 rock 6 8 0 0
 rock 7 8 0 0
