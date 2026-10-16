@@ -1,0 +1,200 @@
+# The Trial of Psyche - level IV.5: "The Way Back" (format: level_04.txt)
+#
+# The way back with the box, across the river of the dead: five islands of one
+# floor (z 4, rock for the dead, marble under Proserpina's house in the east),
+# three on the axle (a pomegranate each) and two islets off it, in the north and
+# the south, which only Charon's ferries reach. Three ferries, each waiting
+# where it is no use yet; three seals, two of the dead on the northern islets,
+# one of Proserpina in her world on the west island; her marble bridges join
+# the axle islands in her world only.
+#   - from her house (east) the first ferry to the north-east islet: the first
+#     seal of the dead raises the missing stone of her bridge to the west;
+#   - back with the boat, over at the east pomegranate: her bridge west (a
+#     veiled stone: the lamp) to the middle island, the next one (now whole,
+#     its stairs behind a column from some views) to the west island, her seal
+#     there: it raises the steps of the second seal of the dead;
+#   - back at the west pomegranate: the second ferry (it waited there) to the
+#     north-west islet, the second seal raises the steps to Charon's jetty;
+#   - back with it, over, east along her bridge, back at the middle
+#     pomegranate, the third ferry to the southern islet, and Charon takes the
+#     second coin (the exit).
+# Solution (solver: 53 steps, 1 turn, 4 lightings, 4 overturns, 5 crossings,
+# 14 decisions; every pomegranate and ferry needed).
+# Fragment: IV.5 (VI.21, Cupid escapes through the window) on a crag of the
+# north-east islet whose steps Proserpina's seal raises: back there with the
+# first ferry once her seal is lit (going round again).
+intro intro_iv_5
+outro outro_iv_5
+size 15
+setting taenarus
+upside dis
+lamp
+water 0 0 14 14 5
+block 1 5 4 rock
+block 1 6 4 rock
+block 1 7 4
+block 1 8 4 rock
+block 1 9 4 rock
+block 2 5 4 rock
+block 2 6 4 rock
+block 2 7 4
+block 2 8 4 rock
+block 2 9 4 rock
+block 3 5 4 rock
+block 3 6 4 rock
+block 3 7 4
+block 3 8 4 rock
+block 3 9 4 rock
+block 6 5 4 rock
+block 6 6 4 rock
+block 6 7 4
+block 6 8 4 rock
+block 6 9 4 rock
+block 7 5 4 rock
+block 7 6 4 rock
+block 7 7 4
+block 7 8 4 rock
+block 7 9 4 rock
+block 8 5 4 rock
+block 8 6 4 rock
+block 8 7 4
+block 8 8 4 rock
+block 8 9 4 rock
+block 5 0 4 rock
+block 5 1 4 rock
+block 5 2 4 rock
+block 6 0 4 rock
+block 6 1 4 rock
+block 6 2 4 rock
+block 8 0 4 rock
+block 8 1 4 rock
+block 8 2 4 rock
+block 9 0 4 rock
+block 9 1 4 rock
+block 9 2 4 rock
+block 5 12 4 rock
+block 5 13 4 rock
+block 5 14 4 rock
+block 6 12 4 rock
+block 6 13 4 rock
+block 6 14 4 rock
+block 7 12 4 rock
+block 7 13 4 rock
+block 7 14 4 rock
+block 8 12 4 rock
+block 8 13 4 rock
+block 8 14 4 rock
+pomegranate 2 7 5
+pomegranate 7 7 5
+pomegranate 12 7 5
+start 13 9 5
+rest 12 9 5
+rest 2 9 5
+prop cairn 6 2 5 py
+prop shrub 9 0 6 my
+prop cairn 1 5 5 my
+prop shrub 5 14 5 py
+prop cairn 6 7 5 mx
+ferry 12 5 5 my  9 2 5 px
+ferry 2 5 5 my  5 2 5 mx
+ferry 8 9 5 py  6 12 5 my
+block 8 0 5 rock
+steps 8 1 5 my
+sigil 8 0 6
+prop lip 8 0 6 mx
+prop lip 8 0 6 px
+prop lip 8 0 6 my
+block 9 0 5 rock
+rise 9 1 5 my rock 3
+fragment 9 0 6
+prop lip 9 0 6 mx
+prop lip 9 0 6 px
+prop lip 9 0 6 my
+block 5 0 5 rock
+rise 5 1 5 my rock 3
+sigil 5 0 6
+prop lip 5 0 6 mx
+prop lip 5 0 6 px
+prop lip 5 0 6 my
+block 8 14 5 rock
+rise 8 13 5 py rock 2
+exit 8 14 6
+charon 8 14 6 px
+prop lip 8 14 6 mx
+prop lip 8 14 6 py
+prop lip 7 12 5 py
+prop lip 9 2 5 my
+prop lip 6 2 5 my
+prop lip 4 6 4 mx
+prop lip 4 6 4 px
+prop lip 4 6 4 my
+prop lip 4 6 4 py
+prop lip 5 6 4 mx
+prop lip 5 6 4 px
+prop lip 5 6 4 my
+prop lip 5 6 4 py
+prop lip 9 6 4 mx
+prop lip 9 6 4 px
+prop lip 9 6 4 my
+prop lip 9 6 4 py
+prop lip 10 6 4 mx
+prop lip 10 6 4 px
+prop lip 10 6 4 my
+prop lip 10 6 4 py
+under
+block 11 9 4
+block 11 8 4
+block 11 7 4
+block 11 6 4
+block 11 5 4
+block 12 9 4
+block 12 8 4
+block 12 7 4
+block 12 6 4
+block 12 5 4
+block 13 9 4
+block 13 8 4
+block 13 7 4
+block 13 6 4
+block 13 5 4
+stairs 10 8 5 mx
+veiled 9 8 5
+stairs 8 8 5 px
+prop rail 9 8 6 py
+prop rail 9 8 6 my
+stairs 6 8 5 mx
+rise 5 8 5 1
+block 4 8 5
+stairs 3 8 5 px
+prop rail 5 8 6 py
+prop rail 5 8 6 my
+prop rail 4 8 6 py
+prop rail 4 8 6 my
+block 1 5 5
+stairs 1 6 5 my
+sigil 1 5 6
+prop rail 1 5 6 mx
+prop rail 1 5 6 px
+prop rail 1 5 6 my
+prop rail 6 9 5 mx
+prop rail 6 7 5 mx
+column 7 9 5 6
+prop rail 7 9 7 mx
+prop rail 7 9 7 px
+prop rail 7 9 7 my
+prop rail 7 9 7 py
+column 3 9 5 6
+prop rail 3 9 7 mx
+prop rail 3 9 7 px
+prop rail 3 9 7 my
+prop rail 3 9 7 py
+prop pillar 13 5 5
+prop pillar 13 9 5
+candelabrum 11 6 5 my lit
+candelabrum 12 9 5 py lit
+candelabrum 1 9 5 py lit
+candelabrum 7 5 5 mx lit
+prop sconce 7 9 6 px
+prop sconce 3 9 6 mx
+end
+

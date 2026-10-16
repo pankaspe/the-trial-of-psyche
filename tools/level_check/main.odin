@@ -461,6 +461,9 @@ check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 			}
 		}
 	}
+	p.upside = false
+	pl.rebuild_graph(p)
+	// the ferries are of the world above
 	for f in data.ferries {
 		for e in f.ends {
 			if !pl.is_surface(p, e.cell) {
@@ -471,8 +474,6 @@ check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 			}
 		}
 	}
-	p.upside = false
-	pl.rebuild_graph(p)
 	// what stands on a veiled stone floats while it is hidden (the hand
 	// ropes of a bridge do not: they hang between the posts)
 	for prop in data.props {

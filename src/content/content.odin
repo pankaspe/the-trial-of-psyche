@@ -71,7 +71,7 @@ LEVELS := [?]Level_Info {
 	{"IV.2", .IV, .Level_IV_2, .Where_IV_2, "VI.20", #load("../../assets/levels/level_15.txt", string)},
 	{"IV.3", .IV, .Level_IV_3, .Where_IV_3, "VI.18–20", #load("../../assets/levels/level_16.txt", string)},
 	{"IV.4", .IV, .Level_IV_4, .Where_IV_4, "VI.19–20", #load("../../assets/levels/level_17.txt", string)},
-	{"IV.5", .IV, .Level_IV_5, .Where_IV_5, "VI.21", ""},
+	{"IV.5", .IV, .Level_IV_5, .Where_IV_5, "VI.20", #load("../../assets/levels/level_18.txt", string)},
 	{"IV.6", .IV, .Level_IV_6, .Where_IV_6, "VI.21", ""},
 	{"E", .Epilogue, .Level_Epilogue, .Where_Epilogue, "VI.22–24", ""},
 }

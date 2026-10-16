@@ -282,6 +282,7 @@ Key :: enum u16 {
 	Intro_IV_2,
 	Intro_IV_3,
 	Intro_IV_4,
+	Intro_IV_5,
 	// beside Cupid in the dark, before the end of the game
 	V_Doubt,
 
@@ -381,6 +382,7 @@ Key :: enum u16 {
 	Outro_IV_2,
 	Outro_IV_3,
 	Outro_IV_4,
+	Outro_IV_5,
 
 	// endings
 	End_Trust_Title,
@@ -664,8 +666,8 @@ IT := [Key]string {
 	.Level_IV_2     = "Il rovescio del mondo",
 	.Level_IV_3     = "La pietra dei due mondi",
 	.Level_IV_4     = "Cerbero e Proserpina",
-	.Level_IV_5     = "Il vaso aperto",
-	.Level_IV_6     = "Il ritorno",
+	.Level_IV_5     = "La via del ritorno",
+	.Level_IV_6     = "Il vaso aperto",
 	.Level_Epilogue = "Il risveglio e le nozze",
 
 	.Level_Unbuilt  = "Ancora in costruzione",
@@ -686,7 +688,7 @@ IT := [Key]string {
 	.Where_IV_2     = "La terra dei morti, e il regno appeso sotto",
 	.Where_IV_3     = "Un solo pavimento per due mondi",
 	.Where_IV_4     = "La soglia di Proserpina",
-	.Where_IV_5     = "La via del ritorno",
+	.Where_IV_5     = "Lo Stige, di nuovo",
 	.Where_IV_6     = "Verso la luce",
 	.Where_Epilogue = "Il cielo, alle nozze",
 	.Device_Seals   = "Sigilli",
@@ -856,6 +858,7 @@ IT := [Key]string {
 	.Intro_IV_1     = "La torre ti ha detto la via. Scendi: in fondo, sull'acqua scura, aspetta il traghettatore.",
 	.Intro_IV_2     = "Oltre il fiume, il regno di Proserpina pende sotto la terra dei morti, come un riflesso nell'acqua.",
 	.Intro_IV_3     = "Qui la terra dei morti e il regno di Proserpina camminano sulla stessa pietra: uno sopra, l'altro sotto.",
+	.Intro_IV_5     = "Con il vaso tra le mani, Psiche torna indietro: tre barche, e nessuna l'aspetta dove le serve.",
 	.Intro_IV_4     = "Caronte fa la spola sul fiume nero. Al di là, sotto l'acqua, la casa di Proserpina.",
 	.V_Doubt        = "Dorme. Ti tornano in mente le parole delle sorelle: e se fosse un mostro? La lampada è nella tua mano.",
 
@@ -941,6 +944,7 @@ IT := [Key]string {
 	.Outro_IV_1     = "Caronte prende di sua mano la moneta dalle labbra di Psiche. Senza una parola, spinge la barca nella nebbia rossa.",
 	.Outro_IV_2     = "Il mondo si ferma, dritto o capovolto: quaggiù è lo stesso. Più avanti i due mondi si toccano ancora, pietra contro pietra.",
 	.Outro_IV_3     = "La porta si apre sul fiume dei morti, che torna a scorrere, nero. Sull'acqua aspetta di nuovo una barca.",
+	.Outro_IV_5     = "Caronte prende la seconda moneta e la riporta sull'altra riva. Lassù, la luce del giorno.",
 	.Outro_IV_4     = "Psiche siede a terra ai piedi di Proserpina e mangia pane scuro. La dea riempie il vaso in segreto e lo chiude. Ora, la via del ritorno.",
 	.Outro_III_1    = "A notte Venere torna dal banchetto, accaldata dal vino e profumata di rose. Vede il lavoro compiuto.\n«Non è opera tua», dice, e le getta un tozzo di pane.",
 
@@ -1059,8 +1063,8 @@ EN := [Key]string {
 	.Level_IV_2     = "The Underside of the World",
 	.Level_IV_3     = "The Stone of Two Worlds",
 	.Level_IV_4     = "Cerberus and Proserpina",
-	.Level_IV_5     = "The Open Box",
-	.Level_IV_6     = "The Return",
+	.Level_IV_5     = "The Way Back",
+	.Level_IV_6     = "The Open Box",
 	.Level_Epilogue = "The Awakening and the Wedding",
 
 	.Level_Unbuilt  = "Still being built",
@@ -1081,7 +1085,7 @@ EN := [Key]string {
 	.Where_IV_2     = "The land of the dead, and the kingdom hanging below",
 	.Where_IV_3     = "One floor for two worlds",
 	.Where_IV_4     = "Proserpina's threshold",
-	.Where_IV_5     = "The way back",
+	.Where_IV_5     = "The Styx, once more",
 	.Where_IV_6     = "Toward the light",
 	.Where_Epilogue = "Heaven, at the wedding",
 	.Device_Seals   = "Seals",
@@ -1251,6 +1255,7 @@ EN := [Key]string {
 	.Intro_IV_1     = "The tower has told you the way. Go down: at the bottom, on the dark water, the ferryman waits.",
 	.Intro_IV_2     = "Beyond the river, Proserpina's kingdom hangs under the land of the dead, like a reflection in water.",
 	.Intro_IV_3     = "Here the land of the dead and Proserpina's kingdom walk on the same stone: one above, the other below.",
+	.Intro_IV_5     = "With the box in her hands, Psyche turns back: three boats, and none waits where she needs it.",
 	.Intro_IV_4     = "Charon plies the black river. Beyond it, under the water, Proserpina's house.",
 	.V_Doubt        = "He sleeps. Your sisters' words come back to you: what if he is a monster? The lamp is in your hand.",
 
@@ -1336,6 +1341,7 @@ EN := [Key]string {
 	.Outro_IV_1     = "Charon takes the coin from Psyche's lips with his own hand. Without a word, he pushes the boat into the red mist.",
 	.Outro_IV_2     = "The world comes to rest, upright or upside down: down here it is all one. Further on the two worlds touch again, stone against stone.",
 	.Outro_IV_3     = "The door opens on the river of the dead, running again, black. On the water a boat waits once more.",
+	.Outro_IV_5     = "Charon takes the second coin and ferries her back across. Up there, the light of day.",
 	.Outro_IV_4     = "Psyche sits on the ground at Proserpina's feet and eats coarse bread. The goddess fills the box in secret and closes it. Now, the way back.",
 	.Outro_III_1    = "At night Venus comes back from the feast, flushed with wine and fragrant with roses. She sees the work done.\n“This is not your doing,” she says, and throws her a crust of bread.",
 
