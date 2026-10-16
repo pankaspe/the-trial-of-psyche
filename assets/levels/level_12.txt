@@ -38,7 +38,7 @@ evening styx_evening
 lamp 3
 intro intro_iii_4
 outro outro_iii_4
-floor water 0 0 14 14
+floor basin rock -1 -1 13 13
 
 # --- S: the foot (h1) --------------------------------------------------------
 rock 8 11 0 0
