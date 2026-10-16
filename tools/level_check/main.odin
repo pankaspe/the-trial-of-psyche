@@ -16,6 +16,13 @@
 // turn: a level still solved without one has a piece that does nothing, or a
 // way round it). A level with Proserpina's pomegranates is reported either
 // way up ("upside": the world turned over, reached from its pomegranates).
+//
+// `--try CANDIDATES`: is a decoration harmless? Each line of the file is a
+// variant (level lines joined by `;`, `under LINE` for the world under the
+// palace), added to the level alone: it is refused by the loader, neutral,
+// or the tool says what it changes. A prop or candelabrum that only
+// decorates is weighed by the checks' errors and warnings; anything else
+// also by the illusions and stairs of every view and the solver's plans.
 package level_check
 
 import "core:fmt"
@@ -49,6 +56,10 @@ main :: proc() {
 	if e, failed := err.?; failed {
 		fmt.eprintfln("%s:%d: %s", path, e.line, e.message)
 		os.exit(1)
+	}
+	if len(os.args) > 3 && os.args[2] == "--try" {
+		try_report(string(text), os.args[3])
+		return
 	}
 	p: pl.Palace
 	pl.init(&p, &data, alloc)
@@ -151,6 +162,19 @@ main :: proc() {
 	}
 }
 
+// Where the checks' errors and warnings go: printed (errors to stderr), or,
+// while `--try` weighs a variant, gathered here.
+capture: ^[dynamic]string
+
+note :: proc(fatal: bool, format: string, args: ..any) {
+	text := fmt.tprintf(format, ..args)
+	switch {
+	case capture != nil: append(capture, fmt.aprintf("%s %s", fatal ? "error:" : "warning:", text))
+	case fatal: fmt.eprintln("error:", text)
+	case: fmt.println("warning:", text)
+	}
+}
+
 // What the player sees and clicks: every cave has rock turned its opening is
 // (an error otherwise), and a click on a fragment's scroll picks the
 // fragment's own cell in every view (a warning otherwise: the click would
@@ -162,7 +186,7 @@ check_screen :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 	for cave in data.caves {
 		d := iso.DIR_VEC[cave.dir]
 		if pl.solid_at(p, cave.cell + {d.x, d.y, 0}).kind != .Block {
-			fmt.eprintfln("error: the cave at %v has no rock on its side %v", cave.cell, cave.dir)
+			note(true, "the cave at %v has no rock on its side %v", cave.cell, cave.dir)
 			ok = false
 		}
 	}
@@ -178,8 +202,8 @@ check_screen :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 				w := pl.node_world(p, c) + {0, 0, 0.22}
 				got, found := pl.pick(p, iso.project(iso.view_point(w, f32(r), p.size)), f32(r))
 				if found && got != c {
-					note := pl.cave_at(p, got) >= 0 ? " (a cave's mouth!)" : ""
-					fmt.printfln("warning: view %d%s: a click on the scroll at %v picks %v%s", r, whole ? "" : " (veiled hidden)", c, got, note)
+					cave := pl.cave_at(p, got) >= 0 ? " (a cave's mouth!)" : ""
+					note(false, "view %d%s: a click on the scroll at %v picks %v%s", r, whole ? "" : " (veiled hidden)", c, got, cave)
 				}
 			}
 		}
@@ -254,11 +278,7 @@ check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 		}
 		if !said[text] {
 			said[text] = true
-			if fatal {
-				fmt.eprintln("error:", text)
-			} else {
-				fmt.println("warning:", text)
-			}
+			note(fatal, "%s", text)
 		}
 		ok^ &&= !fatal
 	}
@@ -724,10 +744,22 @@ needed_report :: proc(text: string) {
 // `--brief`: one line for the plan and one per fragment (scripts that try
 // many variants of a design read these).
 brief :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Allocator) {
-	line :: proc(tag: string, sol: pl.Solution) {
+	lines, steps := plans(p, data, alloc)
+	fmt.println(lines[0])
+	if len(os.args) > 3 && os.args[3] == "--steps" {
+		fmt.println(steps)
+	}
+	for l in lines[1:] {
+		fmt.println(l)
+	}
+}
+
+// The solver's plans, one line each: the exit's, each fragment's, the exit
+// without each fragment; and the exit plan's steps.
+plans :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Allocator) -> (lines: [dynamic]string, steps: string) {
+	line :: proc(tag: string, sol: pl.Solution) -> string {
 		if !sol.solved {
-			fmt.printfln("%s unsolved states %d", tag, sol.states)
-			return
+			return fmt.aprintf("%s unsolved states %d", tag, sol.states)
 		}
 		// visits: runs of handle turns in one place (turning a part three
 		// quarters is one decision, not three)
@@ -735,25 +767,267 @@ brief :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Allocator) 
 		for st, i in sol.plan {
 			visits += int(st.move == .Handle && (i == 0 || sol.plan[i - 1].move != .Handle))
 		}
-		fmt.printfln("%s steps %d turns %d handles %d visits %d times %d flights %d overturns %d crossings %d decisions %d states %d dead %d", tag, sol.steps, sol.turns, sol.handles, visits, sol.times, sol.flights, sol.overturns, sol.crossings, decisions(sol), sol.states, sol.dead)
+		return fmt.aprintf("%s steps %d turns %d handles %d visits %d times %d flights %d overturns %d crossings %d decisions %d states %d dead %d", tag, sol.steps, sol.turns, sol.handles, visits, sol.times, sol.flights, sol.overturns, sol.crossings, decisions(sol), sol.states, sol.dead)
 	}
+	context.allocator = alloc
 	sol := pl.solve(p, pl.goal_cell(p), nil, alloc)
-	line("exit", sol)
-	if len(os.args) > 3 && os.args[3] == "--steps" {
-		for st in sol.plan {
-			fmt.printf(" %v%v%s%s", st.move == .Step ? "" : fmt.tprintf("%v@", st.move), st.cell, st.upside ? "u" : "", st.illusion ? fmt.tprintf("~v%d", st.view) : "")
-		}
-		fmt.println()
+	append(&lines, line("exit", sol))
+	b := strings.builder_make()
+	for st in sol.plan {
+		fmt.sbprintf(&b, " %v%v%s%s", st.move == .Step ? "" : fmt.tprintf("%v@", st.move), st.cell, st.upside ? "u" : "", st.illusion ? fmt.tprintf("~v%d", st.view) : "")
 	}
+	steps = strings.to_string(b)
 	for _, i in data.fragments {
 		spot := pl.fragment_spot(data, i)
-		line(fmt.tprintf("fragment%d", i), pl.solve(p, spot, pl.exit_spot(data), alloc))
-		line(fmt.tprintf("without%d", i), pl.solve(p, pl.exit_spot(data), spot, alloc))
+		append(&lines, line(fmt.tprintf("fragment%d", i), pl.solve(p, spot, pl.exit_spot(data), alloc)))
+		append(&lines, line(fmt.tprintf("without%d", i), pl.solve(p, pl.exit_spot(data), spot, alloc)))
 	}
+	return
 }
 
 // What the player decides along a plan: turns, lightings, handles, sundials,
 // eagles, pomegranates, ferries.
 decisions :: proc(sol: pl.Solution) -> int {
 	return sol.turns + sol.lightings + sol.handles + sol.times + sol.flights + sol.overturns + sol.crossings
+}
+
+// `--try`: each candidate added to the level alone, weighed against it.
+try_report :: proc(base: string, path: string) {
+	list, read_err := os.read_entire_file_from_path(path, context.allocator)
+	if read_err != nil {
+		fmt.eprintfln("cannot read %s: %v", path, read_err)
+		os.exit(1)
+	}
+	base_arena: virtual.Arena
+	defer virtual.arena_destroy(&base_arena)
+	base_alloc := virtual.arena_allocator(&base_arena)
+	before: [2][dynamic]string // the level's: its checks only, everything
+	have_full := false
+	before[0], _ = signature(base, false, base_alloc)
+	counts: [3]int // neutral, changes, refused
+	rest := string(list)
+	for raw in strings.split_lines_iterator(&rest) {
+		line := strings.trim_space(strings.split_n(raw, "#", 2, context.temp_allocator)[0])
+		if line == "" {
+			continue
+		}
+		// the candidate's lines, and whether one of them may change the walk
+		b := strings.builder_make(context.temp_allocator)
+		strings.write_string(&b, base)
+		full := false
+		for part in strings.split(line, ";", context.temp_allocator) {
+			l := strings.trim_space(part)
+			under := strings.has_prefix(l, "under ")
+			if under {
+				l = l[len("under "):]
+			}
+			full ||= !decorates(l)
+			fmt.sbprintf(&b, under ? "\nunder\n%s\nend" : "\n%s", l)
+		}
+		if full && !have_full {
+			before[1], _ = signature(base, true, base_alloc)
+			have_full = true
+		}
+		arena: virtual.Arena
+		after, err := signature(strings.to_string(b), full, virtual.arena_allocator(&arena))
+		if e, failed := err.?; failed {
+			fmt.printfln("refused  %s: %s", line, e.message)
+			counts[2] += 1
+		} else {
+			gone, came := differ(before[int(full)][:], after[:])
+			if len(gone) + len(came) == 0 {
+				fmt.printfln("neutral  %s", line)
+				counts[0] += 1
+			} else {
+				fmt.printfln("changes  %s", line)
+				print_changes(gone[:], came[:])
+				counts[1] += 1
+			}
+		}
+		virtual.arena_destroy(&arena)
+		free_all(context.temp_allocator)
+	}
+	fmt.printfln("\n%d neutral, %d with changes, %d refused", counts[0], counts[1], counts[2])
+}
+
+// A level line that only decorates: a prop the walk ignores, a candelabrum
+// that is not a guard.
+decorates :: proc(line: string) -> bool {
+	f := strings.fields(line, context.temp_allocator)
+	switch {
+	case len(f) > 1 && f[0] == "prop":
+		for info in level.PROPS {
+			if info.name == f[1] {
+				return info.fill == .None
+			}
+		}
+	case len(f) > 0 && f[0] == "candelabrum":
+		return !strings.contains(line, "guard")
+	}
+	return false
+}
+
+// What a variant must leave as it was: the checks' errors and warnings and,
+// in full, the stairs and illusions of every view (either way up) and the
+// solver's plans.
+signature :: proc(text: string, full: bool, alloc: runtime.Allocator) -> (sig: [dynamic]string, err: Maybe(level.Parse_Error)) {
+	context.allocator = alloc
+	data := new(level.Level_Data)
+	data^ = level.parse(text, alloc) or_return
+	p := new(pl.Palace)
+	pl.init(p, data, alloc)
+	if full {
+		lines, steps := plans(p, data, alloc)
+		append(&sig, ..lines[:])
+		append(&sig, fmt.aprintf("plan%s", steps))
+		for upside in 0 ..< (len(data.pomegranates) > 0 ? 2 : 1) {
+			p.upside = upside == 1
+			p.day = false // the illusions of the dark
+			pl.rebuild_graph(p)
+			for r in 0 ..< 4 {
+				pl.set_view(p, r)
+				side := p.upside ? " upside" : ""
+				b := strings.builder_make()
+				fmt.sbprintf(&b, "view %d%s stairs usable in the dark:", r, side)
+				for node, i in p.nodes {
+					if node.stair {
+						fmt.sbprintf(&b, " %v:%v", node.cell, p.stair_seen[i])
+					}
+				}
+				append(&sig, strings.to_string(b))
+				b = strings.builder_make()
+				fmt.sbprintf(&b, "view %d%s illusions:", r, side)
+				for e in p.illusion.pairs {
+					fmt.sbprintf(&b, " %v-%v", p.nodes[e[0]].cell, p.nodes[e[1]].cell)
+				}
+				append(&sig, strings.to_string(b))
+			}
+		}
+		p.upside = false
+		p.day = len(data.sundials) > 0
+		as_loaded(p, data)
+	}
+	capture = &sig
+	check_screen(p, data)
+	check_props(p, data)
+	capture = nil
+	return
+}
+
+// What is in one list and not the other.
+differ :: proc(before, after: []string) -> (gone, came: [dynamic]string) {
+	gone = make([dynamic]string, context.temp_allocator)
+	came = make([dynamic]string, context.temp_allocator)
+	count := make(map[string]int, context.temp_allocator)
+	for s in before {
+		count[s] += 1
+	}
+	for s in after {
+		count[s] -= 1
+	}
+	for s in before {
+		if count[s] > 0 {
+			append(&gone, s)
+			count[s] -= 1
+		}
+	}
+	for s in after {
+		if count[s] < 0 {
+			append(&came, s)
+			count[s] += 1
+		}
+	}
+	return
+}
+
+// What changed, readably: a line and its twin (the same tag: the words before
+// its first colon, or its first word) as what differs between them; the
+// checks' errors and warnings, and lines with no twin, as they are.
+print_changes :: proc(gone, came: []string) {
+	tag :: proc(s: string) -> string {
+		if strings.has_prefix(s, "error:") || strings.has_prefix(s, "warning:") {
+			return s // never paired
+		}
+		if i := strings.index_byte(s, ':'); i >= 0 {
+			return s[:i]
+		}
+		return strings.fields(s, context.temp_allocator)[0]
+	}
+	paired := make([]bool, len(came), context.temp_allocator)
+	outer: for g in gone {
+		for c, j in came {
+			if !paired[j] && tag(g) == tag(c) {
+				paired[j] = true
+				fmt.printfln("           ~ %s: %s", tag(g), between(tag(g), g, c))
+				continue outer
+			}
+		}
+		fmt.printfln("           - %s", g)
+	}
+	for c, j in came {
+		if !paired[j] {
+			fmt.printfln("           + %s", c)
+		}
+	}
+}
+
+// How two lines of one tag differ: a plan from where it parts; a view's
+// stairs or illusions by what it lost and what it gained; a solve's line
+// word by word (each change labelled by the word before it).
+between :: proc(tag, a, b: string) -> string {
+	wa, wb := words(a), words(b)
+	out := strings.builder_make(context.temp_allocator)
+	sep :: proc(out: ^strings.Builder) -> string {
+		return strings.builder_len(out^) > 0 ? ", " : ""
+	}
+	switch {
+	case len(wa) == len(wb) && !strings.has_prefix(tag, "view"):
+		for w, i in wa {
+			if w != wb[i] {
+				fmt.sbprintf(&out, "%s%s %s -> %s", sep(&out), i > 0 ? wa[i - 1] : "", w, wb[i])
+			}
+		}
+	case tag == "plan":
+		i := 0
+		for i < len(wa) && i < len(wb) && wa[i] == wb[i] {
+			i += 1
+		}
+		few :: proc(w: []string, i: int) -> string {
+			return strings.join(w[i:min(i + 3, len(w))], " ", context.temp_allocator)
+		}
+		fmt.sbprintf(&out, "from %s ... -> %s ...", few(wa, i), few(wb, i))
+	case:
+		gone, came := differ(wa, wb)
+		if len(gone) > 0 {
+			fmt.sbprintf(&out, "lost %s", strings.join(gone[:], " ", context.temp_allocator))
+		}
+		if len(came) > 0 {
+			fmt.sbprintf(&out, "%sgained %s", sep(&out), strings.join(came[:], " ", context.temp_allocator))
+		}
+	}
+	return strings.to_string(out)
+}
+
+// The words of a line, a cell (or a pair of cells) written [x, y, z] one word.
+words :: proc(s: string) -> []string {
+	out := make([dynamic]string, context.temp_allocator)
+	depth, start := 0, -1
+	for c, i in s {
+		switch {
+		case c == '[': depth += 1
+		case c == ']': depth -= 1
+		}
+		if c == ' ' && depth == 0 {
+			if start >= 0 {
+				append(&out, s[start:i])
+			}
+			start = -1
+		} else if start < 0 {
+			start = i
+		}
+	}
+	if start >= 0 {
+		append(&out, s[start:])
+	}
+	return out[:]
 }
