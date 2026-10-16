@@ -318,6 +318,8 @@ Level_Data :: struct {
 	upside:       Setting, // the look with the world turned over (`has_upside`)
 	has_upside:   bool,
 	duality:      bool, // the axle's floor shows bare rock to the world above, marble to the world under (`duality`)
+	biome:        Biome, // the place (`has_biome`): its defaults, its props
+	has_biome:    bool,
 }
 
 MAX_PARTS :: 8
@@ -395,8 +397,10 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	data.eagles = make([dynamic]Eagle, 0, MAX_EAGLES)
 	data.ferries = make([dynamic]Ferry, 0, MAX_FERRIES)
 	data.pomegranates = make([dynamic]Cell, 0, 4)
+	has_setting := false
 	has_evening := false
 	has_start := false
+	floor_given := make([dynamic][2]bool, context.temp_allocator) // each floor: its rim, its fluid written in the file
 	part: u8 = 0 // the part being described (between `part` and `end`)
 	under := false // between `under` and `end`: the world under the palace
 	under_line := 0
@@ -665,7 +669,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				if len(args) == 1 && name == args[0] {
 					found = true
 					switch fields[0] {
-					case "setting": data.setting = st
+					case "setting": data.setting, has_setting = st, true
 					case "evening": data.evening, has_evening = st, true
 					case "below": data.below, data.has_below = st, true
 					case "upside": data.upside, data.has_upside = st, true
@@ -699,10 +703,11 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 			}
 			at := 1 // where the area begins: after a basin's rim and the fluid, if given
+			given: [2]bool
 			if found && f.kind == .Basin && at < len(args) {
 				for name, rim in RIM_NAME {
 					if name == args[at] {
-						f.rim = rim
+						f.rim, given[0] = rim, true
 						at += 1
 						break
 					}
@@ -711,7 +716,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			if found && at < len(args) {
 				for name, fluid in FLUID_NAME {
 					if name == args[at] {
-						f.fluid = fluid
+						f.fluid, given[1] = fluid, true
 						at += 1
 						break
 					}
@@ -728,6 +733,22 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				data.floor_h = h[0]
 			}
 			append(&data.floors, f)
+			append(&floor_given, given)
+
+		case "biome":
+			found := false
+			for info, b in BIOMES {
+				if len(args) == 1 && info.name == args[0] {
+					data.biome, data.has_biome, found = b, true, true
+				}
+			}
+			if !found {
+				names := make([dynamic]string, 0, len(Biome), context.temp_allocator)
+				for info in BIOMES {
+					append(&names, info.name)
+				}
+				return data, fail(line_no, "biome: expected one of %s", strings.join(names[:], ", ", context.temp_allocator))
+			}
 
 		case "cave":
 			v: [3]i32
@@ -1085,6 +1106,31 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	}
 	if len(data.caves) % 2 != 0 {
 		return data, fail(line_no, "cave: caves come in pairs (the last one has no other end)")
+	}
+	if data.has_biome {
+		// the place's defaults, where the file says nothing
+		b := BIOMES[data.biome]
+		day, has_day := b.day.?
+		if !has_setting {
+			data.setting = has_day && len(data.sundials) > 0 ? day[0] : b.light
+		}
+		if has_day && len(data.sundials) > 0 && !has_evening {
+			data.evening, has_evening = day[1], true
+		}
+		if below, ok := b.below.?; ok && !data.has_below {
+			data.below, data.has_below = below, true
+		}
+		if under, ok := b.upside.?; ok && len(data.pomegranates) > 0 && !data.has_upside {
+			data.upside, data.has_upside = BIOMES[under].light, true
+		}
+		for &f, i in data.floors {
+			if !floor_given[i][0] {
+				f.rim = b.rim
+			}
+			if !floor_given[i][1] {
+				f.fluid = b.fluid
+			}
+		}
 	}
 	data.height = max_z + 4
 	if data.height > MAX_HEIGHT {

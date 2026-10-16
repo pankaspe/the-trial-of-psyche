@@ -28,9 +28,8 @@
 # the sun to the south landing, across (by day).
 # Format: see level_04.txt.
 size 11
-setting pasture_day
-evening pasture_evening
-floor basin earth -1 -1 11 11
+biome pasture
+floor basin -1 -1 11 11
 
 # --- the pasture (the central island, h2) ------------------------------------
 ground 4 5 0 1

@@ -14,6 +14,7 @@
 # From the crag walk, view 3 joins the younger sister's pillar (fragment 2).
 # Format: see level_04.txt.
 size 13
+biome palace
 setting night_candles
 floor basin 1 0 11 12
 

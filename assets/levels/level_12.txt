@@ -33,12 +33,11 @@
 # (VI.15, the eagle: the gods swear by the Styx) on a pinnacle west of the
 # second seal's tooth, joined to it in view 3.
 size 15
-setting styx_day
-evening styx_evening
+biome styx
 lamp 3
 intro intro_iii_4
 outro outro_iii_4
-floor basin rock -1 -1 13 13
+floor basin -1 -1 13 13
 
 # --- S: the foot (h1) --------------------------------------------------------
 rock 8 11 0 0

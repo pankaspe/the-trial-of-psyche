@@ -38,14 +38,13 @@
 # water; once the guard has shown it, she walks its underside, ankle-deep, by
 # a chain of illusions in three views (the hardest of the game).
 size 17
-setting taenarus
-upside dis
+biome taenarus
 duality
 lamp
 box
 intro intro_iv_6
 outro outro_iv_6
-floor basin rock 0 -1 17 17 5
+floor basin 0 -1 17 17 5
 block 4 14 4 rock
 block 4 15 4 rock
 block 4 16 4 rock

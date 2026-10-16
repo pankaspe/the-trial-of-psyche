@@ -17,8 +17,7 @@
 # Fragment: IV.2 (VI.20) in the garden under the mound, on a tower whose
 # missing stone is veiled (the lamp).
 size 11
-setting taenarus
-upside dis
+biome taenarus
 lamp
 mechanic flip
 intro intro_iv_2

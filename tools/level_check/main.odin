@@ -243,7 +243,7 @@ whole_illusions :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.A
 // (veiled stones shown, the seals' blocks raised) and every part in each of
 // its positions: a prop inside a block or hanging in the air, a candle with no
 // wall, a candelabrum off a floor, a blocking prop on a cell the level needs,
-// a handle on a part, a block given twice.
+// a handle on a part, a block given twice, a prop foreign to the biome.
 check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 	ok = true
 	said := make(map[string]bool, 16, context.temp_allocator)
@@ -484,6 +484,23 @@ check_props :: proc(p: ^pl.Palace, data: ^level.Level_Data) -> (ok: bool) {
 		for e in data.blocks {
 			if e.trait == .Veiled && e.under == prop.under && e.cell == prop.cell - {0, 0, 1} {
 				say(&said, &ok, false, "%v at %v floats until the stone under it is shown", prop.kind, prop.cell)
+			}
+		}
+	}
+	// a prop foreign to the place: the level's biome, the world under it its own
+	if data.has_biome {
+		worlds := [2]level.Biome{data.biome, level.BIOMES[data.biome].upside.? or_else data.biome}
+		strays: [2][level.Prop_Kind]int
+		for prop in data.props {
+			if level.BIOMES[worlds[int(prop.under)]].props[prop.kind] == 0 {
+				strays[int(prop.under)][prop.kind] += 1
+			}
+		}
+		for list, w in strays {
+			for n, kind in list {
+				if n > 0 {
+					say(&said, &ok, false, "%v (%d) is foreign to the biome %s", kind, n, level.BIOMES[worlds[w]].name)
+				}
 			}
 		}
 	}

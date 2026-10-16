@@ -22,8 +22,8 @@
 # of reach from the bank: light the lamp on S1, then view 1.
 # Format: see level_04.txt.
 size 16
-setting forest_night
-floor basin earth swamp 0 0 15 15
+biome forest
+floor basin 0 0 15 15
 
 # A: the glade where she fell (h2)
 ground 2 10 0 1

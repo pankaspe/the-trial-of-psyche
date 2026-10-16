@@ -5,8 +5,9 @@
 # to find it.
 # Format: see level_04.txt.
 size 9
+biome crag
 setting crag_sunset
-floor basin rock 0 -1 8 8
+floor basin 0 -1 8 8
 
 # the summit (h5): a patch of mountain grass on the rock
 ground 3 1 0 4

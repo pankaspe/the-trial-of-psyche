@@ -15,13 +15,13 @@
 # Fragments: a rock in the water (from the bank, view 2); a tooth of rock by
 # the pillar's seal (from the pillar, view 3).
 size 11
-setting styx_night
+biome styx
 mechanic eagle
 lamp 3
 oil 7
 intro intro_iii_3
 outro outro_iii_3
-floor basin rock -1 0 11 10
+floor basin -1 0 11 10
 # S: the bank where she starts (h1)
 rock 6 8 0 0
 rock 7 8 0 0

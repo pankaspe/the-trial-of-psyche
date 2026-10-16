@@ -26,10 +26,10 @@
 intro intro_iv_5
 outro outro_iv_5
 size 15
+biome taenarus
 setting taenarus_night
-upside dis
 lamp
-floor basin rock 0 -1 14 15 5
+floor basin 0 -1 14 15 5
 duality
 block 1 5 4 rock
 block 1 6 4 rock

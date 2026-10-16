@@ -25,6 +25,13 @@
 #                           hand ropes of a rope bridge) and log dir (a fallen
 #                           trunk) close side `dir`
 #                           crag: lip dir (a low lip of broken rock) closes side `dir`
+#   biome name              the place: palace | crag | forest | river | temple |
+#                           venus | pasture | styx | tower | taenarus | dis
+#                           (level.BIOMES); its defaults, where the file gives
+#                           none: the setting (with sundials: its day and its
+#                           evening), `below`, `upside` (with pomegranates: the
+#                           biome under it), a basin's rim and the floors' fluid;
+#                           level_check warns of a prop foreign to it
 #   setting name            night (the default: the palace under the moon) |
 #                           night_candles (the same, its candles lit) |
 #                           deep_night (darker, candles out, clouds across the moon) |
@@ -82,10 +89,10 @@
 #                           nobody): water (a river, its edges fading into the
 #                           mist) | basin [marble|rock|earth] (a basin brimming
 #                           with water, its rim on the edge cells, of marble
-#                           unless given; the whole diorama inside the rim:
+#                           unless given or the biome's; the whole diorama inside the rim:
 #                           nothing on its cells, the area may go past the grid);
 #                           after the kind (and the rim) the fluid: water (the
-#                           default, coloured by the setting) | swamp (still,
+#                           default unless the biome's, coloured by the setting) | swamp (still,
 #                           green-brown, duckweed and bubbles)
 #   cave x y h dir          the mouth of a cave in the rock on side dir of surface
 #                           x y h (the rock there must rise above it); caves pair
@@ -180,6 +187,7 @@
 # The fragment: from the west walk, four pillars, each joined to the next by
 # another view (3, 2, 1, 0).
 size 16
+biome palace
 setting deep_night
 floor basin -1 0 15 15
 

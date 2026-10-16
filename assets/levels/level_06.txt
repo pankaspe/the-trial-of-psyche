@@ -6,10 +6,10 @@
 # leads up through the rock and out near its top.
 # Format: see level_04.txt.
 size 16
-setting river_dawn
+biome river
 
 # --- below: the river -----------------------------------------------------------
-floor basin rock -1 0 16 15
+floor basin -1 0 16 15
 
 # the bank where the river set her (h1)
 ground 12 13 0 0

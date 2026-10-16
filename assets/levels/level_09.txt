@@ -22,8 +22,7 @@
 # pillar, joined in view 1 to the third seal's stone.
 # Format: see level_04.txt.
 size 11
-setting venus_day
-evening venus_evening
+biome venus
 mechanic time
 lamp 2
 floor basin 0 0 10 8

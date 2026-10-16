@@ -37,8 +37,7 @@
 # the box) on a rock under the rope bridge, joined to the eagle's crag in
 # view 1: the bridge woken first.
 size 15
-setting venus_day
-evening venus_evening
+biome venus
 lamp 3
 intro intro_iii_5
 outro outro_iii_5

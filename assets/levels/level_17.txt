@@ -26,11 +26,10 @@
 intro intro_iv_4
 outro outro_iv_4
 size 13
-setting taenarus
-upside dis
+biome taenarus
 lamp
 mechanic ferry
-floor basin rock 0 0 12 12 5
+floor basin 0 0 12 12 5
 duality
 block 1 4 4 rock
 block 1 5 4 rock

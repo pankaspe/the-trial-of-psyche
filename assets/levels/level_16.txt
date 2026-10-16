@@ -24,8 +24,7 @@
 # (the lame driver) on a terrace by the first pomegranate, past a veiled
 # stone (the lamp), IV.3c (the dead man in the river) beyond the second.
 size 13
-setting taenarus
-upside dis
+biome taenarus
 lamp
 intro intro_iv_3
 outro outro_iv_3

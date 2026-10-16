@@ -27,7 +27,7 @@
 # (VI.4) behind Juno, at the back.
 # Format: see level_04.txt.
 size 15
-setting temple_dusk
+biome temple
 oil 20
 lamp 3
 floor basin -1 -1 15 15

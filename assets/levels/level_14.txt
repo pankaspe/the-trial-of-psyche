@@ -26,8 +26,7 @@
 # (VI.19, the weavers) on a rock in the dark water, joined to the cave's way
 # out in view 2.
 size 12
-setting tower_dusk
-below taenarus
+biome tower
 tier 1 6
 tier 7 11
 tier 12 16
@@ -35,7 +34,7 @@ tier 17 21
 lamp 1
 intro intro_iv_1
 outro outro_iv_1
-floor basin rock -1 1 13 10
+floor basin -1 1 13 10
 start 5 5 21
 tower 6 5 21
 prop wallBattlement 5 5 21 mx
