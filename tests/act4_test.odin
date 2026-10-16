@@ -183,7 +183,7 @@ ferry_takes_her_across :: proc(t: ^testing.T) {
 	testing.expect(t, !game.board_ferry(&g), "no landing where she stands")
 	testing.expect(t, walk(t, &g, {2, 2, 1}), "to the landing")
 	testing.expect(t, game.at_ferry(&g) && g.hud.hint.key == .Hint_Boat, "Charon waits, and she is told how to board")
-	testing.expect(t, game.board_ferry(&g) && g.psyche.step_ferry, "Space: into the boat")
+	testing.expect(t, game.board_ferry(&g) && g.psyche.step_kind == .Ferry, "Space: into the boat")
 	run(&g, game.FERRY_TIME * 0.5)
 	testing.expect(t, g.psyche.pos.x > 3 && g.psyche.pos.x < 5, "out on the water, in the boat")
 	run(&g, game.FERRY_TIME * 0.5 + 0.3)

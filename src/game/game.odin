@@ -150,6 +150,14 @@ Hud :: struct {
 	queued:   sa.Small_Array(MAX_QUEUED_VOICES, Key), // lines waiting for the current one
 }
 
+// What a step of Psyche's is.
+Step_Kind :: enum u8 {
+	Walk, // a step on her feet (or across an illusion)
+	Passage, // through the rock between two caves
+	Flight, // in the eagle's talons
+	Ferry, // a crossing in Charon's boat
+}
+
 Psyche :: struct {
 	cell:          Cell,
 	walking:       bool,
@@ -157,9 +165,7 @@ Psyche :: struct {
 	step_to:       Cell,
 	step_t:        f32,
 	step_illusion: bool,
-	step_passage:  bool, // the step is a passage between two caves
-	step_flight:   bool, // the step is a flight in the eagle's talons
-	step_ferry:    bool, // the step is a crossing in Charon's boat
+	step_kind:     Step_Kind,
 	pos:           Vec3, // feet, world space
 	yaw:           f32, // facing, radians in the world xy plane
 	target_yaw:    f32,
@@ -222,9 +228,9 @@ Game :: struct {
 	ferried:        bool, // the exit was by Charon's boat (phase Ending_Exit: its own timeline)
 	boxed:          bool, // the exit opened Proserpina's box (phase Ending_Exit: its own timeline)
 	rest:           Rest, // the last brazier Psyche lit
-	eagle_flying:   int, // the eagle carrying her (while psyche.step_flight)
+	eagle_flying:   int, // the eagle carrying her (while psyche.step_kind is .Flight)
 	eagle_back:     [level.MAX_EAGLES]f32, // per eagle: time since it let her go, < 0 before
-	ferry_crossing: int, // the ferry taking her across (while psyche.step_ferry)
+	ferry_crossing: int, // the ferry taking her across (while psyche.step_kind is .Ferry)
 	rests_lit:      []bool, // per data.rests entry
 	teach_pending:  bool, // the level's new mechanic is still to be presented
 	mechanic_new:   bool, // event for the app: present the new mechanic now (it clears it)
@@ -904,18 +910,9 @@ call_eagle :: proc(g: ^Game) -> bool {
 	}
 	i := pl.eagle_at(&g.palace, g.psyche.cell)
 	psy := &g.psyche
-	sa.clear(&g.path)
-	g.pending_turn = 0
-	g.steering = false
 	g.eagle_flying = i
 	g.eagle_back[i] = -1
-	psy.step_from = psy.cell
-	psy.step_to = g.data.eagles[i].to
-	psy.step_t = 0
-	psy.step_illusion = false
-	psy.step_passage = false
-	psy.step_flight = true
-	psy.walking = true
+	carry(g, g.data.eagles[i].to, .Flight)
 	face_toward(g, pl.node_world(&g.palace, psy.step_to) - pl.node_world(&g.palace, psy.step_from))
 	learn(g, .Hint_Eagle)
 	audio.play(.Wings, -8)
@@ -964,20 +961,9 @@ board_ferry :: proc(g: ^Game) -> bool {
 		hint(g, .Hint_Ferry_Away, 4, true)
 		return true
 	}
-	psy := &g.psyche
-	sa.clear(&g.path)
-	g.pending_turn = 0
-	g.steering = false
 	g.ferry_crossing = f
-	psy.step_from = psy.cell
-	psy.step_to = to
-	psy.step_t = 0
-	psy.step_illusion = false
-	psy.step_passage = false
-	psy.step_flight = false
-	psy.step_ferry = true
-	psy.walking = true
-	face_toward(g, crossing_point(g, FERRY_IN) - psy.pos)
+	carry(g, to, .Ferry)
+	face_toward(g, crossing_point(g, FERRY_IN) - g.psyche.pos)
 	learn(g, .Hint_Boat)
 	return true
 }
@@ -1110,6 +1096,28 @@ step_dir :: proc(g: ^Game, a, b: Cell) -> Vec2 {
 	return l > 1e-6 ? s / l : {}
 }
 
+// Psyche sets off from her cell toward `to`.
+@(private)
+begin_step :: proc(g: ^Game, to: Cell, kind: Step_Kind, illusion := false) {
+	psy := &g.psyche
+	psy.step_from = psy.cell
+	psy.step_to = to
+	psy.step_t = 0
+	psy.step_illusion = illusion
+	psy.step_kind = kind
+	psy.walking = true
+}
+
+// Psyche carried to `to` (the eagle, the boat): whatever she was walking to
+// or turning is forgotten.
+@(private)
+carry :: proc(g: ^Game, to: Cell, kind: Step_Kind) {
+	sa.clear(&g.path)
+	g.pending_turn = 0
+	g.steering = false
+	begin_step(g, to, kind)
+}
+
 @(private)
 next_step :: proc(g: ^Game) {
 	psy := &g.psyche
@@ -1143,14 +1151,7 @@ next_step :: proc(g: ^Game) {
 		return
 	}
 	sa.pop_front(&g.path)
-	psy.step_from = psy.cell
-	psy.step_to = next
-	psy.step_t = 0
-	psy.step_illusion = illusion && !passage
-	psy.step_passage = passage
-	psy.step_flight = false
-	psy.step_ferry = false
-	psy.walking = true
+	begin_step(g, next, passage ? .Passage : .Walk, illusion && !passage)
 	if psy.step_illusion {
 		audio.play(.Seam, -18)
 		learn(g, .Hint_Illusion)
@@ -1165,13 +1166,13 @@ next_step :: proc(g: ^Game) {
 
 // How long the current step lasts.
 step_time :: proc(g: ^Game) -> f32 {
-	if g.psyche.step_flight {
-		return FLIGHT_TIME
+	switch g.psyche.step_kind {
+	case .Passage: return PASSAGE_TIME
+	case .Flight: return FLIGHT_TIME
+	case .Ferry: return FERRY_TIME
+	case .Walk:
 	}
-	if g.psyche.step_ferry {
-		return FERRY_TIME
-	}
-	return g.psyche.step_passage ? PASSAGE_TIME : STEP_TIME
+	return STEP_TIME
 }
 
 // Where the dark of cave i begins: inside its mouth, toward the rock.
@@ -1184,7 +1185,7 @@ cave_inside :: proc(g: ^Game, i: int) -> Vec3 {
 // How much of Psyche the dark of a cave leaves seen (1 outside).
 passage_alpha :: proc(g: ^Game) -> f32 {
 	psy := &g.psyche
-	if !psy.walking || !psy.step_passage {
+	if !psy.walking || psy.step_kind != .Passage {
 		return 1
 	}
 	u := psy.step_t / PASSAGE_TIME
@@ -1223,19 +1224,19 @@ step_points :: proc(g: ^Game, u: f32) -> (pos: Vec3, second_half: bool) {
 	psy := &g.psyche
 	a := pl.node_world(&g.palace, psy.step_from)
 	b := pl.node_world(&g.palace, psy.step_to)
-	if psy.step_passage {
+	switch psy.step_kind {
+	case .Passage:
 		// into the dark of one mouth, out of the other
 		i, j := pl.cave_at(&g.palace, psy.step_from), pl.cave_at(&g.palace, psy.step_to)
 		if u < 0.5 {
 			return fx.lerp(a, cave_inside(g, i), fx.sine_in_out(u * 2)), false
 		}
 		return fx.lerp(cave_inside(g, j), b, fx.sine_in_out((u - 0.5) * 2)), true
-	}
-	if psy.step_flight {
+	case .Flight:
 		return flight_point(g, a, b, u), u >= 0.5
-	}
-	if psy.step_ferry {
+	case .Ferry:
 		return crossing_point(g, u), u >= 0.5
+	case .Walk:
 	}
 	if !psy.step_illusion {
 		return walk_point(g, psy.step_from, psy.step_to, u), u >= 0.5
@@ -1272,7 +1273,7 @@ eagle_pose :: proc(g: ^Game, i: int) -> (pos: Vec3, yaw: f32, spread: f32) {
 	out := land - pl.node_world(&g.palace, e.from)
 	yaw = math.atan2(out.y, out.x)
 	psy := &g.psyche
-	if psy.walking && psy.step_flight && g.eagle_flying == i {
+	if psy.walking && psy.step_kind == .Flight && g.eagle_flying == i {
 		u := psy.step_t / FLIGHT_TIME
 		held := psy.pos + {0, 0, EAGLE_HOLD}
 		if u < FLIGHT_TAKE {
@@ -1358,10 +1359,10 @@ update_walk :: proc(g: ^Game, dt: f32) {
 	psy.step_t += dt
 	u := min(psy.step_t / step_time(g), 1)
 	psy.pos, _ = step_points(g, u)
-	if psy.step_ferry {
+	if psy.step_kind == .Ferry {
 		update_crossing(g, dt)
 	}
-	if psy.step_passage && before < PASSAGE_TIME * 0.5 && psy.step_t >= PASSAGE_TIME * 0.5 {
+	if psy.step_kind == .Passage && before < PASSAGE_TIME * 0.5 && psy.step_t >= PASSAGE_TIME * 0.5 {
 		// in the dark of the rock: she comes out of the other mouth, facing out
 		out, _ := step_points(g, 0.51)
 		face_toward(g, pl.node_world(&g.palace, psy.step_to) - out)
@@ -1373,15 +1374,15 @@ update_walk :: proc(g: ^Game, dt: f32) {
 	}
 	psy.cell = psy.step_to
 	psy.pos = pl.stand_world(&g.palace, psy.cell)
-	if psy.step_flight {
+	#partial switch psy.step_kind {
+	case .Flight:
 		// the eagle lets her go and flies home
-		psy.step_flight = false
 		g.eagle_back[g.eagle_flying] = 0
-	}
-	if psy.step_ferry {
+		psy.step_kind = .Walk
+	case .Ferry:
 		// the boat stays at this landing
-		psy.step_ferry = false
 		g.palace.boats ~= {g.ferry_crossing}
+		psy.step_kind = .Walk
 	}
 	footstep(g, psy.cell)
 	arrive(g, psy.cell)
@@ -2020,7 +2021,7 @@ ferry_boat :: proc(g: ^Game, i: int, u: f32) -> (b: Boat_Pose, under_way: bool, 
 @(private)
 crossing_u :: proc(g: ^Game, i: int) -> f32 {
 	psy := &g.psyche
-	if !psy.walking || !psy.step_ferry || g.ferry_crossing != i {
+	if !psy.walking || psy.step_kind != .Ferry || g.ferry_crossing != i {
 		return -1
 	}
 	return psy.step_t / FERRY_TIME

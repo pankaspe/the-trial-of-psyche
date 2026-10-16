@@ -225,7 +225,7 @@ eagle_flies_one_way :: proc(t: ^testing.T) {
 	testing.expect(t, walk(t, &g, {1, 1, 1}), "back onto the perch")
 	testing.expect(t, game.at_eagle(&g), "now the eagle can carry her")
 	testing.expect(t, !game.walk_to(&g, {6, 6, 3}), "a walk never calls the eagle")
-	testing.expect(t, game.call_eagle(&g) && g.psyche.step_flight, "the eagle takes her")
+	testing.expect(t, game.call_eagle(&g) && g.psyche.step_kind == .Flight, "the eagle takes her")
 	run(&g, game.FLIGHT_TIME * 0.5)
 	testing.expect(t, g.psyche.pos.z > 3, "carried high over the water")
 	run(&g, game.FLIGHT_TIME * 0.5 + 0.2)

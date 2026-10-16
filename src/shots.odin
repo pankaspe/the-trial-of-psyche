@@ -461,7 +461,7 @@ plan_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool)
 		virtual.arena_destroy(&s.arena)
 		return "", true
 	}
-	if g.psyche.step_ferry && s.cross_shot < s.move && g.psyche.step_t > game.FERRY_TIME * 0.5 {
+	if g.psyche.step_kind == .Ferry && s.cross_shot < s.move && g.psyche.step_t > game.FERRY_TIME * 0.5 {
 		// halfway across in Charon's boat
 		s.cross_shot = s.move
 		return fmt.tprintf("p%03d_crossing", s.move), false
