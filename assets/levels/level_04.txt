@@ -173,6 +173,7 @@
 # another view (3, 2, 1, 0).
 size 16
 setting deep_night
+floor basin 0 0 15 15
 
 # the arrival lawn (h1)
 column 9 12 0 0

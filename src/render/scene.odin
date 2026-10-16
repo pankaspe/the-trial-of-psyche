@@ -353,8 +353,13 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 		}
 		a := f.area
 		for y in a[1] ..= a[3] {
-			for x in a[0] ..= a[2] {
+			cells: for x in a[0] ..= a[2] {
 				c := Cell{x, y, g.data.floor_h - 1}
+				for e in g.data.blocks {
+					if e.cell == c && e.solid.kind == .Block && e.trait == .Stone && e.part == 0 && !e.under {
+						continue cells // a stone always there: the basin is built against it
+					}
+				}
 				append(&s.pieces, piece(c, .Basin_Floor, .Marble))
 				for d in iso.Dir {
 					step := iso.DIR_VEC[d]
