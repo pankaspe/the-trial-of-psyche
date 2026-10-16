@@ -30,7 +30,7 @@
 size 11
 setting pasture_day
 evening pasture_evening
-floor water 0 0 10 10
+floor basin earth -1 -1 11 11
 
 # --- the pasture (the central island, h2) ------------------------------------
 ground 4 5 0 1

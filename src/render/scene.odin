@@ -1692,7 +1692,9 @@ draw_floors :: proc(g: ^game.Game, time: f32) {
 		w := f.area
 		surface := surface
 		if f.fluid == .Swamp {
-			surface = fx.lerp(surface, SWAMP, 0.85)
+			// the swamp's green-brown, as bright as the setting's water
+			lum := 0.299 * surface.r + 0.587 * surface.g + 0.114 * surface.b
+			surface = {SWAMP.r * lum, SWAMP.g * lum, SWAMP.b * lum, SWAMP.a}
 		}
 		x0, y0 := f32(w[0]), f32(w[1])
 		x1, y1 := f32(w[2] + 1), f32(w[3] + 1)
@@ -1725,7 +1727,7 @@ draw_floors :: proc(g: ^game.Game, time: f32) {
 		}
 		rlgl.End()
 		if f.fluid == .Swamp {
-			draw_swamp(f, z, time)
+			draw_swamp(f, z, time, surface, glint)
 		}
 		// glints of moonlight drifting with the current (a swamp has none)
 		for cy in w[1] ..= w[3] {
@@ -1760,34 +1762,52 @@ draw_floors :: proc(g: ^game.Game, time: f32) {
 	rlgl.EnableDepthMask()
 }
 
-SWAMP :: Color4{0.07, 0.08, 0.05, 0.95} // a swamp's water, mixed into the setting's
+SWAMP :: Color4{0.46, 0.52, 0.30, 0.95} // a swamp's hue, times the brightness of the setting's water
 
-// A swamp's still surface: duckweed in a few cells, a bubble coming up now and then.
+// A swamp's still surface (`surface` its colour now): patches of algae and
+// duckweed, the sky twinkling here and there on the still water, a bubble
+// coming up now and then.
 @(private)
-draw_swamp :: proc(f: level.Floor, z: f32, time: f32) {
-	WEED :: Color4{0.26, 0.34, 0.14, 0.6}
+draw_swamp :: proc(f: level.Floor, z: f32, time: f32, surface, glint: Color4) {
+	s := surface
+	algae := [2][3]f32{{0.75, 0.9, 0.6}, {1.25, 1.45, 0.8}} // darker mud, greener scum
+	weed := Color4{s.r * 1.6, s.g * 2.0, s.b * 1.0, 0.75}
 	a := f.area
 	for cy in a[1] ..= a[3] {
 		for cx in a[0] ..= a[2] {
 			h := u32(cx * 97 + cy * 211)
-			if fx.hash01(h) < 0.18 {
-				for k in 0 ..< 3 {
+			if fx.hash01(h + 11) < 0.4 {
+				m := algae[fx.hash01(h + 12) < 0.5 ? 0 : 1]
+				p := Vec3{f32(cx) + 0.5 + 0.3 * (fx.hash01(h + 13) - 0.5), f32(cy) + 0.5 + 0.3 * (fx.hash01(h + 14) - 0.5), z + 0.002}
+				r := 0.35 + 0.3 * fx.hash01(h + 15)
+				floor_ellipse(p, r, r * (0.7 + 0.3 * fx.hash01(h + 16)), {s.r * m.x, s.g * m.y, s.b * m.z, 0.55})
+			}
+			if fx.hash01(h) < 0.22 {
+				for k in 0 ..< 4 {
 					hk := h + u32(k) * 13
 					p := Vec3{f32(cx) + 0.15 + 0.7 * fx.hash01(hk + 1), f32(cy) + 0.15 + 0.7 * fx.hash01(hk + 2), z + 0.003}
 					r := 0.04 + 0.05 * fx.hash01(hk + 3)
-					floor_ellipse(p, r, r * 0.8, WEED)
+					floor_ellipse(p, r, r * 0.8, weed)
 				}
+			}
+			if fx.hash01(h + 17) < 0.3 {
+				// the sky on the still water: a glint that comes and goes in place
+				tw := math.sin(time * (0.5 + 0.4 * fx.hash01(h + 18)) + 6.3 * fx.hash01(h + 19))
+				tw = max(tw, 0)
+				tw *= tw * tw
+				px, py := f32(cx) + 0.2 + 0.5 * fx.hash01(h + 20), f32(cy) + 0.2 + 0.6 * fx.hash01(h + 21)
+				floor_strip({px, py, z + 0.004}, {px + 0.18, py, z + 0.004}, {0, 1, 0}, 0.02, {glint.r, glint.g, glint.b, glint.a * 0.8 * tw})
 			}
 			if fx.hash01(h + 5) < 0.25 {
 				// a bubble: it rises (a dot), breaks, and its ring spreads
 				period := 5 + 6 * fx.hash01(h + 6)
 				t := math.mod(time / period + fx.hash01(h + 7), 1)
-				p := Vec3{f32(cx) + 0.2 + 0.6 * fx.hash01(h + 8), f32(cy) + 0.2 + 0.6 * fx.hash01(h + 9), z + 0.004}
+				p := Vec3{f32(cx) + 0.2 + 0.6 * fx.hash01(h + 8), f32(cy) + 0.2 + 0.6 * fx.hash01(h + 9), z + 0.005}
 				if t < 0.08 {
-					floor_ellipse(p, 0.035, 0.035, {0.6, 0.66, 0.42, 0.5})
+					floor_ellipse(p, 0.035, 0.035, {weed.r, weed.g, weed.b, 0.6})
 				} else if t < 0.4 {
 					u := (t - 0.08) / 0.32
-					floor_ring(p, 0.04 + 0.22 * u, 0.012, {0.6, 0.68, 0.42, 0.35 * (1 - u)})
+					floor_ring(p, 0.04 + 0.22 * u, 0.012, {weed.r, weed.g, weed.b, 0.45 * (1 - u)})
 				}
 			}
 		}
