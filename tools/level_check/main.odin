@@ -856,10 +856,8 @@ decorates :: proc(line: string) -> bool {
 	f := strings.fields(line, context.temp_allocator)
 	switch {
 	case len(f) > 1 && f[0] == "prop":
-		for info in level.PROPS {
-			if info.name == f[1] {
-				return info.fill == .None
-			}
+		if kind, ok := level.row_named(level.PROPS, f[1]); ok {
+			return level.PROPS[kind].fill == .None
 		}
 	case len(f) > 0 && f[0] == "candelabrum":
 		return !strings.contains(line, "guard")

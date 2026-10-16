@@ -2,7 +2,9 @@
 // The format is documented at the top of assets/levels/level_04.txt.
 package level
 
+import "base:intrinsics"
 import "core:fmt"
+import "core:slice"
 import "core:strconv"
 import "core:strings"
 
@@ -11,6 +13,26 @@ import "../iso"
 
 Cell :: iso.Cell
 Dir :: iso.Dir
+
+// The value a table of names (the `*_NAME` tables) gives the name `s`.
+named :: proc(names: [$E]string, s: string) -> (E, bool) {
+	for name, e in names {
+		if name == s {
+			return e, true
+		}
+	}
+	return {}, false
+}
+
+// The same in a table of rows with a `name` (PROPS, BIOMES).
+row_named :: proc(rows: [$E]$T, s: string) -> (E, bool) where intrinsics.type_has_field(T, "name") {
+	for row, e in rows {
+		if row.name == s {
+			return e, true
+		}
+	}
+	return {}, false
+}
 
 Solid_Kind :: enum u8 {
 	None,
@@ -472,12 +494,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			if !ints(args, v[:]) {
 				return data, fail(line_no, "%s: expected x y z", fields[0])
 			}
-			trait := Trait.Stone
-			for name, t in TRAIT_NAME {
-				if name == fields[0] {
-					trait = t
-				}
-			}
+			trait, _ := named(TRAIT_NAME, fields[0])
 			if trait == .Veiled {
 				dynamic_count += 1
 				if dynamic_count > MAX_DYNAMIC {
@@ -559,12 +576,8 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			max_z = max(max_z, v.z)
 
 		case "mechanic":
-			found := false
-			for name, m in MECHANIC_NAME {
-				if len(args) > 0 && name == args[0] {
-					data.mechanic, found = m, true
-				}
-			}
+			found: bool
+			data.mechanic, found = named(MECHANIC_NAME, len(args) > 0 ? args[0] : "")
 			if !found {
 				return data, fail(line_no, "mechanic: expected veiled, handle, time, eagle, flip or ferry")
 			}
@@ -664,24 +677,15 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			max_z = max(max_z, v[3])
 
 		case "setting", "evening", "below", "upside":
-			found := false
-			for name, st in SETTING_NAME {
-				if len(args) == 1 && name == args[0] {
-					found = true
-					switch fields[0] {
-					case "setting": data.setting, has_setting = st, true
-					case "evening": data.evening, has_evening = st, true
-					case "below": data.below, data.has_below = st, true
-					case "upside": data.upside, data.has_upside = st, true
-					}
-				}
-			}
+			st, found := named(SETTING_NAME, len(args) == 1 ? args[0] : "")
 			if !found {
-				names := make([dynamic]string, 0, len(Setting), context.temp_allocator)
-				for name in SETTING_NAME {
-					append(&names, name)
-				}
-				return data, fail(line_no, "%s: expected one of %s", fields[0], strings.join(names[:], ", ", context.temp_allocator))
+				return data, fail(line_no, "%s: expected one of %s", fields[0], strings.join(slice.enumerated_array(&SETTING_NAME), ", ", context.temp_allocator))
+			}
+			switch fields[0] {
+			case "setting": data.setting, has_setting = st, true
+			case "evening": data.evening, has_evening = st, true
+			case "below": data.below, data.has_below = st, true
+			case "upside": data.upside, data.has_upside = st, true
 			}
 
 		case "tier":
@@ -696,30 +700,18 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 
 		case "floor":
 			f: Floor
-			found := false
-			for name, kind in FLOOR_NAME {
-				if len(args) > 0 && name == args[0] {
-					f.kind, found = kind, true
-				}
-			}
+			found: bool
+			f.kind, found = named(FLOOR_NAME, len(args) > 0 ? args[0] : "")
 			at := 1 // where the area begins: after a basin's rim and the fluid, if given
-			given: [2]bool
+			given: [2]bool // the rim, the fluid
 			if found && f.kind == .Basin && at < len(args) {
-				for name, rim in RIM_NAME {
-					if name == args[at] {
-						f.rim, given[0] = rim, true
-						at += 1
-						break
-					}
+				if f.rim, given[0] = named(RIM_NAME, args[at]); given[0] {
+					at += 1
 				}
 			}
 			if found && at < len(args) {
-				for name, fluid in FLUID_NAME {
-					if name == args[at] {
-						f.fluid, given[1] = fluid, true
-						at += 1
-						break
-					}
+				if f.fluid, given[1] = named(FLUID_NAME, args[at]); given[1] {
+					at += 1
 				}
 			}
 			if !found || !ints(args[at:], f.area[:]) || f.area[2] < f.area[0] || f.area[3] < f.area[1] {
@@ -736,13 +728,8 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			append(&floor_given, given)
 
 		case "biome":
-			found := false
-			for info, b in BIOMES {
-				if len(args) == 1 && info.name == args[0] {
-					data.biome, data.has_biome, found = b, true, true
-				}
-			}
-			if !found {
+			data.biome, data.has_biome = row_named(BIOMES, len(args) == 1 ? args[0] : "")
+			if !data.has_biome {
 				names := make([dynamic]string, 0, len(Biome), context.temp_allocator)
 				for info in BIOMES {
 					append(&names, info.name)
@@ -909,12 +896,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			if len(args) < 4 {
 				return data, fail(line_no, "prop: expected name x y z [dir]")
 			}
-			kind, found := Prop_Kind(0), false
-			for info, k in PROPS {
-				if info.name == args[0] {
-					kind, found = k, true
-				}
-			}
+			kind, found := row_named(PROPS, args[0])
 			if !found {
 				return data, fail(line_no, "prop: unknown prop '%s'", args[0])
 			}
