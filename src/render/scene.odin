@@ -355,7 +355,10 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 		for y in a[1] ..= a[3] {
 			for x in a[0] ..= a[2] {
 				c := Cell{x, y, g.data.floor_h - 1}
-				append(&s.pieces, piece(c, .Basin_Floor, RIM_MATERIAL[f.rim]))
+				if len(g.data.pomegranates) == 0 {
+					// (no bottom where the world turns over: the other world hangs under it)
+					append(&s.pieces, piece(c, .Basin_Floor, RIM_MATERIAL[f.rim]))
+				}
 				for d in iso.Dir {
 					step := iso.DIR_VEC[d]
 					if x + step.x < a[0] || x + step.x > a[2] || y + step.y < a[1] || y + step.y > a[3] {
