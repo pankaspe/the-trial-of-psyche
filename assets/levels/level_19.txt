@@ -45,7 +45,7 @@ lamp
 box
 intro intro_iv_6
 outro outro_iv_6
-floor water 0 0 16 16 5
+floor basin rock 0 -1 17 17 5
 block 4 14 4 rock
 block 4 15 4 rock
 block 4 16 4 rock
