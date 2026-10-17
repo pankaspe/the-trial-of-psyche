@@ -231,7 +231,7 @@ Game :: struct {
 	ferried:        bool, // the exit was by Charon's boat (phase Ending_Exit: its own timeline)
 	parting:        bool, // the exit leads into the level's next diorama: this one breaks up (no wind, no veil)
 	arrive_veiled:  bool, // the arrival comes through the veil (not from the level's diorama before)
-	arrive_traced:  bool, // set by the app: out of the dark between levels, gold traces the blocks as they rise
+	arrive_traced:  bool, // set by the app: between levels, gold traces the blocks as they rise
 	boxed:          bool, // the exit opened Proserpina's box (phase Ending_Exit: its own timeline)
 	rest:           Rest, // the last brazier Psyche lit
 	eagle_flying:   int, // the eagle carrying her (while psyche.step_kind is .Flight)
@@ -1805,7 +1805,6 @@ shake :: proc(g: ^Game, seconds: f32) {
 	g.shake_duration = seconds
 }
 
-@(private)
 start_ending :: proc(g: ^Game, p: Phase) {
 	set_phase(g, p)
 	sa.clear(&g.path)
@@ -1841,16 +1840,19 @@ ARRIVE_DROP :: 3.0 // cells above the start she comes down from
 VEIL_OUT :: 0.15
 VEIL_OUT_TIME :: 1.3
 
-// How bright the gold tracing the blocks is (0 .. 1): it comes up with them
-// out of the dark between the levels and fades once they stand.
-TRACE_FADE :: 2.6 // seconds into the arrival it begins to fade...
-TRACE_FADE_TIME :: 1.2 // ...over this long
+// How bright the gold tracing the blocks is (0 .. 1): it comes up softly with
+// them between the levels and has faded before the arrival is over.
+TRACE_IN :: 0.3 // seconds into the arrival it begins to show...
+TRACE_IN_TIME :: 0.7 // ...over this long
+TRACE_FADE_TIME :: 1.4 // it fades over this long, ending just before ARRIVE_END
+TRACE_FADE :: ARRIVE_END - TRACE_FADE_TIME - 0.1
 
 trace :: proc(g: ^Game) -> f32 {
 	if !g.arrive_traced || g.phase != .Arrival {
 		return 0
 	}
-	return 1 - fx.progress(g.arrive_t, TRACE_FADE, TRACE_FADE_TIME)
+	t := g.arrive_t
+	return fx.sine_in_out(fx.progress(t, TRACE_IN, TRACE_IN_TIME)) * (1 - fx.sine_in_out(fx.progress(t, TRACE_FADE, TRACE_FADE_TIME)))
 }
 
 // How far above the start Psyche still is while she arrives.

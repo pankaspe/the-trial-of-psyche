@@ -176,7 +176,7 @@ SHADER_SKY_FS :: #load("../../assets/shaders/sky.fs", cstring)
 SHADER_CLOUDS_FS :: #load("../../assets/shaders/clouds.fs", cstring)
 SHADER_RIDGES_FS :: #load("../../assets/shaders/ridges.fs", cstring)
 SHADER_VEIL_FS :: #load("../../assets/shaders/veil.fs", cstring)
-SHADER_THREADS_FS :: #load("../../assets/shaders/threads.fs", cstring)
+SHADER_BLUR_FS :: #load("../../assets/shaders/blur.fs", cstring)
 
 // Psyche's two tools, each on its number key (1, 2) and pad trigger (LT, RT):
 // the HUD's slots. Each is known from a level on; what it does depends on the

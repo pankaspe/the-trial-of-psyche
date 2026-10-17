@@ -208,12 +208,20 @@ LEVEL_TOUR := [?]Shot_Step {
 	{0.1, "", proc(app: ^App) {if app.game.lamp_on {game.toggle_lamp(&app.game)}; tour_walk(app, app.game.data.fragments[0])}},
 	{5.0, "06_fragment", nil},
 	{0.1, "", proc(app: ^App) {if app.screen == .Fragment {close_fragment(app)}}},
-	{0.1, "", proc(app: ^App) {tour_walk(app, app.game.data.exit)}},
+	{0.1, "", proc(app: ^App) {
+			g := &app.game
+			tour_walk(app, g.data.exit)
+			if g.phase == .Play && g.data.has_exit && !g.data.has_boat && g.psyche.cell != g.data.exit {
+				// out of a walk's reach (a puzzle): set her there, to see the passage
+				place(app, g.data.exit)
+				game.start_ending(g, .Ending_Exit)
+			}
+		}},
 	{0.8, "07_exit", nil},
 	{1.0, "08_breaking_up", nil},
-	{1.2, "08b_dark", nil},
+	{1.2, "08b_blur", nil},
 	{3.5, "09_end_card", nil},
-	// on into the next level, out of the dark (or to black at the end of an act)
+	// on into the next level, into focus (or to black at the end of an act)
 	{0.1, "", proc(app: ^App) {
 			if app.screen != .Ending {
 				// a level the tour cannot finish (an ending, a puzzle): end it here
@@ -224,7 +232,7 @@ LEVEL_TOUR := [?]Shot_Step {
 		}},
 	{0.3, "10a_closing", nil},
 	{0.5, "10a_arrival", nil},
-	{0.25, "10a2_opening", nil},
+	{0.25, "10a2_focus", nil},
 	{0.25, "10b_arrival", nil},
 	{0.6, "10c_arrival", nil},
 	{2.0, "10d_arrived", nil},

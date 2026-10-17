@@ -138,6 +138,15 @@ act_fragments :: proc(p: Progress, act: content.Act) -> (found, total: int) {
 	return
 }
 
+// How many of a level's fragments are in the Book.
+level_fragments :: proc(p: Progress, level: int) -> (found: int) {
+	first, n := content.level_fragments(level)
+	for k in 0 ..< n {
+		found += int(first + k in p.fragments)
+	}
+	return
+}
+
 // A level was finished; returns the achievements it unlocked.
 complete_level :: proc(p: ^Progress, r: Result) -> (unlocked: Achievements) {
 	p.completed += {r.level}

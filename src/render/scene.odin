@@ -108,9 +108,6 @@ Backdrop_Uniform :: enum u8 {
 	Color_Mid,
 	Color_Near,
 	Rim,
-	Amount,
-	Open,
-	Center,
 }
 
 @(private)
@@ -138,9 +135,6 @@ BACKDROP_NAME := [Backdrop_Uniform]cstring {
 	.Color_Mid    = "color_mid",
 	.Color_Near   = "color_near",
 	.Rim          = "rim",
-	.Amount       = "amount",
-	.Open         = "open",
-	.Center       = "center",
 }
 
 // A backdrop shader and the locations of its uniforms (-1: not used by it).
@@ -157,7 +151,6 @@ Renderer :: struct {
 	ridges:     Backdrop,
 	clouds:     Backdrop,
 	veil:       Backdrop, // between the levels (uses time, aspect and its own alpha)
-	threads:    Backdrop, // the dark between two levels where the last broke up
 	radial:     rl.Texture2D, // soft round gradient for glows and particles
 	white:      rl.Texture2D, // 1x1, for full-rect shader passes
 	veil_alpha: i32,
@@ -182,7 +175,6 @@ init :: proc(r: ^Renderer) {
 	r.clouds = load_backdrop(content.SHADER_CLOUDS_FS)
 	r.veil = load_backdrop(content.SHADER_VEIL_FS)
 	r.veil_alpha = rl.GetShaderLocation(r.veil.shader, "alpha")
-	r.threads = load_backdrop(content.SHADER_THREADS_FS)
 	build_meshes(&r.meshes)
 
 	// radial gradient: white centre, 0.45 alpha at 35%, transparent edge
@@ -210,7 +202,6 @@ shutdown :: proc(r: ^Renderer) {
 	rl.UnloadShader(r.ridges.shader)
 	rl.UnloadShader(r.clouds.shader)
 	rl.UnloadShader(r.veil.shader)
-	rl.UnloadShader(r.threads.shader)
 	rl.UnloadTexture(r.radial)
 	rl.UnloadTexture(r.white)
 	r^ = {}
@@ -889,7 +880,7 @@ draw_world :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 	draw_pieces(r, s, g, true)
 	draw_decals(g)
 	draw_glows(r, s, g, v)
-	draw_trace(s, g)
+	draw_trace(s, g, v)
 	draw_mist(r, s, v)
 	end_3d()
 
@@ -2387,21 +2378,25 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	rlgl.EnableDepthMask()
 }
 
-// Out of the dark between the levels: gold traces the edges of each block as
-// it rises (from the start outward, like the dark's crack), then fades once
-// the diorama stands (game.trace).
+// Into focus between the levels: gold traces the edges of each block as it
+// rises (from the start outward), a soft halo about each line, then fades
+// once the diorama stands (game.trace).
+TRACE_HALO :: 5 // the halo's half width (pixels of the projection at zoom 1)
+
 @(private)
-draw_trace :: proc(s: ^Scene, g: ^game.Game) {
+draw_trace :: proc(s: ^Scene, g: ^game.Game, v: View) {
 	fade := game.trace(g)
 	if fade <= 0.003 {
 		return
 	}
 	// the cube's twelve edges, as pairs of corners (bit 0 x, bit 1 y, bit 2 z)
 	EDGES :: [12][2]u8{{0, 1}, {2, 3}, {4, 5}, {6, 7}, {0, 2}, {1, 3}, {4, 6}, {5, 7}, {0, 4}, {1, 5}, {2, 6}, {3, 7}}
-	rlgl.DrawRenderBatchActive()
-	rlgl.DisableDepthMask()
-	rl.BeginBlendMode(.ALPHA) // gold on any stone, by day as by night
-	rlgl.Begin(rlgl.LINES)
+	GOLD :: Vec3{0.98, 0.76, 0.36}
+	Edge :: struct {
+		a, b:  Vec3,
+		alpha: f32,
+	}
+	edges := make([dynamic]Edge, context.temp_allocator)
 	for p, i in s.pieces {
 		if p.mesh != .Block {
 			continue
@@ -2418,12 +2413,49 @@ draw_trace :: proc(s: ^Scene, g: ^game.Game) {
 			return rl.Vector3Transform(local, m)
 		}
 		grow := fx.cubic_out(fx.clamp01(k * 1.2)) // each edge drawn out from its first corner
-		color({0.98, 0.76, 0.36, fade * (0.45 + 0.55 * k)})
+		alpha := fade * fx.sine_in_out(fx.clamp01(k / 0.7)) // each block's lines come up as it rises
 		for e in EDGES {
-			a, b := corner(m, e[0]), corner(m, e[1])
-			vtx(a)
-			vtx(fx.lerp(a, b, grow))
+			a := corner(m, e[0])
+			append(&edges, Edge{a, fx.lerp(a, corner(m, e[1]), grow), alpha})
 		}
+	}
+	rlgl.DrawRenderBatchActive()
+	rlgl.DisableDepthMask()
+	// the halo: light added about each line, bright at the line, nothing at its rim
+	rl.BeginBlendMode(.ADDITIVE)
+	rlgl.SetTexture(rlgl.GetTextureIdDefault())
+	right, up := billboard_axes(v)
+	rlgl.Begin(rlgl.TRIANGLES)
+	for e in edges {
+		d := world_to_screen(v, e.b) - world_to_screen(v, e.a)
+		n := math.sqrt(d.x * d.x + d.y * d.y)
+		if n < 0.001 {
+			continue
+		}
+		d /= n
+		side := (right * -d.y - up * d.x) * TRACE_HALO // across the line on screen
+		core := Color4{GOLD.x, GOLD.y, GOLD.z, e.alpha * 0.35}
+		rim := Color4{GOLD.x, GOLD.y, GOLD.z, 0}
+		for sgn in ([2]f32{-1, 1}) {
+			a2, b2 := e.a + side * sgn, e.b + side * sgn
+			color(core); vtx(e.a)
+			color(rim); vtx(a2)
+			color(rim); vtx(b2)
+			color(core); vtx(e.a)
+			color(rim); vtx(b2)
+			color(core); vtx(e.b)
+		}
+	}
+	rlgl.End()
+	rlgl.DrawRenderBatchActive()
+	rlgl.SetTexture(0)
+	// the lines themselves: gold on any stone, by day as by night
+	rl.BeginBlendMode(.ALPHA)
+	rlgl.Begin(rlgl.LINES)
+	for e in edges {
+		color({GOLD.x, GOLD.y, GOLD.z, e.alpha})
+		vtx(e.a)
+		vtx(e.b)
 	}
 	rlgl.End()
 	rlgl.DrawRenderBatchActive()
@@ -2566,23 +2598,6 @@ draw_veil :: proc(r: ^Renderer, g: ^game.Game, width, height, time: f32) {
 	set_bf(b, .Aspect, width / height)
 	v := a
 	rl.SetShaderValue(b.shader, r.veil_alpha, &v, .FLOAT)
-	rl.BeginShaderMode(b.shader)
-	full_rect(r, {0, 0, width, height})
-	rl.EndShaderMode()
-}
-
-// The dark between two levels (`amount` how far it reaches, `open` how far it
-// has parted from `center`, screen uv), over the world, under the interface.
-draw_threads :: proc(r: ^Renderer, width, height, time, amount, open: f32, center: Vec2) {
-	if amount <= 0.003 || open >= 1 {
-		return
-	}
-	b := r.threads
-	set_bf(b, .Time, time)
-	set_bf(b, .Aspect, width / height)
-	set_bf(b, .Amount, amount)
-	set_bf(b, .Open, open)
-	set_bv2(b, .Center, center)
 	rl.BeginShaderMode(b.shader)
 	full_rect(r, {0, 0, width, height})
 	rl.EndShaderMode()

@@ -302,18 +302,19 @@ Ending_Info :: struct {
 	has_outro:    bool,
 }
 
-// The card after an ending; `t` is the time since it appeared, `gone` (0 .. 1)
-// how far it has faded out as the game goes on.
-ending_card :: proc(u: ^Ui, info: Ending_Info, t: f32, gone: f32 = 0) -> (act: Menu_Action) {
+// The card after an ending, in a frame of gold: the act and the level, the
+// title, the tale, the level's fragments, achievements, the way on. `t` is
+// the time since it appeared, `gone` (0 .. 1) how far it has faded out as
+// the game goes on.
+ending_card :: proc(u: ^Ui, info: Ending_Info, prog: progress.Progress, t: f32, gone: f32 = 0) -> (act: Menu_Action) {
 	s := u.scale
-	// after an exit the card floats in the dark between the levels: a lighter shade
+	// after an exit the world behind is already out of focus: a lighter shade
 	veiled := info.ending == .Exit
 	stay := 1 - gone
 	focus_shade(u, clamp(t / 1.2, 0, 1) * (veiled ? 0.4 : 1) * stay)
-	shade(u, (veiled ? 0.08 : 0.25) * clamp(t / 1.5, 0, 1) * stay)
-	a := clamp(t / 2, 0, 1) * stay
+	a := clamp(t / 1.2, 0, 1) * stay
 	cx := u.width * 0.5
-	body := Style{size = 36, color = TEXT, face = .Italic, shadow = true}
+	body := Style{size = 34, color = TEXT, face = .Italic, shadow = true}
 
 	title, msg, note: string
 	title_col := TITLE
@@ -332,30 +333,60 @@ ending_card :: proc(u: ^Ui, info: Ending_Info, t: f32, gone: f32 = 0) -> (act: M
 	if note == "" && content.closes_act(info.level) {
 		note = fmt.tprintf("%s%s", i18n.tr(.End_Of_Act), i18n.tr(content.ACT_LABEL[content.LEVELS[info.level].act]))
 	}
-	extra := f32(card(info.unlocked)) * 40 * s
-	bh := block_height(u, msg, body, 1100 * s, 1.3)
-	y := u.height * 0.5 - (bh + 320 * s + extra) * 0.5
-	text(u, title, {cx, y}, {size = 96, color = title_col, face = .Display, glow = true, shadow = true}, .Center, a)
-	y += 126 * s
-	ornament(u, {cx, y}, 160 * s, a)
-	y += 30 * s
-	y += paragraph(u, msg, {cx, y}, body, 1100 * s, a, 1.3)
-	y += 40 * s
-	text(u, note, {cx, y}, {size = 26, color = DIM, face = .Italic, shadow = true}, .Center, a)
-	y += 50 * s
-	a_ach := clamp((t - 1.5) / 1, 0, 1) * stay
+	first, fragments := content.level_fragments(info.level)
+	bw := 1000 * s
+	bh := block_height(u, msg, body, bw, 1.3)
+	h := 64 + 116 + 34 + 44 + 40 + 64 + 40
+	if note != "" {
+		h += 46
+	}
+	if fragments > 0 {
+		h += 54
+	}
+	h += 40 * card(info.unlocked)
+	height := bh + f32(h) * s
+	y := u.height * 0.5 - height * 0.5
+	warm_card(u, {cx - bw * 0.5 - 70 * s, y, bw + 140 * s, height}, a, 0.4)
+	y += 44 * s
+	rule_label(u, fmt.tprintf("%s  ·  %s", caps(i18n.tr(content.ACT_LABEL[content.LEVELS[info.level].act])), level_label(info.level)), {cx, y}, 19, 70 * s, a)
+	y += 46 * s
+	text(u, title, {cx, y}, {size = 80, color = title_col, face = .Display, glow = true, shadow = true}, .Center, a)
+	y += 116 * s
+	ornament(u, {cx, y}, 140 * s, a)
+	y += 34 * s
+	// the tale follows the title in
+	a_tale := clamp((t - 0.5) / 1.2, 0, 1) * stay
+	y += paragraph(u, msg, {cx, y}, body, bw, a_tale, 1.3)
+	y += 44 * s
+	if note != "" {
+		text(u, note, {cx, y}, {size = 26, color = DIM, face = .Italic, shadow = true}, .Center, a_tale)
+		y += 46 * s
+	}
+	// then what was found: the level's fragments, the achievements
+	a_found := clamp((t - 1.2) / 1, 0, 1) * stay
+	if fragments > 0 {
+		label := fmt.tprintf("%d / %d  %s", progress.level_fragments(prog, info.level), fragments, i18n.tr(.Fragments_Label))
+		st := Style{size = 22, color = DIM, face = .Semi, track = 0.06, shadow = true}
+		row := f32(fragments) * 26 * s + 12 * s + measure(u, label, st).x
+		x := cx - row * 0.5
+		for k in 0 ..< fragments {
+			diamond(u, {x + 9 * s + f32(k) * 26 * s, y + 14 * s}, 10 * s, fade(GOLD, a_found), first + k in prog.fragments)
+		}
+		text(u, label, {x + f32(fragments) * 26 * s + 12 * s, y + s}, st, .Left, a_found)
+		y += 54 * s
+	}
 	for ach in info.unlocked {
 		line := fmt.tprintf("%s · %s", i18n.tr(.Achievement), i18n.tr(progress.ACHIEVEMENT_NAME[ach]))
-		text(u, line, {cx, y}, {size = 26, color = GOLD, face = .Semi, shadow = true}, .Center, a_ach)
+		text(u, line, {cx, y}, {size = 26, color = GOLD, face = .Semi, shadow = true}, .Center, a_found)
 		y += 40 * s
 	}
 	y += 40 * s
 	all := [?]Choice{{.Next, .Next}, {.Retry, .Retry}, {.Menu, .Main_Menu}}
 	buttons := info.can_continue ? all[:] : all[1:]
-	gap := 300 * s
+	gap := 280 * s
 	x := cx - gap * f32(len(buttons) - 1) * 0.5
 	for b in buttons {
-		if button(u, i18n.tr(b.key), {x, y}, 32, a) {
+		if button(u, i18n.tr(b.key), {x, y}, 30, a_found) {
 			act = b.act
 		}
 		x += gap
@@ -454,13 +485,10 @@ level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs:
 	}
 	if built {
 		first, n := content.level_fragments(ls.level)
-		found := 0
 		for k in 0 ..< n {
-			lit := first + k in prog.fragments
-			found += int(lit)
-			diamond(u, {x0 + 9 * s + f32(k) * 26 * s, y + 14 * s}, 10 * s, GOLD, lit)
+			diamond(u, {x0 + 9 * s + f32(k) * 26 * s, y + 14 * s}, 10 * s, GOLD, first + k in prog.fragments)
 		}
-		text(u, fmt.tprintf("%d / %d  %s", found, n, i18n.tr(.Fragments_Label)), {x0 + f32(n) * 26 * s + 12 * s, y + 1 * s}, {size = 22, color = DIM, face = .Semi, track = 0.06, shadow = true}, .Left)
+		text(u, fmt.tprintf("%d / %d  %s", progress.level_fragments(prog, ls.level), n, i18n.tr(.Fragments_Label)), {x0 + f32(n) * 26 * s + 12 * s, y + 1 * s}, {size = 22, color = DIM, face = .Semi, track = 0.06, shadow = true}, .Left)
 		y += 52 * s
 	}
 	if loaded {

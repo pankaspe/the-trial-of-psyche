@@ -93,8 +93,8 @@ App :: struct {
 	post:            render.Post,
 	black_t:         f32, // < 0, or time since the screen began to fade to black (end of an act)
 	black_next:      int, // the level that follows the black
-	passage_t:       f32, // < 0, or time since Continue (or Retry) closed the dark over a level that broke up
-	passage_next:    int, // the level that rises out of it
+	passage_t:       f32, // < 0, or time since Continue (or Retry) left the card over a level that broke up
+	passage_next:    int, // the level that rises after it
 	rest_t:          f32, // how long R (or the brazier's button) has been held, < 0 when up
 	rest_fired:      bool, // this hold has already restarted the level
 	rest_tap_t:      f32, // time since the last tap of R (pressed twice: the level again)
@@ -317,8 +317,8 @@ update_sound :: proc(app: ^App) {
 BLACK_OUT :: 1.0
 BLACK_IN :: 0.8
 
-// On to the next level. Within an act the dark closes over the level that
-// broke up and the next rises out of it (after the boat, Psyche arrives
+// On to the next level. Within an act the next level comes into focus
+// where the last broke up, and rises (after the boat, Psyche arrives
 // through the veil); at the end of an act the screen goes black and the next
 // act opens with its own card or cutscene.
 continue_story :: proc(app: ^App) {
@@ -331,8 +331,8 @@ continue_story :: proc(app: ^App) {
 	arrive_at(app, next)
 }
 
-// Into level `index` after an exit: out of the dark between the levels if the
-// one played broke up, through the veil if the boat took her.
+// Into level `index` after an exit: into focus where the one played broke
+// up, through the veil if the boat took her.
 arrive_at :: proc(app: ^App, index: int) {
 	if app.game.parting {
 		start_passage(app, index)
@@ -344,18 +344,18 @@ arrive_at :: proc(app: ^App, index: int) {
 	}
 }
 
-// The dark between two levels, cut in facets like the world: it gathers in
-// the middle as the level breaks up, a slow galaxy in it (PASSAGE_DARK, under
-// the ending card), closes over the whole screen once the player goes on
-// (PASSAGE_CLOSE), then opens on the next level from where Psyche comes down,
-// a crack of gold on its edge (PASSAGE_OPEN). The dioramas of one level have
-// none: one breaks up, the next rises, in the open.
-PASSAGE_DARK :: 0.38
+// Between two levels: as the level breaks up the world goes out of focus
+// under the ending card (PASSAGE_BLUR); once the player goes on the card
+// fades (PASSAGE_CLOSE), the next level is loaded out of focus, the last one
+// fading over it (PASSAGE_HELD), and comes into focus as it rises
+// (PASSAGE_FOCUS). The dioramas of one level have none: one breaks up, the
+// next rises, in the open.
+PASSAGE_BLUR :: 0.9 // into the break up, when the world starts to blur
 PASSAGE_CLOSE :: 0.45
-PASSAGE_OPEN :: 1.6
-PASSAGE_RING :: PASSAGE_CLOSE + 0.15 // the dark begins to open
+PASSAGE_HELD :: 0.6
+PASSAGE_FOCUS :: 1.1
 
-// Close the dark over the level that broke up, on into level `index`.
+// Leave the card over the level that broke up, on into level `index`.
 @(private)
 start_passage :: proc(app: ^App, index: int) {
 	app.passage_t = 0
@@ -371,43 +371,36 @@ update_passage :: proc(app: ^App, dt: f32) {
 	before := app.passage_t
 	app.passage_t += dt
 	if before < PASSAGE_CLOSE && app.passage_t >= PASSAGE_CLOSE {
+		render.post_hold(&app.post)
 		if new_level(app, app.passage_next) {
 			game.begin(&app.game, prologue = app.passage_next != app.ending.level, arrival = true, veiled = false)
 			app.game.arrive_traced = true
 			app.screen = .Play
 		}
 	}
-	if before < PASSAGE_RING && app.passage_t >= PASSAGE_RING {
-		audio.play(.Seam, -16, audio.semitones(-5))
-	}
-	if app.passage_t >= PASSAGE_RING + PASSAGE_OPEN {
+	if app.passage_t >= PASSAGE_CLOSE + max(PASSAGE_HELD, PASSAGE_FOCUS) {
 		app.passage_t = -1
 	}
 }
 
-// How far the dark between the levels reaches (0 .. 1) and how far it has parted.
+// How far the world is out of focus between the levels (0 .. 1), and how
+// much of the last level, out of focus, still covers the next.
 @(private)
-passage_dark :: proc(app: ^App) -> (amount, open: f32) {
+passage_blur :: proc(app: ^App) -> (blur, held: f32) {
 	g := &app.game
 	if t := app.passage_t; t >= 0 {
-		amount = fx.lerp(f32(PASSAGE_DARK), 1, fx.sine_in_out(fx.progress(t, 0, PASSAGE_CLOSE)))
-		open = fx.sine_in_out(fx.progress(t, PASSAGE_RING, PASSAGE_OPEN))
+		if t < PASSAGE_CLOSE {
+			return 1, 0
+		}
+		blur = 1 - fx.sine_in_out(fx.progress(t, PASSAGE_CLOSE, PASSAGE_FOCUS))
+		held = 1 - fx.sine_in_out(fx.progress(t, PASSAGE_CLOSE, PASSAGE_HELD))
 		return
 	}
 	if g.parting && !game.leads_on(g) && (g.phase == .Ending_Exit || g.phase == .Finished) {
 		t := g.phase == .Finished ? game.PART_END : g.phase_t
-		amount = PASSAGE_DARK * fx.sine_in_out(fx.progress(t, 0.9, game.PART_END - 0.9))
+		blur = fx.sine_in_out(fx.progress(t, PASSAGE_BLUR, game.PART_END - PASSAGE_BLUR))
 	}
 	return
-}
-
-// Where the dark opens from (screen uv): where Psyche comes down onto the
-// start of the next level, the stones rising about her.
-@(private)
-passage_center :: proc(app: ^App, w, h: f32) -> render.Vec2 {
-	g := &app.game
-	view := render.scene_view(&app.scene, g, w, h)
-	return render.world_to_screen(view, g.psyche.pos - {0, 0, game.arrival_drop(g)}) / {w, h}
 }
 
 @(private)
@@ -555,7 +548,7 @@ close_act_card :: proc(app: ^App) {
 }
 
 // The exit of a diorama that is not the level's last: it has broken up, the
-// next one rises into place in the open (no card, no dark between them).
+// next one rises into place in the open (no card, no blur between them).
 next_diorama :: proc(app: ^App) {
 	g := &app.game
 	carried := app.carried
@@ -740,6 +733,10 @@ frame :: proc(app: ^App) {
 	// the graphics quality draws the world through a canvas (smaller, or twice
 	// the size), or straight to the screen (High, with the window's MSAA)
 	k := render.canvas_scale(app.cfg.quality, w, h)
+	blur, held := passage_blur(app)
+	if k == 0 && (blur > 0 || held > 0) {
+		k = 1 // out of focus: through a canvas, whatever the quality
+	}
 	draw_level_picture(app)
 	if k > 0 {
 		render.post_begin(&app.post, w * k, h * k)
@@ -749,16 +746,16 @@ frame :: proc(app: ^App) {
 	draw_world(app, k > 0 ? w * k : w, k > 0 ? h * k : h)
 	if k > 0 {
 		render.post_end(&app.post)
+		if blur > 0 || held > 0 {
+			render.post_blur(&app.post, w, h)
+		}
 		if app.has_target {
 			rl.BeginTextureMode(app.target)
 		}
 		reset_canvas(w, h)
-		render.post_draw(&app.post, w, h)
+		render.post_draw(&app.post, w, h, blur, held)
 	}
 	render.draw_veil(&app.renderer, g, w, h, app.time)
-	if amount, open := passage_dark(app); amount > 0 {
-		render.draw_threads(&app.renderer, w, h, app.time, amount, open, passage_center(app, w, h))
-	}
 	if !(app.shooting && app.shots.no_ui) {
 		draw_screens(app)
 	}
@@ -1180,7 +1177,7 @@ draw_screens :: proc(app: ^App) {
 	case .Ending:
 		going := app.passage_t >= 0 || app.black_t >= 0
 		gone := app.passage_t >= 0 ? fx.progress(app.passage_t, 0, PASSAGE_CLOSE) : 0
-		act := ui.ending_card(u, app.ending, app.card_t, gone)
+		act := ui.ending_card(u, app.ending, app.prog, app.card_t, gone)
 		if going {
 			act = .None // on its way out
 		}
