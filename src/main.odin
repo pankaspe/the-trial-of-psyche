@@ -31,6 +31,7 @@ WINDOW_TITLE :: "The Trial of Psyche"
 MENU_FADE :: 0.8
 CARD_FADE :: 0.6
 MAX_TOASTS :: 8
+Notice :: ui.Notice // a field of App is named ui
 
 Screen :: enum u8 {
 	Title,
@@ -72,7 +73,7 @@ App :: struct {
 	book:            Book_State,
 	fragment_t:      f32, // time on the fragment card
 	mechanic_t:      f32, // time on the mechanic card
-	toasts:          [MAX_TOASTS]progress.Achievement, // achievements waiting to be announced
+	toasts:          [MAX_TOASTS]Notice, // notices waiting to be shown
 	toast_count:     int,
 	toast_t:         f32,
 	time:            f32,
@@ -490,17 +491,26 @@ finish_level :: proc(app: ^App) {
 // Achievements to announce in the corner, one at a time.
 announce :: proc(app: ^App, unlocked: progress.Achievements) {
 	for a in unlocked {
-		if app.toast_count < MAX_TOASTS {
-			app.toasts[app.toast_count] = a
-			app.toast_count += 1
-		}
+		notify(app, a)
 	}
 }
 
+// A notice queued for the corner.
+notify :: proc(app: ^App, n: ui.Notice) {
+	if app.toast_count < MAX_TOASTS {
+		app.toasts[app.toast_count] = n
+		app.toast_count += 1
+	}
+}
+
+// Toasts wait while a fragment card is open, and each comes in with a soft chime.
 @(private)
 update_toasts :: proc(app: ^App, dt: f32) {
-	if app.toast_count == 0 {
+	if app.toast_count == 0 || app.screen == .Fragment {
 		return
+	}
+	if app.toast_t == 0 {
+		audio.play(.Seam, -20, audio.semitones(12))
 	}
 	app.toast_t += dt
 	if app.toast_t >= ui.TOAST_TIME {
@@ -566,7 +576,14 @@ frame :: proc(app: ^App) {
 	}
 	if g.fragment_new {
 		g.fragment_new = false
-		announce(app, progress.collect_fragment(&app.prog, game.fragment_index(g, g.fragment_last)))
+		fragment := game.fragment_index(g, g.fragment_last)
+		unlocked, new_page := progress.collect_fragment(&app.prog, fragment)
+		if new_page {
+			act := content.LEVELS[content.FRAGMENTS[fragment].level].act
+			found, total := progress.act_fragments(app.prog, act)
+			notify(app, ui.Page_Notice{act, found, total})
+		}
+		announce(app, unlocked)
 		save_progress(app)
 		if app.screen == .Play {
 			app.screen = .Fragment
@@ -958,7 +975,7 @@ draw_screens :: proc(app: ^App) {
 	i18n.set_variant(.Lamp_Toggle, app.cfg.lamp_toggle)
 	i18n.set_variant(.Restart_Twice, app.cfg.restart_twice)
 	g.reduce_motion = app.cfg.reduce_motion
-	u.toast_visible = app.toast_count > 0
+	u.toast_visible = app.toast_count > 0 && app.screen != .Fragment
 	switch app.screen {
 	case .Title:
 		act := ui.title_menu(u)
@@ -1070,8 +1087,8 @@ draw_screens :: proc(app: ^App) {
 		case .None, .Play, .Levels, .Book, .Settings, .Quit, .Resume, .Restart, .Back:
 		}
 	}
-	if app.toast_count > 0 {
-		ui.achievement_toast(u, app.toasts[0], app.toast_t)
+	if u.toast_visible {
+		ui.toast(u, app.toasts[0], app.toast_t)
 	}
 }
 

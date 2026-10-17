@@ -67,7 +67,7 @@ side_panel :: proc(u: ^Ui) {
 
 // The tabs along the top: the one on is lit and underlined; returns the one
 // clicked (-1: none) and where the row ends.
-tab_row :: proc(u: ^Ui, labels: []string, on: int) -> (clicked: int, end: f32) {
+tab_row :: proc(u: ^Ui, labels: []string, on: int, sealed: []bool = nil) -> (clicked: int, end: f32) {
 	clicked = -1
 	s := u.scale
 	x := PANEL_X * s
@@ -87,6 +87,12 @@ tab_row :: proc(u: ^Ui, labels: []string, on: int) -> (clicked: int, end: f32) {
 		text(u, label, {x, y}, st, .Left)
 		if i == on {
 			rl.DrawRectangleRec({x, y + m.y + 4 * s, m.x, max(1.5 * s, 1)}, BRIGHT)
+		}
+		if i < len(sealed) && sealed[i] {
+			// a small seal of gold over the tab's corner
+			c := Vec2{x + m.x + 9 * s, y + 2 * s}
+			glow_dot(c, 5 * s, {255, 176, 77, 255}, 0.9)
+			diamond(u, c, 7 * s, BRIGHT, true)
 		}
 		x += m.x + 40 * s
 	}
@@ -412,7 +418,13 @@ level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs:
 
 	// the acts, as tabs, and the fragments found
 	x0 := PANEL_X * s
-	clicked, tabs_end := tab_row(u, ACT_NUMERAL[:], int(act))
+	// an act whose fragments are all in the Book is sealed
+	sealed: [len(content.Act)]bool
+	for a in content.Act {
+		found, total := progress.act_fragments(prog, a)
+		sealed[a] = total > 0 && found == total
+	}
+	clicked, tabs_end := tab_row(u, ACT_NUMERAL[:], int(act), sealed[:])
 	if clicked >= 0 {
 		choose_act(ls, content.Act(clicked))
 	}
@@ -426,7 +438,11 @@ level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs:
 	done := ls.level in prog.completed
 	loaded := built && shown.level_index == ls.level
 	w := PANEL_W * s
-	y := panel_head(u, fmt.tprintf("%s  ·  %s", caps(i18n.tr(content.ACT_LABEL[act])), level_label(ls.level)), i18n.tr(info.title))
+	eyebrow := fmt.tprintf("%s  ·  %s", caps(i18n.tr(content.ACT_LABEL[act])), level_label(ls.level))
+	if sealed[act] {
+		eyebrow = fmt.tprintf("%s  ·  %s", eyebrow, caps(i18n.tr(.Act_Sealed)))
+	}
+	y := panel_head(u, eyebrow, i18n.tr(info.title))
 	y += paragraph(u, i18n.tr(info.place), {x0, y}, {size = 30, color = DIM, face = .Italic, shadow = true}, w, 1, 1.2, .Left)
 	y += 14 * s
 	text(u, fmt.tprintf("MET.  %s", info.cite), {x0, y}, {size = 19, color = GOLD, face = .Semi, track = 0.2, shadow = true}, .Left)
@@ -542,6 +558,9 @@ level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs:
 		if on {
 			corner_frame(u, {r.x - 6 * s, r.y - 6 * s, r.width + 12 * s, r.height + 12 * s}, 1, s, BRIGHT)
 		}
+	}
+	if sealed[act] {
+		act_seal(u, {min(tx + 52 * s, u.width - 64 * s), ty + TILE.y * s * 0.5})
 	}
 	if play && open {
 		audio.play(.Tap, -14)
@@ -859,14 +878,45 @@ arrow_cap :: proc(u: ^Ui, pos: Vec2, size: f32, dir: int) {
 	tri(pts[0], pts[1], pts[2], DIM)
 }
 
-// A short notice in the top left corner: an achievement just unlocked.
-achievement_toast :: proc(u: ^Ui, a: progress.Achievement, t: f32) {
+// The seal at the end of an act's row: every fragment of the act found.
+@(private)
+act_seal :: proc(u: ^Ui, c: Vec2) {
+	s := u.scale
+	glow_dot(c, 22 * s, {255, 176, 77, 255}, 0.8)
+	rl.DrawCircleV(c, 36 * s, fade({21, 18, 29, 255}, 0.92))
+	rl.DrawRing(c, 31 * s, 33 * s, 0, 360, 48, GOLD)
+	rl.DrawRing(c, 36 * s, 37.5 * s, 0, 360, 48, fade(GOLD, 0.5))
+	diamond(u, c, 17 * s, BRIGHT, true)
+}
+
+// A fragment just added to the Book, with how many of its act are there now.
+Page_Notice :: struct {
+	act:          content.Act,
+	found, total: int,
+}
+
+// What a toast announces: an achievement just unlocked, or a new page of the Book.
+Notice :: union {
+	progress.Achievement,
+	Page_Notice,
+}
+
+// A short notice in the top left corner.
+toast :: proc(u: ^Ui, n: Notice, t: f32) {
 	alpha := fx.envelope(t, 0.5, 3.5, 1.0)
 	if alpha <= 0 {
 		return
 	}
 	s := u.scale
-	name := i18n.tr(progress.ACHIEVEMENT_NAME[a])
+	head, name: string
+	switch v in n {
+	case progress.Achievement:
+		head = i18n.tr(.Achievement)
+		name = i18n.tr(progress.ACHIEVEMENT_NAME[v])
+	case Page_Notice:
+		head = i18n.tr(.Notice_Page)
+		name = fmt.tprintf(i18n.tr(.Notice_Page_Count), i18n.tr(content.ACT_LABEL[v.act]), v.found, v.total)
+	}
 	nst := Style{size = 32, color = TEXT, face = .Semi}
 	w := max(measure(u, name, nst).x, 220 * s) + 96 * s
 	r := rl.Rectangle{32 * s, 32 * s, w, 96 * s}
@@ -874,7 +924,7 @@ achievement_toast :: proc(u: ^Ui, a: progress.Achievement, t: f32) {
 	c := Vec2{r.x + 36 * s, r.y + r.height * 0.5}
 	glow_dot(c, 9 * s, {255, 176, 77, 255}, alpha)
 	diamond(u, c, 11 * s, fade(BRIGHT, alpha), true)
-	text(u, caps(i18n.tr(.Achievement)), {r.x + 68 * s, r.y + 16 * s}, {size = 18, color = GOLD, face = .Semi, track = 0.16}, .Left, alpha)
+	text(u, caps(head), {r.x + 68 * s, r.y + 16 * s}, {size = 18, color = GOLD, face = .Semi, track = 0.16}, .Left, alpha)
 	text(u, name, {r.x + 68 * s, r.y + 42 * s}, nst, .Left, alpha)
 }
 

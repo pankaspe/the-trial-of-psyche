@@ -233,7 +233,7 @@ slot_of :: proc(g: ^game.Game, i: int) -> (sl: Slot) {
 }
 
 // The sidebar of the skills: a square slot per number key, its key in the
-// corner, its picture inside (the lamp's oil as a row of notches), its name
+// corner, its picture inside (the lamp's oil in a phial beside it), its name
 // and state sliding out beside it.
 @(private)
 draw_skills :: proc(u: ^Ui, g: ^game.Game, act: ^Hud_Action) {
@@ -316,25 +316,39 @@ draw_slot :: proc(u: ^Ui, g: ^game.Game, i: int, r: rl.Rectangle, sl: Slot, hove
 		g := 3 + 3 * breathe(u, t, 4)
 		rl.DrawRectangleLinesEx({r.x - g * k, r.y - g * k, r.width + 2 * g * k, r.height + 2 * g * k}, max(2.5 * k, 1), fade({255, 138, 61, 255}, 0.75))
 	}
-	c := Vec2{r.x + r.width * 0.5, r.y + r.height * (sl.oil >= 0 ? 0.42 : 0.5)}
+	c := Vec2{r.x + r.width * 0.5, r.y + r.height * 0.5}
 	switch i {
 	case 0: lamp_icon(u, c, k, ink, sl.look == .Active, t)
 	case 1: crank_icon(u, c, k, ink, sl.look == .Active ? f32(t) * 2 : 0)
 	}
 	if sl.oil >= 0 {
-		// the oil: a row of notches across the slot's foot
-		N :: 14
-		x0 := r.x + 8 * k
-		gap := 2 * k
-		seg := (r.width - 16 * k - gap * (N - 1)) / N
-		lit := int(math.ceil(sl.oil * N - 0.001))
-		on := sl.warn ? rl.Color{255, 138, 61, 255} : (sl.look == .Active ? rl.Color{242, 180, 92, 255} : TEXT)
-		for n in 0 ..< N {
-			col := n < lit ? on : rl.Color{239, 230, 210, 46}
-			rl.DrawRectangleRec({x0 + f32(n) * (seg + gap), r.y + r.height - 15 * k, seg, 6 * k}, col)
-		}
+		oil_phial(u, r, sl, t)
 	}
 	control(u, fmt.tprintf("%d", i + 1), SKILL_PAD[i], {r.x - 1 * k, r.y - 1 * k}, 1, k * 0.9, sl.look == .Active)
+}
+
+// The lamp's oil: a tall phial beside its slot, filled from the bottom; while
+// the lamp burns the oil glows and its surface flickers, amber when it runs low.
+@(private)
+oil_phial :: proc(u: ^Ui, r: rl.Rectangle, sl: Slot, t: f32) {
+	k := hud_k(u)
+	p := rl.Rectangle{r.x - 32 * k, r.y, 16 * k, r.height}
+	lit := sl.look == .Active
+	col := sl.warn ? rl.Color{255, 138, 61, 255} : (lit ? rl.Color{255, 186, 92, 255} : rl.Color{226, 196, 142, 255})
+	rl.DrawRectangleRec(p, fade({13, 11, 20, 255}, 0.85))
+	inner := rl.Rectangle{p.x + 3 * k, p.y + 3 * k, p.width - 6 * k, p.height - 6 * k}
+	h := inner.height * sl.oil
+	if lit {
+		flicker: f32 = u.reduce_motion ? 1 : 1 + math.sin(t * 23) * math.sin(t * 7.3)
+		h = max(h - inner.height * 0.012 * flicker, 0)
+		glow_dot({p.x + p.width * 0.5, inner.y + inner.height - h}, 30 * k, {255, 170, 70, 255}, 0.55)
+	}
+	if h > 0 {
+		oil := rl.Rectangle{inner.x, inner.y + inner.height - h, inner.width, h}
+		rl.DrawRectangleGradientV(i32(oil.x), i32(oil.y), i32(math.ceil(oil.width)), i32(math.ceil(oil.height)), col, fade(col, 0.6))
+		rl.DrawRectangleRec({oil.x, oil.y, oil.width, max(1.5 * k, 1)}, fade({255, 240, 210, 255}, lit ? 0.95 : 0.6))
+	}
+	rl.DrawRectangleLinesEx(p, max(1.5 * k, 1), lit || sl.warn ? fade(col, 0.9) : fade(TEXT, 0.55))
 }
 
 // The pad's button for each skill slot: the triggers, the lamp on the left.

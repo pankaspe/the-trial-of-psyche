@@ -118,10 +118,24 @@ fragment_count :: proc(p: Progress) -> int {
 }
 
 // A fragment (index into content.FRAGMENTS) was picked up; returns the
-// achievements it unlocked.
-collect_fragment :: proc(p: ^Progress, fragment: int) -> (unlocked: Achievements) {
+// achievements it unlocked and whether it is new to the Book.
+collect_fragment :: proc(p: ^Progress, fragment: int) -> (unlocked: Achievements, new_page: bool) {
+	new_page = fragment not_in p.fragments
 	p.fragments += {fragment}
-	return award(p, {})
+	return award(p, {}), new_page
+}
+
+// How many of an act's fragments are in the Book, out of how many.
+act_fragments :: proc(p: Progress, act: content.Act) -> (found, total: int) {
+	for f, i in content.FRAGMENTS {
+		if content.LEVELS[f.level].act == act {
+			total += 1
+			if i in p.fragments {
+				found += 1
+			}
+		}
+	}
+	return
 }
 
 // A level was finished; returns the achievements it unlocked.
@@ -149,13 +163,7 @@ award :: proc(p: ^Progress, earned: Achievements) -> (unlocked: Achievements) {
 		if !has {
 			continue
 		}
-		complete := true
-		for f, i in content.FRAGMENTS {
-			if content.LEVELS[f.level].act == act && i not_in p.fragments {
-				complete = false
-			}
-		}
-		if complete {
+		if found, total := act_fragments(p^, act); found == total {
 			all += {a}
 		}
 	}

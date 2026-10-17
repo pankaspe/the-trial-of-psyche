@@ -103,17 +103,22 @@ achievements :: proc(t: ^testing.T) {
 	got: progress.Achievements
 	ACT_1 :: 5 // I.3 hides two
 	for i in 0 ..< ACT_1 - 1 {
-		got += progress.collect_fragment(&p, i)
+		unlocked, _ := progress.collect_fragment(&p, i)
+		got += unlocked
 	}
 	testing.expect(t, got == {}, "four fragments of Act I are not the whole act")
-	got = progress.collect_fragment(&p, ACT_1 - 1)
-	testing.expect(t, got == {.Tale_1}, "the five fragments of Act I")
-	testing.expect(t, progress.collect_fragment(&p, ACT_1 - 1) == {}, "an achievement is unlocked only once")
+	found, total := progress.act_fragments(p, .I)
+	testing.expect(t, found == ACT_1 - 1 && total == ACT_1, "four of Act I's five pages in the Book")
+	new_page: bool
+	got, new_page = progress.collect_fragment(&p, ACT_1 - 1)
+	testing.expect(t, got == {.Tale_1} && new_page, "the five fragments of Act I")
+	got, new_page = progress.collect_fragment(&p, ACT_1 - 1)
+	testing.expect(t, got == {} && !new_page, "an achievement is unlocked only once, a page is new only once")
 	for i in ACT_1 ..< content.FRAGMENT_COUNT - 1 {
-		got = progress.collect_fragment(&p, i)
+		got, _ = progress.collect_fragment(&p, i)
 	}
 	testing.expect(t, .Tale_4 in p.achievements && .Old_Woman not_in p.achievements, "every act, but not yet the epilogue")
-	got = progress.collect_fragment(&p, content.FRAGMENT_COUNT - 1)
+	got, _ = progress.collect_fragment(&p, content.FRAGMENT_COUNT - 1)
 	testing.expect(t, got == {.Old_Woman}, "the last fragment reveals the frame")
 
 	old: progress.Progress

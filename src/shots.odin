@@ -76,7 +76,15 @@ SHOT_SCRIPT := [?]Shot_Step {
 	{0.1, "", proc(app: ^App) {close_settings(app)}},
 	{0.1, "", proc(app: ^App) {app.prog.completed = {3}; app.prog.fragments = {2, 3, 4}; app.screen = .Levels}},
 	{0.6, "02b_levels", nil},
-	{0.1, "", proc(app: ^App) {app.prog.completed = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}; app.levels.sel.level = 11}},
+	{0.1, "", proc(app: ^App) {
+			app.prog.completed = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}
+			app.levels.sel.level = 11
+			for f, i in content.FRAGMENTS {
+				if content.LEVELS[f.level].act != .II {
+					app.prog.fragments += {i} // every act's tale but Act II's: sealed
+				}
+			}
+		}},
 	{1.2, "02b_levels_iii4", nil},
 	{0.1, "", proc(app: ^App) {app.levels.sel.level = 16}},
 	{1.0, "02b_levels_unbuilt", nil},
@@ -104,8 +112,9 @@ SHOT_SCRIPT := [?]Shot_Step {
 	{1.2, "06_view3_lamp", nil},
 	{0.1, "", proc(app: ^App) {game.toggle_lamp(&app.game); walk_to_fragment(app)}},
 	{3.5, "06b_fragment", proc(app: ^App) {announce(app, {.No_Wasted_Light})}},
-	{1.0, "06c_toast", nil},
-	{0.1, "", proc(app: ^App) {close_fragment(app); game.set_view(&app.game, 1)}},
+	{1.0, "", proc(app: ^App) {close_fragment(app)}},
+	{1.2, "06c_toast", nil},
+	{0.1, "", proc(app: ^App) {game.set_view(&app.game, 1)}},
 	{0.8, "07_view1_dark", proc(app: ^App) {place(app, app.game.data.sigil)}},
 	{0.1, "", proc(app: ^App) {game.toggle_lamp(&app.game)}},
 	{1.5, "08_rising", nil},
