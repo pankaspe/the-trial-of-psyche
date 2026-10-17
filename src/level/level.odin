@@ -393,6 +393,29 @@ MAX_HEIGHT :: 64
 
 // Parse a level. Every allocation (arrays, error text) uses `allocator`,
 // typically the level arena, so the whole level is freed at once.
+// A level slot's text may hold several dioramas played one after the other
+// (one level in the level select): each is a level file of its own, and a
+// line `diorama` starts the next. Every diorama but the last ends at an exit.
+MAX_DIORAMAS :: 4
+
+// The dioramas of a slot's text: slices of it, in order.
+dioramas :: proc(text: string, allocator := context.temp_allocator) -> []string {
+	parts := make([dynamic]string, 0, MAX_DIORAMAS, allocator)
+	start := 0
+	rest := text
+	at := 0
+	for line in strings.split_lines_iterator(&rest) {
+		next := len(text) - len(rest)
+		if strings.trim_space(line) == "diorama" {
+			append(&parts, text[start:at])
+			start = next
+		}
+		at = next
+	}
+	append(&parts, text[start:])
+	return parts[:]
+}
+
 parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data, err: Maybe(Parse_Error)) {
 	context.allocator = allocator
 	data.size = 12

@@ -10,6 +10,7 @@ import "../src/content"
 import "../src/game"
 import "../src/i18n"
 import "../src/iso"
+import "../src/level"
 import "../src/palace"
 import "../src/progress"
 
@@ -283,4 +284,48 @@ dark_level_with_an_exit :: proc(t: ^testing.T) {
 	testing.expect(t, walk(t, &g, {2, 1, 1}), "then walks on to the exit")
 	run(&g, game.EXIT_END + 0.5)
 	testing.expect(t, g.phase == .Finished && g.ending == .Exit, "the exit ends the level")
+}
+
+// DARK_LEVEL, then a second diorama: one level of two.
+@(private)
+TWO_DIORAMAS :: DARK_LEVEL + `
+diorama
+size 5
+column 0 0 0 0
+column 1 0 0 0
+column 1 1 0 0
+start 0 0 1
+exit 1 1 1
+fragment 1 0 1
+`
+
+@(test)
+a_level_of_two_dioramas :: proc(t: ^testing.T) {
+	parts := level.dioramas(TWO_DIORAMAS)
+	testing.expect(t, len(parts) == 2, "two dioramas in the text")
+	g: game.Game
+	defer game.destroy(&g)
+	if err := game.load_text(&g, 0, TWO_DIORAMAS); err != nil {
+		testing.expect(t, false, "the test level does not load")
+		return
+	}
+	testing.expect(t, g.diorama == 0 && g.dioramas == 2 && game.leads_on(&g), "the first diorama leads on")
+	game.begin(&g)
+	testing.expect(t, walk(t, &g, {2, 0, 1}) && walk(t, &g, {2, 1, 1}), "Psyche walks to the first exit (a fragment on the way)")
+	run(&g, game.EXIT_END + 0.5)
+	testing.expect(t, g.phase == .Finished && g.ending == .Exit, "the first diorama ends at its exit")
+
+	if err := game.load_text(&g, 0, TWO_DIORAMAS, 1); err != nil {
+		testing.expect(t, false, "the second diorama does not load")
+		return
+	}
+	testing.expect(t, g.diorama == 1 && !game.leads_on(&g), "the second diorama is the last")
+	testing.expect(t, g.psyche.cell == {0, 0, 1} && len(g.data.fragments) == 1, "the second diorama is its own palace")
+	testing.expect(t, g.fragment_base == 1, "its fragment comes after the first diorama's")
+	game.begin(&g, arrival = true)
+	run(&g, game.ARRIVE_END + 0.2)
+	testing.expect(t, g.phase == .Play && !g.hud.title.active, "it rises into place without the level's title")
+	testing.expect(t, walk(t, &g, {1, 0, 1}) && walk(t, &g, {1, 1, 1}), "Psyche walks to the last exit (a fragment on the way)")
+	run(&g, game.EXIT_END + 0.5)
+	testing.expect(t, g.phase == .Finished && g.ending == .Exit, "the level ends")
 }

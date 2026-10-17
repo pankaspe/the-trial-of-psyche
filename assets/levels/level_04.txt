@@ -170,6 +170,14 @@
 #                           close nothing. No z above 2(h-1), either world.
 #   upside name             the look with the world turned over
 #   mechanic flip           (the card that presents the pomegranates)
+#   diorama                 the next diorama of the same level starts here: the
+#                           file goes on with a whole level of its own (size,
+#                           setting, start ...); at the exit of the one before,
+#                           the world breaks up and the next one rises into
+#                           place, no card between them (one entry in the level
+#                           select). Its fragments come after the earlier ones';
+#                           the title shows only at the first, each has its intro.
+#                           check: ./build.sh check FILE [--diorama N]
 # Illusions: in the dark two surfaces are joined when they look joined in the
 # current view: (x',y',h) touches (x'+dx+k, y'+dy+k, h+k) in view coordinates,
 # provided the edge where they touch is visible on both tops (a top half

@@ -44,20 +44,28 @@ every_level_parses :: proc(t: ^testing.T) {
 		if info.source == "" {
 			continue // not built yet
 		}
-		data, err := level.parse(info.source, virtual.arena_allocator(&arena))
-		if e, failed := err.?; failed {
-			testing.expectf(t, false, "level %s: line %d: %s", info.id, e.line, e.message)
-			continue
+		parts := level.dioramas(info.source, virtual.arena_allocator(&arena))
+		found := 0
+		for part, n in parts {
+			data, err := level.parse(part, virtual.arena_allocator(&arena))
+			if e, failed := err.?; failed {
+				testing.expectf(t, false, "level %s, diorama %d: line %d: %s", info.id, n, e.line, e.message)
+				continue
+			}
+			if n + 1 < len(parts) {
+				testing.expectf(t, data.has_exit && !data.has_amore && !data.has_boat, "level %s: diorama %d leads on through an exit", info.id, n)
+			}
+			// the fragments of the tale: reachable, never required
+			p: palace.Palace
+			palace.init(&p, &data, virtual.arena_allocator(&arena))
+			found += len(data.fragments)
+			for _, f in data.fragments {
+				reachable, optional := palace.check_fragment(&p, f)
+				testing.expectf(t, reachable && optional, "level %s, diorama %d: fragment %d is reachable (%v) and optional (%v)", info.id, n, f, reachable, optional)
+			}
 		}
-		// the fragment of the tale: reachable, never required
-		p: palace.Palace
-		palace.init(&p, &data, virtual.arena_allocator(&arena))
 		_, count := content.level_fragments(i)
-		testing.expectf(t, len(data.fragments) == count && count > 0, "level %s hides its %d fragments of the tale (%d)", info.id, count, len(data.fragments))
-		for _, f in data.fragments {
-			reachable, optional := palace.check_fragment(&p, f)
-			testing.expectf(t, reachable && optional, "level %s: fragment %d is reachable (%v) and optional (%v)", info.id, f, reachable, optional)
-		}
+		testing.expectf(t, found == count && count > 0, "level %s hides its %d fragments of the tale (%d)", info.id, count, found)
 	}
 }
 

@@ -200,6 +200,9 @@ Marker :: struct {
 Game :: struct {
 	arena:          virtual.Arena,
 	level_index:    int,
+	diorama:        int, // the slot's diorama being played (level.dioramas)
+	dioramas:       int, // how many the slot has
+	fragment_base:  int, // the slot's fragments in the dioramas before this one
 	data:           level.Level_Data,
 	palace:         pl.Palace,
 	loaded:         bool,
@@ -308,13 +311,27 @@ Rest :: struct {
 
 Load_Error :: level.Parse_Error
 
-// (Re)load a level: frees everything from the previous one.
-load :: proc(g: ^Game, index: int) -> (err: Maybe(Load_Error)) {
-	return load_text(g, index, content.LEVELS[index].source)
+// (Re)load a level (one of its dioramas): frees everything from the previous one.
+load :: proc(g: ^Game, index: int, diorama := 0) -> (err: Maybe(Load_Error)) {
+	return load_text(g, index, content.LEVELS[index].source, diorama)
 }
 
-// Load level slot `index` from the given level text (tests use their own).
-load_text :: proc(g: ^Game, index: int, text: string) -> (err: Maybe(Load_Error)) {
+// Load diorama `diorama` of level slot `index` from the given level text
+// (tests use their own).
+load_text :: proc(g: ^Game, index: int, text: string, diorama := 0) -> (err: Maybe(Load_Error)) {
+	parts := level.dioramas(text)
+	if diorama < 0 || diorama >= len(parts) {
+		return Load_Error{0, "no such diorama in the level"}
+	}
+	base := 0
+	for part in parts[:diorama] {
+		before, perr := level.parse(part, context.temp_allocator)
+		if perr != nil {
+			return perr
+		}
+		base += len(before.fragments)
+	}
+
 	arena := g.arena
 	if arena.curr_block == nil {
 		if virtual.arena_init_growing(&arena) != nil {
@@ -326,9 +343,12 @@ load_text :: proc(g: ^Game, index: int, text: string) -> (err: Maybe(Load_Error)
 	g^ = {}
 	g.arena = arena
 	g.level_index = index
+	g.diorama = diorama
+	g.dioramas = len(parts)
+	g.fragment_base = base
 	alloc := virtual.arena_allocator(&g.arena)
 
-	data, perr := level.parse(text, alloc)
+	data, perr := level.parse(parts[diorama], alloc)
 	if perr != nil {
 		return perr
 	}
@@ -442,7 +462,9 @@ begin :: proc(g: ^Game, prologue := true, arrival := false) {
 @(private)
 start_play :: proc(g: ^Game, prologue: bool) {
 	g.hud.visible = true
-	show(&g.hud.title, title_key(g), 1.5, 3.5, 2.0)
+	if g.diorama == 0 {
+		show(&g.hud.title, title_key(g), 1.5, 3.5, 2.0) // the next dioramas are the same level
+	}
 	g.begin_t = 0
 	g.pointer_on = true
 	g.pointer_title = true
@@ -517,7 +539,12 @@ Fragment_Set :: bit_set[0 ..< level.MAX_FRAGMENTS]
 // Fragment i of this level, as an index into content.FRAGMENTS.
 fragment_index :: proc(g: ^Game, i: int) -> int {
 	first, _ := content.level_fragments(g.level_index)
-	return first + i
+	return first + g.fragment_base + i
+}
+
+// Does the slot go on after this diorama? Its exit then leads into the next.
+leads_on :: proc(g: ^Game) -> bool {
+	return g.diorama + 1 < g.dioramas
 }
 
 // The text of fragment i of this level.

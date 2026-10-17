@@ -76,6 +76,9 @@ App :: struct {
 	toasts:          [MAX_TOASTS]Notice, // notices waiting to be shown
 	toast_count:     int,
 	toast_t:         f32,
+	carried:         struct {
+		lightings, lamp_par: int, // the level's dioramas already played (its lamp achievement)
+	},
 	time:            f32,
 	quit:            bool,
 	resolutions:     [len(settings.RESOLUTIONS)][2]i32,
@@ -220,13 +223,13 @@ find_resolutions :: proc(app: ^App) {
 }
 
 // (Re)load a level; the palace sleeps (attract mode) until game.begin.
-new_level :: proc(app: ^App, index: int) -> bool {
+new_level :: proc(app: ^App, index: int, diorama := 0) -> bool {
 	g := &app.game
 	source := content.LEVELS[index].source
 	if app.shooting && app.shots.file != "" && index == app.shots.level {
 		source = app.shots.file
 	}
-	if err, failed := game.load_text(g, index, source).?; failed {
+	if err, failed := game.load_text(g, index, source, diorama).?; failed {
 		fmt.eprintfln("level %s, line %d: %s", content.LEVELS[index].id, err.line, err.message)
 		return false
 	}
@@ -236,7 +239,10 @@ new_level :: proc(app: ^App, index: int) -> bool {
 			g.fragments_known += {i}
 		}
 	}
-	want_dead_ends(app, index, source)
+	want_dead_ends(app, index, diorama, level.dioramas(source)[diorama], keep = source == content.LEVELS[index].source)
+	if diorama == 0 {
+		app.carried = {}
+	}
 	render.scene_build(&app.scene, g, game.level_allocator(g))
 	return true
 }
@@ -416,8 +422,11 @@ update_rest :: proc(app: ^App, button_down: bool) {
 	}
 }
 
+// Start the level again: the diorama being played (the dioramas before it are done).
 play_level :: proc(app: ^App) {
-	if new_level(app, app.game.level_index) {
+	carried := app.carried
+	if new_level(app, app.game.level_index, app.game.diorama) {
+		app.carried = carried
 		game.begin(&app.game, prologue = false)
 		app.screen = .Play
 	}
@@ -465,13 +474,26 @@ close_act_card :: proc(app: ^App) {
 }
 
 // The level is over: record it, and show the ending card.
+// The exit of a diorama that is not the level's last: through the veil into
+// the next one, which rises into place (no card between them).
+next_diorama :: proc(app: ^App) {
+	g := &app.game
+	carried := app.carried
+	carried.lightings += g.lightings
+	carried.lamp_par += int(g.data.lamp_par)
+	if new_level(app, g.level_index, g.diorama + 1) {
+		app.carried = carried
+		game.begin(g, arrival = true)
+	}
+}
+
 finish_level :: proc(app: ^App) {
 	g := &app.game
 	r := progress.Result {
 		level     = g.level_index,
 		trust     = g.ending == .Trust,
-		lightings = g.lightings,
-		lamp_par  = int(g.data.lamp_par),
+		lightings = app.carried.lightings + g.lightings,
+		lamp_par  = app.carried.lamp_par + int(g.data.lamp_par),
 	}
 	unlocked := progress.complete_level(&app.prog, r)
 	save_progress(app)
@@ -605,7 +627,11 @@ frame :: proc(app: ^App) {
 		app.mechanic_t += dt
 	}
 	if app.screen == .Play && g.phase == .Finished {
-		finish_level(app)
+		if g.ending == .Exit && game.leads_on(g) {
+			next_diorama(app)
+		} else {
+			finish_level(app)
+		}
 	}
 	if app.screen == .Ending {
 		app.card_t += dt

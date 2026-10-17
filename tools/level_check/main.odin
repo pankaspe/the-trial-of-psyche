@@ -37,33 +37,66 @@ import "../../src/iso"
 import "../../src/level"
 import pl "../../src/palace"
 
+// The options after the file, `--diorama N` taken out.
+opts: []string
+
 main :: proc() {
 	if len(os.args) < 2 {
-		fmt.eprintln("usage: level_check <level file>")
+		fmt.eprintln("usage: level_check <level file> [--diorama N] [--brief [--steps] | --try CANDIDATES]")
 		os.exit(2)
 	}
 	path := os.args[1]
-	arena: virtual.Arena
-	defer virtual.arena_destroy(&arena)
-	alloc := virtual.arena_allocator(&arena)
-
-	text, read_err := os.read_entire_file_from_path(path, alloc)
+	chosen := -1
+	rest := make([dynamic]string, 0, len(os.args))
+	for i := 2; i < len(os.args); i += 1 {
+		if os.args[i] == "--diorama" && i + 1 < len(os.args) {
+			chosen, _ = strconv.parse_int(os.args[i + 1])
+			i += 1
+		} else {
+			append(&rest, os.args[i])
+		}
+	}
+	opts = rest[:]
+	text, read_err := os.read_entire_file_from_path(path, context.allocator)
 	if read_err != nil {
 		fmt.eprintfln("cannot read %s: %v", path, read_err)
 		os.exit(1)
 	}
-	data, err := level.parse(string(text), alloc)
+	// a level of several dioramas: each checked in turn (or the one chosen)
+	parts := level.dioramas(string(text), context.allocator)
+	if chosen >= len(parts) {
+		fmt.eprintfln("%s has %d dioramas (0 to %d)", path, len(parts), len(parts) - 1)
+		os.exit(1)
+	}
+	for part, n in parts {
+		if chosen >= 0 && n != chosen {
+			continue
+		}
+		if len(parts) > 1 {
+			fmt.printfln("%s===== diorama %d of %d =====", n > 0 && chosen < 0 ? "\n" : "", n, len(parts))
+		}
+		check(path, part)
+	}
+}
+
+// Every report on one diorama.
+check :: proc(path, text: string) {
+	arena: virtual.Arena
+	defer virtual.arena_destroy(&arena)
+	alloc := virtual.arena_allocator(&arena)
+
+	data, err := level.parse(text, alloc)
 	if e, failed := err.?; failed {
 		fmt.eprintfln("%s:%d: %s", path, e.line, e.message)
 		os.exit(1)
 	}
-	if len(os.args) > 3 && os.args[2] == "--try" {
-		try_report(string(text), os.args[3])
+	if len(opts) > 1 && opts[0] == "--try" {
+		try_report(text, opts[1])
 		return
 	}
 	p: pl.Palace
 	pl.init(&p, &data, alloc)
-	if len(os.args) > 2 && os.args[2] == "--brief" {
+	if len(opts) > 0 && opts[0] == "--brief" {
 		brief(&p, &data, alloc)
 		return
 	}
@@ -143,7 +176,7 @@ main :: proc() {
 
 	if pl.is_dynamic(&data) {
 		solve_report(&p, &data, alloc)
-		needed_report(string(text))
+		needed_report(text)
 		return
 	}
 	for c, i in data.fragments {
@@ -746,7 +779,7 @@ needed_report :: proc(text: string) {
 brief :: proc(p: ^pl.Palace, data: ^level.Level_Data, alloc: runtime.Allocator) {
 	lines, steps := plans(p, data, alloc)
 	fmt.println(lines[0])
-	if len(os.args) > 3 && os.args[3] == "--steps" {
+	if len(opts) > 1 && opts[1] == "--steps" {
 		fmt.println(steps)
 	}
 	for l in lines[1:] {

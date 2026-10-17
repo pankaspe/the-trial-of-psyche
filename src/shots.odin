@@ -18,6 +18,7 @@ import "content"
 import "game"
 import "input"
 import "iso"
+import "level"
 import "render"
 import pl "palace"
 import "settings"
@@ -140,9 +141,21 @@ SHOT_SCRIPT := [?]Shot_Step {
 	{1.5, "17_window_1600", nil},
 }
 
+// Start the level toured (--level ID), at its diorama --diorama N.
+@(private = "file")
+start_shot_level :: proc(app: ^App) {
+	s := &app.shots
+	if s.diorama == 0 {
+		start_level(app, s.level)
+	} else if new_level(app, s.level, s.diorama) {
+		game.begin(&app.game)
+		app.screen = .Play
+	}
+}
+
 // The tour of one level (--level ID): `Shots.level` is the slot.
 LEVEL_TOUR := [?]Shot_Step {
-	{0.5, "", proc(app: ^App) {start_level(app, app.shots.level)}},
+	{0.5, "", proc(app: ^App) {start_shot_level(app)}},
 	{1.5, "00a_start", nil},
 	{2.5, "00b", nil},
 	{3.0, "00c", nil},
@@ -244,6 +257,7 @@ Shots :: struct {
 	size: [2]i32, // offscreen canvas size (--size WxH), 0 = the window
 	level: int, // --level ID: the slot to tour, -1 = the full script
 	file:  string, // --file PATH: that slot's level read from this file instead (a design in progress)
+	diorama: int, // --diorama N: start at this diorama of the level (--plan then plays on through the next ones)
 	quality: settings.Quality, // --quality NAME: the graphics quality (low, medium, high, ultra)
 	has_quality: bool,
 	plan:  bool, // --plan: play the solver's plan of the level, a shot after every decision
@@ -295,6 +309,9 @@ shots_from_args :: proc(args: []string) -> (s: Shots, ok: bool) {
 			}
 		case "--plan":
 			s.plan = true
+		case "--diorama":
+			n, _ := strconv.parse_int(args[i + 1], 10)
+			s.diorama = clamp(n, 0, level.MAX_DIORAMAS - 1)
 		case "--file":
 			if text, err := os.read_entire_file_from_path(args[i + 1], context.allocator); err == nil {
 				s.file = string(text)
@@ -332,6 +349,9 @@ shots_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool
 	}
 	if s.plan && s.level >= 0 {
 		name, done = plan_update(app, s, dt)
+		if name != "" && app.game.diorama > 0 {
+			name = fmt.tprintf("d%d_%s", app.game.diorama, name) // the next dioramas' shots apart
+		}
 		if s.record {
 			name = ""
 			// from the level's start: its prologue, its title, then the plan
@@ -392,7 +412,7 @@ plan_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool)
 	g := &app.game
 	s.t += dt
 	if s.step == 0 {
-		start_level(app, s.level)
+		start_shot_level(app)
 		s.step = 1
 		s.t = 0
 		return "", false
@@ -444,6 +464,16 @@ plan_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool)
 		return "p000_start", false
 	}
 	if s.step == 3 {
+		if g.diorama != s.diorama {
+			// through the exit into the level's next diorama: its plan from the start
+			s.diorama = g.diorama
+			virtual.arena_destroy(&s.arena)
+			s.arena = {}
+			s.moves = nil // it lived in the arena
+			s.step, s.t = 1, 0
+			s.move, s.shot, s.cave_shot, s.cross_shot = 0, 0, 0, 0
+			return "", false
+		}
 		if g.boxed && s.shot >= 0 && g.phase_t > game.BOX_OPEN + game.BOX_OPEN_TIME {
 			// the box opened, the sleep pouring out
 			s.shot = -4
@@ -546,7 +576,7 @@ survey_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: boo
 	s.t += dt
 	switch {
 	case s.step == 0:
-		start_level(app, s.level)
+		start_shot_level(app)
 		s.step, s.t = 1, 0
 		return
 	case app.screen == .Card:

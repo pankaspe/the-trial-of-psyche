@@ -10,6 +10,7 @@ import "core:testing"
 import "../src/content"
 import "../src/game"
 import "../src/iso"
+import "../src/level"
 import "../src/palace"
 
 @(private)
@@ -240,38 +241,45 @@ act2_levels_solve_and_play :: proc(t: ^testing.T) {
 		if (info.act != .II && info.act != .III && info.act != .IV) || !content.is_built(index) {
 			continue
 		}
-		g: game.Game
-		defer game.destroy(&g)
-		if err := game.load(&g, index); err != nil {
-			testing.expectf(t, false, "%s does not load: %v", info.id, err)
-			continue
+		for part, diorama in level.dioramas(info.source) {
+			play_diorama(t, info, index, diorama, part)
 		}
-		testing.expectf(t, palace.is_dynamic(&g.data), "%s uses the act's mechanics", info.id)
-		arena: virtual.Arena
-		testing.expect(t, virtual.arena_init_growing(&arena) == nil)
-		defer virtual.arena_destroy(&arena)
-		alloc := virtual.arena_allocator(&arena)
-
-		testing.expectf(t, palace.check_dynamic(&g.palace, alloc), "%s can be solved", info.id)
-		for _, f in g.data.fragments {
-			reachable, optional := palace.check_dynamic_fragment(&g.palace, f, alloc)
-			testing.expectf(t, reachable && optional, "%s: fragment %d is reachable (%v) and optional (%v)", info.id, f, reachable, optional)
-		}
-		sol := palace.solve(&g.palace, palace.exit_spot(&g.data), nil, alloc)
-		if g.data.has_lamp {
-			left := palace.oil_left(&g.palace, sol.plan[:], game.oil_rules(&g.data))
-			testing.expectf(t, left >= 0, "%s: the lamp's oil lasts the plan (%.1f s left)", info.id, left)
-		}
-
-		game.know_dead_ends(&g, game.search_dead_ends(info.source, alloc))
-		game.begin(&g, prologue = false)
-		run(&g, game.start_cues_time(&g) + 0.5)
-		if !play_plan(t, &g, sol.plan[:]) {
-			continue
-		}
-		testing.expectf(t, game.board_at_end(&g), "%s: at the end of the plan she boards Charon's boat", info.id)
-		run(&g, game.exit_end(&g) + 0.5)
-		testing.expectf(t, g.phase == .Finished && g.ending == .Exit, "%s: the plan played through the game reaches the exit (Psyche at %v)", info.id, g.psyche.cell)
-		testing.expectf(t, g.data.has_intro && g.data.has_outro, "%s has its intro and outro", info.id)
 	}
+}
+
+// One diorama of a level of Acts II-IV, solved and played (act2_levels_solve_and_play).
+play_diorama :: proc(t: ^testing.T, info: content.Level_Info, index, diorama: int, text: string) {
+	g: game.Game
+	defer game.destroy(&g)
+	if err := game.load(&g, index, diorama); err != nil {
+		testing.expectf(t, false, "%s (diorama %d) does not load: %v", info.id, diorama, err)
+		return
+	}
+	testing.expectf(t, palace.is_dynamic(&g.data), "%s uses the act's mechanics", info.id)
+	arena: virtual.Arena
+	testing.expect(t, virtual.arena_init_growing(&arena) == nil)
+	defer virtual.arena_destroy(&arena)
+	alloc := virtual.arena_allocator(&arena)
+
+	testing.expectf(t, palace.check_dynamic(&g.palace, alloc), "%s can be solved", info.id)
+	for _, f in g.data.fragments {
+		reachable, optional := palace.check_dynamic_fragment(&g.palace, f, alloc)
+		testing.expectf(t, reachable && optional, "%s: fragment %d is reachable (%v) and optional (%v)", info.id, f, reachable, optional)
+	}
+	sol := palace.solve(&g.palace, palace.exit_spot(&g.data), nil, alloc)
+	if g.data.has_lamp {
+		left := palace.oil_left(&g.palace, sol.plan[:], game.oil_rules(&g.data))
+		testing.expectf(t, left >= 0, "%s: the lamp's oil lasts the plan (%.1f s left)", info.id, left)
+	}
+
+	game.know_dead_ends(&g, game.search_dead_ends(text, alloc))
+	game.begin(&g, prologue = false)
+	run(&g, game.start_cues_time(&g) + 0.5)
+	if !play_plan(t, &g, sol.plan[:]) {
+		return
+	}
+	testing.expectf(t, game.board_at_end(&g), "%s: at the end of the plan she boards Charon's boat", info.id)
+	run(&g, game.exit_end(&g) + 0.5)
+	testing.expectf(t, g.phase == .Finished && g.ending == .Exit, "%s: the plan played through the game reaches the exit (Psyche at %v)", info.id, g.psyche.cell)
+	testing.expectf(t, g.data.has_intro && (g.data.has_outro || game.leads_on(&g)), "%s has its intro and outro", info.id)
 }
