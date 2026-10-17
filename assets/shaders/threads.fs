@@ -1,9 +1,9 @@
 #version 330
 // The dark between two levels, where the last one broke up: threads of ink
-// curling slowly about the middle of the screen, a few motes of gold turning
-// in it like a far galaxy. `amount` is how far it reaches (the middle under
-// the ending card, the whole screen at 1); `open` parts it from the middle
-// out as the next level rises.
+// curling slowly about the middle of the screen, a far galaxy turning in it
+// (a band of violet dust and motes of gold). `amount` is how far it reaches
+// (the middle under the ending card, the whole screen at 1); `open` parts it
+// from the middle out as the next level rises, a ring of gold on its edge.
 
 in vec2 fragTexCoord;
 
@@ -66,15 +66,31 @@ void main() {
     vec3 col = ink + vec3(0.34, 0.29, 0.46) * thread * (0.12 + 0.88 * rim);
     col += vec3(0.85, 0.62, 0.38) * pow(ridge, 26.0) * 0.35 * rim;
 
-    // motes of gold turning in the dark, an arm of a galaxy about the text
+    // the galaxy: a band of dust across the dark, turning slowly
+    vec2 gp = turn(time * 0.02 - 0.45) * p;
+    float band = exp(-pow((gp.y + 0.06 * sin(gp.x * 2.0 + time * 0.05)) / 0.16, 2.0));
+    float dust = fbm(gp * 3.0 + warp * 0.8 + vec2(time * 0.01, 0.0));
+    col += vec3(0.36, 0.28, 0.56) * smoothstep(0.3, 0.75, dust) * band * 0.9;
+    col += vec3(0.95, 0.8, 0.6) * exp(-r * 6.0) * band * 0.18; // its bright heart, behind the text
+
+    // motes of gold turning in the dark, thicker in the band
     vec2 s = turn(time * 0.07 + 0.9 / (r + 0.35)) * p * 26.0;
     vec2 cell = floor(s);
     float m = hash(cell);
-    if (m > 0.9) {
+    if (m > 0.9 - 0.12 * band) {
         vec2 at = cell + vec2(hash(cell + 1.3), hash(cell + 4.1));
         float twinkle = 0.55 + 0.45 * sin(time * (1.0 + 2.0 * m) + m * 40.0);
         float around = smoothstep(0.18, 0.42, r);
         col += vec3(1.0, 0.82, 0.5) * smoothstep(0.14, 0.0, length(s - at)) * twinkle * around * 0.9;
     }
-    finalColor = vec4(col, clamp(dark * 0.97, 0.0, 1.0));
+
+    // the ring of gold on the edge that parts the dark, through its threads
+    float ring = 0.0;
+    if (open > 0.0 && open < 1.0) {
+        ring = exp(-pow((r - hole - fray + 0.1) / 0.035, 2.0)) * smoothstep(0.0, 0.08, open) * (1.0 - open);
+    }
+    vec3 gold = vec3(1.0, 0.8, 0.46) * (0.8 + 1.6 * pow(ridge, 3.0));
+    float a = clamp(max(dark * 0.97, ring * 0.75), 0.0, 1.0);
+    col = mix(col, gold, ring * (1.0 - dark * 0.5));
+    finalColor = vec4(col, a);
 }

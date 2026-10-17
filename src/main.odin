@@ -93,8 +93,9 @@ App :: struct {
 	post:            render.Post,
 	black_t:         f32, // < 0, or time since the screen began to fade to black (end of an act)
 	black_next:      int, // the level that follows the black
-	passage_t:       f32, // < 0, or time since Continue (or Retry) closed the dark over a level that broke up
-	passage_next:    int, // the level that rises out of it
+	passage_t:       f32, // < 0, or time since the dark began to close over a diorama that broke up
+	passage_next:    int, // the level that rises out of it...
+	passage_on:      bool, // ...or the next diorama of the same level
 	rest_t:          f32, // how long R (or the brazier's button) has been held, < 0 when up
 	rest_fired:      bool, // this hold has already restarted the level
 	rest_tap_t:      f32, // time since the last tap of R (pressed twice: the level again)
@@ -335,9 +336,7 @@ continue_story :: proc(app: ^App) {
 // one played broke up, through the veil if the boat took her.
 arrive_at :: proc(app: ^App, index: int) {
 	if app.game.parting {
-		app.passage_t = 0
-		app.passage_next = index
-		audio.play(.Wind, -18, 1.4)
+		start_passage(app, index, false)
 		return
 	}
 	if new_level(app, index) {
@@ -346,13 +345,25 @@ arrive_at :: proc(app: ^App, index: int) {
 	}
 }
 
-// The dark between two levels: it gathers in the middle as the level breaks
-// up (PASSAGE_DARK under the ending card), closes over the whole screen once
-// the player goes on (PASSAGE_CLOSE), then parts from the middle as the next
-// level rises (PASSAGE_OPEN).
+// The dark between two levels (or two dioramas of one): it gathers in the
+// middle as the diorama breaks up, a slow galaxy in it (PASSAGE_DARK, under
+// the ending card), closes over the whole screen once the player goes on (at
+// once between dioramas: PASSAGE_CLOSE), then a ring of gold parts it from
+// the middle as the next rises (PASSAGE_OPEN).
 PASSAGE_DARK :: 0.38
 PASSAGE_CLOSE :: 0.45
 PASSAGE_OPEN :: 1.6
+PASSAGE_RING :: PASSAGE_CLOSE + 0.15 // the ring sets out
+
+// Close the dark over the diorama that broke up, on into level `index` (or
+// the level's next diorama, `diorama`).
+@(private)
+start_passage :: proc(app: ^App, index: int, diorama: bool) {
+	app.passage_t = 0
+	app.passage_next = index
+	app.passage_on = diorama
+	audio.play(.Wind, -18, 1.4)
+}
 
 @(private)
 update_passage :: proc(app: ^App, dt: f32) {
@@ -362,12 +373,18 @@ update_passage :: proc(app: ^App, dt: f32) {
 	before := app.passage_t
 	app.passage_t += dt
 	if before < PASSAGE_CLOSE && app.passage_t >= PASSAGE_CLOSE {
-		if new_level(app, app.passage_next) {
+		switch {
+		case app.passage_on:
+			next_diorama(app)
+		case new_level(app, app.passage_next):
 			game.begin(&app.game, prologue = app.passage_next != app.ending.level, arrival = true, veiled = false)
 			app.screen = .Play
 		}
 	}
-	if app.passage_t >= PASSAGE_CLOSE + 0.15 + PASSAGE_OPEN {
+	if before < PASSAGE_RING && app.passage_t >= PASSAGE_RING {
+		audio.play(.Seam, -16, audio.semitones(-5))
+	}
+	if app.passage_t >= PASSAGE_RING + PASSAGE_OPEN {
 		app.passage_t = -1
 	}
 }
@@ -378,10 +395,10 @@ passage_dark :: proc(app: ^App) -> (amount, open: f32) {
 	g := &app.game
 	if t := app.passage_t; t >= 0 {
 		amount = fx.lerp(f32(PASSAGE_DARK), 1, fx.sine_in_out(fx.progress(t, 0, PASSAGE_CLOSE)))
-		open = fx.sine_in_out(fx.progress(t, PASSAGE_CLOSE + 0.15, PASSAGE_OPEN))
+		open = fx.sine_in_out(fx.progress(t, PASSAGE_RING, PASSAGE_OPEN))
 		return
 	}
-	if g.parting && !game.leads_on(g) && (g.phase == .Ending_Exit || g.phase == .Finished) {
+	if g.parting && (g.phase == .Ending_Exit || g.phase == .Finished) {
 		t := g.phase == .Finished ? game.PART_END : g.phase_t
 		amount = PASSAGE_DARK * fx.sine_in_out(fx.progress(t, 0.9, game.PART_END - 0.9))
 	}
@@ -532,9 +549,8 @@ close_act_card :: proc(app: ^App) {
 	app.screen = .Play
 }
 
-// The level is over: record it, and show the ending card.
-// The exit of a diorama that is not the level's last: through the veil into
-// the next one, which rises into place (no card between them).
+// The exit of a diorama that is not the level's last: the next one rises out
+// of the dark (no card between them).
 next_diorama :: proc(app: ^App) {
 	g := &app.game
 	carried := app.carried
@@ -546,6 +562,7 @@ next_diorama :: proc(app: ^App) {
 	}
 }
 
+// The level is over: record it, and show the ending card.
 finish_level :: proc(app: ^App) {
 	g := &app.game
 	r := progress.Result {
@@ -687,7 +704,9 @@ frame :: proc(app: ^App) {
 	}
 	if app.screen == .Play && g.phase == .Finished {
 		if g.ending == .Exit && game.leads_on(g) {
-			next_diorama(app)
+			if app.passage_t < 0 {
+				start_passage(app, g.level_index, true)
+			}
 		} else {
 			finish_level(app)
 		}
