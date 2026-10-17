@@ -344,15 +344,16 @@ arrive_at :: proc(app: ^App, index: int) {
 	}
 }
 
-// The dark between two levels: it gathers in the middle as the level breaks
-// up, a slow galaxy in it (PASSAGE_DARK, under the ending card), closes over
-// the whole screen once the player goes on (PASSAGE_CLOSE), then a ring of
-// gold parts it from the middle as the next level rises (PASSAGE_OPEN). The
-// dioramas of one level have none: one breaks up, the next rises, in the open.
+// The dark between two levels, cut in facets like the world: it gathers in
+// the middle as the level breaks up, a slow galaxy in it (PASSAGE_DARK, under
+// the ending card), closes over the whole screen once the player goes on
+// (PASSAGE_CLOSE), then opens on the next level from where Psyche comes down,
+// a crack of gold on its edge (PASSAGE_OPEN). The dioramas of one level have
+// none: one breaks up, the next rises, in the open.
 PASSAGE_DARK :: 0.38
 PASSAGE_CLOSE :: 0.45
 PASSAGE_OPEN :: 1.6
-PASSAGE_RING :: PASSAGE_CLOSE + 0.15 // the ring sets out
+PASSAGE_RING :: PASSAGE_CLOSE + 0.15 // the dark begins to open
 
 // Close the dark over the level that broke up, on into level `index`.
 @(private)
@@ -372,6 +373,7 @@ update_passage :: proc(app: ^App, dt: f32) {
 	if before < PASSAGE_CLOSE && app.passage_t >= PASSAGE_CLOSE {
 		if new_level(app, app.passage_next) {
 			game.begin(&app.game, prologue = app.passage_next != app.ending.level, arrival = true, veiled = false)
+			app.game.arrive_traced = true
 			app.screen = .Play
 		}
 	}
@@ -397,6 +399,15 @@ passage_dark :: proc(app: ^App) -> (amount, open: f32) {
 		amount = PASSAGE_DARK * fx.sine_in_out(fx.progress(t, 0.9, game.PART_END - 0.9))
 	}
 	return
+}
+
+// Where the dark opens from (screen uv): where Psyche comes down onto the
+// start of the next level, the stones rising about her.
+@(private)
+passage_center :: proc(app: ^App, w, h: f32) -> render.Vec2 {
+	g := &app.game
+	view := render.scene_view(&app.scene, g, w, h)
+	return render.world_to_screen(view, g.psyche.pos - {0, 0, game.arrival_drop(g)}) / {w, h}
 }
 
 @(private)
@@ -746,7 +757,7 @@ frame :: proc(app: ^App) {
 	}
 	render.draw_veil(&app.renderer, g, w, h, app.time)
 	if amount, open := passage_dark(app); amount > 0 {
-		render.draw_threads(&app.renderer, w, h, app.time, amount, open)
+		render.draw_threads(&app.renderer, w, h, app.time, amount, open, passage_center(app, w, h))
 	}
 	if !(app.shooting && app.shots.no_ui) {
 		draw_screens(app)

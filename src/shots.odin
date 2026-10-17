@@ -224,7 +224,8 @@ LEVEL_TOUR := [?]Shot_Step {
 		}},
 	{0.3, "10a_closing", nil},
 	{0.5, "10a_arrival", nil},
-	{0.5, "10b_arrival", nil},
+	{0.25, "10a2_opening", nil},
+	{0.25, "10b_arrival", nil},
 	{0.6, "10c_arrival", nil},
 	{2.0, "10d_arrived", nil},
 }

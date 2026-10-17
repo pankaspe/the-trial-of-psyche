@@ -231,6 +231,7 @@ Game :: struct {
 	ferried:        bool, // the exit was by Charon's boat (phase Ending_Exit: its own timeline)
 	parting:        bool, // the exit leads into the level's next diorama: this one breaks up (no wind, no veil)
 	arrive_veiled:  bool, // the arrival comes through the veil (not from the level's diorama before)
+	arrive_traced:  bool, // set by the app: out of the dark between levels, gold traces the blocks as they rise
 	boxed:          bool, // the exit opened Proserpina's box (phase Ending_Exit: its own timeline)
 	rest:           Rest, // the last brazier Psyche lit
 	eagle_flying:   int, // the eagle carrying her (while psyche.step_kind is .Flight)
@@ -456,6 +457,7 @@ begin :: proc(g: ^Game, prologue := true, arrival := false, veiled := true) {
 		set_phase(g, .Arrival)
 		g.arrive_t = 0
 		g.arrive_veiled = veiled
+		g.arrive_traced = false
 		g.teach_pending = prologue && g.data.mechanic != .None
 		if veiled {
 			audio.play(.Wind, -10, 0.8)
@@ -1838,6 +1840,18 @@ ARRIVE_END :: 3.2
 ARRIVE_DROP :: 3.0 // cells above the start she comes down from
 VEIL_OUT :: 0.15
 VEIL_OUT_TIME :: 1.3
+
+// How bright the gold tracing the blocks is (0 .. 1): it comes up with them
+// out of the dark between the levels and fades once they stand.
+TRACE_FADE :: 2.6 // seconds into the arrival it begins to fade...
+TRACE_FADE_TIME :: 1.2 // ...over this long
+
+trace :: proc(g: ^Game) -> f32 {
+	if !g.arrive_traced || g.phase != .Arrival {
+		return 0
+	}
+	return 1 - fx.progress(g.arrive_t, TRACE_FADE, TRACE_FADE_TIME)
+}
 
 // How far above the start Psyche still is while she arrives.
 arrival_drop :: proc(g: ^Game) -> f32 {

@@ -110,6 +110,7 @@ Backdrop_Uniform :: enum u8 {
 	Rim,
 	Amount,
 	Open,
+	Center,
 }
 
 @(private)
@@ -139,6 +140,7 @@ BACKDROP_NAME := [Backdrop_Uniform]cstring {
 	.Rim          = "rim",
 	.Amount       = "amount",
 	.Open         = "open",
+	.Center       = "center",
 }
 
 // A backdrop shader and the locations of its uniforms (-1: not used by it).
@@ -887,6 +889,7 @@ draw_world :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 	draw_pieces(r, s, g, true)
 	draw_decals(g)
 	draw_glows(r, s, g, v)
+	draw_trace(s, g)
 	draw_mist(r, s, v)
 	end_3d()
 
@@ -2384,6 +2387,50 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	rlgl.EnableDepthMask()
 }
 
+// Out of the dark between the levels: gold traces the edges of each block as
+// it rises (from the start outward, like the dark's crack), then fades once
+// the diorama stands (game.trace).
+@(private)
+draw_trace :: proc(s: ^Scene, g: ^game.Game) {
+	fade := game.trace(g)
+	if fade <= 0.003 {
+		return
+	}
+	// the cube's twelve edges, as pairs of corners (bit 0 x, bit 1 y, bit 2 z)
+	EDGES :: [12][2]u8{{0, 1}, {2, 3}, {4, 5}, {6, 7}, {0, 2}, {1, 3}, {4, 6}, {5, 7}, {0, 4}, {1, 5}, {2, 6}, {3, 7}}
+	rlgl.DrawRenderBatchActive()
+	rlgl.DisableDepthMask()
+	rl.BeginBlendMode(.ALPHA) // gold on any stone, by day as by night
+	rlgl.Begin(rlgl.LINES)
+	for p, i in s.pieces {
+		if p.mesh != .Block {
+			continue
+		}
+		lift, _, visible, _, hidden := piece_state(g, p, i)
+		k := game.assembly(g, piece_cell(g, p), fx.hash01(u32(i) * 31 + 7))
+		if !visible || hidden || k <= 0.02 {
+			continue
+		}
+		m := piece_matrix(g, p, lift)
+		corner :: proc(m: rl.Matrix, b: u8) -> Vec3 {
+			// a hair outside the cube, so its own faces do not hide its edges
+			local := Vec3{b & 1 != 0 ? 1.004 : -0.004, b & 2 != 0 ? 1.004 : -0.004, b & 4 != 0 ? 1.004 : -0.004}
+			return rl.Vector3Transform(local, m)
+		}
+		grow := fx.cubic_out(fx.clamp01(k * 1.2)) // each edge drawn out from its first corner
+		color({0.98, 0.76, 0.36, fade * (0.45 + 0.55 * k)})
+		for e in EDGES {
+			a, b := corner(m, e[0]), corner(m, e[1])
+			vtx(a)
+			vtx(fx.lerp(a, b, grow))
+		}
+	}
+	rlgl.End()
+	rlgl.DrawRenderBatchActive()
+	rl.EndBlendMode()
+	rlgl.EnableDepthMask()
+}
+
 // An ellipse in the plane spanned by u and w, around `center`, in n slices.
 @(private)
 ellipse_3d :: proc(center, u, w: Vec3, rx, ry, tilt: f32, c: Color4, n := 18) {
@@ -2525,8 +2572,8 @@ draw_veil :: proc(r: ^Renderer, g: ^game.Game, width, height, time: f32) {
 }
 
 // The dark between two levels (`amount` how far it reaches, `open` how far it
-// has parted from the middle), over the world, under the interface.
-draw_threads :: proc(r: ^Renderer, width, height, time, amount, open: f32) {
+// has parted from `center`, screen uv), over the world, under the interface.
+draw_threads :: proc(r: ^Renderer, width, height, time, amount, open: f32, center: Vec2) {
 	if amount <= 0.003 || open >= 1 {
 		return
 	}
@@ -2535,6 +2582,7 @@ draw_threads :: proc(r: ^Renderer, width, height, time, amount, open: f32) {
 	set_bf(b, .Aspect, width / height)
 	set_bf(b, .Amount, amount)
 	set_bf(b, .Open, open)
+	set_bv2(b, .Center, center)
 	rl.BeginShaderMode(b.shader)
 	full_rect(r, {0, 0, width, height})
 	rl.EndShaderMode()
