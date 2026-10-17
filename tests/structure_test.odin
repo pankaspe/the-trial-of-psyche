@@ -277,7 +277,7 @@ dark_level_with_an_exit :: proc(t: ^testing.T) {
 	testing.expect(t, !g.lamp_on && g.lightings == 0, "no lamp in this level")
 	testing.expect(t, walk(t, &g, {2, 0, 1}) && 0 in g.fragments_taken, "Psyche picks up the fragment on the way")
 	testing.expect(t, walk(t, &g, {2, 1, 1}), "then walks on to the exit")
-	run(&g, game.EXIT_END + 0.5)
+	run(&g, game.PART_END + 0.5)
 	testing.expect(t, g.phase == .Finished && g.ending == .Exit, "the exit ends the level")
 }
 
@@ -307,7 +307,7 @@ a_level_of_two_dioramas :: proc(t: ^testing.T) {
 	testing.expect(t, g.diorama == 0 && g.dioramas == 2 && game.leads_on(&g), "the first diorama leads on")
 	game.begin(&g)
 	testing.expect(t, walk(t, &g, {2, 0, 1}) && walk(t, &g, {2, 1, 1}), "Psyche walks to the first exit (a fragment on the way)")
-	run(&g, game.EXIT_END + 0.5)
+	run(&g, game.PART_END + 0.5)
 	testing.expect(t, g.phase == .Finished && g.ending == .Exit, "the first diorama ends at its exit")
 
 	if err := game.load_text(&g, 0, TWO_DIORAMAS, 1); err != nil {
@@ -321,6 +321,6 @@ a_level_of_two_dioramas :: proc(t: ^testing.T) {
 	run(&g, game.ARRIVE_END + 0.2)
 	testing.expect(t, g.phase == .Play && !g.hud.title.active, "it rises into place without the level's title")
 	testing.expect(t, walk(t, &g, {1, 0, 1}) && walk(t, &g, {1, 1, 1}), "Psyche walks to the last exit (a fragment on the way)")
-	run(&g, game.EXIT_END + 0.5)
+	run(&g, game.PART_END + 0.5)
 	testing.expect(t, g.phase == .Finished && g.ending == .Exit, "the level ends")
 }

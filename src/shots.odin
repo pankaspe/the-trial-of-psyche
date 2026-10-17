@@ -127,7 +127,7 @@ SHOT_SCRIPT := [?]Shot_Step {
 	{0.1, "", proc(app: ^App) {game.toggle_lamp(&app.game); game.set_view(&app.game, 0)}},
 	{1.0, "10_roof_path_dark", proc(app: ^App) {place(app, ROOF_ENTRY)}},
 	{0.1, "", proc(app: ^App) {game.walk_to(&app.game, TOWER_DOOR)}},
-	{2.6, "10b_into_the_tower", nil}, // the first diorama breaks up through the veil
+	{2.6, "10b_into_the_tower", nil}, // the first diorama breaks up
 	{2.6, "10c_tower_rises", nil}, // the tower rises into place
 	{3.0, "10d_tower", nil},
 	{0.1, "", proc(app: ^App) {
@@ -210,10 +210,10 @@ LEVEL_TOUR := [?]Shot_Step {
 	{0.1, "", proc(app: ^App) {if app.screen == .Fragment {close_fragment(app)}}},
 	{0.1, "", proc(app: ^App) {tour_walk(app, app.game.data.exit)}},
 	{0.8, "07_exit", nil},
-	{1.0, "08_exit_wind", nil},
-	{1.2, "08b_flight", nil},
+	{1.0, "08_breaking_up", nil},
+	{1.2, "08b_dark", nil},
 	{3.5, "09_end_card", nil},
-	// on through the veil into the next level (or to black at the end of an act)
+	// on into the next level, out of the dark (or to black at the end of an act)
 	{0.1, "", proc(app: ^App) {
 			if app.screen != .Ending {
 				// a level the tour cannot finish (an ending, a puzzle): end it here
@@ -222,7 +222,8 @@ LEVEL_TOUR := [?]Shot_Step {
 			}
 			continue_story(app)
 		}},
-	{0.8, "10a_arrival", nil},
+	{0.3, "10a_closing", nil},
+	{0.5, "10a_arrival", nil},
 	{0.5, "10b_arrival", nil},
 	{0.6, "10c_arrival", nil},
 	{2.0, "10d_arrived", nil},

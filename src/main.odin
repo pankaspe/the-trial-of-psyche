@@ -18,6 +18,7 @@ import "vendor:raylib/rlgl"
 
 import "audio"
 import "content"
+import "fx"
 import "game"
 import "i18n"
 import "input"
@@ -92,6 +93,8 @@ App :: struct {
 	post:            render.Post,
 	black_t:         f32, // < 0, or time since the screen began to fade to black (end of an act)
 	black_next:      int, // the level that follows the black
+	passage_t:       f32, // < 0, or time since Continue (or Retry) closed the dark over a level that broke up
+	passage_next:    int, // the level that rises out of it
 	rest_t:          f32, // how long R (or the brazier's button) has been held, < 0 when up
 	rest_fired:      bool, // this hold has already restarted the level
 	rest_tap_t:      f32, // time since the last tap of R (pressed twice: the level again)
@@ -185,6 +188,7 @@ startup :: proc(app: ^App) -> bool {
 	app.screen = .Title
 	app.menu_fade = -1
 	app.black_t = -1
+	app.passage_t = -1
 	app.rest_t = -1
 	app.rest_tap_t = 1e3
 	return true
@@ -313,9 +317,10 @@ update_sound :: proc(app: ^App) {
 BLACK_OUT :: 1.0
 BLACK_IN :: 0.8
 
-// On to the next level. Within an act Psyche flies on through the veil and
-// arrives in the next level; at the end of an act the screen goes black and
-// the next act opens with its own card or cutscene.
+// On to the next level. Within an act the dark closes over the level that
+// broke up and the next rises out of it (after the boat, Psyche arrives
+// through the veil); at the end of an act the screen goes black and the next
+// act opens with its own card or cutscene.
 continue_story :: proc(app: ^App) {
 	next := app.ending.level + 1
 	if app.ending.ending != .Exit || content.closes_act(app.ending.level) || !content.is_built(next) {
@@ -323,10 +328,64 @@ continue_story :: proc(app: ^App) {
 		app.black_next = next
 		return
 	}
-	if new_level(app, next) {
-		game.begin(&app.game, arrival = true)
+	arrive_at(app, next)
+}
+
+// Into level `index` after an exit: out of the dark between the levels if the
+// one played broke up, through the veil if the boat took her.
+arrive_at :: proc(app: ^App, index: int) {
+	if app.game.parting {
+		app.passage_t = 0
+		app.passage_next = index
+		audio.play(.Wind, -18, 1.4)
+		return
+	}
+	if new_level(app, index) {
+		game.begin(&app.game, prologue = index != app.ending.level, arrival = true)
 		app.screen = .Play
 	}
+}
+
+// The dark between two levels: it gathers in the middle as the level breaks
+// up (PASSAGE_DARK under the ending card), closes over the whole screen once
+// the player goes on (PASSAGE_CLOSE), then parts from the middle as the next
+// level rises (PASSAGE_OPEN).
+PASSAGE_DARK :: 0.38
+PASSAGE_CLOSE :: 0.45
+PASSAGE_OPEN :: 1.6
+
+@(private)
+update_passage :: proc(app: ^App, dt: f32) {
+	if app.passage_t < 0 {
+		return
+	}
+	before := app.passage_t
+	app.passage_t += dt
+	if before < PASSAGE_CLOSE && app.passage_t >= PASSAGE_CLOSE {
+		if new_level(app, app.passage_next) {
+			game.begin(&app.game, prologue = app.passage_next != app.ending.level, arrival = true, veiled = false)
+			app.screen = .Play
+		}
+	}
+	if app.passage_t >= PASSAGE_CLOSE + 0.15 + PASSAGE_OPEN {
+		app.passage_t = -1
+	}
+}
+
+// How far the dark between the levels reaches (0 .. 1) and how far it has parted.
+@(private)
+passage_dark :: proc(app: ^App) -> (amount, open: f32) {
+	g := &app.game
+	if t := app.passage_t; t >= 0 {
+		amount = fx.lerp(f32(PASSAGE_DARK), 1, fx.sine_in_out(fx.progress(t, 0, PASSAGE_CLOSE)))
+		open = fx.sine_in_out(fx.progress(t, PASSAGE_CLOSE + 0.15, PASSAGE_OPEN))
+		return
+	}
+	if g.parting && !game.leads_on(g) && (g.phase == .Ending_Exit || g.phase == .Finished) {
+		t := g.phase == .Finished ? game.PART_END : g.phase_t
+		amount = PASSAGE_DARK * fx.sine_in_out(fx.progress(t, 0.9, game.PART_END - 0.9))
+	}
+	return
 }
 
 @(private)
@@ -641,6 +700,7 @@ frame :: proc(app: ^App) {
 	}
 	update_toasts(app, dt)
 	update_black(app, dt)
+	update_passage(app, dt)
 	update_levels(app, dt)
 	side := app.screen == .Levels || app.screen == .Settings
 	app.stage = clamp(app.stage + (side ? dt : -dt) / STAGE_TIME, 0, 1)
@@ -674,6 +734,9 @@ frame :: proc(app: ^App) {
 		render.post_draw(&app.post, w, h)
 	}
 	render.draw_veil(&app.renderer, g, w, h, app.time)
+	if amount, open := passage_dark(app); amount > 0 {
+		render.draw_threads(&app.renderer, w, h, app.time, amount, open)
+	}
 	if !(app.shooting && app.shots.no_ui) {
 		draw_screens(app)
 	}
@@ -1093,18 +1156,18 @@ draw_screens :: proc(app: ^App) {
 			close_settings(app)
 		}
 	case .Ending:
-		switch ui.ending_card(u, app.ending, app.card_t) {
+		going := app.passage_t >= 0 || app.black_t >= 0
+		gone := app.passage_t >= 0 ? fx.progress(app.passage_t, 0, PASSAGE_CLOSE) : 0
+		act := ui.ending_card(u, app.ending, app.card_t, gone)
+		if going {
+			act = .None // on its way out
+		}
+		switch act {
 		case .Next:
-			if app.black_t < 0 {
-				continue_story(app)
-			}
+			continue_story(app)
 		case .Retry:
 			if app.ending.ending == .Exit {
-				// back through the veil into the same level
-				if new_level(app, app.ending.level) {
-					game.begin(g, prologue = false, arrival = true)
-					app.screen = .Play
-				}
+				arrive_at(app, app.ending.level) // the same level rises again
 			} else {
 				play_level(app)
 			}

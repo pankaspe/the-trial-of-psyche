@@ -31,9 +31,9 @@ can_reach :: proc(g: ^game.Game, c: iso.Cell) -> bool {
 
 @(private)
 exits :: proc(t: ^testing.T, g: ^game.Game) {
-	run(g, game.EXIT_END + 0.5)
+	run(g, game.PART_END + 0.5)
 	testing.expect(t, g.phase == .Finished && g.ending == .Exit, "the exit ends the level")
-	testing.expect(t, game.exit_lift(g) > 1, "the wind lifts Psyche")
+	testing.expect(t, game.exit_lift(g) < -1, "the diorama breaks up and she goes down with her stone")
 	testing.expect(t, g.data.has_outro, "the level has its own ending text")
 }
 

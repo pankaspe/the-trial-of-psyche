@@ -108,6 +108,8 @@ Backdrop_Uniform :: enum u8 {
 	Color_Mid,
 	Color_Near,
 	Rim,
+	Amount,
+	Open,
 }
 
 @(private)
@@ -135,6 +137,8 @@ BACKDROP_NAME := [Backdrop_Uniform]cstring {
 	.Color_Mid    = "color_mid",
 	.Color_Near   = "color_near",
 	.Rim          = "rim",
+	.Amount       = "amount",
+	.Open         = "open",
 }
 
 // A backdrop shader and the locations of its uniforms (-1: not used by it).
@@ -151,6 +155,7 @@ Renderer :: struct {
 	ridges:     Backdrop,
 	clouds:     Backdrop,
 	veil:       Backdrop, // between the levels (uses time, aspect and its own alpha)
+	threads:    Backdrop, // the dark between two levels where the last broke up
 	radial:     rl.Texture2D, // soft round gradient for glows and particles
 	white:      rl.Texture2D, // 1x1, for full-rect shader passes
 	veil_alpha: i32,
@@ -175,6 +180,7 @@ init :: proc(r: ^Renderer) {
 	r.clouds = load_backdrop(content.SHADER_CLOUDS_FS)
 	r.veil = load_backdrop(content.SHADER_VEIL_FS)
 	r.veil_alpha = rl.GetShaderLocation(r.veil.shader, "alpha")
+	r.threads = load_backdrop(content.SHADER_THREADS_FS)
 	build_meshes(&r.meshes)
 
 	// radial gradient: white centre, 0.45 alpha at 35%, transparent edge
@@ -202,6 +208,7 @@ shutdown :: proc(r: ^Renderer) {
 	rl.UnloadShader(r.ridges.shader)
 	rl.UnloadShader(r.clouds.shader)
 	rl.UnloadShader(r.veil.shader)
+	rl.UnloadShader(r.threads.shader)
 	rl.UnloadTexture(r.radial)
 	rl.UnloadTexture(r.white)
 	r^ = {}
@@ -239,6 +246,7 @@ Scene :: struct {
 	sparks:     fx.Pool(64), // around Cupid (world)
 	dust:       fx.Pool(192), // falling from the cracks (world)
 	debris:     fx.Pool(160), // gold gathering where a veiled stone becomes real (world)
+	embers:     fx.Pool(160), // rising from the pieces as the diorama breaks up (world)
 	wind:       fx.Pool(96), // Zephyr's breath over the exit (world)
 	mist:       fx.Pool(128), // the Stygian sleep out of Proserpina's box (world, dark)
 	rng:        fx.Rng,
@@ -576,10 +584,6 @@ scene_view :: proc(s: ^Scene, g: ^game.Game, width, height: f32) -> View {
 	if len(g.data.tiers) > 0 {
 		v.center.y = fx.lerp(s.pan_from, tier_center(s, s.tier), fx.sine_in_out(fx.clamp01(s.pan_t / PAN_TIME)))
 	}
-	if lift := game.exit_lift(g); lift > 0 {
-		// the camera follows her a little way up as the wind takes her
-		v.center.y -= lift * 64 * 0.55
-	}
 	if g.phase == .Prologue || g.boxed {
 		cam := game.cine(g)
 		her := world_to_proto(v, g.psyche.pos + {0, 0, 0.3})
@@ -655,14 +659,15 @@ scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
 			})
 		}
 	}
-	// Zephyr's breath: motes spiralling up from the exit, a gust when it takes Psyche
+	// Zephyr's breath: motes spiralling up from the exit, a gust when he takes
+	// Psyche from the Oracle's crag
 	alone_wind := game.procession(g) && g.phase_t > game.prologue_alone(g) - 0.5
 	if (g.data.has_exit && g.phase != .Finished && exit_alpha(g) > 0) || alone_wind {
-		gust := g.phase == .Ending_Exit && !g.boxed || alone_wind
+		gust := alone_wind
 		want := gust ? 60 : 40
 		if s.wind.count < want && fx.randf(&s.rng) < dt * f32(want) / 3 * 2 {
 			c := g.data.has_exit ? shown(g, exit_point(g), g.data.exit_under) : g.psyche.pos
-			if gust && (g.phase == .Ending_Exit && !g.boxed || fx.randf(&s.rng) < 0.7) {
+			if gust && fx.randf(&s.rng) < 0.7 {
 				c = g.psyche.pos
 			}
 			a := fx.rand_range(&s.rng, 0, math.TAU)
@@ -763,7 +768,26 @@ scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
 			color = {1.0, 0.82, 0.45, 0.85},
 		})
 	}
+	// sparks rising from the pieces as the diorama breaks up
+	if g.parting && g.phase == .Ending_Exit {
+		for p, i in s.pieces {
+			c := piece_cell(g, p)
+			k := game.assembly(g, c, fx.hash01(u32(i) * 31 + 7))
+			if k < 0.1 || k > 0.85 || fx.randf(&s.rng) > dt * 1.2 {
+				continue
+			}
+			fx.emit(&s.embers, {
+				pos   = {f32(c.x) + fx.randf(&s.rng), f32(c.y) + fx.randf(&s.rng), f32(c.z) + 0.5 - 9 * (1 - k)},
+				vel   = {fx.rand_range(&s.rng, -0.1, 0.1), fx.rand_range(&s.rng, -0.1, 0.1), fx.rand_range(&s.rng, 0.4, 0.9)},
+				accel = {0, 0, 0.25},
+				life  = 2.6,
+				size  = 32 * fx.rand_range(&s.rng, 0.08, 0.2),
+				color = {1.0, 0.8, 0.45, 0.85},
+			})
+		}
+	}
 	fx.update(&s.debris, dt)
+	fx.update(&s.embers, dt)
 	fx.update(&s.motes, dt)
 	fx.update(&s.sparks, dt)
 	fx.update(&s.dust, dt)
@@ -2349,6 +2373,11 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 		col.a *= fx.mote_alpha(p)
 		glow(v, p.pos, p.size * 0.5, col)
 	}
+	for p in fx.alive(&s.embers) {
+		col := p.color
+		col.a *= fx.mote_alpha(p)
+		glow(v, p.pos, p.size * 0.5, col)
+	}
 	rlgl.End()
 	rlgl.SetTexture(0)
 	rl.EndBlendMode()
@@ -2490,6 +2519,22 @@ draw_veil :: proc(r: ^Renderer, g: ^game.Game, width, height, time: f32) {
 	set_bf(b, .Aspect, width / height)
 	v := a
 	rl.SetShaderValue(b.shader, r.veil_alpha, &v, .FLOAT)
+	rl.BeginShaderMode(b.shader)
+	full_rect(r, {0, 0, width, height})
+	rl.EndShaderMode()
+}
+
+// The dark between two levels (`amount` how far it reaches, `open` how far it
+// has parted from the middle), over the world, under the interface.
+draw_threads :: proc(r: ^Renderer, width, height, time, amount, open: f32) {
+	if amount <= 0.003 || open >= 1 {
+		return
+	}
+	b := r.threads
+	set_bf(b, .Time, time)
+	set_bf(b, .Aspect, width / height)
+	set_bf(b, .Amount, amount)
+	set_bf(b, .Open, open)
 	rl.BeginShaderMode(b.shader)
 	full_rect(r, {0, 0, width, height})
 	rl.EndShaderMode()

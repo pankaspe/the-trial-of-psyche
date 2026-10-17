@@ -302,14 +302,16 @@ Ending_Info :: struct {
 	has_outro:    bool,
 }
 
-// The card after an ending; `t` is the time since it appeared.
-ending_card :: proc(u: ^Ui, info: Ending_Info, t: f32) -> (act: Menu_Action) {
+// The card after an ending; `t` is the time since it appeared, `gone` (0 .. 1)
+// how far it has faded out as the game goes on.
+ending_card :: proc(u: ^Ui, info: Ending_Info, t: f32, gone: f32 = 0) -> (act: Menu_Action) {
 	s := u.scale
-	// after an exit the card floats on the veil between the levels: a lighter shade
+	// after an exit the card floats in the dark between the levels: a lighter shade
 	veiled := info.ending == .Exit
-	focus_shade(u, clamp(t / 1.2, 0, 1) * (veiled ? 0.4 : 1))
-	shade(u, (veiled ? 0.08 : 0.25) * clamp(t / 1.5, 0, 1))
-	a := clamp(t / 2, 0, 1)
+	stay := 1 - gone
+	focus_shade(u, clamp(t / 1.2, 0, 1) * (veiled ? 0.4 : 1) * stay)
+	shade(u, (veiled ? 0.08 : 0.25) * clamp(t / 1.5, 0, 1) * stay)
+	a := clamp(t / 2, 0, 1) * stay
 	cx := u.width * 0.5
 	body := Style{size = 36, color = TEXT, face = .Italic, shadow = true}
 
@@ -341,7 +343,7 @@ ending_card :: proc(u: ^Ui, info: Ending_Info, t: f32) -> (act: Menu_Action) {
 	y += 40 * s
 	text(u, note, {cx, y}, {size = 26, color = DIM, face = .Italic, shadow = true}, .Center, a)
 	y += 50 * s
-	a_ach := clamp((t - 1.5) / 1, 0, 1)
+	a_ach := clamp((t - 1.5) / 1, 0, 1) * stay
 	for ach in info.unlocked {
 		line := fmt.tprintf("%s · %s", i18n.tr(.Achievement), i18n.tr(progress.ACHIEVEMENT_NAME[ach]))
 		text(u, line, {cx, y}, {size = 26, color = GOLD, face = .Semi, shadow = true}, .Center, a_ach)

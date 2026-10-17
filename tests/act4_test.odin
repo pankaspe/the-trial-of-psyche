@@ -40,7 +40,7 @@ boat_ferries_her_away :: proc(t: ^testing.T) {
 	testing.expect(t, !game.is_over(&g), "the landing does not end the level by itself")
 	testing.expect(t, game.at_boat(&g) && g.hud.hint.key == .Hint_Boat, "Charon waits, and she is told how to board")
 	testing.expect(t, game.board_boat(&g) && g.ferried, "Space: into the boat")
-	testing.expect(t, game.exit_lift(&g) == 0, "no wind lifts her: the boat takes her")
+	testing.expect(t, game.exit_lift(&g) == 0, "the diorama does not break up: the boat takes her")
 	run(&g, game.BOAT_PUSH + 1)
 	testing.expect(t, g.psyche.pos.x > 3.5 + game.BOAT_SEAT, "she goes with the boat, out over the water")
 	testing.expect(t, g.lightning_t >= 0, "the sky cracks as he takes the coin")
@@ -137,7 +137,7 @@ pomegranate_turns_the_world_over :: proc(t: ^testing.T) {
 	testing.expect(t, palace.solid_at(&g.palace, {3, 2, 2}).kind == .Stairs, "its stairs stand up")
 	testing.expect(t, palace.solid_at(&g.palace, {1, 2, 0}).kind == .Block, "the rock hangs under the stones now")
 	testing.expect(t, walk(t, &g, g.data.exit), "under the stones she walks to the exit")
-	run(&g, game.EXIT_END + 0.5)
+	run(&g, game.PART_END + 0.5)
 	testing.expect(t, g.phase == .Finished && g.ending == .Exit, "the exit of the world below ends the level")
 }
 

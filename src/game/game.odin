@@ -1819,27 +1819,21 @@ start_ending :: proc(g: ^Game, p: Phase) {
 		audio.play(.Good, -2)
 	case .Ending_Exit:
 		g.boxed = g.data.has_box && !g.ferried
-		g.parting = leads_on(g) && !g.ferried && !g.boxed
+		g.parting = !g.ferried && !g.boxed
 		switch {
 		case g.ferried: audio.play(.Oar, -10)
 		case g.boxed: audio.play(.Wind, -16, 0.5)
-		case g.parting: audio.play(.Rumble, -14, 0.8)
-		case: audio.play(.Wind, -4)
+		case: audio.play(.Rumble, -14, 0.8) // it breaks up
 		}
 	case .Play, .Sigil, .Mechanism, .Time, .Overturn, .Prologue, .Arrival, .Finished:
 	}
 }
 
-// Timeline of an exit: the wind gathers, lifts Psyche and takes her away,
-// up through the veil between the levels.
-EXIT_LIFT :: 0.5
-EXIT_END :: 3.6
-EXIT_HEIGHT :: 5.0 // cells she rises before the veil closes
-VEIL_IN :: 1.4 // the veil starts to close...
-VEIL_IN_TIME :: 1.8 // ...and is closed after this long
+// The veil between the levels closes this long after the boat is lost in the mist.
+VEIL_IN_TIME :: 1.8
 
-// Timeline of an arrival: the veil opens, the palace rises into place from
-// the start outward, Psyche comes down onto the start.
+// Timeline of an arrival: the palace rises into place from the start outward
+// (out of the veil after the boat), Psyche comes down onto the start.
 ARRIVE_END :: 3.2
 ARRIVE_DROP :: 3.0 // cells above the start she comes down from
 VEIL_OUT :: 0.15
@@ -1862,20 +1856,19 @@ arrival_rise :: proc(g: ^Game, d: f32, jitter: f32) -> f32 {
 	return fx.cubic_out(fx.progress(g.arrive_t, 0.45 + d * 0.08 + jitter * 0.15, 1.0))
 }
 
-// How long the exit lasts: the wind's, the crossing in Charon's boat, the box
-// opened, or the diorama breaking up.
+// How long the exit lasts: the crossing in Charon's boat, the box opened, or
+// the diorama breaking up.
 exit_end :: proc(g: ^Game) -> f32 {
 	switch {
 	case g.ferried: return BOAT_END
 	case g.boxed: return BOX_END
-	case g.parting: return PART_END
 	}
-	return EXIT_END
+	return PART_END
 }
 
-// Timeline of a diorama breaking up at an exit that leads on: the pieces
-// sink away from the far side in, the stones under her last, and she goes
-// down with them.
+// Timeline of a diorama breaking up at an exit (but the boat's and the box's):
+// the pieces sink away from the far side in, the stones under her last, and
+// she goes down with them.
 PART_END :: 2.8
 PART_SPREAD :: 1.5 // the farthest piece goes this long before hers
 PART_FALL :: 0.9 // each piece's fall
@@ -1913,15 +1906,15 @@ floors_shown :: proc(g: ^Game) -> f32 {
 	return 1
 }
 
-// The veil between the levels over the world: closing as Psyche flies away
-// through an exit (or the boat is lost in the mist), opening as she arrives.
+// The veil between the levels over the world: closing as the boat is lost in
+// the mist (or the box's sleep falls), opening as she arrives after it.
 // 0: no veil, 1: closed.
 veil :: proc(g: ^Game) -> f32 {
 	switch {
 	case g.parting && (g.phase == .Ending_Exit || g.phase == .Finished), g.phase == .Arrival && !g.arrive_veiled:
-		return 0 // from one diorama of a level to the next, in the open
+		return 0 // the diorama breaks up and the next rises, in the open
 	case g.phase == .Ending_Exit:
-		start: f32 = g.ferried ? BOAT_VEIL : g.boxed ? BOX_VEIL : VEIL_IN
+		start: f32 = g.ferried ? BOAT_VEIL : BOX_VEIL
 		return fx.sine_in_out(fx.progress(g.phase_t, start, g.boxed ? BOX_VEIL_TIME : VEIL_IN_TIME))
 	case g.phase == .Finished && g.ending == .Exit:
 		return 1
@@ -1931,17 +1924,13 @@ veil :: proc(g: ^Game) -> f32 {
 	return 0
 }
 
-// How high the wind has lifted Psyche (cells) at the exit; below zero as she
-// goes down with her stone when the diorama breaks up.
+// How far Psyche has gone down with her stone (cells, below zero) as the
+// diorama breaks up at the exit.
 exit_lift :: proc(g: ^Game) -> f32 {
-	if g.ferried || g.boxed || g.phase != .Ending_Exit && !(g.phase == .Finished && g.ending == .Exit) {
+	if !g.parting || g.phase != .Ending_Exit && g.phase != .Finished {
 		return 0
 	}
-	if g.parting {
-		return -9 * (1 - assembly(g, g.psyche.cell - {0, 0, 1}, 1))
-	}
-	t := g.phase == .Finished ? EXIT_END : g.phase_t
-	return EXIT_HEIGHT * fx.quad_in(fx.clamp01((t - EXIT_LIFT) / (EXIT_END - EXIT_LIFT)))
+	return -9 * (1 - assembly(g, g.psyche.cell - {0, 0, 1}, 1))
 }
 
 // --- Charon's boat ---------------------------------------------------------------------

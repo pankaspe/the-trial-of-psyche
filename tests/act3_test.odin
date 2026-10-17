@@ -81,7 +81,7 @@ sundial_turns_the_time :: proc(t: ^testing.T) {
 	testing.expect(t, sol.solved && sol.times == 1, "the solver turns the time once")
 	testing.expect(t, g.palace.day, "the solver leaves the palace as loaded (by day)")
 	testing.expect(t, play_plan(t, &g, sol.plan[:]), "the game accepts every move")
-	run(&g, game.EXIT_END + 0.5)
+	run(&g, game.PART_END + 0.5)
 	testing.expect(t, game.is_over(&g), "the plan reaches the exit")
 }
 
@@ -138,7 +138,7 @@ the_flame_waits_for_evening :: proc(t: ^testing.T) {
 	sol := palace.solve(&h.palace, palace.exit_spot(&h.data), nil, virtual.arena_allocator(&arena))
 	testing.expect(t, sol.solved && sol.times == 1 && sol.lightings == 1, "solved: the evening, then the flame")
 	testing.expect(t, play_plan(t, &h, sol.plan[:]), "the game accepts every move")
-	run(&h, game.EXIT_END + 0.5)
+	run(&h, game.PART_END + 0.5)
 	testing.expect(t, game.is_over(&h), "the plan reaches the exit")
 }
 
@@ -243,6 +243,6 @@ eagle_flies_one_way :: proc(t: ^testing.T) {
 	sol := palace.solve(&h.palace, palace.exit_spot(&h.data), nil, virtual.arena_allocator(&arena))
 	testing.expect(t, sol.solved && sol.flights == 1 && sol.lightings == 1, "solved: the seal, then the eagle")
 	testing.expect(t, play_plan(t, &h, sol.plan[:]), "the game accepts every move")
-	run(&h, game.EXIT_END + 0.5)
+	run(&h, game.PART_END + 0.5)
 	testing.expect(t, game.is_over(&h), "the plan reaches the exit")
 }
