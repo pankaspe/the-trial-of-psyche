@@ -16,7 +16,7 @@ case "${1:-run}" in
 	release) odin build src -out:build/trial-of-psyche -o:speed "${FLAGS[@]}" ;;
 	run)     odin build src -out:build/trial-of-psyche-debug -debug "${FLAGS[@]}" && ./build/trial-of-psyche-debug ;;
 	test)    odin test tests "${FLAGS[@]}" -all-packages ;;
-	check)   odin run tools/level_check -out:build/level_check "${FLAGS[@]}" -- "${2:?level file}" ;;
+	check)   : "${2:?level file}"; odin run tools/level_check -out:build/level_check "${FLAGS[@]}" -- "${@:2}" ;;
 	dist)
 		ver="${2:?version, e.g. 0.1.0}"
 		name="the-trial-of-psyche-$ver-linux-x86_64"

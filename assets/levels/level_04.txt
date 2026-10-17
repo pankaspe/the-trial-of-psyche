@@ -191,7 +191,7 @@
 # the stairs under the portico hide from every view: only the lamp's light
 # finds them. From the balcony a seam (view 1) joins the seal's pillar; the
 # lamp lit on the seal raises a bridge of five stones to the gallery, and from
-# the gallery the first view joins Cupid's chamber, where the lamp is lit.
+# the gallery the first view joins the roof of Cupid's tower: the way in.
 # The fragment: from the west walk, four pillars, each joined to the next by
 # another view (3, 2, 1, 0).
 size 16
@@ -258,12 +258,11 @@ rise 11 8 4
 # the gallery (h5) at the foot of Cupid's tower
 column 11 9 0 4
 column 10 9 0 4
-# Cupid's tower: the chamber on the roof (h6), joined to the gallery in view 0
+# Cupid's tower: its roof (h6), joined to the gallery in view 0, leads in
 column 13 10 0 5
 column 14 10 0 5
 column 13 11 0 5
 column 14 11 0 5
-prop bed 14 11 6 mx
 prop rail 13 10 6 my
 prop rail 14 10 6 my
 prop rail 14 10 6 px
@@ -280,13 +279,13 @@ prop rail 3 11 6 my
 
 start 10 13 1
 sigil 11 3 5
-amore 14 11 6
+exit 14 11 6
 lamp 3
 fragment 3 11 6
 intro intro_i_4
 # candelabra: two burning at the arrival, then a row put out for the night
 # where the lamp leads (the portico, the balcony, the seal, the gallery) up
-# to Cupid's, lit with the lamp in the chamber
+# to the roof of Cupid's tower
 candelabrum 9 12 1 mx lit
 candelabrum 4 9 2 mx lit
 candelabrum 6 7 3 mx
@@ -308,3 +307,117 @@ prop sconce 11 3 4 px
 prop sconce 13 11 5 py
 prop sconce 14 10 5 px
 prop sconce 1 10 4 px
+
+diorama
+# The tower (the second diorama): inside Cupid's tower the climb goes on, the
+# chamber on its roof (h8). The west stairs hide behind the tower from the
+# arrival's view; from the north terrace a seam (view 1) joins the first
+# seal's pillar, whose bridge (the lamp lit there) is crossed in the dark: a
+# seam (view 0) to the east terrace, where a portico hides its stairs from
+# every view. From the gallery a seam (view 2) joins the second seal's ledge;
+# the lamp lit there raises the steps into the chamber, where it is lit
+# beside Cupid. The fragment: a pillar as high as the chamber's floor, joined
+# to the east terrace in view 2.
+size 15
+biome palace
+setting deep_night
+floor basin 3 1 15 13
+# the tower: its roof (h8) is Cupid's chamber
+column 6 6 0 7
+column 6 7 0 7
+column 6 8 0 7
+column 7 6 0 7
+column 7 7 0 7
+column 7 8 0 7
+column 8 6 0 7
+column 8 7 0 7
+column 8 8 0 7
+prop bed 8 6 8 mx
+prop rail 6 6 8 mx
+prop rail 6 7 8 mx
+prop rail 6 8 8 mx
+prop rail 6 6 8 my
+prop rail 7 6 8 my
+prop rail 8 6 8 my
+prop rail 8 6 8 px
+prop rail 8 7 8 px
+prop rail 8 8 8 px
+prop rail 6 8 8 py
+prop rail 8 8 8 py
+# the south walk (h1)
+column 4 12 0 0
+column 5 12 0 0
+column 6 12 0 0
+column 7 12 0 0
+column 8 12 0 0
+column 9 12 0 0
+column 10 12 0 0
+column 11 12 0 0
+stairs 4 11 1 my
+# the west walk (h2)
+column 4 5 0 1
+column 4 6 0 1
+column 4 7 0 1
+column 4 8 0 1
+column 4 9 0 1
+column 4 10 0 1
+stairs 4 4 2 my
+# the north terrace (h3)
+column 4 3 0 2
+column 5 3 0 2
+column 6 3 0 2
+column 7 3 0 2
+# the first seal's pillar (h4), joined to the terrace in view 1, and its bridge
+column 9 2 0 3
+rise 10 2 3
+rise 11 2 3
+rise 12 2 3
+rise 12 3 3
+# the east terrace (h5): joined to the bridge in view 0
+column 13 5 0 4
+column 13 6 0 4
+column 13 7 0 4
+column 13 8 0 4
+# the portico: stairs only the lamp finds
+stairs 13 9 5 py
+column 12 9 0 5
+prop pillar 12 9 6
+column 14 9 0 5
+prop pillar 14 9 6
+column 12 8 0 5
+prop pillar 12 8 6
+column 14 8 0 5
+prop pillar 14 8 6
+# the gallery (h6)
+column 13 10 0 5
+column 13 11 0 5
+column 12 11 0 5
+column 11 11 0 5
+column 10 11 0 5
+column 9 11 0 5
+prop rail 9 11 6 my
+# the fragment: a pillar as high as the chamber's floor, joined to the east terrace in view 2
+column 10 3 0 6
+# the second seal's ledge (h7), joined to the gallery in view 2; the steps it raises into the chamber
+column 7 10 0 6
+rise 7 9 7 my 2
+start 11 12 1
+sigil 9 2 4
+sigil 7 10 7
+amore 8 6 8
+lamp 4
+fragment 10 3 7
+intro intro_i_4b
+# candelabra: one burning at the arrival, the others put out for the night
+# where the lamp leads (the seals, the portico) up to Cupid's bed
+candelabrum 10 12 1 my lit
+candelabrum 9 2 4 mx
+candelabrum 13 8 5 px
+candelabrum 7 10 7 mx
+candelabrum 6 8 8 py
+prop sconce 4 9 1 mx
+prop sconce 7 3 2 my
+prop sconce 6 6 7 mx
+prop sconce 8 6 7 my
+prop sconce 13 5 4 px
+prop sconce 11 11 5 py

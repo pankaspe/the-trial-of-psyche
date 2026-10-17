@@ -141,6 +141,7 @@ Key :: enum u16 {
 	Fragment_03,
 	Fragment_03b, // I.3 hides two: the sisters' statues
 	Fragment_04,
+	Fragment_04b, // I.4's tower
 	Fragment_05,
 	Fragment_05b, // II.1 hides two: the god seen by the lamp, the arrow
 	Fragment_06,
@@ -275,6 +276,7 @@ Key :: enum u16 {
 	Intro_I_2,
 	Intro_I_3,
 	Intro_I_4,
+	Intro_I_4b, // I.4's second diorama: the tower
 	Intro_II_1,
 	Intro_II_2,
 	Intro_II_3,
@@ -724,6 +726,7 @@ IT := [Key]string {
 	.Fragment_03    = "La sorella maggiore si lamenta... a lei è toccato un marito più vecchio di suo padre, più calvo di una zucca, che tiene la casa chiusa con sbarre e catene.",
 	.Fragment_03b   = "«E io?» dice l'altra «ho un marito piegato in due dai dolori alle ossa. Gli massaggio le dita storte con impiastri puzzolenti. Non una moglie, un'infermiera!»",
 	.Fragment_04    = "Il padre, temendo l'ira degli Dèi, interroga l'antico oracolo di Apollo a Mileto. Il Dio risponde in versi: «lo sposo è un male alato, che fa tremare anche Giove.»",
+	.Fragment_04b   = "Si affretta, esita; osa, trema; diffida, si adira. E nello stesso corpo odia la belva e ama il marito.",
 	.Fragment_05b   = "Alla luce della lampada non c'è nessuna belva: c'è Amore, il più bello degli Dèi. Capelli d'oro profumati d'ambrosia, ali di rugiada che brillano sulle spalle. Anche la fiamma, vedendolo, si ravviva.",
 	.Fragment_05    = "Mentre guarda le armi del Dio, Psiche si punge con una delle sue frecce. Così, senza saperlo, si innamora di Amore.",
 	.Fragment_06    = "Le fiaccole nuziali fanno fumo nero, il flauto suona un lamento. Tutta la città accompagna la sposa come a un funerale.",
@@ -860,6 +863,7 @@ IT := [Key]string {
 	.Intro_I_2      = "Psiche si sveglia su un prato. Davanti a lei, una reggia che non è opera di mani umane, e voci senza corpo pronte a servirla.",
 	.Intro_I_3      = "Ogni notte lo sposo torna, e la avverte: le sorelle vorranno convincerla a guardare il suo volto. «Se lo vedrai, non lo vedrai più.»",
 	.Intro_I_4      = "Notte. Lo sposo dorme in cima alla torre. Psiche ha con sé la lampada e il rasoio, come le hanno detto le sorelle.",
+	.Intro_I_4b     = "La torre dello sposo. Ogni gradino la avvicina al letto, e a ciò che le sorelle chiamano mostro.",
 	.Intro_II_1     = "Psiche si rialza tra le rocce del bosco. Per ritrovarlo dovrà attraversare la notte.",
 	.Intro_II_2     = "Disperata, Psiche si getta nel fiume. Ma il fiume teme il dio che brucia perfino le acque, e con un'onda gentile la posa sulla riva.",
 	.Intro_II_3     = "Psiche va dalla sorella maggiore e le dice: «Il mio sposo ora vuole te.» La sorella corre alla rupe, senza dirlo a nessuno.",
@@ -1129,6 +1133,7 @@ EN := [Key]string {
 	.Fragment_03    = "The elder sister complains: she got a husband older than her father, balder than a gourd, who keeps the house shut with bars and chains.",
 	.Fragment_03b   = "“And I,” says the other, “have a husband bent double by aching joints. I rub his crooked fingers with stinking poultices: not a wife, a nurse.”",
 	.Fragment_04    = "Her father, fearing the anger of the gods, consults the ancient oracle of Apollo at Miletus. The god answers in verse: the bridegroom is a winged evil that makes even Jupiter tremble.",
+	.Fragment_04b   = "She hurries, she lingers; she dares, she trembles; she doubts, she rages. And in one and the same body she hates the beast and loves the husband.",
 	.Fragment_05b   = "In the lamplight there is no beast: there is Love, the fairest of the gods. Golden hair fragrant with ambrosia, dewy wings shining on his shoulders. Even the flame, seeing him, burns brighter.",
 	.Fragment_05    = "Looking at the god's weapons, Psyche pricks herself on one of his arrows. So, without knowing it, she falls in love with Love.",
 	.Fragment_06    = "The wedding torches burn with black smoke, the flute plays a lament. The whole city follows the bride as if to a funeral.",
@@ -1265,6 +1270,7 @@ EN := [Key]string {
 	.Intro_I_2      = "Psyche wakes on a meadow. Before her stands a palace not made by human hands, and bodiless voices ready to serve her.",
 	.Intro_I_3      = "Every night the bridegroom comes back, and warns her: her sisters will try to make her look at his face. “If you see it, you will never see it again.”",
 	.Intro_I_4      = "Night. The bridegroom sleeps at the top of the tower. Psyche has the lamp and the razor with her, as her sisters told her.",
+	.Intro_I_4b     = "The bridegroom's tower. Every step brings her nearer the bed, and what her sisters call a monster.",
 	.Intro_II_1     = "Psyche rises among the rocks of the forest. To find him again she must cross the night.",
 	.Intro_II_2     = "In despair, Psyche throws herself into the river. But the river fears the god who burns even the waters, and with a gentle wave it sets her on the bank.",
 	.Intro_II_3     = "Psyche goes to her eldest sister and tells her: “My husband wants you now.” The sister runs to the crag, telling no one.",

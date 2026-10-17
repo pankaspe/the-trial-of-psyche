@@ -39,6 +39,10 @@ BALCONY :: iso.Cell{6, 5, 4}
 @(private = "file")
 ROOF_ENTRY :: iso.Cell{13, 10, 6}
 @(private = "file")
+TOWER_DOOR :: iso.Cell{14, 11, 6} // the first diorama's exit, on the tower's roof
+@(private = "file")
+CHAMBER :: iso.Cell{7, 7, 8} // in the tower (the second diorama): Cupid's chamber
+@(private = "file")
 LAST_PILLAR :: iso.Cell{1, 10, 5} // the pillar before the fragment's
 
 // Turn to a view that joins the last pillar to the fragment's and walk there.
@@ -122,6 +126,19 @@ SHOT_SCRIPT := [?]Shot_Step {
 	{3.0, "09_risen_lamp", nil},
 	{0.1, "", proc(app: ^App) {game.toggle_lamp(&app.game); game.set_view(&app.game, 0)}},
 	{1.0, "10_roof_path_dark", proc(app: ^App) {place(app, ROOF_ENTRY)}},
+	{0.1, "", proc(app: ^App) {game.walk_to(&app.game, TOWER_DOOR)}},
+	{2.6, "10b_into_the_tower", nil}, // the first diorama breaks up through the veil
+	{2.6, "10c_tower_rises", nil}, // the tower rises into place
+	{3.0, "10d_tower", nil},
+	{0.1, "", proc(app: ^App) {
+			// the tower's seals lit: up the steps into Cupid's chamber
+			g := &app.game
+			g.palace.risen = {0, 1}
+			pl.rebuild_graph(&g.palace)
+			g.activated = {0, 1}
+			game.set_view(g, 0)
+			place(app, CHAMBER)
+		}},
 	{0.5, "", proc(app: ^App) {game.toggle_lamp(&app.game)}},
 	{1.6, "11_reveal", nil},
 	{1.6, "12_drop", nil},

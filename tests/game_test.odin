@@ -8,7 +8,11 @@ import "../src/i18n"
 import "../src/iso"
 import "../src/palace"
 
-BEDSIDE :: iso.Cell{14, 10, 6}
+// I.4's second diorama, the tower: the second seal's ledge, the chamber's
+// middle (in the chamber, not beside the bed), a cell beside Cupid
+LEDGE :: iso.Cell{7, 10, 7}
+CHAMBER :: iso.Cell{7, 7, 8}
+BEDSIDE :: iso.Cell{8, 7, 8}
 DT :: 1.0 / 60.0
 
 @(private)
@@ -34,8 +38,8 @@ walk :: proc(t: ^testing.T, g: ^game.Game, target: iso.Cell) -> bool {
 }
 
 @(private)
-start :: proc(t: ^testing.T, g: ^game.Game) -> bool {
-	if err := game.load(g, LAMP_LEVEL); err != nil {
+start :: proc(t: ^testing.T, g: ^game.Game, diorama := 0) -> bool {
+	if err := game.load(g, LAMP_LEVEL, diorama); err != nil {
 		testing.expect(t, false, "level I.4 does not load")
 		return false
 	}
@@ -110,16 +114,11 @@ oil_runs_out :: proc(t: ^testing.T) {
 ending :: proc(t: ^testing.T, bad: bool) {
 	g: game.Game
 	defer game.destroy(&g)
-	if !start(t, &g) {
+	if !start(t, &g, diorama = 1) {
 		return
 	}
 	g.trust_allowed = true // the secret ending, after the game has been finished
-	g.palace.risen = {0}
-	palace.rebuild_graph(&g.palace)
-	game.set_view(&g, 0)
-	g.activated = {0}
-	g.psyche.cell = GALLERY
-	testing.expect(t, walk(t, &g, ROOF_ENTRY), "Psyche reaches the roof")
+	in_chamber(&g)
 	if bad {
 		game.toggle_lamp(&g)
 	} else {
@@ -131,6 +130,19 @@ ending :: proc(t: ^testing.T, bad: bool) {
 	if bad {
 		testing.expect(t, g.collapse_t > 0, "the palace collapses")
 	}
+}
+
+// The tower's second seal lit, Psyche walks up its steps into Cupid's chamber.
+@(private)
+in_chamber :: proc(g: ^game.Game) {
+	g.palace.risen = {0, 1}
+	palace.rebuild_graph(&g.palace)
+	game.set_view(g, 0)
+	g.activated = {0, 1}
+	g.psyche.cell = LEDGE
+	g.psyche.pos = palace.stand_world(&g.palace, LEDGE)
+	game.walk_to(g, CHAMBER)
+	run(g, 4)
 }
 
 @(test)

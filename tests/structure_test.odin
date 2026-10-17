@@ -94,7 +94,7 @@ progress_sealed :: proc(t: ^testing.T) {
 
 	old: progress.Progress
 	progress.parse_legacy("completed = I.1 III.3 III.4 E\nfragments = I.1 III.3b III.4\nachievements = tale_1 trust wedding no_wasted_light\n", &old)
-	testing.expect(t, old.completed == {0, 10} && old.fragments == {0, 19}, "a plain save keeps only the levels built while saves were plain")
+	testing.expect(t, old.completed == {0, 10} && old.fragments == {0, 20}, "a plain save keeps only the levels built while saves were plain")
 	testing.expect(t, old.achievements == {.Tale_1, .No_Wasted_Light}, "a plain save can't finish the game")
 }
 
@@ -102,17 +102,17 @@ progress_sealed :: proc(t: ^testing.T) {
 achievements :: proc(t: ^testing.T) {
 	p: progress.Progress
 	got: progress.Achievements
-	ACT_1 :: 5 // I.3 hides two
+	ACT_1 :: 6 // I.3 and I.4 hide two each
 	for i in 0 ..< ACT_1 - 1 {
 		unlocked, _ := progress.collect_fragment(&p, i)
 		got += unlocked
 	}
-	testing.expect(t, got == {}, "four fragments of Act I are not the whole act")
+	testing.expect(t, got == {}, "all but one fragment of Act I are not the whole act")
 	found, total := progress.act_fragments(p, .I)
-	testing.expect(t, found == ACT_1 - 1 && total == ACT_1, "four of Act I's five pages in the Book")
+	testing.expect(t, found == ACT_1 - 1 && total == ACT_1, "all but one of Act I's pages in the Book")
 	new_page: bool
 	got, new_page = progress.collect_fragment(&p, ACT_1 - 1)
-	testing.expect(t, got == {.Tale_1} && new_page, "the five fragments of Act I")
+	testing.expect(t, got == {.Tale_1} && new_page, "every fragment of Act I")
 	got, new_page = progress.collect_fragment(&p, ACT_1 - 1)
 	testing.expect(t, got == {} && !new_page, "an achievement is unlocked only once, a page is new only once")
 	for i in ACT_1 ..< content.FRAGMENT_COUNT - 1 {
@@ -210,15 +210,10 @@ fragment_of_the_tale :: proc(t: ^testing.T) {
 trust_waits_for_the_end_of_the_game :: proc(t: ^testing.T) {
 	g: game.Game
 	defer game.destroy(&g)
-	if !start(t, &g) {
+	if !start(t, &g, diorama = 1) {
 		return
 	}
-	g.palace.risen = {0}
-	palace.rebuild_graph(&g.palace)
-	game.set_view(&g, 0)
-	g.activated = {0}
-	g.psyche.cell = GALLERY
-	testing.expect(t, walk(t, &g, ROOF_ENTRY), "Psyche reaches the roof")
+	in_chamber(&g)
 	testing.expect(t, walk(t, &g, BEDSIDE), "Psyche walks to Cupid's side")
 	run(&g, 6)
 	testing.expect(t, g.phase == .Play && g.heard[i18n.Key.V_Doubt], "no secret ending yet: Psyche doubts")

@@ -12,7 +12,7 @@ import "../src/palace"
 BALCONY :: iso.Cell{6, 5, 4} // top of the portico's stairs
 TERRACE :: iso.Cell{6, 7, 3} // foot of the portico's stairs
 GALLERY :: iso.Cell{11, 9, 5} // where the bridge ends
-ROOF_ENTRY :: iso.Cell{13, 10, 6} // Cupid's chamber
+ROOF_ENTRY :: iso.Cell{13, 10, 6} // the roof of Cupid's tower
 BRIDGE :: iso.Cell{11, 4, 5} // the first stone the seal raises
 LAMP_LEVEL :: 3 // I.4, "The Lamp and the Razor"
 
@@ -20,7 +20,7 @@ LAMP_LEVEL :: 3 // I.4, "The Lamp and the Razor"
 @(private)
 load_level_1 :: proc(t: ^testing.T, arena: ^virtual.Arena, data: ^level.Level_Data, p: ^palace.Palace) -> bool {
 	alloc := virtual.arena_allocator(arena)
-	d, err := level.parse(content.LEVELS[LAMP_LEVEL].source, alloc)
+	d, err := level.parse(level.dioramas(content.LEVELS[LAMP_LEVEL].source)[0], alloc)
 	if e, failed := err.?; failed {
 		testing.expectf(t, false, "level 1 does not parse: line %d: %s", e.line, e.message)
 		return false
@@ -159,7 +159,7 @@ level_1_walkthrough :: proc(t: ^testing.T) {
 	testing.expect(t, reach(&p, sigil, GALLERY, false), "the bridge is real: it joins the seal to the gallery")
 	testing.expect(t, reach(&p, sigil, BRIDGE, false), "the risen stone is really joined to the seal")
 	palace.set_view(&p, 0)
-	testing.expect(t, reach(&p, GALLERY, ROOF_ENTRY, true), "view 0: the gallery joins Cupid's chamber in the dark")
+	testing.expect(t, reach(&p, GALLERY, ROOF_ENTRY, true), "view 0: the gallery joins the tower's roof in the dark")
 	testing.expect(t, !reach(&p, GALLERY, ROOF_ENTRY, false), "...and never in the light")
 }
 
