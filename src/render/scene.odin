@@ -639,7 +639,7 @@ scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
 		emit_mote(s, false)
 	}
 	// golden motes around Cupid, more of them when he flies away
-	if g.data.has_amore && g.collapse_t < 1.5 {
+	if g.data.has_amore && g.collapse_t < 1.5 && game.assembly(g, g.data.amore, 1) >= 1 {
 		want := g.amore.fly_t >= 0 ? 40 : 14
 		if s.sparks.count < want && fx.randf(&s.rng) < dt * f32(want) / 7 * 2 {
 			c := amore_position(g)
@@ -799,6 +799,9 @@ exit_alpha :: proc(g: ^game.Game) -> f32 {
 	if g.data.has_boat {
 		return 0
 	}
+	if k := game.assembly(g, g.data.exit, 1); k < 1 {
+		return k * k // with its stone, as the diorama rises or breaks up
+	}
 	if g.boxed {
 		return 1 - fx.progress(g.phase_t, 0, 1) // the light goes out as she opens the box
 	}
@@ -815,6 +818,7 @@ amore_position :: proc(g: ^game.Game) -> Vec3 {
 		p.z += 760.0 / 64 * fx.quad_in(fx.clamp01(g.amore.fly_t / 2.6))
 	}
 	p.z += 10.0 / 64 * g.amore.reveal
+	p.z -= 9 * (1 - game.assembly(g, g.data.amore, 1))
 	return p
 }
 
@@ -986,7 +990,8 @@ set_frame_uniforms :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	append(&all, ..fire_lights(g))
 	// the candelabra burning light far more of the palace than a candle
 	for _, i in g.data.candelabra {
-		f := game.candelabrum_flame(g, i)
+		k := game.assembly(g, g.data.candelabra[i].cell, 1)
+		f := game.candelabrum_flame(g, i) * k * k
 		if f <= 0.003 {
 			continue
 		}
@@ -1026,11 +1031,7 @@ MAX_CANDLES :: level.MAX_LIGHTS // as in palace.fs
 // Where candelabrum i's foot is drawn now (it rises with the palace on arrival).
 candelabrum_world :: proc(g: ^game.Game, i: int) -> Vec3 {
 	p := game.candelabrum_base(g, i)
-	if g.phase == .Arrival {
-		d := g.data.candelabra[i].cell - g.data.start
-		k := game.arrival_rise(g, math.sqrt(f32(d.x * d.x + d.y * d.y)) + f32(abs(d.z)) * 0.3, 1)
-		p.z -= 9 * (1 - k)
-	}
+	p.z -= 9 * (1 - game.assembly(g, g.data.candelabra[i].cell, 1))
 	return p
 }
 
@@ -1077,13 +1078,9 @@ fire_lights :: proc(g: ^game.Game) -> []Flame {
 @(private)
 prop_flame :: proc(g: ^game.Game, prop: level.Prop, at: Vec3) -> (pos: Vec3, seen: f32) {
 	pos = Vec3{f32(prop.cell.x), f32(prop.cell.y), f32(prop.cell.z)} + at
-	seen = 1
-	if g.phase == .Arrival {
-		c := prop.cell - g.data.start
-		k := game.arrival_rise(g, math.sqrt(f32(c.x * c.x + c.y * c.y)) + f32(abs(c.z)) * 0.3, 1)
-		pos.z -= 9 * (1 - k)
-		seen = k * k
-	}
+	k := game.assembly(g, prop.cell, 1)
+	pos.z -= 9 * (1 - k)
+	seen = k * k
 	return shown(g, pos, prop.under), seen
 }
 
@@ -1195,11 +1192,8 @@ piece_state :: proc(g: ^game.Game, p: Piece, i: int) -> (lift, alpha: f32, visib
 			alpha *= 1 - k * k * k
 		}
 	}
-	if g.arrive_t >= 0 && g.phase == .Arrival {
-		// the palace rises into place, the stones nearest the start first
-		c := piece_cell(g, p) - g.data.start
-		d := math.sqrt(f32(c.x * c.x + c.y * c.y)) + f32(abs(c.z)) * 0.3
-		k := game.arrival_rise(g, d, fx.hash01(u32(i) * 31 + 7))
+	if k := game.assembly(g, piece_cell(g, p), fx.hash01(u32(i) * 31 + 7)); k < 1 {
+		// the palace rises into place on arrival, or breaks up for the level's next diorama
 		lift -= 9 * (1 - k)
 		alpha *= fx.clamp01(k * 1.6)
 	}
@@ -1603,6 +1597,16 @@ fragment_alpha :: proc(g: ^game.Game, i: int) -> (alpha, lift: f32) {
 	if g.phase == .Prologue {
 		return 0, 0
 	}
+	if k := game.assembly(g, g.data.fragments[i], 1); k < 1 {
+		// with its stone, as the diorama rises or breaks up
+		a, l := fragment_alpha_placed(g, i)
+		return a * k * k, l - 9 * (1 - k)
+	}
+	return fragment_alpha_placed(g, i)
+}
+
+@(private)
+fragment_alpha_placed :: proc(g: ^game.Game, i: int) -> (alpha, lift: f32) {
 	if i in g.fragments_known {
 		return 0.28, 0
 	}
@@ -1630,8 +1634,9 @@ draw_fragments :: proc(r: ^Renderer, g: ^game.Game) {
 
 @(private)
 cupid_fade :: proc(g: ^game.Game) -> f32 {
+	k := game.assembly(g, g.data.amore, 1) // he comes with his bed as the diorama rises
 	if g.amore.fly_t < 0 {
-		return 1
+		return k * k
 	}
 	return 1 - fx.progress(g.amore.fly_t, 0.6, 2.2)
 }
@@ -1722,6 +1727,8 @@ draw_floors :: proc(g: ^game.Game, time: f32) {
 	lk := look_of(g)
 	surface := lk.water.a > 0 ? lk.water : Color4{0.08, 0.12, 0.27, 0.8}
 	glint := lk.glint.a > 0 ? lk.glint : Color4{0.65, 0.75, 1.0, 0.4}
+	present := game.floors_shown(g)
+	glint.a *= present
 	z := f32(g.data.floor_h) - WATER_DEPTH
 	begin_turn(g, false) // of the world above, in a level with pomegranates
 	for f in g.data.floors {
@@ -1732,6 +1739,7 @@ draw_floors :: proc(g: ^game.Game, time: f32) {
 			lum := 0.299 * surface.r + 0.587 * surface.g + 0.114 * surface.b
 			surface = {SWAMP.r * lum, SWAMP.g * lum, SWAMP.b * lum, SWAMP.a}
 		}
+		surface.a *= present
 		x0, y0 := f32(w[0]), f32(w[1])
 		x1, y1 := f32(w[2] + 1), f32(w[3] + 1)
 		// a river fades into the mist over its last 1.2 cells, a basin holds it to the rim
@@ -1790,7 +1798,7 @@ draw_floors :: proc(g: ^game.Game, time: f32) {
 			}
 			t := math.mod(time * (f.fluid == .Swamp ? 0.12 : 0.35) + fx.hash01(u32(i) * 7), 1)
 			foam := f.fluid == .Swamp ? Color4{0.55, 0.62, 0.35, 0.18} : Color4{0.7, 0.8, 1.0, 0.3}
-			floor_ring({f32(c.x) + 0.5, f32(c.y) + 0.5, z + 0.002}, 0.68 + 0.12 * t, 0.025, {foam.r, foam.g, foam.b, foam.a * (1 - t)})
+			floor_ring({f32(c.x) + 0.5, f32(c.y) + 0.5, z + 0.002}, 0.68 + 0.12 * t, 0.025, {foam.r, foam.g, foam.b, foam.a * (1 - t) * game.assembly(g, c, 1)})
 		}
 	}
 	end_turn()
@@ -2203,7 +2211,8 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	}
 	// the candelabra: three flames each, a warm halo; one just lit flares up
 	for _, i in g.data.candelabra {
-		burn := game.candelabrum_flame(g, i)
+		k := game.assembly(g, g.data.candelabra[i].cell, 1)
+		burn := game.candelabrum_flame(g, i) * k * k // out with its stone, as the diorama rises or breaks up
 		if burn <= 0.003 {
 			continue
 		}
@@ -2255,7 +2264,7 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 		}
 		c := shown(g, Vec3{f32(c0.x) + 0.5, f32(c0.y) + 0.5, f32(c0.z) + 0.05}, k in g.data.sigils_under)
 		pulse := 0.25 + 0.55 * (0.5 + 0.5 * math.cos(g.rise_t[k] * math.PI / 1.4))
-		glow(v, c, 70, {1.0, 0.75, 0.35, pulse})
+		glow(v, c, 70, {1.0, 0.75, 0.35, pulse * game.assembly(g, c0, 1)})
 	}
 	// Jupiter's eagles: a golden light about them, brighter in flight
 	for _, i in g.data.eagles {

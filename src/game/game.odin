@@ -229,6 +229,8 @@ Game :: struct {
 	overturn:       f32, // 0 the world as described .. 1 turned over, follows palace.upside (render turns the world by it)
 	descent:        f32, // a level that goes down: 0 at the start's height .. 1 at the exit's (the look at its foot)
 	ferried:        bool, // the exit was by Charon's boat (phase Ending_Exit: its own timeline)
+	parting:        bool, // the exit leads into the level's next diorama: this one breaks up (no wind, no veil)
+	arrive_veiled:  bool, // the arrival comes through the veil (not from the level's diorama before)
 	boxed:          bool, // the exit opened Proserpina's box (phase Ending_Exit: its own timeline)
 	rest:           Rest, // the last brazier Psyche lit
 	eagle_flying:   int, // the eagle carrying her (while psyche.step_kind is .Flight)
@@ -442,7 +444,9 @@ title_key :: proc(g: ^Game) -> Key {
 // has one and `prologue` is set (a restart does not show it again).
 // `arrival`: coming from the last level through the veil, the palace rises
 // into place and Psyche comes down onto the start.
-begin :: proc(g: ^Game, prologue := true, arrival := false) {
+// `veiled`: through the veil from another level; a diorama of the same level
+// rises in the open, where the one before broke up.
+begin :: proc(g: ^Game, prologue := true, arrival := false, veiled := true) {
 	g.active = true
 	if g.data.has_prologue && prologue {
 		prologue_start(g)
@@ -451,8 +455,13 @@ begin :: proc(g: ^Game, prologue := true, arrival := false) {
 	if arrival {
 		set_phase(g, .Arrival)
 		g.arrive_t = 0
+		g.arrive_veiled = veiled
 		g.teach_pending = prologue && g.data.mechanic != .None
-		audio.play(.Wind, -10, 0.8)
+		if veiled {
+			audio.play(.Wind, -10, 0.8)
+		} else {
+			audio.play(.Rumble, -16, 1.3)
+		}
 		return
 	}
 	start_play(g, prologue)
@@ -1810,9 +1819,11 @@ start_ending :: proc(g: ^Game, p: Phase) {
 		audio.play(.Good, -2)
 	case .Ending_Exit:
 		g.boxed = g.data.has_box && !g.ferried
+		g.parting = leads_on(g) && !g.ferried && !g.boxed
 		switch {
 		case g.ferried: audio.play(.Oar, -10)
 		case g.boxed: audio.play(.Wind, -16, 0.5)
+		case g.parting: audio.play(.Rumble, -14, 0.8)
 		case: audio.play(.Wind, -4)
 		}
 	case .Play, .Sigil, .Mechanism, .Time, .Overturn, .Prologue, .Arrival, .Finished:
@@ -1851,13 +1862,55 @@ arrival_rise :: proc(g: ^Game, d: f32, jitter: f32) -> f32 {
 	return fx.cubic_out(fx.progress(g.arrive_t, 0.45 + d * 0.08 + jitter * 0.15, 1.0))
 }
 
-// How long the exit lasts: the wind's, the crossing in Charon's boat, or the box opened.
+// How long the exit lasts: the wind's, the crossing in Charon's boat, the box
+// opened, or the diorama breaking up.
 exit_end :: proc(g: ^Game) -> f32 {
 	switch {
 	case g.ferried: return BOAT_END
 	case g.boxed: return BOX_END
+	case g.parting: return PART_END
 	}
 	return EXIT_END
+}
+
+// Timeline of a diorama breaking up at an exit that leads on: the pieces
+// sink away from the far side in, the stones under her last, and she goes
+// down with them.
+PART_END :: 2.8
+PART_SPREAD :: 1.5 // the farthest piece goes this long before hers
+PART_FALL :: 0.9 // each piece's fall
+
+// How far a cell is from the heart of the assembly (the start on arrival,
+// Psyche as the diorama breaks up): the stones near it come first, go last.
+@(private)
+spread :: proc(c: Cell) -> f32 {
+	return math.sqrt(f32(c.x * c.x + c.y * c.y)) + f32(abs(c.z)) * 0.3
+}
+
+// How much a piece in cell `c` is in place: 1 there, 0 gone below. It rises
+// on arrival (the start's stones first) and sinks as the diorama breaks up
+// (the far ones first). `jitter` (0..1) staggers pieces of one distance.
+assembly :: proc(g: ^Game, c: Cell, jitter: f32) -> f32 {
+	switch {
+	case g.phase == .Arrival:
+		return arrival_rise(g, spread(c - g.data.start), jitter)
+	case g.parting && (g.phase == .Ending_Exit || g.phase == .Finished):
+		t := g.phase == .Finished ? PART_END : g.phase_t
+		near := fx.clamp01(1 - spread(c - g.psyche.cell) / f32(g.data.size))
+		return 1 - fx.quad_in(fx.progress(t, 0.2 + PART_SPREAD * near + jitter * 0.15, PART_FALL))
+	}
+	return 1
+}
+
+// How much of the floors' water is there, as the diorama rises or breaks up.
+floors_shown :: proc(g: ^Game) -> f32 {
+	switch {
+	case g.phase == .Arrival:
+		return fx.progress(g.arrive_t, 0.3, 1.2)
+	case g.parting && (g.phase == .Ending_Exit || g.phase == .Finished):
+		return 1 - fx.progress(g.phase == .Finished ? PART_END : g.phase_t, 0.6, 1.2)
+	}
+	return 1
 }
 
 // The veil between the levels over the world: closing as Psyche flies away
@@ -1865,6 +1918,8 @@ exit_end :: proc(g: ^Game) -> f32 {
 // 0: no veil, 1: closed.
 veil :: proc(g: ^Game) -> f32 {
 	switch {
+	case g.parting && (g.phase == .Ending_Exit || g.phase == .Finished), g.phase == .Arrival && !g.arrive_veiled:
+		return 0 // from one diorama of a level to the next, in the open
 	case g.phase == .Ending_Exit:
 		start: f32 = g.ferried ? BOAT_VEIL : g.boxed ? BOX_VEIL : VEIL_IN
 		return fx.sine_in_out(fx.progress(g.phase_t, start, g.boxed ? BOX_VEIL_TIME : VEIL_IN_TIME))
@@ -1876,10 +1931,14 @@ veil :: proc(g: ^Game) -> f32 {
 	return 0
 }
 
-// How high the wind has lifted Psyche (cells) at the exit.
+// How high the wind has lifted Psyche (cells) at the exit; below zero as she
+// goes down with her stone when the diorama breaks up.
 exit_lift :: proc(g: ^Game) -> f32 {
 	if g.ferried || g.boxed || g.phase != .Ending_Exit && !(g.phase == .Finished && g.ending == .Exit) {
 		return 0
+	}
+	if g.parting {
+		return -9 * (1 - assembly(g, g.psyche.cell - {0, 0, 1}, 1))
 	}
 	t := g.phase == .Finished ? EXIT_END : g.phase_t
 	return EXIT_HEIGHT * fx.quad_in(fx.clamp01((t - EXIT_LIFT) / (EXIT_END - EXIT_LIFT)))

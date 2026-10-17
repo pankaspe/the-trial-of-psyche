@@ -483,7 +483,7 @@ next_diorama :: proc(app: ^App) {
 	carried.lamp_par += int(g.data.lamp_par)
 	if new_level(app, g.level_index, g.diorama + 1) {
 		app.carried = carried
-		game.begin(g, arrival = true)
+		game.begin(g, arrival = true, veiled = false)
 	}
 }
 

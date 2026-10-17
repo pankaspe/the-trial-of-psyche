@@ -222,9 +222,15 @@ prologue_mourner :: proc(g: ^Game, i: int) -> (m: Mourner) {
 }
 
 // Psyche is drawn only once she has come up over the edge (and not while
-// the dark of a cave hides her).
+// the dark of a cave hides her); from one diorama of a level to the next she
+// fades out with her stone and in as she comes down onto the start.
 psyche_alpha :: proc(g: ^Game) -> f32 {
-	if g.phase != .Prologue {
+	switch {
+	case g.phase == .Arrival && !g.arrive_veiled:
+		return fx.progress(g.arrive_t, 0.8, 0.8)
+	case g.parting:
+		return passage_alpha(g) * fx.clamp01(1 + exit_lift(g) / 3)
+	case g.phase != .Prologue:
 		return passage_alpha(g)
 	}
 	if g.data.scene != .Oracle {
