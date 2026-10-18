@@ -1742,11 +1742,8 @@ draw_floors :: proc(g: ^game.Game, time: f32) {
 		x1, y1 := f32(w[2] + 1), f32(w[3] + 1)
 		// a river fades into the mist over its last 1.2 cells, a basin holds it to the rim
 		fade: f32 = f.kind == .Water ? 1.2 : 0
-		edge :: proc(v, lo, hi, fade: f32) -> f32 {
-			return fade > 0 ? fx.clamp01(min(v - lo, hi - v) / fade) : 1
-		}
 		point :: proc(x, y, z, x0, y0, x1, y1, fade: f32, lamp: Vec3, warm: f32, surface: Color4) {
-			a := edge(x, x0, x1, fade) * edge(y, y0, y1, fade)
+			a := water_edge(x, x0, x1, fade) * water_edge(y, y0, y1, fade)
 			a = a * a * (3 - 2 * a)
 			d := Vec2{x - lamp.x, y - lamp.y}
 			lit := warm * fx.clamp01(1 - math.sqrt(d.x * d.x + d.y * d.y) / 3)
@@ -1770,6 +1767,8 @@ draw_floors :: proc(g: ^game.Game, time: f32) {
 		rlgl.End()
 		if f.fluid == .Swamp {
 			draw_swamp(f, z, time, surface, glint)
+		} else if !g.reduce_motion {
+			draw_fish(g, f, z, time, surface, glint, fade)
 		}
 		// glints of moonlight drifting with the current (a swamp has none)
 		for cy in w[1] ..= w[3] {
@@ -1782,7 +1781,7 @@ draw_floors :: proc(g: ^game.Game, time: f32) {
 					u := math.mod(time * (0.08 + 0.05 * fx.hash01(h)) + fx.hash01(h + 1), 1)
 					px := f32(cx) + u
 					py := f32(cy) + 0.15 + 0.7 * fx.hash01(h + 2)
-					a := edge(px, x0, x1, fade) * edge(py, y0, y1, fade) * math.sin(u * math.PI)
+					a := water_edge(px, x0, x1, fade) * water_edge(py, y0, y1, fade) * math.sin(u * math.PI)
 					len := 0.12 + 0.18 * fx.hash01(h + 3)
 					floor_strip({px, py, z + 0.003}, {px + len, py, z + 0.003}, {0, 1, 0}, 0.022, {glint.r, glint.g, glint.b, glint.a * a})
 				}
@@ -1802,6 +1801,145 @@ draw_floors :: proc(g: ^game.Game, time: f32) {
 	end_turn()
 	rlgl.DrawRenderBatchActive()
 	rlgl.EnableDepthMask()
+}
+
+// How far into a river's fade (`fade` cells at the edges of lo..hi) `v` lies: 0 at the edge, 1 inside.
+@(private)
+water_edge :: proc(v, lo, hi, fade: f32) -> f32 {
+	return fade > 0 ? fx.clamp01(min(v - lo, hi - v) / fade) : 1
+}
+
+MAX_FISH :: 6
+
+// Fish in the water of a place that has them (the biome's `fish`): dark shapes
+// just under the surface, each about a home of open water at least a cell from
+// the rim; it drifts, now and then darts off with a flick of its tail, and
+// where it darts a ring spreads on the water. Under a stone it is hidden.
+@(private)
+draw_fish :: proc(g: ^game.Game, f: level.Floor, z: f32, time: f32, surface, glint: Color4, fade: f32) {
+	weight := g.data.has_biome ? level.BIOMES[g.data.biome].fish : 0
+	if weight == 0 {
+		return
+	}
+	a := f.area
+	w, h := int(a[2] - a[0] + 1), int(a[3] - a[1] + 1)
+	if w < 3 || h < 3 {
+		return
+	}
+	// open water: no stone standing over it
+	open := make([]bool, w * h, context.temp_allocator)
+	for &o in open {
+		o = true
+	}
+	for e, i in g.data.blocks {
+		c := e.cell
+		if !e.under && c.x >= a[0] && c.x <= a[2] && c.y >= a[1] && c.y <= a[3] && pl.block_present(&g.palace, i) {
+			open[int(c.y - a[1]) * w + int(c.x - a[0])] = false
+		}
+	}
+	is_open :: proc(open: []bool, w, h, x, y: int) -> bool {
+		return x >= 0 && y >= 0 && x < w && y < h && open[y * w + x]
+	}
+	// homes: open cells a cell in from the rim, the widest stretches of water
+	// first (open cells in the 5×5 about them), three cells apart
+	Home :: struct {
+		at:    Vec2,
+		score: f32,
+	}
+	cands: [dynamic]Home
+	cands.allocator = context.temp_allocator
+	for y in 1 ..< h - 1 {
+		for x in 1 ..< w - 1 {
+			if !is_open(open, w, h, x, y) {
+				continue
+			}
+			around := 0
+			for dy in -2 ..= 2 {
+				for dx in -2 ..= 2 {
+					around += is_open(open, w, h, x + dx, y + dy) ? 1 : 0
+				}
+			}
+			if around >= 12 {
+				at := Vec2{f32(int(a[0]) + x) + 0.5, f32(int(a[1]) + y) + 0.5}
+				append(&cands, Home{at, f32(around) + fx.hash01(u32(x * 97 + y * 211) + u32(g.level_index))})
+			}
+		}
+	}
+	slice.sort_by(cands[:], proc(p, q: Home) -> bool {return p.score > q.score})
+	count := min(int(weight) + len(cands) / 100, MAX_FISH)
+	homes := make([dynamic]Vec2, 0, count, context.temp_allocator)
+	for c in cands {
+		if len(homes) == count {
+			break
+		}
+		near := false
+		for o in homes {
+			near ||= abs(o.x - c.at.x) + abs(o.y - c.at.y) < 3
+		}
+		if !near {
+			append(&homes, c.at)
+		}
+	}
+	body := Color4{surface.r * 0.35, surface.g * 0.4, surface.b * 0.45, 0.6 * surface.a}
+	x0, y0, x1, y1 := f32(a[0]), f32(a[1]), f32(a[2] + 1), f32(a[3] + 1)
+	for home, k in homes {
+		seed := u32(k) * 7919 + u32(g.level_index) * 131 + 17
+		r := 0.45 + 0.3 * fx.hash01(seed + 1)
+		tilt := math.TAU * fx.hash01(seed + 2)
+		period := 7 + 5 * fx.hash01(seed + 3)
+		size := 0.8 + 0.4 * fx.hash01(seed + 4)
+		way: f32 = fx.hash01(seed + 5) < 0.5 ? 1 : -1
+		// along a loop about its home: a slow drift, and once a period a dart
+		phase :: proc(t, period, offset, way: f32) -> f32 {
+			p := t / period + offset
+			n := math.floor(p)
+			dart := math.smoothstep(f32(0.62), 0.78, p - n)
+			return way * (0.05 * t + math.TAU * 0.3 * (n + dart))
+		}
+		at :: proc(home: Vec2, r, tilt, s: f32) -> Vec2 {
+			l := Vec2{math.cos(s) * r, math.sin(2 * s) * r * 0.5}
+			ct, st := math.cos(tilt), math.sin(tilt)
+			return home + {l.x * ct - l.y * st, l.x * st + l.y * ct}
+		}
+		offset := fx.hash01(seed + 6)
+		s0 := phase(time, period, offset, way)
+		s1 := phase(time + 0.05, period, offset, way)
+		p := at(home, r, tilt, s0)
+		ahead := at(home, r, tilt, s1) - p
+		step := math.sqrt(ahead.x * ahead.x + ahead.y * ahead.y)
+		if step < 1e-5 {
+			continue
+		}
+		speed := step / 0.05
+		d := ahead / step
+		n := Vec2{-d.y, d.x}
+		alpha := water_edge(p.x, x0, x1, fade) * water_edge(p.y, y0, y1, fade)
+		c := body
+		c.a *= alpha
+		// the tail beats faster and wider as it darts
+		beat := math.sin(time * (6 + 10 * min(speed, 1.5))) * (0.25 + 0.35 * min(speed, 1))
+		dir := Vec3{d.x, d.y, 0}
+		side := Vec3{n.x, n.y, 0}
+		centre := Vec3{p.x, p.y, z + 0.0025}
+		ellipse_3d(centre, dir, side, 0.15 * size, 0.05 * size, 0, c, 12)
+		back := centre - dir * 0.12 * size
+		tail := dir * math.cos(beat) + side * math.sin(beat)
+		tail_side := Vec3{-tail.y, tail.x, 0}
+		tip := back - tail * 0.12 * size
+		rlgl.Begin(rlgl.TRIANGLES)
+		color(c)
+		vtx(back + tail * 0.02 * size)
+		vtx(tip + tail_side * 0.065 * size)
+		vtx(tip - tail_side * 0.065 * size)
+		rlgl.End()
+		// a ring where it darted off
+		q := math.mod(time / period + offset, 1)
+		if q > 0.62 && q < 0.95 {
+			u := (q - 0.62) / 0.33
+			start := at(home, r, tilt, phase((math.floor(time / period + offset) + 0.62 - offset) * period, period, offset, way))
+			floor_ring({start.x, start.y, z + 0.003}, 0.05 + 0.25 * u, 0.012, {glint.r, glint.g, glint.b, glint.a * 0.7 * (1 - u) * alpha})
+		}
+	}
 }
 
 SWAMP :: Color4{0.46, 0.52, 0.30, 0.95} // a swamp's hue, times the brightness of the setting's water

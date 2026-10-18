@@ -28,17 +28,20 @@ Biome_Info :: struct {
 	upside: Maybe(Biome), // a level with pomegranates: the world under it
 	rim:    Rim, // a basin's
 	fluid:  Fluid,
+	fish:   u8, // how many fish swim in its water: 0 none (a swamp has none) .. 3 many
 	props:  [Prop_Kind]u8, // how often each prop is found there: 0 never .. 3 everywhere
 }
 
 BIOMES := [Biome]Biome_Info {
 	.Palace = {
 		name = "palace",
+		fish = 1,
 		light = .Night,
 		props = #partial {.Sconce = 3, .Rail = 3, .Wall_Battlement = 2, .Vase = 1, .Pillar = 1, .Cypress = 1, .Urn = 1, .Arch = 1, .Brazier = 1, .Statue = 1, .Bed = 1},
 	},
 	.Crag = {
 		name = "crag",
+		fish = 1,
 		light = .Crag_Day,
 		rim = .Rock,
 		props = #partial {.Shrub = 3, .Cairn = 2, .Pine = 2, .Lip = 2, .Boulder = 2, .Brazier = 1},
@@ -52,23 +55,27 @@ BIOMES := [Biome]Biome_Info {
 	},
 	.River = {
 		name = "river",
+		fish = 3,
 		light = .River_Dawn,
 		rim = .Rock,
 		props = #partial {.Spruce = 3, .Reeds = 2, .Rope = 2, .Boulder = 1, .Shrub = 1},
 	},
 	.Temple = {
 		name = "temple",
+		fish = 1,
 		light = .Temple_Dusk,
 		props = #partial {.Rail = 3, .Pillar = 3, .Statue = 1, .Urn = 1, .Brazier = 1},
 	},
 	.Venus = {
 		name = "venus",
+		fish = 2,
 		light = .Venus_Day,
 		day = [2]Setting{.Venus_Day, .Venus_Evening},
 		props = #partial {.Rail = 3, .Rope = 3, .Rose = 1, .Myrtle = 1, .Statue = 1, .Urn = 1, .Heap = 1, .Sconce = 1},
 	},
 	.Pasture = {
 		name = "pasture",
+		fish = 2,
 		light = .Pasture_Day,
 		day = [2]Setting{.Pasture_Day, .Pasture_Evening},
 		rim = .Earth,
