@@ -95,6 +95,11 @@ SHOT_SCRIPT := [?]Shot_Step {
 			}
 		}},
 	{1.2, "02b_levels_iii4", nil},
+	{0.1, "", proc(app: ^App) {app.levels.sel.graph = true}},
+	{1.0, "02b_levels_stars", nil},
+	{0.1, "", proc(app: ^App) {app.levels.sel.level = 3}},
+	{1.0, "02b_levels_stars_i4", nil},
+	{0.1, "", proc(app: ^App) {app.levels.sel.graph = false}},
 	{0.1, "", proc(app: ^App) {app.levels.sel.level = 16}},
 	{1.0, "02b_levels_unbuilt", nil},
 	{0.1, "", proc(app: ^App) {leave_levels(app, true); app.screen = .Games}},

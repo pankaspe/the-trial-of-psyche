@@ -4,6 +4,7 @@ package ui
 
 import "core:fmt"
 import "core:math"
+import "core:math/linalg"
 import "core:time"
 import rl "vendor:raylib"
 
@@ -426,6 +427,8 @@ ACT_TAP_PITCH := [content.Act]f32{.I = 1, .II = 9.0 / 8, .III = 5.0 / 4, .IV = 4
 // the level, ↑ ↓ (LB RB) the act, Enter (South) or a click plays it.
 Level_Select :: struct {
 	level: int, // the chosen level (LEVELS index)
+	graph: bool, // the act's levels as a constellation, not a row of pictures
+	t:     f32, // the stars' twinkle
 }
 
 // `thumbs`: a picture per level (id 0: none yet); `shown`: the level drawn
@@ -575,10 +578,40 @@ level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs:
 	status := !built ? i18n.tr(.Level_Unbuilt) : (!open ? i18n.tr(.Level_Locked) : (done ? i18n.tr(.Levels_Done) : i18n.tr(.Levels_Open)))
 	text(u, status, {x0, y}, {size = 24, color = done ? GOLD : DIM, face = .Italic, shadow = true}, .Left)
 
-	// the row: the act's levels
+	// the act's levels: a row of pictures, or a constellation (Tab, the pad's North)
+	if rl.IsKeyPressed(.TAB) || input.take(.North) || view_toggle(u, ls.graph) {
+		ls.graph = !ls.graph
+		audio.play(.Tap, -14, ls.graph ? 1.25 : 1)
+	}
+	ls.t += u.dt
+	if ls.graph {
+		play ||= level_stars(u, prog, ls, act)
+	} else {
+		play ||= level_row(u, prog, ls, act, thumbs)
+	}
+	if play && open {
+		audio.play(.Tap, -14)
+		chosen = ls.level
+	}
+
+	// how to move about it
+	foot := Vec2{x0, u.height - FOOT_Y * s}
+	if u.pad {
+		hint_row(u, foot, {{.Shoulders, .Levels_Act}, {.South, .Levels_Play}})
+	} else {
+		hint_row(u, foot, {{.Left_Right, .Levels_Level}, {.Up_Down, .Levels_Act}, {.Enter, .Levels_Play}})
+	}
+	back = panel_back(u, focus = false)
+	return
+}
+
+// The act's levels in a row of pictures; true when one is clicked (to play).
+@(private)
+level_row :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, act: content.Act, thumbs: []rl.Texture2D) -> (play: bool) {
+	s := u.scale
 	TILE :: Vec2{256, 144}
 	GAP :: 22
-	tx := x0
+	tx := PANEL_X * s
 	ty := u.height - 236 * s
 	for i in 0 ..< content.LEVEL_COUNT {
 		if content.LEVELS[i].act != act {
@@ -629,20 +662,139 @@ level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs:
 			corner_frame(u, {r.x - 6 * s, r.y - 6 * s, r.width + 12 * s, r.height + 12 * s}, 1, s, BRIGHT)
 		}
 	}
-	if play && open {
-		audio.play(.Tap, -14)
-		chosen = ls.level
-	}
-
-	// how to move about it
-	foot := Vec2{x0, u.height - FOOT_Y * s}
-	if u.pad {
-		hint_row(u, foot, {{.Shoulders, .Levels_Act}, {.South, .Levels_Play}})
-	} else {
-		hint_row(u, foot, {{.Left_Right, .Levels_Level}, {.Up_Down, .Levels_Act}, {.Enter, .Levels_Play}})
-	}
-	back = panel_back(u, focus = false)
 	return
+}
+
+// The act's levels as a constellation: a star each, joined in the order of
+// the tale (the line lit where the level before is finished); the dioramas
+// of a level hang from its star as small ones, not chosen apart. Bright and
+// filled: finished; breathing: open; dim: locked; a faint outline: not built.
+// True when one is clicked (to play).
+@(private)
+level_stars :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, act: content.Act) -> (play: bool) {
+	s := u.scale
+	first := act_first(act)
+	n := 0
+	for i in first ..< content.LEVEL_COUNT {
+		if content.LEVELS[i].act != act {
+			break
+		}
+		n += 1
+	}
+	x0 := PANEL_X * s + 40 * s
+	span := min(u.width - x0 - 260 * s, 300 * s * f32(max(n - 1, 1)))
+	base := u.height - 205 * s
+	// each act's figure: the stars rise and fall along the line
+	SHAPE := [?]f32{0.2, -0.9, 0.5, -0.4, 0.9, -0.7, 0.3}
+	star_at :: proc(k, n: int, act: content.Act, x0, span, base, s: f32, shape: []f32) -> Vec2 {
+		x := x0 + (n > 1 ? span * f32(k) / f32(n - 1) : 0)
+		return {x, base + shape[(k + int(act) * 2) % len(shape)] * 58 * s}
+	}
+	// the sky behind: a scatter of faint stars
+	for k in 0 ..< 70 {
+		h := u32(k) * 2654435761 + u32(act) * 40503
+		px := x0 - 40 * s + f32(h % 1000) / 1000 * (span + 120 * s)
+		py := base - 120 * s + f32((h / 1000) % 1000) / 1000 * 210 * s
+		tw := 0.25 + 0.2 * math.sin(ls.t * (0.6 + f32(k % 5) * 0.2) + f32(k))
+		rl.DrawCircleV({px, py}, (0.8 + f32(k % 3) * 0.5) * s, fade(TEXT, u.reduce_motion ? 0.3 : tw))
+	}
+	// the lines of the tale, then the stars over them
+	for k in 0 ..< n - 1 {
+		a := star_at(k, n, act, x0, span, base, s, SHAPE[:])
+		b := star_at(k + 1, n, act, x0, span, base, s, SHAPE[:])
+		if first + k in prog.completed {
+			rl.DrawLineEx(a, b, 1.6 * s, fade(GOLD, 0.7))
+		} else {
+			d := b - a
+			steps := int(linalg.length(d) / (10 * s))
+			for j in 0 ..< steps {
+				if j % 2 == 0 {
+					rl.DrawLineEx(a + d * f32(j) / f32(steps), a + d * f32(j + 1) / f32(steps), 1.2 * s, fade(GOLD, 0.25))
+				}
+			}
+		}
+	}
+	for k in 0 ..< n {
+		i := first + k
+		c := star_at(k, n, act, x0, span, base, s, SHAPE[:])
+		on := i == ls.level
+		built := content.is_built(i)
+		done := i in prog.completed
+		open := progress.is_unlocked(prog, i)
+		hot := rl.Rectangle{c.x - 40 * s, c.y - 40 * s, 80 * s, 80 * s}
+		add_hot(u, hot)
+		hover := mouse_over(u, hot)
+		if hover && !on && u.mouse_moved {
+			ls.level = i
+		}
+		if hover && u.pressed {
+			ls.level = i
+			play = true
+		}
+		// its dioramas after the first: small stars rising from it
+		if built {
+			nd := len(level.dioramas(content.LEVELS[i].source))
+			prev := c
+			for d in 1 ..< nd {
+				p := c + Vec2{f32(d) * 16, -24 - f32(d) * 22} * s
+				rl.DrawLineEx(prev, p, 1 * s, fade(GOLD, done ? 0.5 : 0.22))
+				glow_dot(p, 7 * s, {255, 214, 150, 255}, done ? 0.7 : 0.2)
+				diamond(u, p, 7 * s, done ? BRIGHT : fade(GOLD, 0.5), done)
+				prev = p
+			}
+		}
+		breath := breathe(u, ls.t + f32(k), 2.2)
+		switch {
+		case done:
+			glow_dot(c, 16 * s, {255, 196, 110, 255}, 0.9)
+			diamond(u, c, 13 * s, BRIGHT, true)
+		case open:
+			glow_dot(c, 14 * s, {255, 196, 110, 255}, 0.35 + 0.35 * breath)
+			diamond(u, c, 13 * s, GOLD, false)
+			diamond(u, c, 5 * s, fade(BRIGHT, 0.5 + 0.5 * breath), true)
+		case built:
+			diamond(u, c, 9 * s, fade(DIM, 0.6), true)
+		case:
+			diamond(u, c, 9 * s, fade(DIM, 0.35), false)
+		}
+		if on {
+			rl.DrawRing(c, 24 * s, 25.5 * s, 0, 360, 48, BRIGHT)
+		}
+		// its name, and its fragments
+		ly := c.y + 30 * s
+		text(u, level_label(i), {c.x, ly}, {size = on ? 26 : 22, color = on ? BRIGHT : (built ? TEXT : fade(DIM, 0.6)), face = .Semi, shadow = true}, .Center)
+		if built {
+			f0, nf := content.level_fragments(i)
+			for q in 0 ..< nf {
+				diamond(u, {c.x + (f32(q) - f32(nf - 1) * 0.5) * 16 * s, ly + 40 * s}, 5 * s, GOLD, f0 + q in prog.fragments)
+			}
+		}
+	}
+	return
+}
+
+// The button that changes the view of the act's levels, above them on the
+// right: what the other view is, with its key.
+@(private)
+view_toggle :: proc(u: ^Ui, graph: bool) -> bool {
+	s := u.scale
+	st := Style{size = 21, color = TEXT, face = .Semi, track = 0.1, shadow = true}
+	label := i18n.tr(graph ? .Levels_Pictures : .Levels_Stars)
+	m := measure(u, label, st)
+	cw := u.pad ? pad_button_width(u, .North) : key_cap_width(u, "Tab", s)
+	x := u.width - PANEL_X * s - m.x
+	y := u.height - 300 * s
+	r := rl.Rectangle{x - cw - 22 * s, y - 8 * s, m.x + cw + 30 * s, 44 * s}
+	add_hot(u, r)
+	hover := mouse_over(u, r)
+	if hover {
+		st.color = BRIGHT
+	}
+	rl.DrawRectangleRec(r, fade({13, 11, 20, 255}, 0.7))
+	rl.DrawRectangleLinesEx(r, max(s, 1), fade(GOLD, hover ? 0.7 : 0.35))
+	control(u, "Tab", .North, {x - cw - 12 * s, y - 2 * s}, 0.9)
+	text(u, label, {x, y}, st, .Left)
+	return hover && u.pressed
 }
 
 // --- the Book -------------------------------------------------------------------------

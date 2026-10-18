@@ -10,6 +10,7 @@ Kinds: **feature** (new code or mechanic) · **level** (a level built or rebuilt
 
 | Title | Kind | Description |
 |---|---|---|
+| The act as a constellation | feature | In the level select Tab (pad Y) turns the row of pictures into a constellation: a star per level, lit lines where the tale went on, a level's other dioramas as small stars rising from it. |
 | Shots of the games | tooling | The shots script shows the games list with three saves, the erase question and the title on Continue. |
 | Five games | feature | Up to five saves side by side ("Games" on the title: continue one, start a new one, erase one); the old save becomes game 1. The title opens on Continue or New game. |
 | Levels of several dioramas, shown | ui | In the level select a small plate per diorama on the tile and a "2 dioramas" plaque in the panel. |
