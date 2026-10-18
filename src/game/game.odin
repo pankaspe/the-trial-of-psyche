@@ -85,7 +85,6 @@ LIGHT_COST :: 0.4
 STEP_TIME :: 0.3
 DRIP_EVERY :: 1.4
 ROTATE_TIME :: 0.75
-TURN_QUEUE :: 2 // quarter turns a turn may run ahead of the view it left
 RISE_DELAY :: 0.45
 RISE_TIME :: 1.4
 RISE_DEPTH :: 520.0 / iso.WALL // risen blocks come up from this far below
@@ -256,9 +255,8 @@ Game :: struct {
 
 	angle:          f32, // continuous view angle in quarter turns (unbounded)
 	turning:        bool,
-	turn_from:      f32, // the angle where the current leg of the turn began
-	turn_to:        f32, // the view it comes to rest on
-	turn_v:         f32, // its speed when the leg began (quarter turns a second)
+	turn_from:      f32,
+	turn_step:      int,
 	turn_t:         f32,
 	pending_turn:   int,
 	reach_before:   []bool, // reachable nodes when a turn started
@@ -716,20 +714,7 @@ crossed :: proc(t, dt, mark: f32) -> bool {
 // --- turning the diorama ---------------------------------------------------------------
 
 request_turn :: proc(g: ^Game, step: int) {
-	if !g.active || g.phase != .Play {
-		return
-	}
-	if g.turning {
-		// a turn asked while turning carries on from where it is, at its speed
-		to := g.turn_to + f32(step)
-		if abs(to - math.round(g.angle)) > TURN_QUEUE {
-			return
-		}
-		audio.play(.Turn, -11)
-		g.turn_v = turn_speed(g)
-		g.turn_from = g.angle
-		g.turn_to = to
-		g.turn_t = 0
+	if !g.active || g.phase != .Play || g.turning {
 		return
 	}
 	if g.psyche.walking {
@@ -749,28 +734,8 @@ start_turn :: proc(g: ^Game, step: int) {
 	pl.reachable(&g.palace, g.psyche.cell, dark(g), g.reach_before[:len(g.palace.nodes)])
 	g.turning = true
 	g.turn_from = math.round(g.angle)
-	g.turn_to = g.turn_from + f32(step)
-	g.turn_v = 0
+	g.turn_step = step
 	g.turn_t = 0
-}
-
-// A leg of a turn: from `turn_from` at speed `turn_v` to rest on `turn_to`, a cubic
-// (smoothstep, as soft as a sine, when it starts at rest).
-@(private)
-turn_curve :: proc(g: ^Game, u: f32) -> f32 {
-	u2 := u * u
-	ease := u2 * (3 - 2 * u)
-	carry := u * (1 - u) * (1 - u)
-	return g.turn_from + (g.turn_to - g.turn_from) * ease + g.turn_v * ROTATE_TIME * carry
-}
-
-// The speed of the turn now, in quarter turns a second.
-@(private)
-turn_speed :: proc(g: ^Game) -> f32 {
-	u := min(g.turn_t / ROTATE_TIME, 1)
-	ease := 6 * u * (1 - u)
-	carry := (1 - u) * (1 - 3 * u)
-	return (g.turn_to - g.turn_from) * ease / ROTATE_TIME + g.turn_v * carry
 }
 
 @(private)
@@ -780,11 +745,11 @@ update_turn :: proc(g: ^Game, dt: f32) {
 	}
 	g.turn_t += dt
 	u := min(g.turn_t / ROTATE_TIME, 1)
-	g.angle = turn_curve(g, u)
+	g.angle = g.turn_from + f32(g.turn_step) * fx.sine_in_out(u)
 	if u < 1 {
 		return
 	}
-	g.angle = g.turn_to
+	g.angle = g.turn_from + f32(g.turn_step)
 	g.turning = false
 	pl.set_view(&g.palace, int(math.round(g.angle)))
 	after := make([]bool, len(g.palace.nodes), context.temp_allocator)
