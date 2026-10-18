@@ -10,6 +10,8 @@ Kinds: **feature** (new code or mechanic) · **level** (a level built or rebuilt
 
 | Title | Kind | Description |
 |---|---|---|
+| III.2: the grove of the plane tree | level | A second diorama after the pasture (VI.12-13): three sundials, two rams, a stair of the sun down and an evening illusion back up, the knoll under the great plane tree; a new fragment (III.2d) on the pond's islet. |
+| The plane tree | feature | A new prop for the Sun's pastures: a great plane tree, its crown broad and low. |
 | Psyche's Notebook | feature | C (pad West), or from the title and the pause: every mechanic met so far in four tabs (the world, the lamp, the spindle, the actions of the place), with its sign and keys; those still to come are veiled, those of the level in play in gold. |
 | Corrupt stones | feature | The one veiled stone that closes the way (II.1, III.1) shows ashen violet and cracked in the light, ash with dark cracks once real; a tutorial the first time; `check` tells which veiled stones make dead ends. |
 | Seals feel the flame | feature | In the dark an unlit seal near Psyche gives off a faint warmth and rising sparks of gold, so the lamp need not be lit blindly. |
