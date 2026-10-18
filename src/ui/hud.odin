@@ -653,9 +653,10 @@ draw_fragment_count :: proc(u: ^Ui, g: ^game.Game) {
 }
 
 // A level of several dioramas: a gilt column on the right, a diamond for
-// each joined by a thread of gold; those done filled, the one in play lit and
-// breathing (flaring as it arrives), those to come drawn in outline; under it
-// "2 / 3". A level of one diorama shows nothing.
+// each joined by a thread of gold, climbing from the first at the bottom;
+// those done half clear, the one in play bright with a faint glow (flaring
+// as it arrives), those to come drawn in outline; under it "2 / 3". A level
+// of one diorama shows nothing.
 @(private)
 draw_diorama_steps :: proc(u: ^Ui, g: ^game.Game) {
 	n := g.dioramas
@@ -663,7 +664,7 @@ draw_diorama_steps :: proc(u: ^Ui, g: ^game.Game) {
 		return
 	}
 	k := hud_k(u)
-	gap := 52 * k
+	gap := 72 * k
 	x := u.width - 70 * k
 	top := u.height * 0.5 - f32(n - 1) * gap * 0.5
 	// on a dark plate, its name over it as the tools' on the left
@@ -674,12 +675,12 @@ draw_diorama_steps :: proc(u: ^Ui, g: ^game.Game) {
 	rl.DrawRectangleRec({x - 0.75 * k, top, max(1.5 * k, 1), f32(n - 1) * gap}, fade(GOLD, 0.5))
 	flare: f32 = g.arrive_t >= 0 ? 1 - fx.clamp01(g.arrive_t / 2.5) : 0
 	for i in 0 ..< n {
-		c := Vec2{x, top + f32(i) * gap}
+		c := Vec2{x, top + f32(n - 1 - i) * gap}
 		switch {
 		case i < g.diorama || (i == g.diorama && g.parting):
-			diamond(u, c, 11 * k, fade(GOLD, 0.6), true)
+			diamond(u, c, 11 * k, fade(GOLD, 0.55), true)
 		case i == g.diorama:
-			glow_dot(c, (26 + 18 * flare) * k, {255, 214, 140, 255}, 0.4 + 0.25 * breathe(u, g.time, 2.4) + 0.35 * flare)
+			glow_dot(c, (20 + 14 * flare) * k, {255, 214, 140, 255}, 0.22 + 0.1 * breathe(u, g.time, 2.4) + 0.35 * flare)
 			diamond(u, c, 14 * k, BRIGHT, true)
 		case:
 			diamond(u, c, 11 * k, fade(DIM, 0.8), false)
