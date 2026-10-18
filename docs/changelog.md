@@ -10,6 +10,7 @@ Kinds: **feature** (new code or mechanic) · **level** (a level built or rebuilt
 
 | Title | Kind | Description |
 |---|---|---|
+| README | docs | New title shot (New game, Games), two shots of the new screens (the games, the constellation), the new controls. |
 | Cupid as light | rework | Cupid is a figure of pure light that breathes, with trails of light for wings (a ripple running along them, quicker in flight); his robe mesh and feathers removed. |
 | The act as a constellation | feature | In the level select Tab (pad Y) turns the row of pictures into a constellation: a star per level, lit lines where the tale went on, a level's other dioramas as small stars rising from it. |
 | Shots of the games | tooling | The shots script shows the games list with three saves, the erase question and the title on Continue. |

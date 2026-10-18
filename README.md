@@ -56,6 +56,17 @@ tale to gather in the Book. It will be released once the whole tale is told.
 </tr>
 </table>
 
+Up to five games side by side, each to continue, restart or erase; the levels of
+each act as pictures or as a constellation, a star per level, lit where the tale
+has gone on.
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/games.jpg" alt="The games: five slots side by side, three saved games with their level, fragments and date"><br><sub><i>Five games side by side</i></sub></td>
+<td width="50%"><img src="docs/screenshots/levels_constellation.jpg" alt="The level select of Act III as a constellation: a star per level joined by lines of gold, the chosen level's diorama turning on the right"><br><sub><i>An act as a constellation</i></sub></td>
+</tr>
+</table>
+
 What changed, step by step: the [changelog](docs/changelog.md).
 
 ## Controls
@@ -69,6 +80,9 @@ What changed, step by step: the [changelog](docs/changelog.md).
 | into a cave · call the eagle | Space | A |
 | back to the last brazier · hold: restart | R | B |
 | where is Psyche? | Tab | Y |
+| skip a cutscene (hold) | Space or Enter | A or B |
+| levels: pictures or constellation | Tab | Y |
+| erase a game | Del | X |
 | pause | Esc | Start |
 
 ## License
