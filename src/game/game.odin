@@ -1981,9 +1981,10 @@ assembly :: proc(g: ^Game, c: Cell, jitter: f32) -> f32 {
 floors_shown :: proc(g: ^Game) -> f32 {
 	switch {
 	case g.phase == .Arrival:
-		return fx.progress(g.arrive_t, 0.3, 1.2)
+		// once the rim is up round it (arrival_rise: the far edge comes last)
+		return fx.progress(g.arrive_t, 0.95 + 0.08 * f32(g.data.size), 0.8)
 	case g.parting && (g.phase == .Ending_Exit || g.phase == .Finished):
-		return 1 - fx.progress(g.phase == .Finished ? PART_END : g.phase_t, 0.6, 1.2)
+		return 1 - fx.progress(g.phase == .Finished ? PART_END : g.phase_t, 0.2, 0.6) // gone as the rim starts down
 	}
 	return 1
 }

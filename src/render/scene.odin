@@ -679,7 +679,7 @@ scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
 	// dust falling from the cracks while the lamp shows them
 	if g.light > 0.5 && !g.turning && g.collapse_t < 0 {
 		for e in g.palace.illusion.pairs {
-			if fx.randf(&s.rng) < dt * 6 / 1.6 {
+			if _, clear := placed(g, g.palace.nodes[e[0]].cell - {0, 0, 1}); clear >= 1 && fx.randf(&s.rng) < dt * 6 / 1.6 {
 				p0, p1, _ := seam_edge(g, e)
 				fx.emit(&s.dust, {
 					pos   = fx.lerp(p0, p1, fx.randf(&s.rng)) + {0, 0, 0.01},
@@ -2042,11 +2042,11 @@ draw_decals :: proc(g: ^game.Game) {
 	// Proserpina's pomegranates: a ring of dark red on both faces of their stones
 	for c, n in g.data.pomegranates {
 		k := 0.6 + 0.4 * math.sin(g.time * 1.2 + f32(n))
-		_, clear := placed(g, c)
+		rise, clear := placed(g, c)
 		col := Color4{0.95, 0.3, 0.32, 0.3 * k * clear}
 		for under in ([2]bool{false, true}) {
 			begin_turn(g, under)
-			p := Vec3{f32(c.x) + 0.5, f32(c.y) + 0.5, f32(c.z) + 0.007}
+			p := Vec3{f32(c.x) + 0.5, f32(c.y) + 0.5, f32(c.z) + 0.007 + rise}
 			floor_ring(p, 0.32, 0.05, col)
 			floor_ellipse(p - {0, 0, 0.001}, 0.3, 0.3, {col.r, col.g, col.b, col.a * 0.22})
 			end_turn()
@@ -2058,10 +2058,10 @@ draw_decals :: proc(g: ^game.Game) {
 	// a few small flowers in the grass, pale in the moonlight
 	FLOWER := [3]Color4{{0.92, 0.9, 1.0, 0.85}, {1.0, 0.9, 0.55, 0.8}, {0.8, 0.65, 1.0, 0.8}}
 	for c, n in g.data.lawn {
-		_, clear := placed(g, c)
+		rise, clear := placed(g, c)
 		for k in 0 ..< 6 {
 			h := u32(n * 31 + k * 7)
-			p := Vec3{f32(c.x) + 0.12 + 0.76 * fx.hash01(h * 3 + 1), f32(c.y) + 0.12 + 0.76 * fx.hash01(h * 3 + 2), f32(c.z) + 1.006}
+			p := Vec3{f32(c.x) + 0.12 + 0.76 * fx.hash01(h * 3 + 1), f32(c.y) + 0.12 + 0.76 * fx.hash01(h * 3 + 2), f32(c.z) + 1.006 + rise}
 			if g.psyche.cell == c + {0, 0, 1} && linalg_dot(p - g.psyche.pos, p - g.psyche.pos) < 0.04 {
 				continue // trodden under her feet
 			}
@@ -2075,19 +2075,20 @@ draw_decals :: proc(g: ^game.Game) {
 	for c, n in g.data.sundials {
 		k := 0.6 + 0.4 * math.sin(g.time * 1.4 + f32(n))
 		col := fx.lerp(Color4{1.0, 0.92, 0.55, 0.32}, Color4{1.0, 0.62, 0.72, 0.32}, g.evening)
-		_, clear := placed(g, c)
+		rise, clear := placed(g, c)
 		col.a *= k * clear
-		floor_ring(pl.node_world(&g.palace, c) + {0, 0, 0.007}, 0.32, 0.05, col)
-		floor_ellipse(pl.node_world(&g.palace, c) + {0, 0, 0.006}, 0.3, 0.3, {col.r, col.g, col.b, col.a * 0.25})
+		at := pl.node_world(&g.palace, c) + {0, 0, rise}
+		floor_ring(at + {0, 0, 0.007}, 0.32, 0.05, col)
+		floor_ellipse(at + {0, 0, 0.006}, 0.3, 0.3, {col.r, col.g, col.b, col.a * 0.25})
 	}
 
 	// Jupiter's eagles: a faint golden ring on each perch; standing on one,
 	// the ring where it will set her down breathes brighter
 	for e, n in g.data.eagles {
 		k := 0.6 + 0.4 * math.sin(g.time * 1.4 + f32(n))
-		_, clear := placed(g, e.from)
+		rise, clear := placed(g, e.from)
 		col := Color4{1.0, 0.84, 0.5, 0.26 * k * clear}
-		floor_ring(pl.node_world(&g.palace, e.from) + {0, 0, 0.007}, 0.32, 0.04, col)
+		floor_ring(pl.node_world(&g.palace, e.from) + {0, 0, 0.007 + rise}, 0.32, 0.04, col)
 		if game.at_eagle(g) && g.psyche.cell == e.from {
 			land := pl.node_world(&g.palace, e.to) + {0, 0, 0.007}
 			floor_ring(land, 0.3 + 0.04 * k, 0.06, {1.0, 0.86, 0.5, 0.55 * k})
@@ -2137,16 +2138,22 @@ draw_decals :: proc(g: ^game.Game) {
 	if truth := game.truth(g); truth > 0.01 && !g.turning && g.collapse_t < 0 && g.phase != .Overturn {
 		for e, n in g.palace.illusion.pairs {
 			p0, p1, inward := seam_edge(g, e)
-			lift := Vec3{0, 0, 0.005}
+			// with its stone, as the diorama rises or breaks up
+			rise, clear := placed(g, g.palace.nodes[e[0]].cell - {0, 0, 1})
+			if clear < 0.01 {
+				continue
+			}
+			lift := Vec3{0, 0, 0.005 + rise}
+			a := truth * clear
 			// a dark band in the stone...
-			floor_strip(p0 + lift, p1 + lift, inward, 0.1, {0.02, 0.01, 0.04, 0.35 * truth})
+			floor_strip(p0 + lift, p1 + lift, inward, 0.1, {0.02, 0.01, 0.04, 0.35 * a})
 			// ...and a jagged crack along the joint
 			prev := p0 + lift
 			for k in 1 ..= 6 {
 				t := f32(k) / 6
 				jitter: f32 = k < 6 ? (fx.hash01(u32(n * 7 + k)) - 0.5) * 0.05 : 0
 				next := fx.lerp(p0, p1, t) + lift + inward * (0.012 + jitter * 0.5)
-				floor_strip(prev, next, inward, 0.028, {0.03, 0.02, 0.05, 0.9 * truth})
+				floor_strip(prev, next, inward, 0.028, {0.03, 0.02, 0.05, 0.9 * a})
 				prev = next
 			}
 		}
