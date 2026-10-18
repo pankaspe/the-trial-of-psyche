@@ -57,6 +57,8 @@ lamp_side :: proc(u: ^Ui, alpha: f32, reach: f32 = 0.55) {
 // about it, "Back" in the right corner.
 
 PANEL_X :: 120 // the panel's left edge (1080p units)
+STAGE_SIZE :: [2]f32{0.6, 0.66} // the part of the screen the diorama is framed in beside the panel
+STAGE_SHIFT :: [2]f32{0.14, -0.06} // and where its middle is, from the screen's (fractions of it)
 PANEL_W :: 680
 TABS_Y :: 64
 HEAD_Y :: 168
@@ -484,6 +486,11 @@ level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs:
 	count := fmt.tprintf("·   %s  %d / %d", caps(i18n.tr(.Fragments_Label)), progress.fragment_count(prog), content.FRAGMENT_COUNT)
 	text(u, count, {tabs_end, TABS_Y * s + 3 * s}, {size = 18, color = fade(DIM, 0.8), face = .Semi, track = 0.16, shadow = true}, .Left)
 
+	// the act's whole tale in the Book: a gilt plaque over the diorama
+	if sealed[act] {
+		act_plaque(u, caps(fmt.tprintf(i18n.tr(.Act_Sealed), i18n.tr(content.ACT_LABEL[act]))))
+	}
+
 	// the panel: the chosen level
 	info := content.LEVELS[ls.level]
 	built := content.is_built(ls.level)
@@ -509,10 +516,6 @@ level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs:
 		cst := Style{size = 22, color = DIM, face = .Semi, track = 0.06, shadow = true}
 		cx := x0 + f32(n) * 26 * s + 12 * s
 		text(u, found, {cx, y + 1 * s}, cst, .Left)
-		if sealed[act] {
-			// the act's whole tale is in the Book: a plaque beside its fragments
-			plaque(u, i18n.tr(.Act_Sealed), {cx + measure(u, found, cst).x + 24 * s, y - 4 * s}, true)
-		}
 		y += 52 * s
 	}
 	if loaded {
@@ -944,20 +947,35 @@ plaque_size :: proc(u: ^Ui, label: string) -> Vec2 {
 	return {m.x + 26 * u.scale, m.y + 12 * u.scale}
 }
 
-// A small plaque: a label on a dark plate edged in gold (what a place holds,
-// an act's tale complete: `gilt`, its edge and letters brighter). Returns its width.
-plaque :: proc(u: ^Ui, label: string, pos: Vec2, gilt := false) -> f32 {
+// A small plaque: a label on a dark plate edged in gold (what a place holds).
+// Returns its width.
+plaque :: proc(u: ^Ui, label: string, pos: Vec2) -> f32 {
 	s := u.scale
 	size := plaque_size(u, label)
 	r := rl.Rectangle{pos.x, pos.y, size.x, size.y}
-	st := PLAQUE_STYLE
-	if gilt {
-		st.color = GOLD
-	}
 	rl.DrawRectangleRec(r, fade({13, 11, 20, 255}, 0.7))
-	rl.DrawRectangleLinesEx(r, max(s, 1), fade(GOLD, gilt ? 0.7 : 0.35))
-	text(u, label, {r.x + 13 * s, r.y + 6 * s}, st, .Left)
+	rl.DrawRectangleLinesEx(r, max(s, 1), fade(GOLD, 0.35))
+	text(u, label, {r.x + 13 * s, r.y + 6 * s}, PLAQUE_STYLE, .Left)
 	return size.x
+}
+
+// The plaque of an act whose whole tale is in the Book: gilt, over the
+// diorama of the level select, on the line of the act tabs.
+@(private)
+act_plaque :: proc(u: ^Ui, label: string) {
+	s := u.scale
+	st := Style{size = 20, color = GOLD, face = .Semi, track = 0.18}
+	m := measure(u, label, st)
+	cx := u.width * (0.5 + STAGE_SHIFT.x)
+	r := rl.Rectangle{cx - m.x * 0.5 - 44 * s, TABS_Y * s - 10 * s, m.x + 88 * s, m.y + 20 * s}
+	glow_dot({cx, r.y + r.height * 0.5}, r.width * 0.35, {255, 176, 77, 255}, 0.25)
+	rl.DrawRectangleRec(r, fade({40, 24, 14, 255}, 0.9))
+	rl.DrawRectangleLinesEx(r, max(1.5 * s, 1), GOLD)
+	corner_frame(u, {r.x - 5 * s, r.y - 5 * s, r.width + 10 * s, r.height + 10 * s}, 1, s, BRIGHT)
+	for side in ([]f32{-1, 1}) {
+		diamond(u, {cx + side * (m.x * 0.5 + 24 * s), r.y + r.height * 0.5}, 5 * s, BRIGHT, true)
+	}
+	text(u, label, {cx - m.x * 0.5, r.y + 10 * s}, st, .Left)
 }
 
 // A fragment just added to the Book, with how many of its act are there now.

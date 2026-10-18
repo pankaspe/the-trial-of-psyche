@@ -11,7 +11,7 @@ Kinds: **feature** (new code or mechanic) · **level** (a level built or rebuilt
 | Title | Kind | Description |
 |---|---|---|
 | Levels of several dioramas, shown | ui | In the level select a small plate per diorama on the tile and a "2 dioramas" plaque in the panel. |
-| The act's plaque | ui | A complete act's tale gets a gilt plaque beside the fragments instead of the round medal. |
+| The act's plaque | ui | "Act III 100% complete": a gilt plaque over the diorama instead of the round medal. |
 | The last brazier, seen | feature | A column of warm light and rising embers over the last brazier lit; every lit flame larger. |
 | Hold to skip | feature | Cutscenes skip when held: a ring fills with rising plucks and the pad shakes; a press with "R twice". |
 | The brazier's tutorial | ui | Lighting a brazier shows a tutorial card (its sign, the R button pointed at, a tick when she goes back to it). |

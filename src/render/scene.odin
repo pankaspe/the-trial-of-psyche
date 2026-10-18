@@ -255,8 +255,6 @@ Scene :: struct {
 	stage:      f32, // 0 .. 1: the level select shows the whole diorama on the right of the screen
 }
 
-STAGE_SIZE :: Vec2{0.6, 0.66} // the part of the screen the level select frames the diorama in
-STAGE_SHIFT :: Vec2{0.14, -0.06} // and where its middle is, from the screen's (fractions of it)
 
 PAN_TIME :: 1.8 // the camera moving from one band of a tall level to the next
 
@@ -592,8 +590,8 @@ scene_view :: proc(s: ^Scene, g: ^game.Game, width, height: f32) -> View {
 	if s.stage > 0 {
 		// a side panel (the level select, the settings): the whole diorama (every band of a tall level),
 		// smaller, its middle right of the screen's, where the panel leaves room
-		st := make_view(s.fit, width * STAGE_SIZE.x, height * STAGE_SIZE.y, g.angle, g.data.size, g.data.height, {})
-		center := Vec2{s.fit.x + s.fit.w * 0.5, s.fit.y + s.fit.h * 0.5} - STAGE_SHIFT * Vec2{width, height} / st.zoom
+		st := make_view(s.fit, width * ui.STAGE_SIZE.x, height * ui.STAGE_SIZE.y, g.angle, g.data.size, g.data.height, {})
+		center := Vec2{s.fit.x + s.fit.w * 0.5, s.fit.y + s.fit.h * 0.5} - ui.STAGE_SHIFT * Vec2{width, height} / st.zoom
 		k := fx.sine_in_out(s.stage)
 		v.zoom = fx.lerp(v.zoom, st.zoom, k)
 		v.center = fx.lerp(v.center, center, k)
