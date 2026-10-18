@@ -12,6 +12,7 @@ import "../fx"
 import "../game"
 import "../i18n"
 import "../input"
+import "../level"
 import "../progress"
 import "../settings"
 
@@ -491,9 +492,6 @@ level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs:
 	loaded := built && shown.level_index == ls.level
 	w := PANEL_W * s
 	eyebrow := fmt.tprintf("%s  ·  %s", caps(i18n.tr(content.ACT_LABEL[act])), level_label(ls.level))
-	if sealed[act] {
-		eyebrow = fmt.tprintf("%s  ·  %s", eyebrow, caps(i18n.tr(.Act_Sealed)))
-	}
 	y := panel_head(u, eyebrow, i18n.tr(info.title))
 	y += paragraph(u, i18n.tr(info.place), {x0, y}, {size = 30, color = DIM, face = .Italic, shadow = true}, w, 1, 1.2, .Left)
 	y += 14 * s
@@ -507,7 +505,14 @@ level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs:
 		for k in 0 ..< n {
 			diamond(u, {x0 + 9 * s + f32(k) * 26 * s, y + 14 * s}, 10 * s, GOLD, first + k in prog.fragments)
 		}
-		text(u, fmt.tprintf("%d / %d  %s", progress.level_fragments(prog, ls.level), n, i18n.tr(.Fragments_Label)), {x0 + f32(n) * 26 * s + 12 * s, y + 1 * s}, {size = 22, color = DIM, face = .Semi, track = 0.06, shadow = true}, .Left)
+		found := fmt.tprintf("%d / %d  %s", progress.level_fragments(prog, ls.level), n, i18n.tr(.Fragments_Label))
+		cst := Style{size = 22, color = DIM, face = .Semi, track = 0.06, shadow = true}
+		cx := x0 + f32(n) * 26 * s + 12 * s
+		text(u, found, {cx, y + 1 * s}, cst, .Left)
+		if sealed[act] {
+			// the act's whole tale is in the Book: a plaque beside its fragments
+			plaque(u, i18n.tr(.Act_Sealed), {cx + measure(u, found, cst).x + 24 * s, y - 4 * s}, true)
+		}
 		y += 52 * s
 	}
 	if loaded {
@@ -535,24 +540,23 @@ level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs:
 			{d.has_boat || len(d.ferries) > 0, .Device_Boat},
 			{len(d.rests) > 0, .Device_Braziers},
 		}
-		hx := x0
-		st := Style{size = 21, color = DIM, face = .Semi, track = 0.08}
+		labels := make([dynamic]string, context.temp_allocator)
+		if shown.dioramas > 1 {
+			append(&labels, fmt.tprintf(i18n.tr(.Device_Dioramas), shown.dioramas))
+		}
 		for h in holds {
-			if !h.on {
-				continue
+			if h.on {
+				append(&labels, i18n.tr(h.key))
 			}
-			label := i18n.tr(h.key)
-			m := measure(u, label, st)
-			r := rl.Rectangle{hx, y, m.x + 26 * s, m.y + 12 * s}
-			if r.x + r.width > x0 + w {
+		}
+		hx := x0
+		for label in labels {
+			pw := plaque_size(u, label).x
+			if hx + pw > x0 + w {
 				hx = x0
-				y += r.height + 12 * s
-				r.x, r.y = hx, y
+				y += plaque_size(u, label).y + 12 * s
 			}
-			rl.DrawRectangleRec(r, fade({13, 11, 20, 255}, 0.7))
-			rl.DrawRectangleLinesEx(r, max(s, 1), fade(GOLD, 0.35))
-			text(u, label, {r.x + 13 * s, r.y + 6 * s}, st, .Left)
-			hx += r.width + 12 * s
+			hx += plaque(u, label, {hx, y}) + 12 * s
 		}
 		if hx > x0 {
 			y += 34 * s + 24 * s
@@ -597,6 +601,13 @@ level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs:
 		rl.DrawRectangleGradientV(i32(r.x), i32(r.y + r.height * 0.45), i32(r.width), i32(r.height * 0.55), {5, 4, 9, 0}, {5, 4, 9, 210})
 		text(u, level_label(i), {r.x + 14 * s, r.y + r.height - 40 * s}, {size = 26, color = on ? BRIGHT : TEXT, face = .Semi, shadow = true}, .Left)
 		if content.is_built(i) {
+			if nd := len(level.dioramas(content.LEVELS[i].source)); nd > 1 {
+				for k in 0 ..< nd {
+					p := rl.Rectangle{r.x + r.width - 16 * s - f32(nd - k) * 14 * s, r.y + 10 * s, 10 * s, 10 * s}
+					rl.DrawRectangleRec(p, fade({13, 11, 20, 255}, 0.8))
+					rl.DrawRectangleLinesEx(p, max(s, 1), GOLD)
+				}
+			}
 			first, n := content.level_fragments(i)
 			for k in 0 ..< n {
 				diamond(u, {r.x + r.width - 18 * s - f32(n - 1 - k) * 20 * s, r.y + r.height - 22 * s}, 7 * s, GOLD, first + k in prog.fragments)
@@ -607,9 +618,6 @@ level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs:
 		if on {
 			corner_frame(u, {r.x - 6 * s, r.y - 6 * s, r.width + 12 * s, r.height + 12 * s}, 1, s, BRIGHT)
 		}
-	}
-	if sealed[act] {
-		act_seal(u, {min(tx + 52 * s, u.width - 64 * s), ty + TILE.y * s * 0.5})
 	}
 	if play && open {
 		audio.play(.Tap, -14)
@@ -929,13 +937,27 @@ arrow_cap :: proc(u: ^Ui, pos: Vec2, size: f32, dir: int) {
 
 // The seal at the end of an act's row: every fragment of the act found.
 @(private)
-act_seal :: proc(u: ^Ui, c: Vec2) {
+PLAQUE_STYLE :: Style{size = 21, color = DIM, face = .Semi, track = 0.08}
+
+plaque_size :: proc(u: ^Ui, label: string) -> Vec2 {
+	m := measure(u, label, PLAQUE_STYLE)
+	return {m.x + 26 * u.scale, m.y + 12 * u.scale}
+}
+
+// A small plaque: a label on a dark plate edged in gold (what a place holds,
+// an act's tale complete: `gilt`, its edge and letters brighter). Returns its width.
+plaque :: proc(u: ^Ui, label: string, pos: Vec2, gilt := false) -> f32 {
 	s := u.scale
-	glow_dot(c, 22 * s, {255, 176, 77, 255}, 0.8)
-	rl.DrawCircleV(c, 36 * s, fade({21, 18, 29, 255}, 0.92))
-	rl.DrawRing(c, 31 * s, 33 * s, 0, 360, 48, GOLD)
-	rl.DrawRing(c, 36 * s, 37.5 * s, 0, 360, 48, fade(GOLD, 0.5))
-	diamond(u, c, 17 * s, BRIGHT, true)
+	size := plaque_size(u, label)
+	r := rl.Rectangle{pos.x, pos.y, size.x, size.y}
+	st := PLAQUE_STYLE
+	if gilt {
+		st.color = GOLD
+	}
+	rl.DrawRectangleRec(r, fade({13, 11, 20, 255}, 0.7))
+	rl.DrawRectangleLinesEx(r, max(s, 1), fade(GOLD, gilt ? 0.7 : 0.35))
+	text(u, label, {r.x + 13 * s, r.y + 6 * s}, st, .Left)
+	return size.x
 }
 
 // A fragment just added to the Book, with how many of its act are there now.

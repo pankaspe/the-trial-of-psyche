@@ -81,6 +81,8 @@ SHOT_SCRIPT := [?]Shot_Step {
 	{0.1, "", proc(app: ^App) {close_settings(app)}},
 	{0.1, "", proc(app: ^App) {app.prog.completed = {3}; app.prog.fragments = {2, 3, 4}; app.screen = .Levels}},
 	{0.6, "02b_levels", nil},
+	{0.1, "", proc(app: ^App) {app.levels.sel.level = 3}},
+	{1.0, "02b_levels_i4", nil}, // a level of two dioramas
 	{0.1, "", proc(app: ^App) {
 			app.prog.completed = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}
 			app.levels.sel.level = 11
