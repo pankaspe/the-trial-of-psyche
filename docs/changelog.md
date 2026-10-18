@@ -10,6 +10,7 @@ Kinds: **feature** (new code or mechanic) · **level** (a level built or rebuilt
 
 | Title | Kind | Description |
 |---|---|---|
+| The dioramas' column | ui | In a level of several dioramas a gilt column on the right: a diamond for each, climbing from the first; the one in play bright, those done half clear, those to come in outline; "2 / 3" under it. |
 | III.2: the grove of the plane tree | level | A second diorama after the pasture (VI.12-13): three sundials, two rams, a stair of the sun down and an evening illusion back up, the knoll under the great plane tree; a new fragment (III.2d) on the pond's islet. |
 | The plane tree | feature | A new prop for the Sun's pastures: a great plane tree, its crown broad and low. |
 | Psyche's Notebook | feature | C (pad West), or from the title and the pause: every mechanic met so far in four tabs (the world, the lamp, the spindle, the actions of the place), with its sign and keys; those still to come are veiled, those of the level in play in gold. |
