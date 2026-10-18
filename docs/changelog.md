@@ -10,6 +10,12 @@ Kinds: **feature** (new code or mechanic) · **level** (a level built or rebuilt
 
 | Title | Kind | Description |
 |---|---|---|
+| Psyche's Notebook | feature | C (pad West), or from the title and the pause: every mechanic met so far in four tabs (the world, the lamp, the spindle, the actions of the place), with its sign and keys; those still to come are veiled, those of the level in play in gold. |
+| Corrupt stones | feature | The one veiled stone that closes the way (II.1, III.1) shows ashen violet and cracked in the light, ash with dark cracks once real; a tutorial the first time; `check` tells which veiled stones make dead ends. |
+| Seals feel the flame | feature | In the dark an unlit seal near Psyche gives off a faint warmth and rising sparks of gold, so the lamp need not be lit blindly. |
+| Fish | feature | Dark fish glide under the water of the living places (river, pastures, Venus, palace, temple, crag), darting now and then with a ring on the surface; none in the Styx or the land of the dead. |
+| Turning tried | rework | A softer turn and turns chained mid-turn were tried and dropped: the original turn stays. |
+| README: the changelog | docs | The trailer badge (old) gives way to the changelog on trialofpsyche.com. |
 | Wings of energy | rework | One system of wings for both figures: Cupid's broad, five golden filaments with light flowing along them; Psyche's small, violet to blue, her body a faint rose. |
 | II.2: Pan's meadow | level | A second diorama after the crag: a gentle way down to the river's high brow where Pan sits (V.25), a plank the lamp shows, a short way for whoever turns twice; a new fragment (II.2b, Pan and Echo). |
 | README | docs | New title shot (New game, Games), two shots of the new screens (the games, the constellation), the new controls. |
