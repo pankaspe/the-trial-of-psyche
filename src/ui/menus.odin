@@ -241,26 +241,25 @@ title_menu :: proc(u: ^Ui, alpha: f32 = 1, lift: f32 = 0) -> (act: Menu_Action) 
 	return
 }
 
-// The pause names where she is: the act and the level above, its title (and
-// which of its dioramas) under "Paused".
+// The pause names where she is, at the top: the act and the level, its title
+// in the titles' face (and which of its dioramas); "Paused" over the menu.
 pause_menu :: proc(u: ^Ui, lamp: bool, level: int, diorama, dioramas: int) -> (act: Menu_Action) {
 	s := u.scale
 	shade(u, 0.5)
 	lamp_side(u, 1)
 	x := 144 * s
-	y := u.height * 0.5 - 290 * s
 	info := content.LEVELS[level]
+	y := 80 * s
 	eyebrow := fmt.tprintf("%s  ·  %s", caps(i18n.tr(content.ACT_LABEL[info.act])), level_label(level))
-	text(u, eyebrow, {x, y}, {size = 22, color = GOLD, face = .Semi, track = 0.18, shadow = true}, .Left)
-	y += 42 * s
-	text(u, i18n.tr(.Pause_Title), {x - 3 * s, y}, {size = 104, color = TITLE, face = .Display, glow = true, shadow = true}, .Left)
-	y += 128 * s
-	title := i18n.tr(info.title)
 	if dioramas > 1 {
-		title = fmt.tprintf("%s  ·  %s", title, fmt.tprintf(i18n.tr(.Pause_Diorama), diorama + 1, dioramas))
+		eyebrow = fmt.tprintf("%s  ·  %s", eyebrow, caps(fmt.tprintf(i18n.tr(.Pause_Diorama), diorama + 1, dioramas)))
 	}
-	text(u, title, {x, y}, {size = 32, color = TEXT, face = .Italic, shadow = true}, .Left)
-	y += 72 * s
+	text(u, eyebrow, {x, y}, {size = 22, color = GOLD, face = .Semi, track = 0.18, shadow = true}, .Left)
+	y += 40 * s
+	text(u, i18n.tr(info.title), {x - 3 * s, y}, {size = 76, color = TITLE, face = .Display, glow = true, shadow = true}, .Left)
+	y = u.height * 0.5 - 200 * s
+	text(u, i18n.tr(.Pause_Title), {x - 3 * s, y}, {size = 64, color = TEXT, face = .Display, shadow = true}, .Left)
+	y += 104 * s
 	ornament(u, {x + 100 * s, y}, 100 * s)
 	y += 62 * s
 	items := [?]Choice{{.Resume, .Resume}, {.Restart, .Restart}, {.Settings, .Settings}, {.Menu, .Main_Menu}}
