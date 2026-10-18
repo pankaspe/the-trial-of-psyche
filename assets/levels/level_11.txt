@@ -14,13 +14,14 @@
 # shelf, and in view 0 a seam joins the spring's rock (the exit).
 # Fragments: a rock in the water (from the bank, view 2); a tooth of rock by
 # the pillar's seal (from the pillar, view 3).
+# Two dioramas follow: the channels under the summit (handles, an eagle), the
+# summit (illusions, the lamp's long bridge, an eagle).
 size 11
 biome styx
 mechanic eagle
 lamp 3
 oil 7
 intro intro_iii_3
-outro outro_iii_3
 floor basin -1 0 11 10
 # S: the bank where she starts (h1)
 rock 6 8 0 0
@@ -86,3 +87,211 @@ prop lip 1 8 3 py
 prop pine 9 2 2 px
 prop cairn 9 4 3 px
 prop shrub 3 2 4 my
+
+diorama
+# The channels under the summit (the second diorama, VI.13-14): the black
+# water runs down from the spring in narrow channels, and slabs of rock span
+# them, each an L of two arms about its hub that turns a quarter at a time
+# (the spindle on a handle). No lamp and no seals here: the handles and one
+# eagle.
+#   - the west slab (pivot 3 5) joins two of four places at a time: the
+#     north rock, the middle rock, the start, the islet of the fragment;
+#   - the east slab (pivot 7 5) the same with the north-east rock (the
+#     eagle's perch), the east rock, the south-east rock and the middle rock;
+#   - the handles are crossed: the start's and the east rock's turn the west
+#     cross, the north rock's and the south-east rock's the east slab.
+# Solution (solver: 44 steps, 9 handles, 1 flight, 10 decisions): the start's
+# handle once (to the middle rock); the south-east handle three times (to the
+# east rock); the east handle three times (the west slab back to the north
+# rock); back to the south-east rock, its handle once more (to the middle);
+# the north rock, its handle once (the east slab to the perch); the eagle up
+# to the spring.
+# Fragment III.3c (VI.13, Venus shows her the spring) on the west islet: the
+# start's handle turned twice, then three times more to go on.
+size 11
+biome styx
+floor basin -1 -1 11 11
+intro intro_iii_3b
+
+# --- the start (h2): the west slab's first handle, a brazier ---------------
+rock 3 7 0 1
+rock 3 8 0 1
+rock 4 8 0 1
+start 4 8 2
+rest 4 8 2
+prop shrub 4 8 2 px
+prop lip 3 8 2 py
+
+# --- the north rock: a handle of the east slab ------------------------------
+rock 3 3 0 1
+rock 3 2 0 1
+prop cairn 3 2 2 mx
+
+# --- the middle rock, between the two crosses --------------------------------
+rock 5 5 0 1
+prop lip 5 5 2 py
+prop lip 5 5 2 my
+
+# --- the north-east rock: the eagle's perch ----------------------------------
+rock 7 3 0 1
+rock 7 2 0 1
+eagle 7 2 2 1 1 4
+prop shrub 7 3 2 px
+
+# --- the east rock: a handle of the west slab --------------------------------
+rock 9 5 0 1
+rock 9 4 0 1
+prop lip 9 4 2 px
+prop lip 9 5 2 px
+
+# --- the south-east rock: a handle of the east slab -------------------------
+rock 7 7 0 1
+rock 7 8 0 1
+prop lip 7 8 2 py
+
+# --- the spring (h4), where the eagle sets her down (the exit) ----------------
+rock 1 1 0 3
+rock 0 1 0 3
+exit 0 1 4
+prop lip 0 1 4 mx
+prop lip 0 1 4 my
+prop lip 0 1 4 py
+prop lip 1 1 4 px
+prop lip 1 1 4 my
+prop lip 1 1 4 py
+rock 1 0 0 3
+rock 1 2 0 2
+
+# --- crags in the black water -------------------------------------------------
+rock 10 9 0 2
+prop pine 10 9 3
+rock 0 9 0 2
+prop boulder 0 9 3
+
+# --- the islet of the fragment (III.3c) --------------------------------------
+rock 1 5 0 1
+rock 0 5 0 1
+prop shrub 0 5 2 mx
+fragment 0 5 2
+
+# --- the slabs ------------------------------------------------------------------
+# 0: the west slab, joining the north rock and the middle rock
+part 3 5
+rock 3 5 1 1
+rock 3 4 1 1
+rock 4 5 1 1
+end
+# 1: the east slab, joining the middle rock and the south-east rock
+part 7 5
+rock 7 5 1 1
+rock 6 5 1 1
+rock 7 6 1 1
+end
+
+# the handles, crossed: the west slab from the start and the east rock, the
+# east cross from the north rock and the south-east rock
+handle 3 8 2 0
+handle 9 4 2 0
+handle 3 2 2 1
+handle 7 8 2 1
+
+diorama
+# The summit (the third diorama, VI.14-15): the spring at the top of the crag,
+# in the dark. Illusions, the lamp's oil and one eagle: a long bridge of veiled
+# stones that only the flame remembers, and a corrupt stone at its far end.
+#   - the bank (h2): the start, a brazier. In view 2 its edge looks joined to
+#     the west terrace (h3), the bridge's head;
+#   - the bridge (h3): seven veiled stones east, then north, to the far rock;
+#     the lamp wakes them two cells ahead of her as she walks it lit, and a
+#     branch of three runs south to the islet of the fragment;
+#   - the far rock (h3): a corrupt stone waits on it, over the way to the
+#     perch: put the lamp out on the bridge's third stone from the end (its
+#     last two are awake by then), or it wakes and closes the way;
+#   - the perch (h4), up stairs a crag hides in views 1 and 2; the eagle sets
+#     her on the summit (h5), whose stairs to the spring a spire hides in
+#     views 2 and 3.
+# Solution (solver: 18 steps, 4 turns, 1 lighting, 1 flight, 6 decisions).
+# Fragment III.3d (VI.15, the eagle fills the urn) on the islet at the end of
+# the branch: more oil, and a way back.
+size 13
+biome styx
+lamp 1
+oil 7
+floor basin -1 -1 13 13
+intro intro_iii_3c
+outro outro_iii_3
+
+# --- the bank (h2): the start, a brazier ---------------------------------------
+rock 2 10 0 1
+rock 3 10 0 1
+rock 4 10 0 1
+rock 2 11 0 1
+rock 3 11 0 1
+start 3 11 2
+rest 3 11 2
+prop shrub 2 11 2 py
+prop lip 3 11 2 py
+
+# --- the west terrace (h3): the bridge's head ----------------------------------
+rock 1 7 0 2
+rock 2 7 0 2
+rock 3 7 0 2
+rock 1 8 0 2
+rock 2 8 0 2
+prop shrub 1 8 3 py
+prop lip 3 7 3 my
+
+# --- the bridge (h3), veiled: east, then north ---------------------------------
+veiled 4 7 2 rock
+veiled 5 7 2 rock
+veiled 6 7 2 rock
+veiled 7 7 2 rock
+veiled 7 6 2 rock
+veiled 7 5 2 rock
+veiled 7 4 2 rock
+
+# --- the branch south to the islet of the fragment (III.3d) --------------------
+veiled 7 8 2 rock
+veiled 7 9 2 rock
+veiled 7 10 2 rock
+rock 7 11 0 2
+prop shrub 7 11 3 px
+fragment 7 11 3
+
+# --- the far rock (h3): the corrupt stone, the stairs up to the perch ----------
+rock 7 3 0 2
+rock 7 2 0 2
+veiled 7 3 3 rock trap
+prop lip 7 2 3 px
+rock 6 2 0 2
+steps 6 2 3 mx
+rock 5 2 0 3
+eagle 5 2 4 11 3 5
+prop cairn 5 2 4 mx
+# the crag that hides the stairs in views 1 and 2
+rock 6 1 0 4
+prop boulder 6 1 5
+
+# --- the summit (h5), its stairs up to the spring (h6, the exit) ---------------
+rock 11 3 0 4
+rock 11 2 0 4
+rock 11 1 0 4
+steps 11 1 5 my
+rock 11 0 0 5
+exit 11 0 6
+prop lip 11 0 6 mx
+prop lip 11 0 6 px
+prop lip 11 3 5 px
+# the spire that hides the stairs in views 2 and 3
+rock 10 1 0 7
+prop boulder 10 1 8
+
+# --- crags in the black water ---------------------------------------------------
+rock 12 10 0 3
+prop pine 12 10 4
+rock 0 2 0 4
+prop boulder 0 2 5
+rock 11 7 0 2
+prop pine 11 7 3
+rock 3 3 0 3
+prop shrub 3 3 4 my

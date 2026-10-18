@@ -172,6 +172,8 @@ Key :: enum u16 {
 	Fragment_11d, // III.2's grove: the plane tree where she hides
 	Fragment_12,
 	Fragment_12b, // Jupiter's eagle remembers the old service
+	Fragment_12c, // III.3's channels: Venus shows her the spring
+	Fragment_12d, // III.3's summit: the eagle fills the urn
 	Fragment_13,
 	Fragment_13b, // Psyche turned to stone by the sight
 	Fragment_13c, // the eagle: the gods swear by the Styx
@@ -303,6 +305,8 @@ Key :: enum u16 {
 	Intro_III_2,
 	Intro_III_2b, // III.2's second diorama: the grove of the plane tree
 	Intro_III_3,
+	Intro_III_3b, // III.3's second diorama: the channels under the summit
+	Intro_III_3c, // III.3's third diorama: the summit
 	Intro_III_4,
 	Intro_III_5,
 	Intro_IV_1,
@@ -829,6 +833,8 @@ IT := [Key]string {
 	.Fragment_11c   = "All'alba Venere le indica un bosco lungo il fiume, dove pascolano pecore splendenti d'oro. Psiche ci va volentieri, ma non per obbedire: vuole gettarsi da una rupe nel fiume e trovare finalmente pace.",
 	.Fragment_12    = "Venere va a un banchetto di nozze, profumata e coronata di rose. Lascia Psiche sola, davanti al lavoro impossibile.",
 	.Fragment_12b   = "All'improvviso arriva l'uccello regale di Giove, l'aquila rapace, le ali spiegate. Ricorda l'antico servizio: fu Amore a guidarla quando portò in cielo il fanciullo frigio, coppiere di Giove. Ora soccorre la sposa di Amore.",
+	.Fragment_12c   = "Venere gliel'ha mostrata da lontano: da quella vetta scende l'acqua nera, si raccoglie nella valle vicina, bagna le paludi dello Stige e nutre le rauche correnti del Cocito.",
+	.Fragment_12d   = "L'aquila prende l'urna e vola tra le mascelle feroci dei draghi e le loro lingue a tre punte. Le acque le gridano di andarsene: lei risponde che è Venere a volerle, che è Venere a mandarla. Così riempie l'urna.",
 	.Fragment_13    = "L'acqua nera scende da una rupe altissima, tra rocce lisce. Draghi senza sonno la custodiscono, e le acque stesse gridano: «Vattene!»",
 	.Fragment_13b   = "A quella vista Psiche resta come pietra: il corpo è lì, la mente è altrove. Il pericolo è così grande che le manca perfino l'ultimo conforto, le lacrime.",
 	.Fragment_13c   = "«Speri forse, ingenua, di rubare una goccia a questa fonte santissima e crudele? Gli dèi, e Giove stesso, temono le acque dello Stige: come voi giurate sugli dèi, così essi giurano sulla maestà dello Stige.»",
@@ -961,6 +967,8 @@ IT := [Key]string {
 	.Intro_III_2b   = "Oltre i rovi, il boschetto del grande platano: a sera il gregge vi riposa all'ombra, e la lana d'oro resta tra le spine.",
 	.Intro_III_2    = "Lungo il fiume pascola il gregge d'oro del Sole. Una canna sussurra: aspetta la sera.",
 	.Intro_III_3    = "Venere le mette in mano un'urna di cristallo: «Riempila all'acqua nera che sgorga dalla vetta.»",
+	.Intro_III_3b   = "Sotto la vetta l'acqua nera corre in canali stretti. Lastre di roccia li scavalcano, e girano al fuso.",
+	.Intro_III_3c   = "Sulla vetta, sopra l'acqua che grida, un ponte che solo la fiamma ricorda.",
 	.Intro_III_4    = "Sulla vetta l'acqua nera grida. Le aquile ti portano lassù, ma dove ti posano l'ora resta quella: sceglila prima di volare.",
 	.Intro_III_5    = "Di nuovo nella casa di Venere. Per uscirne servirà ogni cosa imparata: la lucerna, il fuso, la grotta, l'aquila.",
 	.Intro_IV_1     = "La torre ti ha detto la via. Scendi: in fondo, sull'acqua scura, aspetta il traghettatore.",
@@ -1304,6 +1312,8 @@ EN := [Key]string {
 	.Fragment_11c   = "At dawn Venus points her to a grove along the river, where sheep shining with gold are grazing. Psyche goes willingly, but not to obey: she means to throw herself from a rock into the river and find rest at last.",
 	.Fragment_12    = "Venus goes off to a wedding feast, perfumed and crowned with roses. She leaves Psyche alone with the impossible task.",
 	.Fragment_12b   = "Suddenly the royal bird of Jupiter appears, the raptor eagle, its wings spread wide. It remembers the old service: Cupid guided it when it carried the Phrygian boy up to heaven to be Jupiter's cupbearer. Now it comes to the aid of Cupid's bride.",
+	.Fragment_12c   = "Venus pointed it out from afar: from that summit the black water flows down, gathers in the valley below, waters the marshes of the Styx and feeds the hoarse streams of Cocytus.",
+	.Fragment_12d   = "The eagle takes the urn and flies between the dragons' savage jaws and their three-forked tongues. The waters cry out to it to go away: it answers that Venus wants them, that Venus sends it. So it fills the urn.",
 	.Fragment_13    = "Black water falls from a towering crag, between smooth rocks. Sleepless dragons guard it, and the waters themselves cry out: “Go away!”",
 	.Fragment_13b   = "At the sight Psyche stands like stone: her body is there, her mind is elsewhere. The danger is so great that she lacks even the last comfort, tears.",
 	.Fragment_13c   = "“Do you hope, simple girl, to steal one drop from this most holy and cruel spring? The gods, Jupiter himself, fear the waters of the Styx: as you swear by the gods, so they swear by the majesty of the Styx.”",
@@ -1436,6 +1446,8 @@ EN := [Key]string {
 	.Intro_III_2b   = "Past the briars, the grove of the great plane tree: at evening the flock rests in its shade, and the golden wool stays on the thorns.",
 	.Intro_III_2    = "Along the river grazes the golden flock of the Sun. A reed whispers: wait for evening.",
 	.Intro_III_3    = "Venus puts a crystal urn in her hands: “Fill it with the black water that springs from the summit.”",
+	.Intro_III_3b   = "Below the summit the black water runs in narrow channels. Slabs of rock span them, and turn to the spindle.",
+	.Intro_III_3c   = "On the summit, over the crying water, a bridge only the flame remembers.",
 	.Intro_III_4    = "At the summit the black water cries out. The eagles carry you up, but where they set you down the hour stays as it was: choose it before you fly.",
 	.Intro_III_5    = "Back in the house of Venus. To leave it she will need everything she has learned: the lamp, the spindle, the cave, the eagle.",
 	.Intro_IV_1     = "The tower has told you the way. Go down: at the bottom, on the dark water, the ferryman waits.",
