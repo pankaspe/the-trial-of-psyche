@@ -15,7 +15,7 @@ from Apuleius' tale of Cupid and Psyche.*
 
 <br><br>
 
-<a href="https://www.youtube.com/watch?v=vUGtgu59krE"><img src="https://img.shields.io/badge/watch%20the%20trailer-YouTube-c9a24a?style=for-the-badge&labelColor=1d1530&logo=youtube&logoColor=f3e3c3" alt="Watch the trailer on YouTube"></a>
+<a href="https://trialofpsyche.com/changelog"><img src="https://img.shields.io/badge/read%20the-changelog-c9a24a?style=for-the-badge&labelColor=1d1530" alt="Read the changelog"></a>
 
 </div>
 
@@ -67,7 +67,7 @@ has gone on.
 </tr>
 </table>
 
-What changed, step by step: the [changelog](docs/changelog.md).
+What changed, step by step: the [changelog](https://trialofpsyche.com/changelog).
 
 ## Controls
 
