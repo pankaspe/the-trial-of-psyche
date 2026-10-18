@@ -2211,6 +2211,22 @@ draw_mist :: proc(r: ^Renderer, s: ^Scene, v: View) {
 	rlgl.EnableDepthMask()
 }
 
+// Something at c answering the flame she carries (`sense` 0 .. 1): a faint
+// warmth, and `motes` of gold rising (a still glow with reduce motion).
+flame_answer :: proc(g: ^game.Game, v: View, c: Vec3, sense: f32, seed: u32, motes: int) {
+	glow(v, c, 50, {1.0, 0.7, 0.35, 0.3 * sense}, 0.5, toward = 1.0)
+	if g.reduce_motion {
+		return
+	}
+	t := f32(g.time)
+	for m in 0 ..< motes {
+		h := seed * 31 + u32(m) * 7
+		u := math.mod(t * (0.22 + 0.08 * fx.hash01(h)) + fx.hash01(h + 1), 1)
+		drift := Vec3{0.32 * (fx.hash01(h + 2) - 0.5) + 0.05 * math.sin(t * 1.4 + f32(m)), 0.32 * (fx.hash01(h + 3) - 0.5), 0.1 + 0.9 * u}
+		glow(v, c + drift, 7, {1.0, 0.72, 0.35, sense * math.sin(u * math.PI)}, 1.2, toward = 0.4)
+	}
+}
+
 // Additive light: lamp, aura, seal, Cupid, drops, wings and particles.
 @(private)
 draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
@@ -2431,22 +2447,19 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 		pulse := 0.25 + 0.55 * (0.5 + 0.5 * math.cos(g.rise_t[k] * math.PI / 1.4))
 		glow(v, c, 70, {1.0, 0.75, 0.35, pulse * game.assembly(g, c0, 1)})
 	}
-	// an unlit seal near her in the dark: a faint warmth and motes of gold rising
+	// an unlit seal or a veiled stone near her in the dark: a faint warmth and
+	// motes of gold rising
 	for c0, k in g.data.sigils {
-		sense := game.seal_sense(g, k)
-		if sense < 0.01 {
-			continue
+		if sense := game.seal_sense(g, k); sense >= 0.01 {
+			c := shown(g, Vec3{f32(c0.x) + 0.5, f32(c0.y) + 0.5, f32(c0.z) + 0.05}, k in g.data.sigils_under)
+			flame_answer(g, v, c, sense, u32(k), 5)
 		}
-		c := shown(g, Vec3{f32(c0.x) + 0.5, f32(c0.y) + 0.5, f32(c0.z) + 0.05}, k in g.data.sigils_under)
-		glow(v, c, 50, {1.0, 0.7, 0.35, 0.3 * sense}, 0.5, toward = 1.0)
-		if g.reduce_motion {
-			continue
-		}
-		for m in 0 ..< 5 {
-			h := u32(k) * 31 + u32(m) * 7
-			u := math.mod(t * (0.22 + 0.08 * fx.hash01(h)) + fx.hash01(h + 1), 1)
-			drift := Vec3{0.32 * (fx.hash01(h + 2) - 0.5) + 0.05 * math.sin(t * 1.4 + f32(m)), 0.32 * (fx.hash01(h + 3) - 0.5), 0.1 + 0.9 * u}
-			glow(v, c + drift, 7, {1.0, 0.72, 0.35, sense * math.sin(u * math.PI)}, 1.2, toward = 0.4)
+	}
+	for e, i in g.data.blocks {
+		if sense := game.veil_sense(g, i); sense >= 0.01 {
+			c0 := pl.block_cell(&g.palace, i)
+			c := shown(g, Vec3{f32(c0.x) + 0.5, f32(c0.y) + 0.5, f32(c0.z) + 1.05}, e.under)
+			flame_answer(g, v, c, 0.7 * sense, 1000 + u32(i), 2)
 		}
 	}
 	// Jupiter's eagles: a golden light about them, brighter in flight
