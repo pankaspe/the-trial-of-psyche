@@ -1153,7 +1153,7 @@ draw_screens :: proc(app: ^App) {
 		}
 	case .Pause:
 		// the pause stands alone over the game: no HUD under its menu
-		switch ui.pause_menu(u, g.data.has_lamp) {
+		switch ui.pause_menu(u, g.data.has_lamp, g.level_index, g.diorama, g.dioramas) {
 		case .Resume:
 			app.screen = .Play
 		case .Restart:

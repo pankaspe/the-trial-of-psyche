@@ -256,6 +256,7 @@ Key :: enum u16 {
 	Place_Boat,
 	Hint_No_Rest,
 	Hint_No_Rest_Twice,
+	Hint_Rest_Twice,
 	Hint_Again_Twice,
 	Hint_Hold,
 	Set_Access,
@@ -340,6 +341,7 @@ Key :: enum u16 {
 	Mech_Flip_Pad,
 	Hint_No_Rest_Pad,
 	Hint_No_Rest_Twice_Pad,
+	Hint_Rest_Twice_Pad,
 	Hint_Again_Twice_Pad,
 	Hint_Hold_Pad,
 	Controls_Pad,
@@ -408,6 +410,7 @@ Key :: enum u16 {
 
 	// pause
 	Pause_Title,
+	Pause_Diorama,
 	Resume,
 	Restart,
 
@@ -522,6 +525,7 @@ VARIANT_TEXT := [Variant][Key]Key {
 	.Lamp_Toggle = #partial {.Hint_Lamp = .Hint_Lamp_Toggle, .Hint_Oil = .Hint_Oil_Toggle},
 	.Restart_Twice = #partial {
 		.Hint_No_Rest = .Hint_No_Rest_Twice,
+		.Hint_Rest = .Hint_Rest_Twice,
 		.Hint_Dead_End = .Hint_Dead_End_Twice,
 		.Hint_Dead_End_No_Rest = .Hint_Dead_End_No_Rest_Twice,
 		.Hint_No_Oil = .Hint_No_Oil_Twice,
@@ -542,6 +546,7 @@ PAD_TEXT := #partial [Key]Key {
 	.Mech_Flip          = .Mech_Flip_Pad,
 	.Hint_No_Rest       = .Hint_No_Rest_Pad,
 	.Hint_No_Rest_Twice = .Hint_No_Rest_Twice_Pad,
+	.Hint_Rest_Twice    = .Hint_Rest_Twice_Pad,
 	.Hint_Again_Twice   = .Hint_Again_Twice_Pad,
 	.Hint_Hold          = .Hint_Hold_Pad,
 	.Controls           = .Controls_Pad,
@@ -912,7 +917,8 @@ IT := [Key]string {
 	.Hint_Ferry_Away = "La barca è sull'altra riva: Caronte non torna a prenderti",
 	.Hint_Guard     = "Qui è buio: accendi la lucerna accanto al candelabro, e la sua luce ti mostrerà la via",
 	.Hint_Lamp_Day  = "Il sole mostra già la verità: la fiamma aspetta la sera",
-	.Hint_Rest      = "Un braciere acceso: se ti perdi, R ti riporta qui (tenuto premuto, ricomincia il livello)",
+	.Hint_Rest      = "Un braciere acceso: se ti perdi, R ti riporta qui. Tenuto premuto, ricomincia il livello",
+	.Hint_Rest_Twice = "Un braciere acceso: se ti perdi, R ti riporta qui. Premuto due volte, ricomincia il livello",
 	.Card_Continue_Pad = "Premi {S} per continuare",
 	.Pro_Start_Pad  = "Premi un pulsante per iniziare",
 	.Fragment_Continue_Pad = "Premi {S} per continuare",
@@ -938,7 +944,8 @@ IT := [Key]string {
 	.Hint_Pomegranate_Pad = "Sei su una melagrana: premi {RT} e il mondo si capovolgerà",
 	.Hint_Eagle_Pad = "Sei sul trespolo: premi {S} e l'aquila ti porterà dove brilla la luce d'oro",
 	.Hint_Boat_Pad  = "Caronte aspetta: premi {S} per salire sulla barca",
-	.Hint_Rest_Pad  = "Un braciere acceso: se ti perdi, {E} ti riporta qui (tenuto premuto, ricomincia il livello)",
+	.Hint_Rest_Pad  = "Un braciere acceso: se ti perdi, {E} ti riporta qui. Tenuto premuto, ricomincia il livello",
+	.Hint_Rest_Twice_Pad = "Un braciere acceso: se ti perdi, {E} ti riporta qui. Premuto due volte, ricomincia il livello",
 	.Pad_Cross      = "Croce",
 	.Pad_Circle     = "Cerchio",
 	.Pad_Square     = "Quadrato",
@@ -980,6 +987,7 @@ IT := [Key]string {
 	.Menu           = "Menu",
 
 	.Pause_Title    = "Pausa",
+	.Pause_Diorama = "diorama %d di %d",
 	.Resume         = "Riprendi",
 	.Restart        = "Ricomincia il livello",
 
@@ -1319,7 +1327,8 @@ EN := [Key]string {
 	.Hint_Ferry_Away = "The boat is on the other bank: Charon does not come back for you",
 	.Hint_Guard     = "It is dark here: light the lamp beside the candelabrum, and its light will show you the way",
 	.Hint_Lamp_Day  = "The sun already shows the truth: the flame waits for the evening",
-	.Hint_Rest      = "A lit brazier: if you lose your way, R brings you back here (held down, it restarts the level)",
+	.Hint_Rest      = "A lit brazier: if you lose your way, R brings you back here. Held down, it restarts the level",
+	.Hint_Rest_Twice = "A lit brazier: if you lose your way, R brings you back here. Pressed twice, it restarts the level",
 	.Card_Continue_Pad = "Press {S} to continue",
 	.Pro_Start_Pad  = "Press any button to begin",
 	.Fragment_Continue_Pad = "Press {S} to continue",
@@ -1345,7 +1354,8 @@ EN := [Key]string {
 	.Hint_Pomegranate_Pad = "You stand on a pomegranate: press {RT} and the world will turn over",
 	.Hint_Eagle_Pad = "You stand on the perch: press {S} and the eagle will carry you where the golden light shines",
 	.Hint_Boat_Pad  = "Charon is waiting: press {S} to board the boat",
-	.Hint_Rest_Pad  = "A lit brazier: if you lose your way, {E} brings you back here (held down, it restarts the level)",
+	.Hint_Rest_Pad  = "A lit brazier: if you lose your way, {E} brings you back here. Held down, it restarts the level",
+	.Hint_Rest_Twice_Pad = "A lit brazier: if you lose your way, {E} brings you back here. Pressed twice, it restarts the level",
 	.Pad_Cross      = "Cross",
 	.Pad_Circle     = "Circle",
 	.Pad_Square     = "Square",
@@ -1387,6 +1397,7 @@ EN := [Key]string {
 	.Menu           = "Menu",
 
 	.Pause_Title    = "Paused",
+	.Pause_Diorama = "diorama %d of %d",
 	.Resume         = "Resume",
 	.Restart        = "Restart the level",
 

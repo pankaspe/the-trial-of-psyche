@@ -102,6 +102,8 @@ draw_hud :: proc(u: ^Ui, g: ^game.Game, input: Hud_Input = {}) -> (act: Hud_Acti
 			point_at(u, g, skill_slot(u, 1))
 		case .Hint_Fragment:
 			point_at(u, g, fragment_count_rect(u, g))
+		case .Hint_Rest:
+			point_at(u, g, diorama_button(u, 2))
 		}
 	}
 	_ = k
@@ -869,6 +871,20 @@ tutorial_sign :: proc(u: ^Ui, g: ^game.Game, key: i18n.Key, c: Vec2, col: rl.Col
 				flick := 1 + 0.12 * math.sin(g.time * 13 + f32(n))
 				tri(c + Vec2{x - 3, -13} * s, c + Vec2{x + 3, -13} * s, c + Vec2{x, -13 - 9 * flick} * s, col)
 			}
+		}
+	case .Hint_Rest:
+		// a brazier on its three legs, its fire breathing
+		th := 2.5 * s
+		rl.DrawLineEx(c + Vec2{-8, 6} * s, c + Vec2{-14, 22} * s, th, col)
+		rl.DrawLineEx(c + Vec2{8, 6} * s, c + Vec2{14, 22} * s, th, col)
+		rl.DrawLineEx(c + Vec2{0, 6} * s, c + Vec2{0, 22} * s, th, col)
+		tri(c + Vec2{-18, -2} * s, c + Vec2{0, 8} * s, c + Vec2{18, -2} * s, col)
+		rl.DrawLineEx(c + Vec2{-19, -2} * s, c + Vec2{19, -2} * s, 3 * s, col)
+		for n in 0 ..< 3 {
+			x := f32(n - 1) * 8
+			flick := 1 + 0.15 * math.sin(g.time * 11 + f32(n) * 2.1)
+			h := (n == 1 ? 20 : 13) * flick
+			tri(c + Vec2{x - 5, -4} * s, c + Vec2{x + 5, -4} * s, c + Vec2{x, -4 - h} * s, col)
 		}
 	case .Hint_Oil:
 		// a flame

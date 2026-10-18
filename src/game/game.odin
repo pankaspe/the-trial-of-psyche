@@ -1637,13 +1637,15 @@ upright :: proc(g: ^Game, under: bool) -> bool {
 
 // --- braziers -----------------------------------------------------------------------
 
+REST_TUTORIAL :: 10 // seconds the brazier's tutorial stays, unless she goes back to it first
+
 @(private)
 light_rest :: proc(g: ^Game, i: int, quiet := false) {
 	if !g.rests_lit[i] {
 		g.rests_lit[i] = true
 		if !quiet {
 			audio.play(.Lamp_On, -10, audio.semitones(-5))
-			hint(g, .Hint_Rest, 6)
+			hint(g, .Hint_Rest, REST_TUTORIAL)
 		}
 	}
 	r := &g.rest
@@ -1671,6 +1673,7 @@ return_to_rest :: proc(g: ^Game) -> bool {
 	if !has_rest(g) {
 		return false
 	}
+	learn(g, .Hint_Rest)
 	r := &g.rest
 	if g.psyche.cell == r.cell && !g.psyche.walking && slice.equal(g.palace.flipped, r.flipped) && g.palace.part_rot == r.part_rot && g.palace.day == r.day && g.palace.upside == r.upside && g.palace.boats == r.boats && g.activated == r.activated {
 		return false
@@ -2490,6 +2493,9 @@ update_hud :: proc(g: ^Game, dt: f32) {
 			continue
 		}
 		f.t += dt
+		if f == &g.hud.hint && is_tutorial(f.key) && f.hold >= 0 && f.t > f.fade_in + f.hold {
+			hide(f) // a tutorial card with a time: it leaves as when its action is done
+		}
 		if f.hide_t >= 0 {
 			f.hide_t += dt
 		}
@@ -2689,7 +2695,7 @@ candelabrum_flame :: proc(g: ^Game, i: int) -> f32 {
 
 is_tutorial :: proc(key: Key) -> bool {
 	#partial switch key {
-	case .Hint_Move, .Hint_Turn, .Hint_Lamp, .Hint_Illusion, .Hint_Sigil, .Hint_Oil,
+	case .Hint_Move, .Hint_Turn, .Hint_Lamp, .Hint_Illusion, .Hint_Sigil, .Hint_Oil, .Hint_Rest,
 	     .Hint_Veiled, .Hint_Handle, .Hint_Sundial, .Hint_Pomegranate, .Hint_Eagle, .Hint_Boat, .Hint_Guard, .Hint_Fragment:
 		return true
 	}

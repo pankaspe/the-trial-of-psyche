@@ -6,6 +6,15 @@ Kinds: **feature** (new code or mechanic) · **level** (a level built or rebuilt
 **rework** (something existing redone) · **refactor** (same behaviour, cleaner code) ·
 **fix** · **removal** · **sound** · **ui** · **tooling** · **docs**
 
+## 2026-10-18
+
+| Title | Kind | Description |
+|---|---|---|
+| The brazier's tutorial | ui | Lighting a brazier shows a tutorial card (its sign, the R button pointed at, a tick when she goes back to it). |
+| Where am I, in pause | ui | The pause names the act, the level, its title and which diorama. |
+| Act change sound | sound | A pluck when the level select changes act, a step higher for each act. |
+| Changelog | docs | The devlog becomes this changelog. |
+
 ## 2026-10-17
 
 | Title | Kind | Description |

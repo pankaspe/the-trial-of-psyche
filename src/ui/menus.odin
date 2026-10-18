@@ -241,14 +241,26 @@ title_menu :: proc(u: ^Ui, alpha: f32 = 1, lift: f32 = 0) -> (act: Menu_Action) 
 	return
 }
 
-pause_menu :: proc(u: ^Ui, lamp: bool) -> (act: Menu_Action) {
+// The pause names where she is: the act and the level above, its title (and
+// which of its dioramas) under "Paused".
+pause_menu :: proc(u: ^Ui, lamp: bool, level: int, diorama, dioramas: int) -> (act: Menu_Action) {
 	s := u.scale
 	shade(u, 0.5)
 	lamp_side(u, 1)
 	x := 144 * s
-	y := u.height * 0.5 - 230 * s
+	y := u.height * 0.5 - 290 * s
+	info := content.LEVELS[level]
+	eyebrow := fmt.tprintf("%s  ·  %s", caps(i18n.tr(content.ACT_LABEL[info.act])), level_label(level))
+	text(u, eyebrow, {x, y}, {size = 22, color = GOLD, face = .Semi, track = 0.18, shadow = true}, .Left)
+	y += 42 * s
 	text(u, i18n.tr(.Pause_Title), {x - 3 * s, y}, {size = 104, color = TITLE, face = .Display, glow = true, shadow = true}, .Left)
-	y += 150 * s
+	y += 128 * s
+	title := i18n.tr(info.title)
+	if dioramas > 1 {
+		title = fmt.tprintf("%s  ·  %s", title, fmt.tprintf(i18n.tr(.Pause_Diorama), diorama + 1, dioramas))
+	}
+	text(u, title, {x, y}, {size = 32, color = TEXT, face = .Italic, shadow = true}, .Left)
+	y += 72 * s
 	ornament(u, {x + 100 * s, y}, 100 * s)
 	y += 62 * s
 	items := [?]Choice{{.Resume, .Resume}, {.Restart, .Restart}, {.Settings, .Settings}, {.Menu, .Main_Menu}}
@@ -396,6 +408,9 @@ ending_card :: proc(u: ^Ui, info: Ending_Info, prog: progress.Progress, t: f32, 
 
 // --- level select --------------------------------------------------------------------
 
+// The pluck of each act in the level select: rising degrees of the scale.
+ACT_TAP_PITCH := [content.Act]f32{.I = 1, .II = 9.0 / 8, .III = 5.0 / 4, .IV = 4.0 / 3, .Epilogue = 3.0 / 2}
+
 // The level select: the chosen level's diorama turns behind (main draws it,
 // framed on the right); on the left, a panel tells where it is and what it
 // holds; below, the act's levels in a row of pictures. ← → (the stick) choose
@@ -410,6 +425,11 @@ Level_Select :: struct {
 level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs: []rl.Texture2D, shown: ^game.Game, veil: f32) -> (chosen: int, back: bool) {
 	chosen = -1
 	s := u.scale
+	// another act (LB RB, ↑ ↓, a tab): a pluck, a step higher for each act
+	was := content.LEVELS[ls.level].act
+	defer if now := content.LEVELS[ls.level].act; now != was {
+		audio.play(.Tap, -14, ACT_TAP_PITCH[now])
+	}
 	rl.DrawRectangleRec({0, 0, u.width, u.height}, fade({3, 2, 6, 255}, veil))
 	// the panel's side and the row's foot darkened, the diorama left clear
 	side_panel(u)
