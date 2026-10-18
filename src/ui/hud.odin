@@ -983,6 +983,12 @@ tutorial_sign :: proc(u: ^Ui, g: ^game.Game, key: i18n.Key, c: Vec2, col: rl.Col
 		for x in ([3]f32{-12, 0, 12}) {
 			tri(c + Vec2{x - 3.5, -9} * s, c + Vec2{x + 3.5, -9} * s, c + Vec2{x, -19 - 2 * math.sin(g.time * 5 + x)} * s, col)
 		}
+	case .Hint_Trap:
+		// a stone's outline, cracked through
+		diamond(u, c, 14 * s, col, false)
+		rl.DrawLineEx(c + Vec2{-4, -14} * s, c + Vec2{2, -3} * s, 2 * s, col)
+		rl.DrawLineEx(c + Vec2{2, -3} * s, c + Vec2{-3, 5} * s, 2 * s, col)
+		rl.DrawLineEx(c + Vec2{-3, 5} * s, c + Vec2{3, 14} * s, 2 * s, col)
 	case .Hint_Fragment:
 		// the scroll of the count, glowing
 		glow_dot(c, 22 * s, {255, 214, 140, 255}, 0.5 + 0.3 * breathe(u, g.time, 3))

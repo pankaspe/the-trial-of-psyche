@@ -80,7 +80,7 @@ veiled 5 6 6 ground
 # real too, and cover 7 5 in view 3
 rock 5 7 0 5
 veiled 5 7 6 ground
-veiled 5 7 7 ground
+veiled 5 7 7 ground trap
 # P: the needle where the seal hides (h8), joined to V2 in view 2
 ground 3 5 0 7
 prop log 3 5 8 py

@@ -639,6 +639,9 @@ update :: proc(g: ^Game, dt: f32) {
 			break
 		}
 		psy := g.psyche.cell
+		if g.lamp_on {
+			warn_trap(g)
+		}
 		if g.lamp_on && g.light > 0.6 {
 			lamp_truth(g)
 		}
@@ -813,6 +816,9 @@ set_lamp :: proc(g: ^Game, on: bool) {
 	}
 	g.lamp_on = on
 	g.drip = DRIP_EVERY * 0.5
+	if !on && g.hinted[.Hint_Trap] {
+		learn(g, .Hint_Trap) // she put the light out in time
+	}
 	audio.play(on ? .Lamp_On : .Lamp_Off, -4)
 }
 
@@ -1523,6 +1529,24 @@ lamp_truth :: proc(g: ^Game) {
 		t = 0
 		audio.play(.Good, -14, audio.semitones(-5))
 		learn(g, .Hint_Veiled)
+	}
+}
+
+TRAP_SEEN :: 5.0 // cells: a corrupt stone this near her lamp is seen, and its tutorial given
+
+// A corrupt stone in the light of her lamp, still veiled: what it is (once).
+@(private)
+warn_trap :: proc(g: ^Game) {
+	for e, i in g.data.blocks {
+		if !e.trap || g.palace.flipped[i] || !upright(g, e.under) {
+			continue
+		}
+		c := level.frame_cell(&g.data, e.cell, e.under, g.palace.upside)
+		d := Vec3{f32(c.x) + 0.5, f32(c.y) + 0.5, f32(c.z)} - g.psyche.pos
+		if d.x * d.x + d.y * d.y + d.z * d.z < TRAP_SEEN * TRAP_SEEN {
+			hint(g, .Hint_Trap, 10)
+			return
+		}
 	}
 }
 
@@ -2715,7 +2739,7 @@ candelabrum_flame :: proc(g: ^Game, i: int) -> f32 {
 is_tutorial :: proc(key: Key) -> bool {
 	#partial switch key {
 	case .Hint_Move, .Hint_Turn, .Hint_Lamp, .Hint_Illusion, .Hint_Sigil, .Hint_Oil, .Hint_Rest,
-	     .Hint_Veiled, .Hint_Handle, .Hint_Sundial, .Hint_Pomegranate, .Hint_Eagle, .Hint_Boat, .Hint_Guard, .Hint_Fragment:
+	     .Hint_Veiled, .Hint_Trap, .Hint_Handle, .Hint_Sundial, .Hint_Pomegranate, .Hint_Eagle, .Hint_Boat, .Hint_Guard, .Hint_Fragment:
 		return true
 	}
 	return false

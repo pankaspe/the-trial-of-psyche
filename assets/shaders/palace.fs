@@ -42,6 +42,7 @@ uniform float alpha;
 uniform float shade_soft;    // width of the left/right tone blend (curved figures)
 uniform float glow;          // figures: inner light
 uniform float turned;        // 1: the piece hangs upside down (Proserpina's flip): its local up is down
+uniform float corrupt;       // 1: a veiled stone that closes the way: ashen and cracked
 
 out vec4 finalColor;
 
@@ -242,6 +243,14 @@ float stone(vec3 n) {
     return tone;
 }
 
+// Cracks on a face (the plane of its normal): 1 on a crack between the
+// plates .. 0 away from it.
+float cracks(vec3 n, vec3 L) {
+    vec3 an = abs(n);
+    vec2 uv = an.z > an.x && an.z > an.y ? L.xy : (an.x > an.y ? L.yz : L.xz);
+    return 1.0 - smoothstep(0.0, 0.07, plates(uv * 3.2).x);
+}
+
 void main() {
     vec3 n = normalize(fragNormal);
     vec3 L = turned > 0.5 ? vec3(fragLocal.x, 1.0 - fragLocal.y, 1.0 - fragLocal.z) : fragLocal;
@@ -381,6 +390,14 @@ void main() {
     } else {
         col += vec3(0.98, 0.93, 0.90) * glow;
     }
+    // a corrupt stone: dark veins running through it, a little ashen
+    float vein = 0.0;
+    if (corrupt > 0.5) {
+        vein = cracks(n, L);
+        float ash = dot(col, vec3(0.333));
+        col = mix(col, vec3(ash) * vec3(0.92, 0.86, 1.0), 0.45);
+        col = mix(col, vec3(0.10, 0.04, 0.12), vein * 0.8);
+    }
     // the foot of the palace sinks into the sea of mist
     float sy = screen_height - gl_FragCoord.y;
     col = mix(col, mist_color, smoothstep(mist_top, mist_bottom, sy) * 0.85);
@@ -395,6 +412,12 @@ void main() {
             vec3 e = min(L, 1.0 - L);
             float edge = 1.0 - smoothstep(0.0, 0.08, min(min(max(e.x, e.y), max(e.y, e.z)), max(e.x, e.z)));
             a *= 0.28 + 0.6 * edge;
+            if (corrupt > 0.5) {
+                // corrupt: an ashen violet ghost, its cracks dark, trembling with the flame
+                col = ramp(vec3(0.07, 0.03, 0.10), vec3(0.30, 0.19, 0.38), vec3(0.58, 0.46, 0.68), t);
+                col = mix(col, vec3(0.03, 0.01, 0.05), vein);
+                a = clamp(a * (1.6 + 0.8 * vein) * mix(0.85, 1.0, flicker), 0.0, 1.0);
+            }
         }
     }
     if (a < 0.003) {

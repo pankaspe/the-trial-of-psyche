@@ -104,12 +104,14 @@
 #                           Psyche across the sky, she falls onto start, he flies
 #                           on over this cell (the cypress) and is gone
 # Act II (palaces that change; ./build.sh check solves them move by move):
-#   veiled x y z [opt]      a block hidden in the dark: the lamp shows it in gold
+#   veiled x y z [opt] [trap]  a block hidden in the dark: the lamp shows it in gold
 #                           and, within about 2.5 cells of her, makes it real for
 #                           good; opt (also for block): rock (bare living rock
 #                           instead of palace stone), ground (living rock, its
 #                           top grassy), plank / plank_y (the wooden deck of a
-#                           rope bridge running along x / y)
+#                           rope bridge running along x / y); trap: made real,
+#                           it closes the way (a dead end): drawn corrupt, ashen
+#                           and cracked (check says which stones make dead ends)
 #   part px py ... end      the blocks, stairs and props in between form a part
 #                           that turns a quarter at a time about cell (px, py)
 #   handle x y h [n]        standing there, a click on Psyche (or F) turns part n

@@ -51,6 +51,7 @@ Uniform :: enum u8 {
 	Sun_Truth,
 	Rock_Tint,
 	Turned,
+	Corrupt,
 }
 
 @(private)
@@ -78,6 +79,7 @@ UNIFORM_NAME := [Uniform]cstring {
 	.Sun_Truth     = "sun_truth",
 	.Rock_Tint     = "rock_tint",
 	.Turned        = "turned",
+	.Corrupt       = "corrupt",
 	.Candles       = "candles",
 	.Candle_Reach  = "candle_reach",
 	.Candle_Count  = "candle_count",
@@ -1121,6 +1123,7 @@ set_piece_uniforms :: proc(r: ^Renderer, material: Material, detail, hidden, alp
 	set_f(r, .Shade_Soft, soft)
 	set_f(r, .Glow, glow)
 	set_f(r, .Turned, 0)
+	set_f(r, .Corrupt, 0)
 }
 
 // Where a point given in cell space of block entry i is in the world now
@@ -1335,6 +1338,9 @@ draw_pieces :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, transparent: bool) {
 		// a veiled stone shows as a faint golden ghost; the seal's panel glows full
 		ghost_veil := hidden && p.block >= 0
 		set_piece_uniforms(r, material, detail, hidden ? (ghost_veil ? 2 : 1) : 0, alpha, 0.25, 0)
+		if p.block >= 0 && g.data.blocks[p.block].trap {
+			set_f(r, .Corrupt, 1)
+		}
 		// hanging upside down (more than half turned): its courses and bevels turned with it
 		if (p.under != (g.overturn > 0.5)) && len(g.data.pomegranates) > 0 {
 			set_f(r, .Turned, 1)

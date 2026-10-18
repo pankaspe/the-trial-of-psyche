@@ -143,6 +143,7 @@ Solid_Entry :: struct {
 	part:  u8, // 0: fixed; n: turns with part n-1
 	seal:  u8, // `rise` entries: the seal (data.sigils index) that raises it
 	under: bool, // the world under the palace: `cell` is in its frame (see `flip_cell`)
+	trap:  bool, // a veiled stone that, made real, closes the way (drawn corrupt)
 }
 
 // A golden ram of the Sun (Act III), on the surface `cell` (x, y, h): by day
@@ -525,19 +526,23 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 				}
 			}
 			append(&data.blocks, Solid_Entry{cell = v, solid = {kind = .Block}, trait = trait, part = part})
-			if len(args) > 3 {
-				switch args[3] {
-				case "rock":
+			for opt, k in args[3:] {
+				switch {
+				case opt == "trap" && trait == .Veiled:
+					data.blocks[len(data.blocks) - 1].trap = true
+				case k > 0:
+					return data, fail(line_no, "%s: expected trap after the look", fields[0])
+				case opt == "rock":
 					append(&data.ground, v) // a stone of living rock, bare: no grass
-				case "ground":
+				case opt == "ground":
 					append(&data.ground, v) // living rock, its top grassy
 					append(&data.lawn, v)
-				case "plank":
+				case opt == "plank":
 					append(&data.planks, Plank{v, false})
-				case "plank_y":
+				case opt == "plank_y":
 					append(&data.planks, Plank{v, true})
 				case:
-					return data, fail(line_no, "%s: expected rock, ground, plank or plank_y after x y z", fields[0])
+					return data, fail(line_no, "%s: expected rock, ground, plank or plank_y after x y z%s", fields[0], trait == .Veiled ? ", or trap" : "")
 				}
 			}
 			max_z = max(max_z, v.z)

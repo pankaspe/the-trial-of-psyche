@@ -44,7 +44,7 @@ start 6 6 1
 rest 6 6 1
 veiled 4 4 1
 veiled 5 4 1
-veiled 6 4 1
+veiled 6 4 1 trap
 prop rail 6 5 1 px
 prop rail 6 6 1 px
 prop rail 4 6 1 mx

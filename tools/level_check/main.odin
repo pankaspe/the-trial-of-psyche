@@ -177,6 +177,7 @@ check :: proc(path, text: string) {
 	if pl.is_dynamic(&data) {
 		solve_report(&p, &data, alloc)
 		needed_report(text)
+		trap_report(text, &p)
 		return
 	}
 	for c, i in data.fragments {
@@ -771,6 +772,63 @@ needed_report :: proc(text: string) {
 			}
 		}
 		virtual.arena_destroy(&arena)
+	}
+}
+
+// Take out each veiled stone in turn and solve again: a stone the level is
+// not solved without is needed; one without which the dead ends fall to less
+// than half as many (for the states reached) is a trap, and should say so
+// (`trap`: drawn corrupt); the others are harmless.
+trap_report :: proc(text: string, p: ^pl.Palace) {
+	base := pl.solve(p, pl.goal_cell(p), nil, context.temp_allocator)
+	lines := strings.split_lines(text, context.temp_allocator)
+	header := false
+	for line, i in lines {
+		f := strings.fields(line, context.temp_allocator)
+		if len(f) == 0 || f[0] != "veiled" {
+			continue
+		}
+		marked := f[len(f) - 1] == "trap"
+		if base.dead == 0 && !marked {
+			continue
+		}
+		if !header {
+			fmt.println("\nveiled stones and dead ends:")
+			header = true
+		}
+		arena: virtual.Arena
+		alloc := virtual.arena_allocator(&arena)
+		b := strings.builder_make(alloc)
+		for l, k in lines {
+			if k != i {
+				strings.write_string(&b, l)
+				strings.write_byte(&b, '\n')
+			}
+		}
+		what := strings.trim_space(line)
+		data, err := level.parse(strings.to_string(b), alloc)
+		trap := false
+		switch {
+		case err != nil:
+			fmt.printfln("  %-36s needed (the level does not load: %s)", what, err.?.message)
+		case:
+			q: pl.Palace
+			pl.init(&q, &data, alloc)
+			sol := pl.solve(&q, pl.goal_cell(&q), nil, alloc)
+			switch {
+			case !sol.solved:
+				fmt.printfln("  %-36s needed", what)
+			case f64(sol.dead) * f64(base.states) < 0.5 * f64(base.dead) * f64(sol.states):
+				trap = true
+				fmt.printfln("  %-36s a trap: %d dead ends of %d states, %d of %d without it", what, base.dead, base.states, sol.dead, sol.states)
+			case:
+				fmt.printfln("  %-36s harmless: %d dead ends of %d states without it", what, sol.dead, sol.states)
+			}
+		}
+		virtual.arena_destroy(&arena)
+		if trap != marked {
+			note(false, "%s: %s", what, trap ? "makes the dead ends: mark it trap" : "marked trap, but no dead end comes from it")
+		}
 	}
 }
 
