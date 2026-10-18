@@ -245,6 +245,7 @@ Key :: enum u16 {
 	Key_Space, // the name of the space bar on a key cap
 	Spindle_Button,
 	Skills_Label,
+	Dioramas_Label, // over the column of a level's dioramas, on the right
 	Skill_Ready,
 	Skill_Lit,
 	Skill_Oil,
@@ -900,6 +901,7 @@ IT := [Key]string {
 	.Key_Space      = "Spazio",
 	.Spindle_Button = "Fuso",
 	.Skills_Label = "Strumenti",
+	.Dioramas_Label = "Diorami",
 	.Skill_Ready = "Spenta",
 	.Skill_Lit = "Accesa · olio %d s",
 	.Skill_Oil = "Spenta · olio %d s",
@@ -1374,6 +1376,7 @@ EN := [Key]string {
 	.Key_Space      = "Space",
 	.Spindle_Button = "Spindle",
 	.Skills_Label = "Tools",
+	.Dioramas_Label = "Dioramas",
 	.Skill_Ready = "Unlit",
 	.Skill_Lit = "Lit · oil %d s",
 	.Skill_Oil = "Unlit · oil %d s",

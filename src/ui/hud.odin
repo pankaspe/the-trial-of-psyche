@@ -78,6 +78,7 @@ draw_hud :: proc(u: ^Ui, g: ^game.Game, input: Hud_Input = {}) -> (act: Hud_Acti
 		keys_badge(u, a)
 	}
 	draw_fragment_count(u, g)
+	draw_diorama_steps(u, g)
 	teaching := hud.hint.active && game.is_tutorial(hud.hint.key) && hud.hint.hide_t < 0
 	if hud.hint.active && game.is_tutorial(hud.hint.key) {
 		draw_tutorial(u, g)
@@ -649,6 +650,43 @@ draw_fragment_count :: proc(u: ^Ui, g: ^game.Game) {
 		glow_dot(c, 34 * k, {255, 214, 140, 255}, flash * 0.9)
 	}
 	scroll_icon(c, k * 1.3, fade(found == total ? BRIGHT : GOLD, 1), found > 0)
+}
+
+// A level of several dioramas: a gilt column on the right, a diamond for
+// each joined by a thread of gold; those done filled, the one in play lit and
+// breathing (flaring as it arrives), those to come drawn in outline; under it
+// "2 / 3". A level of one diorama shows nothing.
+@(private)
+draw_diorama_steps :: proc(u: ^Ui, g: ^game.Game) {
+	n := g.dioramas
+	if n < 2 {
+		return
+	}
+	k := hud_k(u)
+	gap := 52 * k
+	x := u.width - 70 * k
+	top := u.height * 0.5 - f32(n - 1) * gap * 0.5
+	// on a dark plate, its name over it as the tools' on the left
+	plate := rl.Rectangle{x - 30 * k, top - 34 * k, 60 * k, f32(n - 1) * gap + 98 * k}
+	warm_card(u, plate, 0.9, 0.3, k)
+	label_st := Style{size = 15 * k / u.scale, color = GOLD, face = .Semi, track = 0.22, shadow = true}
+	text(u, caps(i18n.tr(.Dioramas_Label)), {plate.x + plate.width, plate.y - 36 * k}, label_st, .Right)
+	rl.DrawRectangleRec({x - 0.75 * k, top, max(1.5 * k, 1), f32(n - 1) * gap}, fade(GOLD, 0.5))
+	flare: f32 = g.arrive_t >= 0 ? 1 - fx.clamp01(g.arrive_t / 2.5) : 0
+	for i in 0 ..< n {
+		c := Vec2{x, top + f32(i) * gap}
+		switch {
+		case i < g.diorama || (i == g.diorama && g.parting):
+			diamond(u, c, 11 * k, fade(GOLD, 0.6), true)
+		case i == g.diorama:
+			glow_dot(c, (26 + 18 * flare) * k, {255, 214, 140, 255}, 0.4 + 0.25 * breathe(u, g.time, 2.4) + 0.35 * flare)
+			diamond(u, c, 14 * k, BRIGHT, true)
+		case:
+			diamond(u, c, 11 * k, fade(DIM, 0.8), false)
+		}
+	}
+	label := fmt.tprintf("%d / %d", g.diorama + 1, n)
+	text(u, label, {x, top + f32(n - 1) * gap + 28 * k}, {size = 24 * k / u.scale, color = TEXT, face = .Semi, shadow = true}, .Center)
 }
 
 // Where the count of the fragments stands (the tutorial on them points at it).
