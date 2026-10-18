@@ -84,7 +84,7 @@ OIL_MAX :: 14.0
 LIGHT_COST :: 0.4
 STEP_TIME :: 0.3
 DRIP_EVERY :: 1.4
-ROTATE_TIME :: 0.85
+ROTATE_TIME :: 0.75
 TURN_QUEUE :: 2 // quarter turns a turn may run ahead of the view it left
 RISE_DELAY :: 0.45
 RISE_TIME :: 1.4
@@ -754,14 +754,13 @@ start_turn :: proc(g: ^Game, step: int) {
 	g.turn_t = 0
 }
 
-// A leg of a turn: from `turn_from` at speed `turn_v` to rest on `turn_to`, a quintic
-// that starts and stops without a jolt (smootherstep when it starts at rest).
+// A leg of a turn: from `turn_from` at speed `turn_v` to rest on `turn_to`, a cubic
+// (smoothstep, as soft as a sine, when it starts at rest).
 @(private)
 turn_curve :: proc(g: ^Game, u: f32) -> f32 {
 	u2 := u * u
-	u3 := u2 * u
-	ease := u3 * (10 - 15 * u + 6 * u2)
-	carry := u - u3 * (6 - 8 * u + 3 * u2)
+	ease := u2 * (3 - 2 * u)
+	carry := u * (1 - u) * (1 - u)
 	return g.turn_from + (g.turn_to - g.turn_from) * ease + g.turn_v * ROTATE_TIME * carry
 }
 
@@ -769,9 +768,8 @@ turn_curve :: proc(g: ^Game, u: f32) -> f32 {
 @(private)
 turn_speed :: proc(g: ^Game) -> f32 {
 	u := min(g.turn_t / ROTATE_TIME, 1)
-	u2 := u * u
-	ease := 30 * u2 * (1 - 2 * u + u2)
-	carry := 1 - u2 * (18 - 32 * u + 15 * u2)
+	ease := 6 * u * (1 - u)
+	carry := (1 - u) * (1 - 3 * u)
 	return (g.turn_to - g.turn_from) * ease / ROTATE_TIME + g.turn_v * carry
 }
 
