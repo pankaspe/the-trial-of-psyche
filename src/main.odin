@@ -37,6 +37,7 @@ Notice :: ui.Notice // a field of App is named ui
 Screen :: enum u8 {
 	Title,
 	Levels,
+	Games, // the games side by side: continue one, start one, erase one
 	Book,
 	Card, // the card before an act
 	Play,
@@ -60,7 +61,10 @@ Act_Card :: struct {
 
 App :: struct {
 	cfg:             settings.Settings,
-	prog:            progress.Progress,
+	prog:            progress.Progress, // the game in play (the slot `cfg.slot`)
+	playing:         bool, // that game has begun (its slot holds a save)
+	slots:           [progress.SLOTS]progress.Slot_Info, // read when the list of games opens
+	games:           ui.Games_State,
 	renderer:        render.Renderer,
 	ui:              ui.Ui,
 	game:            game.Game,
@@ -147,7 +151,8 @@ main :: proc() {
 startup :: proc(app: ^App) -> bool {
 	app.cfg = app.shooting ? settings.defaults() : settings.load()
 	if !app.shooting {
-		app.prog = progress.load()
+		progress.migrate()
+		app.prog, app.playing = progress.load(app.cfg.slot)
 	}
 	i18n.set_language(app.cfg.language)
 
@@ -309,7 +314,7 @@ update_sound :: proc(app: ^App) {
 	audio.set_near(.Fire, g.active && !going_black ? fire : 0, pan)
 	duck: f32 = 0
 	#partial switch app.screen {
-	case .Fragment, .Mechanic, .Pause, .Settings, .Ending, .Card, .Levels, .Book:
+	case .Fragment, .Mechanic, .Pause, .Settings, .Ending, .Card, .Levels, .Games, .Book:
 		duck = 1
 	}
 	audio.set_duck(duck)
@@ -652,6 +657,9 @@ frame :: proc(app: ^App) {
 		if app.screen == .Levels {
 			enter_levels(app)
 		}
+		if app.screen == .Games {
+			read_slots(app)
+		}
 	}
 	ui.begin_frame(u, w, h)
 	global_keys(app)
@@ -720,7 +728,7 @@ frame :: proc(app: ^App) {
 	update_black(app, dt)
 	update_passage(app, dt)
 	update_levels(app, dt)
-	side := app.screen == .Levels || app.screen == .Settings
+	side := app.screen == .Levels || app.screen == .Games || app.screen == .Settings
 	app.stage = clamp(app.stage + (side ? dt : -dt) / STAGE_TIME, 0, 1)
 	app.scene.stage = app.stage
 	update_sound(app)
@@ -882,6 +890,8 @@ back :: proc(app: ^App) -> bool {
 		close_settings(app)
 	case .Levels:
 		leave_levels(app, true)
+	case .Games:
+		app.screen = .Title
 	case .Book:
 		app.screen = .Title
 	case .Card:
@@ -1133,7 +1143,7 @@ draw_screens :: proc(app: ^App) {
 	u.toast_visible = app.toast_count > 0 && app.screen != .Fragment
 	switch app.screen {
 	case .Title:
-		act := ui.title_menu(u)
+		act := ui.title_menu(u, app.playing)
 		if rl.IsKeyPressed(.ENTER) {
 			act = .Play
 		}
@@ -1142,6 +1152,8 @@ draw_screens :: proc(app: ^App) {
 			start_level(app, progress.current_level(app.prog), true)
 		case .Levels:
 			app.screen = .Levels
+		case .Games:
+			app.screen = .Games
 		case .Book:
 			ui.book_open(&app.book)
 			app.screen = .Book
@@ -1150,6 +1162,15 @@ draw_screens :: proc(app: ^App) {
 		case .Quit:
 			app.quit = true
 		case .None, .Resume, .Restart, .Main_Menu, .Retry, .Next, .Back:
+		}
+	case .Games:
+		chosen, erase, back := ui.games_menu(u, app.slots[:], app.cfg.slot, &app.games)
+		if erase > 0 {
+			erase_game(app, erase)
+		} else if chosen > 0 {
+			play_game(app, chosen)
+		} else if back {
+			app.screen = .Title
 		}
 	case .Levels:
 		chosen, back := ui.level_select(u, app.prog, &app.levels.sel, app.levels.pictures[:], g, levels_veil(app))
@@ -1185,7 +1206,7 @@ draw_screens :: proc(app: ^App) {
 		if app.menu_fade >= 0 {
 			// the title menu rises and fades away as the game begins
 			k := app.menu_fade / MENU_FADE
-			ui.title_menu(u, 1 - k, 40 * k)
+			ui.title_menu(u, app.playing, 1 - k, 40 * k)
 		}
 	case .Fragment:
 		ui.draw_hud(u, g)
@@ -1209,7 +1230,7 @@ draw_screens :: proc(app: ^App) {
 			open_settings(app)
 		case .Main_Menu:
 			to_title(app)
-		case .None, .Play, .Levels, .Book, .Quit, .Retry, .Next, .Back:
+		case .None, .Play, .Levels, .Games, .Book, .Quit, .Retry, .Next, .Back:
 		}
 	case .Settings:
 		m := rl.GetCurrentMonitor()
@@ -1239,7 +1260,7 @@ draw_screens :: proc(app: ^App) {
 			}
 		case .Main_Menu:
 			to_title(app)
-		case .None, .Play, .Levels, .Book, .Settings, .Quit, .Resume, .Restart, .Back:
+		case .None, .Play, .Levels, .Games, .Book, .Settings, .Quit, .Resume, .Restart, .Back:
 		}
 	}
 	if u.toast_visible {
@@ -1308,7 +1329,42 @@ save_settings :: proc(app: ^App) {
 
 save_progress :: proc(app: ^App) {
 	if !app.shooting {
-		progress.save(app.prog)
+		app.playing = progress.save(app.prog, app.cfg.slot) || app.playing
+	}
+}
+
+// --- the games ----------------------------------------------------------------------
+
+@(private)
+read_slots :: proc(app: ^App) {
+	app.games = {sel = app.cfg.slot}
+	for &info, i in app.slots {
+		info = app.shooting ? {} : progress.peek(i + 1)
+	}
+	if app.shooting {
+		app.slots[0] = {used = true, prog = app.prog} // the shots' own game, never on disk
+	}
+}
+
+// Play the game of a slot (an empty one: a new game), from where it stands.
+@(private)
+play_game :: proc(app: ^App, slot: int) {
+	app.cfg.slot = slot
+	save_settings(app)
+	app.prog, app.playing = app.slots[slot - 1].prog, app.slots[slot - 1].used
+	start_level(app, progress.current_level(app.prog), true)
+}
+
+// A game erased for good; the one in play starts again from nothing.
+@(private)
+erase_game :: proc(app: ^App, slot: int) {
+	if !app.shooting {
+		progress.erase(slot)
+	}
+	app.slots[slot - 1] = {}
+	if slot == app.cfg.slot {
+		app.prog, app.playing = {}, false
+		new_level(app, progress.current_level(app.prog))
 	}
 }
 

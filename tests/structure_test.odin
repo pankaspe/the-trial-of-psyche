@@ -2,6 +2,8 @@
 // the tale, the canonical and secret endings, levels that end at an exit.
 package tests
 
+import "core:fmt"
+import "core:os"
 import "core:slice"
 import "core:strings"
 import "core:testing"
@@ -13,6 +15,7 @@ import "../src/iso"
 import "../src/level"
 import "../src/palace"
 import "../src/progress"
+import "../src/settings"
 
 @(test)
 acts_and_levels :: proc(t: ^testing.T) {
@@ -323,4 +326,28 @@ a_level_of_two_dioramas :: proc(t: ^testing.T) {
 	testing.expect(t, walk(t, &g, {1, 0, 1}) && walk(t, &g, {1, 1, 1}), "Psyche walks to the last exit (a fragment on the way)")
 	run(&g, game.PART_END + 0.5)
 	testing.expect(t, g.phase == .Finished && g.ending == .Exit, "the level ends")
+}
+
+// The games side by side, in a config directory of their own: the single save
+// of the builds before becomes slot 1; a slot saved is there, erased is empty.
+@(test)
+progress_slots :: proc(t: ^testing.T) {
+	dir := fmt.tprintf("%s/trial-of-psyche-slots-test", os.temp_directory(context.temp_allocator) or_else "/tmp")
+	os.remove_all(dir)
+	os.set_env("XDG_CONFIG_HOME", dir)
+	defer os.remove_all(dir)
+	before := progress.Progress{completed = {0, 1}, fragments = {0}}
+	text := progress.serialize(before, context.temp_allocator)
+	testing.expect(t, settings.write_config_file(progress.OLD_FILE_NAME, string(progress.seal(text, context.temp_allocator))), "the old save is written")
+	progress.migrate()
+	one, used := progress.load(1)
+	testing.expect(t, used && one == before, "the old save is slot 1")
+	testing.expect(t, !os.exists(settings.config_file(progress.OLD_FILE_NAME)), "the old save is gone")
+	testing.expect(t, !progress.peek(3).used, "slot 3 is empty")
+	testing.expect(t, progress.save({completed = {0}}, 3), "slot 3 saved")
+	testing.expect(t, progress.peek(3).used && progress.peek(3).prog.completed == {0}, "slot 3 holds its game")
+	progress.erase(3)
+	testing.expect(t, !progress.peek(3).used, "slot 3 erased")
+	again, _ := progress.load(1)
+	testing.expect(t, again == before, "slot 1 untouched")
 }

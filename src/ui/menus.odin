@@ -4,6 +4,7 @@ package ui
 
 import "core:fmt"
 import "core:math"
+import "core:time"
 import rl "vendor:raylib"
 
 import "../audio"
@@ -20,6 +21,7 @@ Menu_Action :: enum u8 {
 	None,
 	Play,
 	Levels,
+	Games,
 	Book,
 	Settings,
 	Quit,
@@ -124,6 +126,7 @@ Hint_Keys :: enum u8 {
 	Enter,
 	Shoulders,
 	South,
+	Erase, // Delete on the keyboard, West on the pad
 }
 
 Hint :: struct {
@@ -142,6 +145,7 @@ hint_row :: proc(u: ^Ui, pos: Vec2, hints: []Hint, centred := false) {
 		case .Enter: return key_cap_width(u, "Enter", s)
 		case .Shoulders: return pad_button_width(u, .LB) + 6 * s + pad_button_width(u, .RB)
 		case .South: return pad_button_width(u, .South)
+		case .Erase: return u.pad ? pad_button_width(u, .West) : key_cap_width(u, i18n.tr(.Key_Delete), s)
 		}
 		return 0
 	}
@@ -166,6 +170,8 @@ hint_row :: proc(u: ^Ui, pos: Vec2, hints: []Hint, centred := false) {
 			pad_button(u, .LB, {x, pos.y}, 0.9)
 		case .South:
 			pad_button(u, .South, {x, pos.y}, 0.9)
+		case .Erase:
+			control(u, i18n.tr(.Key_Delete), .West, {x, pos.y}, 0.9)
 		}
 		x += keys_width(u, h.keys) + 12 * s
 		text(u, i18n.tr(h.label), {x, pos.y + 2 * s}, st, .Left)
@@ -211,11 +217,12 @@ split_title :: proc(t: string) -> (string, string) {
 // Title screen over the sleeping palace, like the cover of a book: on the
 // lamp's side, the source, the title, an ornament and the menu; the oracle's
 // words in the corner. `alpha` and `lift` animate its exit.
-title_menu :: proc(u: ^Ui, alpha: f32 = 1, lift: f32 = 0) -> (act: Menu_Action) {
+// `playing`: the game in play has begun (Continue), else a new one starts.
+title_menu :: proc(u: ^Ui, playing: bool, alpha: f32 = 1, lift: f32 = 0) -> (act: Menu_Action) {
 	s := u.scale
 	lamp_side(u, alpha)
 	x := 144 * s
-	y := u.height * 0.5 - 315 * s - lift * s
+	y := u.height * 0.5 - 340 * s - lift * s
 	text(u, caps(i18n.tr(.Footer)), {x, y}, {size = 22, color = GOLD, face = .Semi, track = 0.14, shadow = true}, .Left, alpha)
 	y += 36 * s
 	tst := Style{size = 132, color = TITLE, face = .Display, glow = true, shadow = true}
@@ -226,11 +233,11 @@ title_menu :: proc(u: ^Ui, alpha: f32 = 1, lift: f32 = 0) -> (act: Menu_Action) 
 	y += 172 * s
 	ornament(u, {x + 100 * s, y}, 100 * s, alpha)
 	y += 62 * s
-	if menu_item(u, i18n.tr(.Play), {x, y}, 38, true, alpha) {
+	if menu_item(u, i18n.tr(playing ? .Play : .New_Game), {x, y}, 38, true, alpha) {
 		act = .Play
 	}
 	y += 62 * s
-	items := [?]Choice{{.Levels, .Levels}, {.Book, .Book}, {.Settings, .Settings}, {.Quit, .Quit}}
+	items := [?]Choice{{.Games, .Games}, {.Levels, .Levels}, {.Book, .Book}, {.Settings, .Settings}, {.Quit, .Quit}}
 	for it in items {
 		if menu_item(u, i18n.tr(it.key), {x, y}, 36, false, alpha) {
 			act = it.act
@@ -1274,6 +1281,118 @@ settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, na
 		hint_row(u, foot, {{.Up_Down, .Set_Hint_Choose}, {.Left_Right, .Set_Hint_Change}})
 	}
 	back = panel_back(u)
+	return
+}
+
+// --- the games -----------------------------------------------------------------------
+
+// The list of games: `confirm` is the slot whose erasing waits for a second press (0: none).
+Games_State :: struct {
+	sel:     int, // the slot chosen with the keys or the mouse (the pad has the focus)
+	confirm: int,
+}
+
+// The games side by side (progress.SLOTS), in the side panel: each its place
+// in the tale, its fragments and the day it was last saved, the one in play
+// marked. Enter (South) or a click plays one (an empty one: a new game);
+// Delete (West) or its × erases one, pressed twice.
+games_menu :: proc(u: ^Ui, slots: []progress.Slot_Info, current: int, gs: ^Games_State) -> (chosen, erase: int, back: bool) {
+	s := u.scale
+	side_panel(u)
+	x0 := PANEL_X * s
+	w := PANEL_W * s
+	y := panel_head(u, caps(i18n.tr(.Title)), i18n.tr(.Games)) + 10 * s
+	ROW :: 112
+	erase_key := rl.IsKeyPressed(.DELETE) || rl.IsKeyPressed(.BACKSPACE) || input.take(.West)
+	if gs.sel == 0 {
+		gs.sel = current
+	}
+	if rl.IsKeyPressed(.UP) {
+		gs.sel = max(gs.sel - 1, 1)
+	}
+	if rl.IsKeyPressed(.DOWN) {
+		gs.sel = min(gs.sel + 1, len(slots))
+	}
+	enter := !u.pad && (rl.IsKeyPressed(.ENTER) || rl.IsKeyPressed(.SPACE))
+	for info, i in slots {
+		slot := i + 1
+		r := rl.Rectangle{x0 - 20 * s, y, w + 40 * s, (ROW - 14) * s}
+		add_hot(u, r)
+		focus := focusable(u, r)
+		over := mouse_over(u, r)
+		if over && u.mouse_moved {
+			gs.sel = slot
+		}
+		hover := u.pad ? focus : gs.sel == slot
+		asking := gs.confirm == slot
+		if hover {
+			rl.DrawRectangleRec(r, fade({40, 24, 14, 255}, 0.55))
+			corner_frame(u, r, 1, s, asking ? TITLE : BRIGHT)
+		} else {
+			rl.DrawRectangleRec(r, fade({13, 11, 20, 255}, 0.45))
+			rl.DrawRectangleLinesEx(r, max(s, 1), fade(GOLD, 0.25))
+		}
+		if gs.confirm == slot && !hover {
+			gs.confirm = 0 // the focus moved on: the question is withdrawn
+		}
+		head := caps(fmt.tprintf(i18n.tr(.Game_Slot), slot))
+		if slot == current {
+			head = fmt.tprintf("%s  ·  %s", head, caps(i18n.tr(.Game_Current)))
+		}
+		top := r.y + 16 * s
+		text(u, head, {x0, top}, {size = 19, color = GOLD, face = .Semi, track = 0.2, shadow = true}, .Left)
+		line_y := top + 32 * s
+		if asking {
+			text(u, i18n.tr(.Game_Erase_Ask), {x0, line_y}, {size = 28, color = TITLE, face = .Italic, shadow = true}, .Left)
+		} else if info.used {
+			level := progress.current_level(info.prog)
+			text(u, level_name(level), {x0, line_y}, {size = 30, color = hover ? BRIGHT : TEXT, face = .Semi, shadow = true}, .Left)
+			when_ := fmt.tprintf("%d / %d  %s", progress.fragment_count(info.prog), content.FRAGMENT_COUNT, i18n.tr(.Fragments_Label))
+			if info.saved != {} {
+				yy, mm, dd := time.date(info.saved)
+				when_ = fmt.tprintf("%s   ·   %02d.%02d.%d", when_, dd, int(mm), yy)
+			}
+			text(u, when_, {r.x + r.width - 64 * s, top + 2 * s}, {size = 20, color = DIM, face = .Semi, track = 0.06}, .Right)
+		} else {
+			text(u, i18n.tr(.Game_Empty), {x0, line_y}, {size = 28, color = fade(DIM, 0.8), face = .Italic, shadow = true}, .Left)
+		}
+		// the × that erases a game (the mouse's way)
+		if info.used {
+			c := Vec2{r.x + r.width - 30 * s, r.y + r.height * 0.5}
+			xr := rl.Rectangle{c.x - 16 * s, c.y - 16 * s, 32 * s, 32 * s}
+			add_hot(u, xr)
+			on_x := mouse_over(u, xr)
+			col := fade(on_x || asking ? TITLE : GOLD, on_x || asking ? 1 : 0.5)
+			rl.DrawLineEx(c + Vec2{-7, -7} * s, c + Vec2{7, 7} * s, 2 * s, col)
+			rl.DrawLineEx(c + Vec2{-7, 7} * s, c + Vec2{7, -7} * s, 2 * s, col)
+			if on_x && u.pressed {
+				over = false // not also a choice of the row
+				erase_key = true
+				hover = true
+			}
+		}
+		if hover && erase_key && info.used {
+			audio.play(.Tap, -14, asking ? 0.75 : 1)
+			if asking {
+				erase = slot
+				gs.confirm = 0
+			} else {
+				gs.confirm = slot
+			}
+		} else if (u.pad && activated(u, focus)) || (over && u.pressed) || (hover && enter) {
+			audio.play(.Tap, -14)
+			chosen = slot
+			gs.confirm = 0
+		}
+		y += ROW * s
+	}
+	foot := Vec2{x0, u.height - FOOT_Y * s}
+	if u.pad {
+		hint_row(u, foot, {{.South, .Levels_Play}, {.Erase, .Game_Erase}})
+	} else {
+		hint_row(u, foot, {{.Up_Down, .Set_Hint_Choose}, {.Enter, .Levels_Play}, {.Erase, .Game_Erase}})
+	}
+	back = panel_back(u, focus = false)
 	return
 }
 

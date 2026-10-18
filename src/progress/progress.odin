@@ -1,8 +1,8 @@
 // The player's progress: levels finished, fragments of the tale collected,
 // achievements. Written as `key = value` lines, then sealed (ChaCha20-Poly1305)
-// into a file next to the settings (~/.config/the-trial-of-psyche/progress.sav
+// into a file next to the settings (~/.config/the-trial-of-psyche/save1.sav
 // on Linux), so that it can't be read or edited by hand: a file that doesn't
-// open is a new game. The key is in the binary (and in this open source): it
+// open is a new game. Up to SLOTS games, one file each. The key is in the binary (and in this open source): it
 // keeps casual hands out, not a determined player. Levels and fragments are
 // stored by their stable id ("I.4", "I.3b"), so adding levels never breaks a
 // save; unknown ids and lines are ignored.
@@ -18,12 +18,15 @@ import "base:runtime"
 import "core:fmt"
 import "core:os"
 import "core:strings"
+import "core:time"
 
 import "../content"
 import "../i18n"
 import "../settings"
 
-FILE_NAME :: "progress.sav"
+SLOTS :: settings.SAVE_SLOTS // games kept side by side, one file each ("save1.sav" ...)
+// The single save of the builds before the slots: it becomes slot 1.
+OLD_FILE_NAME :: "progress.sav"
 // The plain save of the builds before, read once when there is no sealed one,
 // then removed.
 LEGACY_FILE_NAME :: "progress.cfg"
@@ -216,43 +219,87 @@ current_level :: proc(p: Progress) -> int {
 
 // --- file ---------------------------------------------------------------------------
 
-load :: proc() -> Progress {
-	p: Progress
-	path := settings.config_file(FILE_NAME)
+// The file of a slot (1 ..= SLOTS), in the temp allocator.
+slot_file :: proc(slot: int) -> string {
+	return fmt.tprintf("save%d.sav", slot)
+}
+
+// The saves of the builds before move into slot 1, once: the single sealed
+// save, or else the plain one (capped, see parse_legacy).
+migrate :: proc() {
+	first := settings.config_file(slot_file(1))
+	if first == "" || os.exists(first) {
+		return
+	}
+	if old := settings.config_file(OLD_FILE_NAME); os.exists(old) {
+		os.rename(old, first)
+		return
+	}
+	legacy := settings.config_file(LEGACY_FILE_NAME)
+	if data, err := os.read_entire_file_from_path(legacy, context.temp_allocator); err == nil {
+		p: Progress
+		parse_legacy(string(data), &p)
+		if save(p, 1) {
+			os.remove(legacy)
+		}
+	}
+}
+
+// A slot's game; `used` is false when the slot is empty (or its file does not open).
+load :: proc(slot: int) -> (p: Progress, used: bool) {
+	path := settings.config_file(slot_file(slot))
 	if path == "" {
-		return p
+		return
 	}
 	if data, err := os.read_entire_file_from_path(path, context.temp_allocator); err == nil {
 		if text, ok := unseal(data, context.temp_allocator); ok {
 			parse(text, &p)
-		}
-		return p
-	}
-	legacy := settings.config_file(LEGACY_FILE_NAME)
-	if data, err := os.read_entire_file_from_path(legacy, context.temp_allocator); err == nil {
-		parse_legacy(string(data), &p)
-		if save(p) {
-			os.remove(legacy)
+			used = true
 		}
 	}
-	return p
+	return
 }
 
-// Write the save and read it back: what is on disk must open to the same
+// What the list of games shows of a slot: its game and when it was last saved.
+Slot_Info :: struct {
+	used:  bool,
+	prog:  Progress,
+	saved: time.Time,
+}
+
+peek :: proc(slot: int) -> (info: Slot_Info) {
+	info.prog, info.used = load(slot)
+	if info.used {
+		if fi, err := os.stat(settings.config_file(slot_file(slot)), context.temp_allocator); err == nil {
+			info.saved = fi.modification_time
+		}
+	}
+	return
+}
+
+// The slot's game is gone for good.
+erase :: proc(slot: int) {
+	if path := settings.config_file(slot_file(slot)); path != "" {
+		os.remove(path)
+	}
+}
+
+// Write a slot's save and read it back: what is on disk must open to the same
 // text (a save that does not is written again, once). Built in the heap, not
 // in the frame's scratch memory.
-save :: proc(p: Progress) -> bool {
+save :: proc(p: Progress, slot: int) -> bool {
 	heap := runtime.heap_allocator()
 	text := serialize(p, heap)
 	defer delete(text, heap)
+	name := slot_file(slot)
 	for _ in 0 ..< 2 {
 		sealed := seal(text, heap)
-		written := settings.write_config_file(FILE_NAME, string(sealed))
+		written := settings.write_config_file(name, string(sealed))
 		delete(sealed, heap)
 		if !written {
 			return false
 		}
-		data, err := os.read_entire_file_from_path(settings.config_file(FILE_NAME), heap)
+		data, err := os.read_entire_file_from_path(settings.config_file(name), heap)
 		if err != nil {
 			continue
 		}

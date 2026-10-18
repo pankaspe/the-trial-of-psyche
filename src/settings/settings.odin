@@ -59,6 +59,8 @@ PAD_GLYPHS_CODE := [Pad_Glyphs]string {
 	.Nintendo    = "nintendo",
 }
 
+SAVE_SLOTS :: 5 // games kept side by side (progress)
+
 HUD_SIZES := [?]f32{0.75, 0.875, 1, 1.125, 1.25, 1.5}
 HOLD_TIMES := [?]f32{0.6, 0.9, 1.2, 1.5, 2, 2.5, 3}
 
@@ -83,6 +85,7 @@ Settings :: struct {
 	endless_oil:   bool, // the lamp never runs dry
 	lamp_toggle:   bool, // the lamp is pressed to light and pressed again to put out, instead of held
 	see_through:   bool, // the stones between the camera and Psyche fade: she is never lost behind a wall
+	slot:          int, // the game being played, 1 ..= SAVE_SLOTS
 }
 
 defaults :: proc() -> Settings {
@@ -101,6 +104,7 @@ defaults :: proc() -> Settings {
 		skill_labels = .Hover,
 		hold_time = 1.5,
 		see_through = true,
+		slot = 1,
 	}
 }
 
@@ -171,6 +175,7 @@ serialize :: proc(s: Settings, allocator := context.allocator) -> string {
 	fmt.sbprintfln(&b, "endless_oil = %v", s.endless_oil)
 	fmt.sbprintfln(&b, "lamp_toggle = %v", s.lamp_toggle)
 	fmt.sbprintfln(&b, "see_through = %v", s.see_through)
+	fmt.sbprintfln(&b, "slot = %d", s.slot)
 	return strings.to_string(b)
 }
 
@@ -275,6 +280,10 @@ parse :: proc(text: string, s: ^Settings) {
 			boolean(value, &s.lamp_toggle)
 		case "see_through":
 			boolean(value, &s.see_through)
+		case "slot":
+			if v, ok := strconv.parse_int(value, 10); ok && v >= 1 && v <= SAVE_SLOTS {
+				s.slot = v
+			}
 		}
 	}
 }
