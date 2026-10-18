@@ -177,6 +177,7 @@ Key :: enum u16 {
 	Fragment_13,
 	Fragment_13b, // Psyche turned to stone by the sight
 	Fragment_13c, // the eagle: the gods swear by the Styx
+	Fragment_13d, // III.4's gorges: the sleepless dragons
 	Fragment_14,
 	Fragment_14b, // Venus: you seem a witch
 	Fragment_14c, // the box, and come back soon
@@ -308,6 +309,7 @@ Key :: enum u16 {
 	Intro_III_3b, // III.3's second diorama: the channels under the summit
 	Intro_III_3c, // III.3's third diorama: the summit
 	Intro_III_4,
+	Intro_III_4b, // III.4's second diorama: the gorges of deceit
 	Intro_III_5,
 	Intro_IV_1,
 	Intro_IV_2,
@@ -838,6 +840,7 @@ IT := [Key]string {
 	.Fragment_13    = "L'acqua nera scende da una rupe altissima, tra rocce lisce. Draghi senza sonno la custodiscono, e le acque stesse gridano: «Vattene!»",
 	.Fragment_13b   = "A quella vista Psiche resta come pietra: il corpo è lì, la mente è altrove. Il pericolo è così grande che le manca perfino l'ultimo conforto, le lacrime.",
 	.Fragment_13c   = "«Speri forse, ingenua, di rubare una goccia a questa fonte santissima e crudele? Gli dèi, e Giove stesso, temono le acque dello Stige: come voi giurate sugli dèi, così essi giurano sulla maestà dello Stige.»",
+	.Fragment_13d   = "A destra e a sinistra, dalle cave rocce strisciano draghi immensi: i lunghi colli tesi, gli occhi votati a una veglia senza fine, le pupille sempre aperte alla luce.",
 	.Fragment_14    = "«Va' da Proserpina» dice Venere, «e chiedile un po' della sua bellezza, quanto basta per un giorno.»",
 	.Fragment_14b   = "Venere la guarda torva: «Ormai mi sembri una strega, una maga grande e profonda, se hai obbedito così bene ai miei ordini. Ma c'è ancora una cosa che devi fare per me.»",
 	.Fragment_14c   = "«Prendi questo vaso. E torna presto: devo ungermi della sua bellezza prima di andare al teatro degli dèi.»",
@@ -970,6 +973,7 @@ IT := [Key]string {
 	.Intro_III_3b   = "Sotto la vetta l'acqua nera corre in canali stretti. Lastre di roccia li scavalcano, e girano al fuso.",
 	.Intro_III_3c   = "Sulla vetta, sopra l'acqua che grida, un ponte che solo la fiamma ricorda.",
 	.Intro_III_4    = "Sulla vetta l'acqua nera grida. Le aquile ti portano lassù, ma dove ti posano l'ora resta quella: sceglila prima di volare.",
+	.Intro_III_4b   = "L'aquila è volata via con l'urna. Tra queste gole le rocce s'ingannano a vicenda: guardale da ogni lato, e cerca la rupe dove tornerà.",
 	.Intro_III_5    = "Di nuovo nella casa di Venere. Per uscirne servirà ogni cosa imparata: la lucerna, il fuso, la grotta, l'aquila.",
 	.Intro_IV_1     = "La torre ti ha detto la via. Scendi: in fondo, sull'acqua scura, aspetta il traghettatore.",
 	.Intro_IV_2     = "Oltre il fiume, il regno di Proserpina pende sotto la terra dei morti, come un riflesso nell'acqua.",
@@ -1317,6 +1321,7 @@ EN := [Key]string {
 	.Fragment_13    = "Black water falls from a towering crag, between smooth rocks. Sleepless dragons guard it, and the waters themselves cry out: “Go away!”",
 	.Fragment_13b   = "At the sight Psyche stands like stone: her body is there, her mind is elsewhere. The danger is so great that she lacks even the last comfort, tears.",
 	.Fragment_13c   = "“Do you hope, simple girl, to steal one drop from this most holy and cruel spring? The gods, Jupiter himself, fear the waters of the Styx: as you swear by the gods, so they swear by the majesty of the Styx.”",
+	.Fragment_13d   = "Right and left, huge dragons crawl out of the hollow rocks: their long necks stretched out, their eyes sworn to an endless watch, their pupils always open to the light.",
 	.Fragment_14    = "“Go to Proserpina,” says Venus, “and ask her for a little of her beauty, enough for a single day.”",
 	.Fragment_14b   = "Venus glares at her: “By now you seem to me a witch, a great and deep enchantress, to have obeyed my orders so well. But there is still one thing you must do for me.”",
 	.Fragment_14c   = "“Take this box. And come back soon: I must anoint myself with her beauty before I go to the theatre of the gods.”",
@@ -1449,6 +1454,7 @@ EN := [Key]string {
 	.Intro_III_3b   = "Below the summit the black water runs in narrow channels. Slabs of rock span them, and turn to the spindle.",
 	.Intro_III_3c   = "On the summit, over the crying water, a bridge only the flame remembers.",
 	.Intro_III_4    = "At the summit the black water cries out. The eagles carry you up, but where they set you down the hour stays as it was: choose it before you fly.",
+	.Intro_III_4b   = "The eagle has flown off with the urn. In these gorges the rocks deceive one another: look at them from every side, and find the crag where it will return.",
 	.Intro_III_5    = "Back in the house of Venus. To leave it she will need everything she has learned: the lamp, the spindle, the cave, the eagle.",
 	.Intro_IV_1     = "The tower has told you the way. Go down: at the bottom, on the dark water, the ferryman waits.",
 	.Intro_IV_2     = "Beyond the river, Proserpina's kingdom hangs under the land of the dead, like a reflection in water.",

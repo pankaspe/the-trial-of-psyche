@@ -10,6 +10,7 @@ Kinds: **feature** (new code or mechanic) · **level** (a level built or rebuilt
 
 | Title | Kind | Description |
 |---|---|---|
+| III.4: the gorges of deceit | level | A second diorama after the spring (VI.14-15): a puzzle of illusions, a spiral of rocks round the gorge each joined to the next in one view only, stairs seen from one side, three decoy rocks, two sundials, stairs of the sun by day to the crag where the eagle brings the urn back; a new fragment (III.4d, the dragons). |
 | Dioramas part cleanly | fix | Between two dioramas of a level, the handles' and sundials' wheels, the eagles (even one flying home), the rams, the rings on perches and sundials, the parts' inlays, the braziers' light and the water's foam now sink and fade with their stones, instead of staying in the air. |
 | III.3: the channels and the summit | level | Jupiter's Eagle grows to three dioramas (VI.13-15): the channels under the summit, a handle puzzle of two crossed slabs and one eagle; then the summit, a long bridge of veiled stones woken by the lamp, a corrupt stone at its end, stairs hidden by crags, the eagle to the spring. Two new fragments (III.3c, III.3d). |
 | Veiled stones feel the flame | feature | Like the seals, a veiled stone not yet real gives off a faint warmth and a few sparks of gold when Psyche comes near it in the dark. |

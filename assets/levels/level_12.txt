@@ -32,11 +32,11 @@
 # view 1 at evening: the bridge carried to its end with the lamp lit; III.4c
 # (VI.15, the eagle: the gods swear by the Styx) on a pinnacle west of the
 # second seal's tooth, joined to it in view 3.
+# A second diorama follows: the gorges of deceit (illusions, two sundials).
 size 15
 biome styx
 lamp 3
 intro intro_iii_4
-outro outro_iii_4
 floor basin -1 -1 13 13
 
 # --- S: the foot (h1) --------------------------------------------------------
@@ -143,3 +143,123 @@ prop cairn 1 5 4 mx
 prop lip 7 1 6 mx
 prop lip 7 1 6 px
 prop lip 9 5 4 px
+
+diorama
+# The gorges of deceit (the second diorama, VI.14-15): the eagle has flown off
+# with the urn; Psyche waits for it on the crag in the middle of the gorges,
+# where every rock looks joined to another. An illusion puzzle: a spiral of
+# rocks climbing round the gorge, each joined to the next only in one view,
+# and two sundials. By day the sun shows the truth (no illusions, every
+# stair); at evening the rocks deceive.
+#   - the bank (h2): the start, a brazier, the first sundial. Nothing leads
+#     away by day: at evening, in view 2, its edge joins the first rock;
+#   - the spiral, at evening: west along the south (views 2, 3), stairs up a
+#     crag seen only from view 0 (two rocks hide them), north along the west
+#     (views 2, 0: down a step), east along the north (views 1, 2: down
+#     again), south-east to the last rock (view 1);
+#   - the last rock (h6): the second sundial. By day two stairs of the sun
+#     climb to the crag in the middle (h8), where the eagle brings the urn
+#     back (the exit);
+#   - three rocks join the spiral in other views and lead nowhere.
+# Solution (solver: 29 steps, 11 turns, 2 times turned, 13 decisions).
+# Fragment III.4d (VI.14, the dragons) on a pinnacle east of the middle crag,
+# joined in view 3 to the rock before the last.
+size 15
+biome styx
+floor basin -1 -1 15 15
+intro intro_iii_4b
+outro outro_iii_4
+
+# --- the bank (h2): the start, a brazier, the first sundial --------------------
+rock 12 12 0 1
+rock 13 12 0 1
+rock 12 13 0 1
+rock 13 13 0 1
+start 13 13 2
+rest 13 13 2
+sundial 12 13 2
+
+# --- the spiral, west along the south ------------------------------------------
+# the first rock (h3), joined to the bank in view 2
+rock 10 11 0 2
+rock 9 11 0 2
+# the second (h4), joined in view 3; stairs up to the crag, seen from view 0
+rock 7 12 0 3
+rock 6 12 0 3
+rock 5 12 0 3
+steps 5 12 4 mx
+# the rocks that hide them in the other views
+rock 4 13 0 6
+rock 5 11 0 6
+# the crag at the south-west corner (h5)
+rock 4 12 0 4
+rock 3 12 0 4
+rock 3 11 0 4
+prop lip 3 12 5 mx
+
+# --- north along the west --------------------------------------------------------
+# the west rock (h6), joined to the crag in view 2
+rock 2 9 0 5
+rock 2 8 0 5
+# down a step (h5) in view 0
+rock 1 6 0 4
+rock 1 5 0 4
+
+# --- east along the north --------------------------------------------------------
+# the north-west rock (h6), joined in view 1
+rock 2 3 0 5
+rock 3 3 0 5
+# the north rock (h7), joined in view 1
+rock 5 2 0 6
+rock 6 2 0 6
+# down a step (h6) in view 2
+rock 8 3 0 5
+rock 9 3 0 5
+# the north-east rock (h7), joined in view 1
+rock 10 1 0 6
+rock 11 1 0 6
+rock 11 2 0 6
+prop lip 11 2 7 mx
+
+# --- the last rock (h6), joined in view 1: the second sundial -----------------
+rock 10 4 0 5
+rock 10 5 0 5
+sundial 10 5 6
+# by day, two stairs of the sun up to the middle crag (h8, the exit)
+rock 10 6 0 5
+sunlit 10 6 6 py
+rock 10 7 0 6
+rock 9 7 0 6
+sunlit 9 7 7 mx
+rock 8 7 0 7
+exit 8 7 8
+prop lip 8 7 8 my
+
+# --- rocks that lead nowhere -------------------------------------------------------
+# from the first rock in view 1
+rock 12 10 0 3
+# from the west rock in view 3
+rock 0 10 0 6
+# from the north rock in view 0
+rock 6 4 0 7
+
+# --- decoration: dead pines, boulders, cairns, crags in the water ---------------
+prop pine 4 13 7
+prop boulder 5 11 7
+prop shrub 12 10 4 px
+prop shrub 6 4 8 my
+prop cairn 0 10 7 mx
+prop shrub 12 12 2 py
+prop cairn 2 3 6 my
+prop shrub 6 2 7 my
+rock 14 6 0 3
+prop pine 14 6 4
+rock 0 0 0 4
+prop boulder 0 0 5
+rock 7 9 0 2
+
+# --- the fragment (III.4d): a pinnacle joined in view 3 to the rock before the last
+rock 8 5 0 6
+prop lip 8 5 7 px
+prop lip 8 5 7 mx
+fragment 8 5 7
