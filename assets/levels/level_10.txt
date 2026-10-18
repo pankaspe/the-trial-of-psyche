@@ -166,4 +166,102 @@ fragment 3 3 2
 fragment 6 10 3
 fragment 2 5 2
 intro intro_iii_2
+
+diorama
+# The grove of the plane tree (the second diorama, VI.12-13): past the
+# briars, the grove where the flock rests in the evening shade of the great
+# plane tree, and the wool caught on the thorns. No handles here: the time,
+# the rams, the stairs of the sun, the illusions of the evening. Three
+# sundials and a way round: a stair of the sun goes down, an illusion of the
+# evening comes back up.
+#   - the south bank (h2): the start, a brazier, the first sundial;
+#   - the west terrace (h3): up a ram along the shore (evening), the second
+#     sundial; a stair of the sun up to the ridge (by day);
+#   - the ridge (h4): the last ram, under the plane tree, up to the knoll
+#     (evening); a stair of the sun down to the east terrace (by day);
+#   - the east terrace (h3): the third sundial; at evening, in view 2, its
+#     edge looks joined to the ridge.
+# Solution (solver: 37 steps, 3 times turned, 2 turns, 5 decisions): evening
+# at the bank, up the ram to the west terrace; day, up the stair of the sun,
+# along the ridge (the ram stands), down the east stair; evening, view 2, up
+# to the ridge, the ram lying, the plane tree.
+# Fragment III.2d (VI.12, the plane tree): the islet in the pond, seen from
+# the start, reached only from the east terrace at evening.
+size 11
+biome pasture
+floor basin -1 -1 11 11
+
+# --- the south bank (h2): the start, the first sundial -----------------------
+ground 3 9 0 1
+ground 4 9 0 1
+ground 5 9 0 1
+ground 6 9 0 1
+ground 7 9 0 1
+ground 4 10 0 1
+ground 5 10 0 1
+ground 6 10 0 1
+sundial 7 9 2
+start 5 10 2
+rest 4 10 2
+prop reeds 3 9 2 py
+prop shrub 6 10 2 px
+
+# --- the west shore, a ram up to the west terrace (evening) ------------------
+ground 2 9 0 1
+ground 1 9 0 1
+ground 1 8 0 1
+ram 1 8 2 my
+prop reeds 1 9 2 mx
+
+# --- the west terrace (h3): the second sundial, a stair of the sun -----------
+ground 0 5 0 2
+ground 1 5 0 2
+ground 2 5 0 2
+ground 0 6 0 2
+ground 1 6 0 2
+ground 0 7 0 2
+ground 1 7 0 2
+sundial 0 6 3
+prop fence 1 5 3 my
+prop shrub 0 7 3 mx
+sunlit 2 4 3 my
+
+# --- the ridge (h4) ------------------------------------------------------------
+ground 2 3 0 3
+ground 3 3 0 3
+ground 4 3 0 3
+ground 5 3 0 3
+ground 6 3 0 3
+ground 7 3 0 3
+ground 8 3 0 3
+prop fence 3 3 4 py
+prop shrub 7 3 4 my
+prop shrub 2 3 4 mx
+
+# --- the knoll (h5): the plane tree, the last ram (evening), the wool --------
+ground 5 2 0 3
+ram 5 2 4 my
+ground 5 1 0 4
+ground 6 0 0 4
+prop plane 6 0 5
+exit 5 1 5
+prop shrub 5 1 5 px
+
+# --- the east terrace (h3): a stair of the sun down to it, the third sundial -
+sunlit 8 4 3 my
+ground 7 5 0 2
+ground 8 5 0 2
+ground 9 5 0 2
+ground 8 6 0 2
+ground 9 6 0 2
+ground 9 7 0 2
+sundial 9 7 3
+prop shrub 9 5 3 my
+prop reeds 9 7 3 py
+
+# --- the islet in the pond (h2): the fragment ---------------------------------
+ground 5 6 0 1
+prop reeds 5 6 2 mx
+fragment 5 6 2
+intro intro_iii_2b
 outro outro_iii_2

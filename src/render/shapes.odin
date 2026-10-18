@@ -43,6 +43,8 @@ Mesh_Id :: enum u8 {
 	Cypress,
 	Spruce, // the crown in tiers...
 	Spruce_Trunk, // ...on its straight trunk
+	Plane, // a plane tree's broad crown...
+	Plane_Trunk, // ...on its trunk forking in two
 	Heap, // a mound of mixed seeds
 	Plank_X, // the deck of a rope bridge running along x...
 	Plank_Y, // ...or along y
@@ -392,6 +394,24 @@ FIRE_FLAME :: [3]f32{0.5, 0.5, 0.24} // where its flames burn, in cell space
 // a fir: a straight trunk, the crown in tiers narrowing to the tip
 @(private)
 SPRUCE_TRUNK := [?]Box{{{0.44, 0.44, 0}, {0.56, 0.56, 0.42}}}
+// A great plane tree: a stout trunk forking in two, a crown broad and low in
+// layers, wider than its cell, a clump on three sides.
+@(private)
+PLANE_TRUNK := [?]Box {
+	{{0.4, 0.4, 0}, {0.6, 0.6, 0.9}},
+	{{0.3, 0.45, 0.8}, {0.45, 0.58, 1.35}},
+	{{0.54, 0.42, 0.8}, {0.7, 0.56, 1.4}},
+}
+@(private)
+PLANE := [?]Box {
+	{{-0.15, -0.05, 1.25}, {1.15, 1.05, 1.6}},
+	{{-0.05, -0.15, 1.6}, {1.05, 1.15, 1.9}},
+	{{0.1, 0.05, 1.9}, {0.9, 0.95, 2.12}},
+	{{0.28, 0.25, 2.12}, {0.72, 0.75, 2.24}},
+	{{-0.32, 0.25, 1.35}, {0.05, 0.75, 1.68}},
+	{{0.95, 0.2, 1.3}, {1.3, 0.7, 1.62}},
+	{{0.25, 0.95, 1.3}, {0.7, 1.28, 1.6}},
+}
 @(private)
 spruce :: proc() -> []Box {
 	out := make([dynamic]Box, 0, 16, context.temp_allocator)
@@ -556,6 +576,8 @@ build_meshes :: proc(meshes: ^[Mesh_Id]rl.Mesh) {
 	meshes[.Cypress] = one(cypress())
 	meshes[.Spruce] = one(spruce())
 	meshes[.Spruce_Trunk] = one(SPRUCE_TRUNK[:])
+	meshes[.Plane] = one(PLANE[:])
+	meshes[.Plane_Trunk] = one(PLANE_TRUNK[:])
 	{
 		// the heap of seeds Venus poured out: a low round mound
 		hb := builder_make()

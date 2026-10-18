@@ -32,6 +32,7 @@ PROP_LOOK := [level.Prop_Kind]Prop_Look {
 	.Bed             = {body = {.Bed_PX, .Bronze}},
 	.Statue          = {body = {.Statue_PX, .Marble}},
 	.Spruce          = {body = {.Spruce, .Foliage}, extra = Prop_Piece{.Spruce_Trunk, .Wood}},
+	.Plane           = {body = {.Plane, .Foliage}, extra = Prop_Piece{.Plane_Trunk, .Wood}},
 	.Heap            = {body = {.Heap, .Seeds}},
 	.Arch            = {body = {.Arch_PX, .Masonry}},
 	.Vase            = {body = {.Vase_PX, .Bronze}},

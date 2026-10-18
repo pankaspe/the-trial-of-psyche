@@ -23,6 +23,7 @@ Prop_Kind :: enum u8 {
 	Bed,
 	Statue, // a marble woman on a plinth, calling with her arm raised toward `dir`
 	Spruce, // a tall fir of the forest
+	Plane, // a great plane tree, its crown broad and low (the Sun's grove)
 	Heap, // a mound of mixed seeds (Venus's task)
 	// decoration only
 	Arch,
@@ -94,6 +95,7 @@ PROPS := [Prop_Kind]Prop_Info {
 	.Bed             = {name = "bed", fill = .Cell, dir = .Optional},
 	.Statue          = {name = "statue", fill = .Cell, dir = .Needed},
 	.Spruce          = {name = "spruce", fill = .Cell},
+	.Plane           = {name = "plane", fill = .Cell},
 	.Heap            = {name = "heap", fill = .Cell},
 	.Arch            = {name = "arch", dir = .Optional},
 	.Vase            = {name = "vase", dir = .Needed},

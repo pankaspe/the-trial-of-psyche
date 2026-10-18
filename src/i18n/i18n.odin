@@ -169,6 +169,7 @@ Key :: enum u16 {
 	Fragment_11,
 	Fragment_11b, // the reed's advice
 	Fragment_11c, // Psyche goes to the river to die
+	Fragment_11d, // III.2's grove: the plane tree where she hides
 	Fragment_12,
 	Fragment_12b, // Jupiter's eagle remembers the old service
 	Fragment_13,
@@ -299,6 +300,7 @@ Key :: enum u16 {
 	Intro_II_4,
 	Intro_III_1,
 	Intro_III_2,
+	Intro_III_2b, // III.2's second diorama: the grove of the plane tree
 	Intro_III_3,
 	Intro_III_4,
 	Intro_III_5,
@@ -822,6 +824,7 @@ IT := [Key]string {
 	.Fragment_10    = "Mercurio grida il bando per tutte le strade: «a chi riporta la fuggitiva, Venere darà sette baci.»",
 	.Fragment_11    = "Amore è chiuso in una stanza in fondo alla casa, lontano da tutti. La ferita della lampada guarisce piano.",
 	.Fragment_11b   = "Una canna verde, nutrice di musica soave, mossa da un soffio di vento: «Psiche, non macchiare con la tua morte le mie acque sante. E non andare tra le pecore finché il sole brucia: il suo calore le rende feroci, con le corna aguzze e i morsi velenosi. Aspetta la sera, quando si placano, e raccogli la lana d'oro rimasta tra i rovi.»",
+	.Fragment_11d   = "La canna le insegna anche dove nascondersi: sotto l'alto platano che beve con lei la stessa acqua del fiume. Lì Psiche aspetta, finché il furore del gregge si placa al fresco della sera.",
 	.Fragment_11c   = "All'alba Venere le indica un bosco lungo il fiume, dove pascolano pecore splendenti d'oro. Psiche ci va volentieri, ma non per obbedire: vuole gettarsi da una rupe nel fiume e trovare finalmente pace.",
 	.Fragment_12    = "Venere va a un banchetto di nozze, profumata e coronata di rose. Lascia Psiche sola, davanti al lavoro impossibile.",
 	.Fragment_12b   = "All'improvviso arriva l'uccello regale di Giove, l'aquila rapace, le ali spiegate. Ricorda l'antico servizio: fu Amore a guidarla quando portò in cielo il fanciullo frigio, coppiere di Giove. Ora soccorre la sposa di Amore.",
@@ -953,6 +956,7 @@ IT := [Key]string {
 	.Intro_II_3     = "Psiche va dalla sorella maggiore e le dice: «Il mio sposo ora vuole te.» La sorella corre alla rupe, senza dirlo a nessuno.",
 	.Intro_II_4     = "Psiche vaga giorno e notte in cerca dello sposo. Al tramonto trova un tempio di Cerere e di Giunone: spighe e falci in disordine, doni appesi alle colonne.",
 	.Intro_III_1    = "È ancora giorno nella casa di Venere. Nel cortile, una meridiana segna le ore.",
+	.Intro_III_2b   = "Oltre i rovi, il boschetto del grande platano: a sera il gregge vi riposa all'ombra, e la lana d'oro resta tra le spine.",
 	.Intro_III_2    = "Lungo il fiume pascola il gregge d'oro del Sole. Una canna sussurra: aspetta la sera.",
 	.Intro_III_3    = "Venere le mette in mano un'urna di cristallo: «Riempila all'acqua nera che sgorga dalla vetta.»",
 	.Intro_III_4    = "Sulla vetta l'acqua nera grida. Le aquile ti portano lassù, ma dove ti posano l'ora resta quella: sceglila prima di volare.",
@@ -1294,6 +1298,7 @@ EN := [Key]string {
 	.Fragment_10    = "Mercury cries the proclamation through every street: whoever brings back the runaway will have seven kisses from Venus.",
 	.Fragment_11    = "Cupid is shut in a room at the back of the house, far from everyone. The wound of the lamp heals slowly.",
 	.Fragment_11b   = "A green reed, nurse of sweet music, stirred by a breath of wind: “Psyche, do not stain my holy waters with your death. And do not go among the sheep while the sun burns: its heat makes them wild, their horns sharp, their bites poisonous. Wait for evening, when they grow calm, and gather the golden wool left on the briars.”",
+	.Fragment_11d   = "The reed also shows her where to hide: under the tall plane tree that drinks the same river water with her. There Psyche waits, until the fury of the flock is calmed by the cool of the evening.",
 	.Fragment_11c   = "At dawn Venus points her to a grove along the river, where sheep shining with gold are grazing. Psyche goes willingly, but not to obey: she means to throw herself from a rock into the river and find rest at last.",
 	.Fragment_12    = "Venus goes off to a wedding feast, perfumed and crowned with roses. She leaves Psyche alone with the impossible task.",
 	.Fragment_12b   = "Suddenly the royal bird of Jupiter appears, the raptor eagle, its wings spread wide. It remembers the old service: Cupid guided it when it carried the Phrygian boy up to heaven to be Jupiter's cupbearer. Now it comes to the aid of Cupid's bride.",
@@ -1425,6 +1430,7 @@ EN := [Key]string {
 	.Intro_II_3     = "Psyche goes to her eldest sister and tells her: “My husband wants you now.” The sister runs to the crag, telling no one.",
 	.Intro_II_4     = "Psyche wanders day and night in search of her husband. At dusk she finds a temple of Ceres and Juno: wheat and sickles in disorder, gifts hung on the columns.",
 	.Intro_III_1    = "It is still day in the house of Venus. In the court, a sundial tells the hours.",
+	.Intro_III_2b   = "Past the briars, the grove of the great plane tree: at evening the flock rests in its shade, and the golden wool stays on the thorns.",
 	.Intro_III_2    = "Along the river grazes the golden flock of the Sun. A reed whispers: wait for evening.",
 	.Intro_III_3    = "Venus puts a crystal urn in her hands: “Fill it with the black water that springs from the summit.”",
 	.Intro_III_4    = "At the summit the black water cries out. The eagles carry you up, but where they set you down the hour stays as it was: choose it before you fly.",

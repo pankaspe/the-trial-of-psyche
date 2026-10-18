@@ -79,7 +79,7 @@ BIOMES := [Biome]Biome_Info {
 		light = .Pasture_Day,
 		day = [2]Setting{.Pasture_Day, .Pasture_Evening},
 		rim = .Earth,
-		props = #partial {.Rope = 3, .Shrub = 2, .Reeds = 2, .Fence = 2},
+		props = #partial {.Rope = 3, .Shrub = 2, .Reeds = 2, .Fence = 2, .Plane = 1},
 	},
 	.Styx = {
 		name = "styx",
