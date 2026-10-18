@@ -1426,24 +1426,6 @@ draw_figures :: proc(r: ^Renderer, g: ^game.Game) {
 			rl.DrawMesh(r.meshes[.Head], r.material, rl.MatrixTranslate(p.x, p.y, p.z) * rl.MatrixRotateZ(yaw) * rl.MatrixScale(0.05, 0.026, 0.026))
 		}
 	}
-
-	// Cupid flying away (the opening of Act II)
-	if c, alpha := game.flight_cupid(g); alpha > 0.003 {
-		set_piece_uniforms(r, .Cupid, 0, 0, alpha, 0.9, 0.12)
-		rl.DrawMesh(r.meshes[.Robe_Cupid], r.material, rl.MatrixTranslate(c.x, c.y, c.z - 0.15))
-		rl.DrawMesh(r.meshes[.Head], r.material, rl.MatrixTranslate(c.x, c.y, c.z + 0.455) * rl.MatrixScale(0.05, 0.05, 0.055))
-	}
-
-	// Cupid: only a presence in the dark; the lamp shows him
-	if g.data.has_amore && g.amore.reveal > 0.003 {
-		alpha := g.amore.reveal * cupid_fade(g)
-		if alpha > 0.003 {
-			c := amore_position(g)
-			set_piece_uniforms(r, .Cupid, 0, 0, alpha, 0.9, 0.12)
-			rl.DrawMesh(r.meshes[.Robe_Cupid], r.material, rl.MatrixTranslate(c.x, c.y, c.z - 0.15))
-			rl.DrawMesh(r.meshes[.Head], r.material, rl.MatrixTranslate(c.x, c.y, c.z + 0.455) * rl.MatrixScale(0.05, 0.05, 0.055))
-		}
-	}
 }
 
 // The Sun's golden rams, carved like the palace (shapes.odin): a quilted block
@@ -2346,15 +2328,18 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	// Cupid flying away: his light in the night sky
 	if c, alpha := game.flight_cupid(g); alpha > 0.003 {
 		glow(v, c + {0, 0, 0.2}, 150, {1.0, 0.72, 0.35, 0.35 * alpha})
-		glow(v, c + {0, 0, 0.2}, 40, {1.0, 0.88, 0.6, 0.5 * alpha})
+		draw_cupid(g, v, c, alpha, true)
 	}
-	// Cupid: a warm breathing presence
+	// Cupid: a warm breathing presence in the dark; the lamp shows his figure
 	if g.data.has_amore {
 		c := amore_position(g)
 		fade := cupid_fade(g)
 		presence := (0.28 + 0.12 * math.sin(t * 1.25)) * g.amore.breath * fade
 		radius := 80 * (1 + 1.2 * g.amore.embrace)
 		glow(v, c + {0, 0, 0.19}, radius, {1.0, 0.72, 0.35, presence})
+		if alpha := g.amore.reveal * fade; alpha > 0.003 {
+			draw_cupid(g, v, c, alpha, g.amore.fly_t >= 0)
+		}
 	}
 	// drops of oil, and the burning one
 	for d in g.drops {
@@ -2496,7 +2481,7 @@ ellipse_3d :: proc(center, u, w: Vec3, rx, ry, tilt: f32, c: Color4, n := 18) {
 	rlgl.End()
 }
 
-// Psyche's butterfly wings of light (psyche = soul = butterfly) and Cupid's feathers.
+// Psyche's butterfly wings of light (psyche = soul = butterfly), the doves of Venus.
 @(private)
 draw_wings :: proc(g: ^game.Game, v: View) {
 	rlgl.SetTexture(rlgl.GetTextureIdDefault())
@@ -2531,22 +2516,36 @@ draw_wings :: proc(g: ^game.Game, v: View) {
 			ellipse_3d(p + wing * 0.05 + up * 0.012, wing, dfwd, 0.055, 0.022, 0, {1.0, 0.97, 0.94, 0.8 * a})
 		}
 	}
+}
 
-	fc, falpha := game.flight_cupid(g)
-	if (g.data.has_amore && g.amore.reveal > 0.003) || falpha > 0.003 {
-		alpha := falpha > 0 ? falpha : g.amore.reveal * cupid_fade(g)
-		c := falpha > 0 ? fc : amore_position(g)
-		right, _ := billboard_axes(v)
-		cside := right / math.sqrt(linalg_dot(right, right))
-		flap: f32 = g.amore.fly_t >= 0 || falpha > 0 ? 1 : 0
-		spread := 1 + 0.25 * math.sin(g.time * (2 + flap * 14)) * (0.3 + flap)
-		wroot := c + {0, 0, 0.4}
-		for sgn in ([2]f32{-1, 1}) {
-			for i in 0 ..< 5 {
-				length := (46 - f32(i) * 6) / 64
-				a := -0.9 + f32(i) * 0.32
-				dir := cside * sgn * math.cos(a) * spread + up * -math.sin(a)
-				ellipse_3d(wroot + dir * length * 0.5, cside * sgn, up, length * 0.5, 5.0 / 64, -sgn * a, {1.0, 0.92, 0.75, 0.75 * alpha})
+// Cupid as pure light (user, 2026-10-18): a figure of light that breathes, a
+// robe narrowing to the shoulders, the head above, a white core; for wings,
+// trails of light sweeping out from the shoulders with a ripple running along
+// them (longer and quicker in flight). Inside draw_glows' quads.
+@(private)
+draw_cupid :: proc(g: ^game.Game, v: View, c: Vec3, alpha: f32, flying: bool) {
+	t := g.time
+	a := alpha * (0.85 + 0.15 * math.sin(t * 2.1))
+	glow(v, c + {0, 0, 0.16}, 13, {1.0, 0.74, 0.4, 0.75 * a}, 2.3) // the robe
+	glow(v, c + {0, 0, 0.37}, 11, {1.0, 0.84, 0.56, 0.7 * a}, 0.9) // the shoulders
+	glow(v, c + {0, 0, 0.54}, 7, {1.0, 0.93, 0.8, 1.0 * a}) // the head
+	glow(v, c + {0, 0, 0.28}, 5, {1.0, 0.97, 0.9, 0.9 * a}, 3.2) // the core
+	right, _ := billboard_axes(v)
+	side := right / math.sqrt(linalg_dot(right, right))
+	up := Vec3{0, 0, 1}
+	reach: f32 = flying ? 1.3 : 1
+	speed: f32 = flying ? 6 : 1.6
+	root := c + {0, 0, 0.4}
+	TRAIL :: 24
+	for sgn in ([2]f32{-1, 1}) {
+		for k in 0 ..< 3 {
+			lift := 0.22 - f32(k) * 0.12 // the upper trail rises most
+			for j in 0 ..< TRAIL {
+				u := f32(j + 1) / TRAIL
+				wave := 0.025 * math.sin(t * speed - u * 5 + f32(k))
+				p := root + side * sgn * u * 0.55 * reach + up * (lift * math.sin(u * math.PI * 0.9) + wave - u * 0.04 * f32(k))
+				size := (9 - 6 * u) * (1 - f32(k) * 0.2)
+				glow(v, p, size, {1.0, 0.85 - 0.1 * u, 0.55 - 0.15 * u, a * 0.5 * (1 - u) * (1 - 0.25 * f32(k))})
 			}
 		}
 	}

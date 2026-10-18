@@ -51,7 +51,6 @@ Mesh_Id :: enum u8 {
 	Sigil_Off,
 	Sigil_On,
 	Robe,
-	Robe_Cupid,
 	Head,
 	Lamp,
 	Scroll,
@@ -95,7 +94,7 @@ Material :: enum u8 {
 	Foliage,
 	Bronze,
 	Psyche,
-	Cupid,
+	Cupid, // unused since Cupid is light (kept: the shader numbers the materials)
 	Mourner,
 	Lawn, // grass on top, earth on the sides
 	Rock, // living rock under the meadows: brown earth in rough strata
@@ -502,12 +501,6 @@ ROBE_PROFILE := [?][2]f32 {
 	{0.0, 0.0}, {0.115, 0.0}, {0.1, 0.06}, {0.078, 0.2}, {0.058, 0.32}, {0.05, 0.36},
 	{0.062, 0.4}, {0.066, 0.44}, {0.056, 0.47}, {0.03, 0.49}, {0.02, 0.5}, {0.0, 0.5},
 }
-// Cupid: broader shoulders, a little taller.
-@(private)
-ROBE_CUPID_PROFILE := [?][2]f32 {
-	{0.0, 0.0}, {0.1, 0.0}, {0.09, 0.08}, {0.07, 0.24}, {0.062, 0.36}, {0.074, 0.44},
-	{0.084, 0.5}, {0.07, 0.53}, {0.03, 0.55}, {0.022, 0.56}, {0.0, 0.56},
-}
 // The fragment of the tale: a papyrus roll with wider ends, along z (laid down when drawn).
 @(private)
 SCROLL_PROFILE := [?][2]f32 {
@@ -610,7 +603,6 @@ build_meshes :: proc(meshes: ^[Mesh_Id]rl.Mesh) {
 		return upload(&b)
 	}
 	meshes[.Robe] = lathe_mesh(ROBE_PROFILE[:], 14)
-	meshes[.Robe_Cupid] = lathe_mesh(ROBE_CUPID_PROFILE[:], 14)
 	meshes[.Lamp] = lathe_mesh(LAMP_PROFILE[:], 10)
 	meshes[.Scroll] = lathe_mesh(SCROLL_PROFILE[:], 12)
 	for d in iso.Dir {
