@@ -2248,16 +2248,32 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 			glow(v, p, 2.2, {1.0, 0.96, 0.85, fl}, 1.6)
 		}
 	}
-	// the braziers Psyche has lit
+	// the braziers Psyche has lit; over the last one (where R brings her back)
+	// a column of warm light and embers rising, seen from afar
 	for c, i in g.data.rests {
 		if !g.rests_lit[i] {
 			continue
 		}
 		fp := shown(g, Vec3{f32(c.x), f32(c.y), f32(c.z)} + ALTAR_FLAME, false)
 		fl := 0.85 + 0.1 * math.sin(t * 17 + f32(i) * 2.3) + 0.05 * math.sin(t * 29 + f32(i))
-		glow(v, fp, 70, {1.0, 0.6, 0.25, 0.22 * fl})
-		glow(v, fp + {0, 0, 0.03}, 8, {1.0, 0.75, 0.4, fl}, 1.6)
-		glow(v, fp + {0, 0, 0.03}, 3.5, {1.0, 0.95, 0.8, fl}, 1.5)
+		glow(v, fp, 90, {1.0, 0.6, 0.25, 0.28 * fl})
+		glow(v, fp + {0, 0, 0.03}, 10, {1.0, 0.75, 0.4, fl}, 1.8)
+		glow(v, fp + {0, 0, 0.03}, 4.5, {1.0, 0.95, 0.8, fl}, 1.6)
+		if !g.rest.valid || g.rest.cell != c || !game.upright(g, false) || g.phase == .Overturn {
+			continue
+		}
+		breath := 0.8 + 0.2 * math.sin(t * 1.1)
+		for n in 0 ..< 7 {
+			h := f32(n) * 0.4
+			fall := 1 - f32(n) / 7
+			glow(v, fp + {0, 0, 0.3 + h}, 24 - f32(n) * 1.8, {1.0, 0.62, 0.28, 0.42 * fall * fall * breath}, 2.4)
+		}
+		glow(v, fp + {0, 0, 0.02}, 46, {1.0, 0.55, 0.2, 0.3 * breath}, 0.5)
+		for m in 0 ..< 5 {
+			k := math.mod(t * 0.35 + f32(m) * 0.2, 1)
+			sway := Vec3{math.sin(t * 1.7 + f32(m) * 2.4) * 0.08, math.cos(t * 1.3 + f32(m) * 1.9) * 0.08, 0.2 + k * 2.6}
+			glow(v, fp + sway, 4, {1.0, 0.72, 0.38, 0.9 * math.sin(k * math.PI)}, 1.2)
+		}
 	}
 	// the stones the seal raises glow gold as they come up, and a while after
 	for e, i in g.data.rise {
