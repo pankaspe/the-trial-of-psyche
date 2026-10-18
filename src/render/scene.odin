@@ -765,7 +765,7 @@ scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
 	if g.parting && g.phase == .Ending_Exit {
 		for p, i in s.pieces {
 			c := piece_cell(g, p)
-			k := game.assembly(g, c, fx.hash01(u32(i) * 31 + 7))
+			k := game.assembly(g, c, piece_jitter(i))
 			if k < 0.1 || k > 0.85 || fx.randf(&s.rng) > dt * 1.2 {
 				continue
 			}
@@ -1211,11 +1211,10 @@ piece_state :: proc(g: ^game.Game, p: Piece, i: int) -> (lift, alpha: f32, visib
 			alpha *= 1 - k * k * k
 		}
 	}
-	if k := game.assembly(g, piece_cell(g, p), fx.hash01(u32(i) * 31 + 7)); k < 1 {
-		// the palace rises into place on arrival, or breaks up for the level's next diorama
-		lift -= 9 * (1 - k)
-		alpha *= fx.clamp01(k * 1.6)
-	}
+	// the palace rises into place on arrival, or breaks up for the level's next diorama
+	rise, clear := placed(g, piece_cell(g, p), piece_jitter(i))
+	lift += rise
+	alpha *= clear
 	if g.collapse_t >= 0 {
 		keep := g.collapse_keep
 		if !(p.cell.x == keep.x && p.cell.y == keep.y && p.cell.z < keep.z) {
@@ -1227,6 +1226,20 @@ piece_state :: proc(g: ^game.Game, p: Piece, i: int) -> (lift, alpha: f32, visib
 	}
 	visible = visible && alpha > 0.003
 	return
+}
+
+// Piece i's stagger as the diorama rises or breaks up (0..1): pieces of one
+// distance from its heart do not all move at once. A block's piece shares its
+// index (they come first in the scene).
+piece_jitter :: proc(i: int) -> f32 {
+	return fx.hash01(u32(i) * 31 + 7)
+}
+
+// Where a thing standing in cell c is as the diorama rises on arrival or breaks
+// up at its exit: how far under its place, how clear (0, 1 once in place).
+placed :: proc(g: ^game.Game, c: Cell, jitter: f32 = 1) -> (lift, alpha: f32) {
+	k := game.assembly(g, c, jitter)
+	return -9 * (1 - k), fx.clamp01(k * 1.6)
 }
 
 // How far a stone standing only by day has crumbled (0 by day .. 1 at evening),
@@ -1356,7 +1369,7 @@ draw_pieces :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, transparent: bool) {
 			spin := p.sundial ? g.evening * 2 * math.PI : game.part_angle(g, g.data.handles[p.handle].part) * math.PI
 			ax := CRANK_AXIS
 			size: f32 = p.sundial ? SUNDIAL_SCALE : 1
-			wm := turn_matrix(g, p.under) * rl.MatrixTranslate(f32(p.cell.x) + ax.x, f32(p.cell.y) + ax.y, f32(p.cell.z) + ax.z * size) * rl.MatrixRotateZ(spin) * rl.MatrixScale(size, size, size)
+			wm := turn_matrix(g, p.under) * rl.MatrixTranslate(f32(p.cell.x) + ax.x, f32(p.cell.y) + ax.y, f32(p.cell.z) + ax.z * size + lift) * rl.MatrixRotateZ(spin) * rl.MatrixScale(size, size, size)
 			rl.DrawMesh(r.meshes[.Crank_Wheel], r.material, wm)
 		}
 	}
@@ -1447,7 +1460,6 @@ draw_rams :: proc(r: ^Renderer, g: ^game.Game) {
 		return
 	}
 	lie := game.ram_lie(g)
-	set_piece_uniforms(r, .Fleece, 0, 0, 1, 0.9, 0.05 + 0.04 * (1 - lie))
 	// the golden wool left on the briars at the exit's height: tufts on the bushes
 	if g.data.has_exit {
 		for prop, n in g.data.props {
@@ -1460,9 +1472,11 @@ draw_rams :: proc(r: ^Renderer, g: ^game.Game) {
 			case .MX: k = {1 - k.x, 1 - k.y}
 			case .MY: k = {k.y, 1 - k.x}
 			}
+			rise, clear := placed(g, prop.cell)
+			set_piece_uniforms(r, .Fleece, 0, 0, clear, 0.9, 0.05 + 0.04 * (1 - lie))
 			for j in 0 ..< 3 {
 				h := u32(n * 7 + j)
-				p := Vec3{f32(prop.cell.x) + k.x + (fx.hash01(h * 3 + 1) - 0.5) * 0.22, f32(prop.cell.y) + k.y + (fx.hash01(h * 3 + 2) - 0.5) * 0.22, f32(prop.cell.z) + 0.12 + 0.12 * fx.hash01(h * 3 + 3)}
+				p := Vec3{f32(prop.cell.x) + k.x + (fx.hash01(h * 3 + 1) - 0.5) * 0.22, f32(prop.cell.y) + k.y + (fx.hash01(h * 3 + 2) - 0.5) * 0.22, f32(prop.cell.z) + 0.12 + 0.12 * fx.hash01(h * 3 + 3) + rise}
 				rl.DrawMesh(r.meshes[.Head], r.material, rl.MatrixTranslate(p.x, p.y, p.z) * rl.MatrixScale(0.045, 0.04, 0.035))
 			}
 		}
@@ -1471,6 +1485,7 @@ draw_rams :: proc(r: ^Renderer, g: ^game.Game) {
 		frame: rl.Matrix, // the cell, turned toward dir
 		body, neck, tail, head: rl.Matrix,
 		leg_h, leg_z: f32,
+		alpha:        f32, // as the diorama rises or breaks up
 	}
 	poses := make([]Ram_Pose, len(g.data.rams), context.temp_allocator)
 	mix :: proc(a, b: Vec3, t: f32) -> Vec3 {return a + (b - a) * t}
@@ -1480,7 +1495,9 @@ draw_rams :: proc(r: ^Renderer, g: ^game.Game) {
 		d := iso.DIR_VEC[m.dir]
 		yaw := math.atan2(f32(d.y), f32(d.x))
 		pose := &poses[i]
-		pose.frame = rl.MatrixTranslate(f32(c.x) + 0.5, f32(c.y) + 0.5, f32(c.z)) * rl.MatrixRotateZ(yaw)
+		rise: f32
+		rise, pose.alpha = placed(g, c)
+		pose.frame = rl.MatrixTranslate(f32(c.x) + 0.5, f32(c.y) + 0.5, f32(c.z) + rise) * rl.MatrixRotateZ(yaw)
 		// grazing (by day): now and then the head goes down to the grass
 		ph := g.time * 0.35 + f32(i) * 1.7
 		graze := (1 - lie) * fx.sine_in_out(fx.clamp01((math.sin(ph) - 0.55) / 0.3))
@@ -1499,14 +1516,15 @@ draw_rams :: proc(r: ^Renderer, g: ^game.Game) {
 	}
 	// the wool and the horns in gold...
 	for pose in poses {
+		set_piece_uniforms(r, .Fleece, 0, 0, pose.alpha, 0.9, 0.05 + 0.04 * (1 - lie))
 		for part in ([3]rl.Matrix{pose.body, pose.neck, pose.tail}) {
 			rl.DrawMesh(r.meshes[.Ram_Fleece], r.material, pose.frame * part)
 		}
 		rl.DrawMesh(r.meshes[.Ram_Horns], r.material, pose.frame * pose.head)
 	}
 	// ...the face and the legs in dark bronze
-	set_piece_uniforms(r, .Bronze, 0, 0, 1, 0.9, 0)
 	for pose in poses {
+		set_piece_uniforms(r, .Bronze, 0, 0, pose.alpha, 0.9, 0)
 		rl.DrawMesh(r.meshes[.Ram_Head], r.material, pose.frame * pose.head)
 		if pose.leg_h > 0.01 {
 			for lx in ([2]f32{-0.24, 0.16}) {
@@ -1529,10 +1547,14 @@ draw_eagles :: proc(r: ^Renderer, g: ^game.Game) {
 		body, head: rl.Matrix,
 		wings:      [2]rl.Matrix,
 		spread:     f32,
+		alpha:      f32, // with its perch, as the diorama rises or breaks up
 	}
 	poses := make([]Eagle_Pose, len(g.data.eagles), context.temp_allocator)
 	for &pose, i in poses {
 		pos, yaw, spread := game.eagle_pose(g, i)
+		rise: f32
+		rise, pose.alpha = placed(g, g.data.eagles[i].from)
+		pos.z += rise
 		breath := math.sin(g.time * 1.3 + f32(i) * 2.1)
 		// perched it sits upright, its breast out; flying it lies level
 		pitch := -1.05 * (1 - spread) - 0.08
@@ -1548,8 +1570,8 @@ draw_eagles :: proc(r: ^Renderer, g: ^game.Game) {
 		}
 	}
 	// the feathers in gold...
-	set_piece_uniforms(r, .Fleece, 0, 0, 1, 0.9, 0.12)
 	for pose in poses {
+		set_piece_uniforms(r, .Fleece, 0, 0, pose.alpha, 0.9, 0.12)
 		rl.DrawMesh(r.meshes[.Eagle_Body], r.material, pose.body)
 		rl.DrawMesh(r.meshes[.Eagle_Tail], r.material, pose.body * rl.MatrixRotateY(-0.15 * pose.spread))
 		rl.DrawMesh(r.meshes[.Head], r.material, pose.head * rl.MatrixScale(0.06, 0.055, 0.058))
@@ -1558,8 +1580,8 @@ draw_eagles :: proc(r: ^Renderer, g: ^game.Game) {
 		}
 	}
 	// ...the beak in dark bronze
-	set_piece_uniforms(r, .Bronze, 0, 0, 1, 0.9, 0)
 	for pose in poses {
+		set_piece_uniforms(r, .Bronze, 0, 0, pose.alpha, 0.9, 0)
 		rl.DrawMesh(r.meshes[.Eagle_Beak], r.material, pose.head * rl.MatrixTranslate(0.045, 0, -0.005))
 	}
 }
@@ -1801,7 +1823,8 @@ draw_floors :: proc(g: ^game.Game, time: f32) {
 			}
 			t := math.mod(time * (f.fluid == .Swamp ? 0.12 : 0.35) + fx.hash01(u32(i) * 7), 1)
 			foam := f.fluid == .Swamp ? Color4{0.55, 0.62, 0.35, 0.18} : Color4{0.7, 0.8, 1.0, 0.3}
-			floor_ring({f32(c.x) + 0.5, f32(c.y) + 0.5, z + 0.002}, 0.68 + 0.12 * t, 0.025, {foam.r, foam.g, foam.b, foam.a * (1 - t) * game.assembly(g, c, 1)})
+			k := game.assembly(g, c, piece_jitter(i)) // gone as soon as its stone starts down
+			floor_ring({f32(c.x) + 0.5, f32(c.y) + 0.5, z + 0.002}, 0.68 + 0.12 * t, 0.025, {foam.r, foam.g, foam.b, foam.a * (1 - t) * k * k * k * k})
 		}
 	}
 	end_turn()
@@ -2019,7 +2042,8 @@ draw_decals :: proc(g: ^game.Game) {
 	// Proserpina's pomegranates: a ring of dark red on both faces of their stones
 	for c, n in g.data.pomegranates {
 		k := 0.6 + 0.4 * math.sin(g.time * 1.2 + f32(n))
-		col := Color4{0.95, 0.3, 0.32, 0.3 * k}
+		_, clear := placed(g, c)
+		col := Color4{0.95, 0.3, 0.32, 0.3 * k * clear}
 		for under in ([2]bool{false, true}) {
 			begin_turn(g, under)
 			p := Vec3{f32(c.x) + 0.5, f32(c.y) + 0.5, f32(c.z) + 0.007}
@@ -2034,13 +2058,15 @@ draw_decals :: proc(g: ^game.Game) {
 	// a few small flowers in the grass, pale in the moonlight
 	FLOWER := [3]Color4{{0.92, 0.9, 1.0, 0.85}, {1.0, 0.9, 0.55, 0.8}, {0.8, 0.65, 1.0, 0.8}}
 	for c, n in g.data.lawn {
+		_, clear := placed(g, c)
 		for k in 0 ..< 6 {
 			h := u32(n * 31 + k * 7)
 			p := Vec3{f32(c.x) + 0.12 + 0.76 * fx.hash01(h * 3 + 1), f32(c.y) + 0.12 + 0.76 * fx.hash01(h * 3 + 2), f32(c.z) + 1.006}
 			if g.psyche.cell == c + {0, 0, 1} && linalg_dot(p - g.psyche.pos, p - g.psyche.pos) < 0.04 {
 				continue // trodden under her feet
 			}
-			floor_ellipse(p, 0.028, 0.028, FLOWER[k % 3])
+			col := FLOWER[k % 3]
+			floor_ellipse(p, 0.028, 0.028, {col.r, col.g, col.b, col.a * clear})
 		}
 	}
 
@@ -2049,7 +2075,8 @@ draw_decals :: proc(g: ^game.Game) {
 	for c, n in g.data.sundials {
 		k := 0.6 + 0.4 * math.sin(g.time * 1.4 + f32(n))
 		col := fx.lerp(Color4{1.0, 0.92, 0.55, 0.32}, Color4{1.0, 0.62, 0.72, 0.32}, g.evening)
-		col.a *= k
+		_, clear := placed(g, c)
+		col.a *= k * clear
 		floor_ring(pl.node_world(&g.palace, c) + {0, 0, 0.007}, 0.32, 0.05, col)
 		floor_ellipse(pl.node_world(&g.palace, c) + {0, 0, 0.006}, 0.3, 0.3, {col.r, col.g, col.b, col.a * 0.25})
 	}
@@ -2058,7 +2085,8 @@ draw_decals :: proc(g: ^game.Game) {
 	// the ring where it will set her down breathes brighter
 	for e, n in g.data.eagles {
 		k := 0.6 + 0.4 * math.sin(g.time * 1.4 + f32(n))
-		col := Color4{1.0, 0.84, 0.5, 0.26 * k}
+		_, clear := placed(g, e.from)
+		col := Color4{1.0, 0.84, 0.5, 0.26 * k * clear}
 		floor_ring(pl.node_world(&g.palace, e.from) + {0, 0, 0.007}, 0.32, 0.04, col)
 		if game.at_eagle(g) && g.psyche.cell == e.from {
 			land := pl.node_world(&g.palace, e.to) + {0, 0, 0.007}
@@ -2077,18 +2105,20 @@ draw_decals :: proc(g: ^game.Game) {
 		if e.solid.kind != .Block || pl.solid_at(&g.palace, pl.block_cell(&g.palace, i) + {0, 0, 1}).kind != .None {
 			continue
 		}
-		top :: proc(g: ^game.Game, i: int, x, y: f32) -> Vec3 {
-			return block_world(g, i, {x, y, 1.006})
+		// with its stone, as the diorama rises or breaks up
+		rise, clear := placed(g, pl.block_cell(&g.palace, i), piece_jitter(i))
+		top :: proc(g: ^game.Game, i: int, x, y, rise: f32) -> Vec3 {
+			return block_world(g, i, {x, y, 1.006}) + {0, 0, rise}
 		}
-		col := Color4{0.62, 0.48, 0.26, 0.6}
+		col := Color4{0.62, 0.48, 0.26, 0.6 * clear}
 		I :: 0.14
 		W :: 0.035
 		corners := [4][2]f32{{I, I}, {1 - I, I}, {1 - I, 1 - I}, {I, 1 - I}}
 		for k in 0 ..< 4 {
 			a, b := corners[k], corners[(k + 1) % 4]
-			inward := top(g, i, 0.5, 0.5) - top(g, i, (a.x + b.x) * 0.5, (a.y + b.y) * 0.5)
+			inward := top(g, i, 0.5, 0.5, rise) - top(g, i, (a.x + b.x) * 0.5, (a.y + b.y) * 0.5, rise)
 			inward /= math.sqrt(linalg_dot(inward, inward))
-			floor_strip(top(g, i, a.x, a.y), top(g, i, b.x, b.y), inward, W, col)
+			floor_strip(top(g, i, a.x, a.y, rise), top(g, i, b.x, b.y, rise), inward, W, col)
 		}
 	}
 
@@ -2339,7 +2369,8 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	}
 	// Proserpina's pomegranates: a dark red gleam on both faces of their stones
 	for c, n in g.data.pomegranates {
-		breath := 0.75 + 0.25 * math.sin(t * 1.2 + f32(n))
+		_, clear := placed(g, c)
+		breath := (0.75 + 0.25 * math.sin(t * 1.2 + f32(n))) * clear
 		for under in ([2]bool{false, true}) {
 			f := POMEGRANATE_AT
 			p := shown(g, Vec3{f32(c.x) + f.x, f32(c.y) + f.y, f32(c.z) + 0.16}, under)
@@ -2401,15 +2432,16 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 		if !g.rests_lit[i] {
 			continue
 		}
-		fp := shown(g, Vec3{f32(c.x), f32(c.y), f32(c.z)} + ALTAR_FLAME, false)
-		fl := 0.85 + 0.1 * math.sin(t * 17 + f32(i) * 2.3) + 0.05 * math.sin(t * 29 + f32(i))
+		rise, clear := placed(g, c)
+		fp := shown(g, Vec3{f32(c.x), f32(c.y), f32(c.z) + rise} + ALTAR_FLAME, false)
+		fl := (0.85 + 0.1 * math.sin(t * 17 + f32(i) * 2.3) + 0.05 * math.sin(t * 29 + f32(i))) * clear
 		glow(v, fp, 90, {1.0, 0.6, 0.25, 0.28 * fl})
 		glow(v, fp + {0, 0, 0.03}, 10, {1.0, 0.75, 0.4, fl}, 1.8)
 		glow(v, fp + {0, 0, 0.03}, 4.5, {1.0, 0.95, 0.8, fl}, 1.6)
 		if !g.rest.valid || g.rest.cell != c || !game.upright(g, false) || g.phase == .Overturn {
 			continue
 		}
-		breath := 0.8 + 0.2 * math.sin(t * 1.1)
+		breath := (0.8 + 0.2 * math.sin(t * 1.1)) * clear
 		for n in 0 ..< 7 {
 			h := f32(n) * 0.4
 			fall := 1 - f32(n) / 7
@@ -2419,7 +2451,7 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 		for m in 0 ..< 5 {
 			k := math.mod(t * 0.35 + f32(m) * 0.2, 1)
 			sway := Vec3{math.sin(t * 1.7 + f32(m) * 2.4) * 0.08, math.cos(t * 1.3 + f32(m) * 1.9) * 0.08, 0.2 + k * 2.6}
-			glow(v, fp + sway, 4, {1.0, 0.72, 0.38, 0.9 * math.sin(k * math.PI)}, 1.2)
+			glow(v, fp + sway, 4, {1.0, 0.72, 0.38, 0.9 * math.sin(k * math.PI) * clear}, 1.2)
 		}
 	}
 	// the stones the seal raises glow gold as they come up, and a while after
@@ -2452,20 +2484,24 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	for c0, k in g.data.sigils {
 		if sense := game.seal_sense(g, k); sense >= 0.01 {
 			c := shown(g, Vec3{f32(c0.x) + 0.5, f32(c0.y) + 0.5, f32(c0.z) + 0.05}, k in g.data.sigils_under)
-			flame_answer(g, v, c, sense, u32(k), 5)
+			_, clear := placed(g, c0)
+			flame_answer(g, v, c, sense * clear, u32(k), 5)
 		}
 	}
 	for e, i in g.data.blocks {
 		if sense := game.veil_sense(g, i); sense >= 0.01 {
 			c0 := pl.block_cell(&g.palace, i)
 			c := shown(g, Vec3{f32(c0.x) + 0.5, f32(c0.y) + 0.5, f32(c0.z) + 1.05}, e.under)
-			flame_answer(g, v, c, 0.7 * sense, 1000 + u32(i), 2)
+			_, clear := placed(g, c0)
+			flame_answer(g, v, c, 0.7 * sense * clear, 1000 + u32(i), 2)
 		}
 	}
 	// Jupiter's eagles: a golden light about them, brighter in flight
 	for _, i in g.data.eagles {
 		p, _, spread := game.eagle_pose(g, i)
-		breath := 0.85 + 0.15 * math.sin(t * 1.3 + f32(i) * 2.1)
+		rise, clear := placed(g, g.data.eagles[i].from)
+		p.z += rise
+		breath := (0.85 + 0.15 * math.sin(t * 1.3 + f32(i) * 2.1)) * clear
 		glow(v, p + {0, 0, 0.15}, 70 + 50 * spread, {1.0, 0.78, 0.4, (0.16 + 0.12 * spread) * breath})
 		glow(v, p + {0, 0, 0.15}, 20, {1.0, 0.92, 0.7, 0.3 * breath})
 	}
@@ -2583,7 +2619,7 @@ draw_trace :: proc(s: ^Scene, g: ^game.Game, v: View) {
 			continue
 		}
 		lift, _, visible, _, hidden := piece_state(g, p, i)
-		k := game.assembly(g, piece_cell(g, p), fx.hash01(u32(i) * 31 + 7))
+		k := game.assembly(g, piece_cell(g, p), piece_jitter(i))
 		if !visible || hidden || k <= 0.02 {
 			continue
 		}
