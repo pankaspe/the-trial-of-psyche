@@ -30,6 +30,7 @@ Hud_Input :: struct {
 	psyche_screen: Vec2, // above Psyche's head, on screen: the action of the place floats there
 	hold:          f32, // how far R has been held toward a restart, 0..1
 	twice:         bool, // the restart is R pressed twice (accessibility)
+	skip:          f32, // how far the cutscene's skip has been held, 0..1
 }
 
 Hud_Action :: struct {
@@ -46,7 +47,7 @@ draw_hud :: proc(u: ^Ui, g: ^game.Game, input: Hud_Input = {}) -> (act: Hud_Acti
 	w, h := u.width, u.height
 	hud := &g.hud
 	if g.phase == .Prologue {
-		draw_prologue(u, g)
+		draw_prologue(u, g, input)
 		return
 	}
 	cinema_bars(u, game.cine(g).bars)
@@ -728,7 +729,7 @@ CINEMA_BAR :: 0.12 // of the screen height
 // the act's name in the upper band, the captions in the lower one, and at
 // the end the invitation to begin.
 @(private)
-draw_prologue :: proc(u: ^Ui, g: ^game.Game) {
+draw_prologue :: proc(u: ^Ui, g: ^game.Game, input: Hud_Input) {
 	s := u.scale
 	w, h := u.width, u.height
 	t := g.phase_t
@@ -752,11 +753,47 @@ draw_prologue :: proc(u: ^Ui, g: ^game.Game) {
 		bh := block_height(u, msg, st, 1500 * s)
 		paragraph(u, msg, {w * 0.5, h - bar * 0.5 - bh * 0.5}, st, 1500 * s, a)
 	}
+	if !game.prologue_ready(g) {
+		draw_skip(u, g, input, bar)
+	}
 	if game.prologue_ready(g) {
 		since := t - game.prologue_alone(g) - game.PRO_PROMPT
 		blink := 0.6 + 0.3 * math.sin(t * 2.4)
 		st := Style{size = 30, color = TEXT, face = .Italic}
 		text(u, i18n.tr(.Pro_Start), {w * 0.5, bar * 0.5 - measure(u, "A", st).y * 0.5}, st, .Center, blink * clamp(since / 1, 0, 1))
+	}
+}
+
+// How to skip the cutscene, in the upper bar on the right (clear of the captions): a ring that fills
+// while the button is held, the button, "hold to skip"; lit while held.
+@(private)
+draw_skip :: proc(u: ^Ui, g: ^game.Game, input: Hud_Input, bar: f32) {
+	s := u.scale
+	a := clamp((g.phase_t - game.prologue_fade_in(g)) / 1.0, 0, 1) * (input.skip > 0 ? 1 : 0.7)
+	if a <= 0 {
+		return
+	}
+	st := Style{size = 24, color = input.skip > 0 ? TITLE : DIM, face = .Italic}
+	msg := i18n.tr(.Pro_Skip)
+	m := measure(u, msg, st)
+	key := i18n.tr(.Key_Space)
+	cap_w := u.pad ? pad_button_width(u, .East) : key_cap_width(u, key, s)
+	y := max(bar, 60 * s) * 0.5
+	x := u.width - 56 * s - m.x
+	text(u, msg, {x, y - m.y * 0.5}, st, .Left, a)
+	x -= 14 * s + cap_w
+	control(u, key, .East, {x, y - 14 * s}, a, s, input.skip > 0)
+	c := Vec2{x - 30 * s, y}
+	rad := 16 * s
+	rl.DrawRing(c, rad - 2.5 * s, rad, 0, 360, 48, fade({239, 230, 210, 255}, 0.25 * a))
+	if input.skip > 0 {
+		rl.DrawRing(c, rad - 2.5 * s, rad, -90, -90 + 360 * input.skip, 48, fade(BRIGHT, a))
+	}
+	// two chevrons inside: onward
+	col := fade(input.skip > 0 ? BRIGHT : GOLD, a)
+	for d in ([]f32{-3.5, 3.5}) {
+		rl.DrawLineEx(c + Vec2{d - 3, -5} * s, c + Vec2{d + 2, 0} * s, 2 * s, col)
+		rl.DrawLineEx(c + Vec2{d + 2, 0} * s, c + Vec2{d - 3, 5} * s, 2 * s, col)
 	}
 }
 

@@ -99,6 +99,7 @@ App :: struct {
 	rest_fired:      bool, // this hold has already restarted the level
 	rest_tap_t:      f32, // time since the last tap of R (pressed twice: the level again)
 	east_block:      bool, // the pad's East closed a menu: it is not the brazier until let go
+	skip_t:          f32, // how long the cutscene's skip has been held, < 0 when up
 	lamp_down:       bool, // the lamp's key, button or slot was held last frame
 	dead_ends:       Dead_Ends,
 	focus_screen:    Screen, // the screen the UI's focus belongs to
@@ -191,6 +192,7 @@ startup :: proc(app: ^App) -> bool {
 	app.passage_t = -1
 	app.rest_t = -1
 	app.rest_tap_t = 1e3
+	app.skip_t = -1
 	return true
 }
 
@@ -437,6 +439,7 @@ hud_input :: proc(app: ^App) -> ui.Hud_Input {
 	in_: ui.Hud_Input
 	in_.psyche_screen = render.world_to_screen(view, g.psyche.pos + {0, 0, 0.8})
 	in_.twice = app.cfg.restart_twice
+	in_.skip = max(app.skip_t, 0) / app.cfg.hold_time
 	if !in_.twice && app.rest_t > REST_TAP && !app.rest_fired {
 		in_.hold = clamp((app.rest_t - REST_TAP) / max(app.cfg.hold_time - REST_TAP, 0.1), 0, 1)
 	}
@@ -984,10 +987,7 @@ update_act_card :: proc(app: ^App, dt: f32) {
 play_input :: proc(app: ^App) {
 	g := &app.game
 	if g.phase == .Prologue {
-		// any key, click or button: skip the scene, then start
-		if rl.GetKeyPressed() != .KEY_NULL || rl.IsMouseButtonPressed(.LEFT) || rl.IsMouseButtonPressed(.RIGHT) || input.any_pressed() {
-			game.prologue_advance(g)
-		}
+		skip_input(app)
 		return
 	}
 	// R (the brazier, held: the level again) is read with the HUD: update_rest
@@ -1015,6 +1015,53 @@ play_input :: proc(app: ^App) {
 		game.click(g, render.screen_to_proto(view, app.ui.mouse))
 	}
 }
+
+SKIP_STEPS :: 4 // the skip's ring fills in steps: a pluck and a shake at each, higher and stronger
+
+// The cutscene: held down (Space, Enter, the left button, the pad's South or
+// East) for the hold time of the settings, it is skipped to its end, the ring
+// filling with plucks and the pad shaking more at each step; let go half way,
+// nothing. With the restart pressed twice (accessibility) a press skips it.
+// Once the prompt is up, any key, click or button starts the play.
+@(private)
+skip_input :: proc(app: ^App) {
+	g := &app.game
+	if game.prologue_ready(g) {
+		app.skip_t = -1
+		if rl.GetKeyPressed() != .KEY_NULL || rl.IsMouseButtonPressed(.LEFT) || rl.IsMouseButtonPressed(.RIGHT) || input.any_pressed() {
+			game.prologue_advance(g)
+		}
+		return
+	}
+	down := rl.IsKeyDown(.SPACE) || rl.IsKeyDown(.ENTER) || rl.IsMouseButtonDown(.LEFT) || input.down(.South) || input.down(.East)
+	if app.cfg.restart_twice {
+		if rl.GetKeyPressed() != .KEY_NULL || rl.IsMouseButtonPressed(.LEFT) || input.any_pressed() {
+			game.prologue_advance(g)
+		}
+		return
+	}
+	if !down {
+		app.skip_t = -1
+		return
+	}
+	was := max(app.skip_t, 0) / app.cfg.hold_time
+	app.skip_t = max(app.skip_t, 0) + rl.GetFrameTime()
+	now := app.skip_t / app.cfg.hold_time
+	if now >= 1 {
+		audio.play(.Wind, -12)
+		input.rumble(0.6, 0.25)
+		game.prologue_advance(g)
+		app.skip_t = -1
+		return
+	}
+	if step := int(now * SKIP_STEPS); step > int(was * SKIP_STEPS) {
+		audio.play(.Tap, -18, SKIP_PITCH[step - 1])
+		input.rumble(0.12 * f32(step), 0.08)
+	}
+}
+
+@(private)
+SKIP_PITCH := [SKIP_STEPS - 1]f32{1, 5.0 / 4, 3.0 / 2}
 
 // The lamp burns while its key (1, L, the right button), the pad's LT or its
 // slot is held, and goes out when let go; in the accessibility setting a

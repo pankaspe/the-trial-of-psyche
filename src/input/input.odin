@@ -303,6 +303,13 @@ take :: proc(b: Button) -> bool {
 	return false
 }
 
+// Shake the pad in use (both motors, 0..1) for `seconds`; nothing on the keys.
+rumble :: proc(strength: f32, seconds: f32) {
+	if state.device == .Pad && state.pad >= 0 && !state.forced {
+		rl.SetGamepadVibration(state.pad, strength, strength, seconds)
+	}
+}
+
 // Any button at all went down this frame.
 any_pressed :: proc() -> bool {
 	return state.pressed - state.consumed != {}
