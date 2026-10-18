@@ -56,7 +56,7 @@ tale to gather in the Book. It will be released once the whole tale is told.
 </tr>
 </table>
 
-How it was made, act by act: the [devlog](docs/devlog.md).
+What changed, step by step: the [changelog](docs/changelog.md).
 
 ## Controls
 
