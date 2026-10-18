@@ -1749,6 +1749,25 @@ seal_at :: proc(g: ^Game, c: Cell) -> int {
 	return -1
 }
 
+SEAL_SENSE :: 3.0 // cells: an unlit seal feels the flame she carries this near, in the dark
+
+// How strongly the k-th seal, not yet lit, answers the lamp she carries: 0 .. 1
+// as she comes within SEAL_SENSE cells of it in the dark (never by day, with the
+// lamp lit, for a guard, on a stone not yet there or in the world hanging).
+seal_sense :: proc(g: ^Game, k: int) -> f32 {
+	under := k in g.data.sigils_under
+	if !g.data.has_lamp || !dark(g) || k in g.activated || k in g.data.guard_seals || !upright(g, under) {
+		return 0
+	}
+	c := level.frame_cell(&g.data, g.data.sigils[k], under, g.palace.upside)
+	if !pl.is_surface(&g.palace, c) {
+		return 0
+	}
+	d := Vec3{f32(c.x) + 0.5, f32(c.y) + 0.5, f32(c.z)} - g.psyche.pos
+	dist := math.sqrt(d.x * d.x + d.y * d.y + 2 * d.z * d.z)
+	return 1 - math.smoothstep(f32(SEAL_SENSE * 0.5), SEAL_SENSE, dist)
+}
+
 @(private)
 activate_sigil :: proc(g: ^Game, k: int) {
 	g.activated += {k}
