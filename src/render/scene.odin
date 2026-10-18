@@ -2074,7 +2074,7 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	rlgl.DisableDepthMask()
 	rl.BeginBlendMode(.ADDITIVE)
 
-	draw_wings(g, v)
+	draw_doves(g, v)
 
 	rlgl.SetTexture(r.radial.id)
 	rlgl.Begin(rlgl.QUADS)
@@ -2085,6 +2085,13 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	glow(v, psy.pos + {0, 0, 0.42}, 46, {0.55, 0.6, 1.0, (0.18 + 0.06 * math.sin(t * 1.7)) * game.psyche_alpha(g)})
 	if dark := psyche_dark(g); dark > 0.01 {
 		glow(v, psy.pos + {0, 0, 0.32}, 92, {0.62, 0.7, 1.0, 0.14 * dark * game.psyche_alpha(g)}, 1.25)
+	}
+	// her body a faint rose, her wings of energy small, violet to blue (the
+	// soul's butterfly), quicker as she walks; gone as the sleep lays her down
+	if pa := game.psyche_alpha(g) * (1 - game.sleep_fall(g)); pa > 0.003 {
+		glow(v, psy.pos + {0, 0, 0.26}, 15, {1.0, 0.6, 0.78, 0.16 * pa}, 1.8, toward = 0.3)
+		fwd := Vec3{math.cos(psy.yaw), math.sin(psy.yaw), 0}
+		light_wings(v, psy.pos + {0, 0, 0.4} - fwd * 0.035, t, PSYCHE_WINGS, psy.walking ? 3.5 : 1, pa)
 	}
 	// where she is (game.point_at_psyche): a shaft of soft light coming down
 	// on her, as over a fragment but orange-red (never taken for the diorama's
@@ -2481,27 +2488,11 @@ ellipse_3d :: proc(center, u, w: Vec3, rx, ry, tilt: f32, c: Color4, n := 18) {
 	rlgl.End()
 }
 
-// Psyche's butterfly wings of light (psyche = soul = butterfly), the doves of Venus.
+// The doves of Venus: white wings beating fast.
 @(private)
-draw_wings :: proc(g: ^game.Game, v: View) {
+draw_doves :: proc(g: ^game.Game, v: View) {
 	rlgl.SetTexture(rlgl.GetTextureIdDefault())
-	psy := g.psyche
-	fwd := Vec3{math.cos(psy.yaw), math.sin(psy.yaw), 0}
-	side := Vec3{-fwd.y, fwd.x, 0}
 	up := Vec3{0, 0, 1}
-	speed: f32 = psy.walking ? 9 : 2.2
-	open := 0.72 + 0.28 * math.sin(g.time * speed) // 1 = spread flat
-	root := psy.pos + {0, 0, 0.4} - fwd * 0.035
-	for sgn in ([2]f32{-1, 1}) {
-		// the wing plane folds back from the side toward the back
-		fold := (1 - open) * 1.2
-		u := side * sgn * math.cos(fold) - fwd * math.sin(fold)
-		pa := game.psyche_alpha(g) * (1 - game.sleep_fall(g)) // gone as the sleep lays her down
-		ellipse_3d(root + u * 0.12 + up * 0.06, u, up, 0.13, 0.085, sgn * 0.6, {0.62, 0.74, 1.0, 0.32 * pa})
-		ellipse_3d(root + u * 0.09 - up * 0.08, u, up, 0.085, 0.055, -sgn * 0.5, {0.86, 0.7, 1.0, 0.26 * pa})
-	}
-
-	// the doves of Venus: white wings beating fast
 	for i in 0 ..< game.VE_DOVES {
 		p, d, a := game.venus_dove(g, i)
 		if a <= 0.003 {
@@ -2519,9 +2510,8 @@ draw_wings :: proc(g: ^game.Game, v: View) {
 }
 
 // Cupid as pure light (user, 2026-10-18): a figure of light that breathes, a
-// robe narrowing to the shoulders, the head above, a white core; for wings,
-// trails of light sweeping out from the shoulders with a ripple running along
-// them (longer and quicker in flight). Inside draw_glows' quads.
+// robe narrowing to the shoulders, the head above, a white core; wings of
+// energy (light_wings), longer and quicker in flight. Inside draw_glows' quads.
 @(private)
 draw_cupid :: proc(g: ^game.Game, v: View, c: Vec3, alpha: f32, flying: bool) {
 	t := g.time
@@ -2530,22 +2520,46 @@ draw_cupid :: proc(g: ^game.Game, v: View, c: Vec3, alpha: f32, flying: bool) {
 	glow(v, c + {0, 0, 0.37}, 11, {1.0, 0.84, 0.56, 0.7 * a}, 0.9) // the shoulders
 	glow(v, c + {0, 0, 0.54}, 7, {1.0, 0.93, 0.8, 1.0 * a}) // the head
 	glow(v, c + {0, 0, 0.28}, 5, {1.0, 0.97, 0.9, 0.9 * a}, 3.2) // the core
+	light_wings(v, c + {0, 0, 0.4}, t, CUPID_WINGS, flying ? 3.5 : 1, alpha, flying ? 1.3 : 1)
+}
+
+// Wings of energy: filaments of light sweeping out from the shoulders, spread
+// across the screen, a ripple running along each and a bead of light flowing
+// out to its tip. Cupid's broad and golden (a god), Psyche's small, violet to blue.
+Wing_Look :: struct {
+	filaments: int,
+	reach:     f32, // the upper filament's length, in cells
+	lift:      f32, // how high the upper filament arches
+	fan:       f32, // each filament below arches this much less
+	size:      f32, // a filament's thickness at the root
+	root, tip: Vec3, // its colour at the root and at the tip
+	alpha:     f32,
+}
+
+CUPID_WINGS :: Wing_Look{filaments = 5, reach = 0.95, lift = 0.36, fan = 0.12, size = 8, root = {1.0, 0.86, 0.58}, tip = {1.0, 0.68, 0.36}, alpha = 0.5}
+PSYCHE_WINGS :: Wing_Look{filaments = 3, reach = 0.26, lift = 0.12, fan = 0.07, size = 3.5, root = {0.66, 0.52, 1.0}, tip = {0.45, 0.62, 1.0}, alpha = 0.45}
+
+// `pace`: how quick the ripple runs; `stretch`: longer (in flight).
+@(private)
+light_wings :: proc(v: View, root: Vec3, t: f32, w: Wing_Look, pace, alpha: f32, stretch: f32 = 1) {
 	right, _ := billboard_axes(v)
 	side := right / math.sqrt(linalg_dot(right, right))
 	up := Vec3{0, 0, 1}
-	reach: f32 = flying ? 1.3 : 1
-	speed: f32 = flying ? 6 : 1.6
-	root := c + {0, 0, 0.4}
 	TRAIL :: 24
 	for sgn in ([2]f32{-1, 1}) {
-		for k in 0 ..< 3 {
-			lift := 0.22 - f32(k) * 0.12 // the upper trail rises most
+		for k in 0 ..< w.filaments {
+			fk := f32(k)
+			lift := w.lift - fk * w.fan // the upper filament arches most
+			reach := w.reach * stretch * (1 - fk * 0.08)
+			thin := 1 - fk * 0.12
+			bead := math.mod(t * 0.45 * pace + fk * 0.37 + (sgn > 0 ? 0.5 : 0), 1)
 			for j in 0 ..< TRAIL {
 				u := f32(j + 1) / TRAIL
-				wave := 0.025 * math.sin(t * speed - u * 5 + f32(k))
-				p := root + side * sgn * u * 0.55 * reach + up * (lift * math.sin(u * math.PI * 0.9) + wave - u * 0.04 * f32(k))
-				size := (9 - 6 * u) * (1 - f32(k) * 0.2)
-				glow(v, p, size, {1.0, 0.85 - 0.1 * u, 0.55 - 0.15 * u, a * 0.5 * (1 - u) * (1 - 0.25 * f32(k))})
+				wave := 0.03 * reach * math.sin(t * 1.6 * pace - u * 5 + fk)
+				p := root + side * sgn * u * reach + up * (lift * math.sin(u * math.PI * 0.9) + wave - u * 0.05 * fk)
+				col := fx.lerp(w.root, w.tip, u)
+				flow := 1 + 1.6 * max(0, 1 - abs(u - bead) * 9)
+				glow(v, p, w.size * (1 - 0.65 * u) * thin, {col.x, col.y, col.z, alpha * w.alpha * (1 - u) * thin * flow})
 			}
 		}
 	}

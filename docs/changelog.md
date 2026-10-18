@@ -10,6 +10,7 @@ Kinds: **feature** (new code or mechanic) · **level** (a level built or rebuilt
 
 | Title | Kind | Description |
 |---|---|---|
+| Wings of energy | rework | One system of wings for both figures: Cupid's broad, five golden filaments with light flowing along them; Psyche's small, violet to blue, her body a faint rose. |
 | II.2: Pan's meadow | level | A second diorama after the crag: a gentle way down to the river's high brow where Pan sits (V.25), a plank the lamp shows, a short way for whoever turns twice; a new fragment (II.2b, Pan and Echo). |
 | README | docs | New title shot (New game, Games), two shots of the new screens (the games, the constellation), the new controls. |
 | Cupid as light | rework | Cupid is a figure of pure light that breathes, with trails of light for wings (a ripple running along them, quicker in flight); his robe mesh and feathers removed. |
