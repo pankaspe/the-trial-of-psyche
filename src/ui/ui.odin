@@ -66,6 +66,7 @@ Ui :: struct {
 	width:     f32,
 	height:    f32,
 	settings_tab: Settings_Tab, // the page of the settings panel on screen
+	codex_tab:    Codex_Tab, // the page of the Notebook on screen
 	toast_visible: bool, // an achievement notice is in the top left corner
 	mouse:     Vec2,
 	mouse_moved: bool, // the mouse moved this frame (it, not the keys, chooses what it is over)

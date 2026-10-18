@@ -130,6 +130,22 @@ SHOT_SCRIPT := [?]Shot_Step {
 	{0.15, "02c_book_turning", nil},
 	{0.1, "", proc(app: ^App) {app.book.tab = ui.BOOK_ACHIEVEMENTS}},
 	{0.6, "02d_achievements", nil},
+	{0.1, "", proc(app: ^App) {
+			// the Notebook of a game in Act III: the entries up to III.2, the rest still to discover
+			for i in 0 ..< 9 {
+				app.prog.completed += {i}
+			}
+			app.ui.codex_tab = .World
+			app.codex_from = .Title
+			app.screen = .Codex
+		}},
+	{1.0, "02f_codex", nil},
+	{0.1, "", proc(app: ^App) {app.ui.codex_tab = .Lamp}},
+	{0.5, "02f_codex_lamp", nil},
+	{0.1, "", proc(app: ^App) {app.ui.codex_tab = .Spindle}},
+	{0.5, "02f_codex_spindle", nil},
+	{0.1, "", proc(app: ^App) {app.ui.codex_tab = .Place}},
+	{0.5, "02f_codex_place", nil},
 	{0.1, "", proc(app: ^App) {app.prog = {}; app.screen = .Title; new_level(app, LAMP_LEVEL)}},
 	{0.1, "", proc(app: ^App) {open_act_card(app, .I, false)}},
 	{4.0, "02e_act_card", nil},

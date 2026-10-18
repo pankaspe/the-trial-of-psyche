@@ -24,6 +24,7 @@ Menu_Action :: enum u8 {
 	Levels,
 	Games,
 	Book,
+	Codex,
 	Settings,
 	Quit,
 	Resume,
@@ -238,7 +239,7 @@ title_menu :: proc(u: ^Ui, playing: bool, alpha: f32 = 1, lift: f32 = 0) -> (act
 		act = .Play
 	}
 	y += 62 * s
-	items := [?]Choice{{.Games, .Games}, {.Levels, .Levels}, {.Book, .Book}, {.Settings, .Settings}, {.Quit, .Quit}}
+	items := [?]Choice{{.Games, .Games}, {.Levels, .Levels}, {.Book, .Book}, {.Codex, .Codex}, {.Settings, .Settings}, {.Quit, .Quit}}
 	for it in items {
 		if menu_item(u, i18n.tr(it.key), {x, y}, 36, false, alpha) {
 			act = it.act
@@ -273,7 +274,7 @@ pause_menu :: proc(u: ^Ui, lamp: bool, level: int, diorama, dioramas: int) -> (a
 	y += 104 * s
 	ornament(u, {x + 100 * s, y}, 100 * s)
 	y += 62 * s
-	items := [?]Choice{{.Resume, .Resume}, {.Restart, .Restart}, {.Settings, .Settings}, {.Menu, .Main_Menu}}
+	items := [?]Choice{{.Resume, .Resume}, {.Restart, .Restart}, {.Codex, .Codex}, {.Settings, .Settings}, {.Menu, .Main_Menu}}
 	for it, i in items {
 		if menu_item(u, i18n.tr(it.key), {x, y}, i == 0 ? 38 : 34, i == 0) {
 			act = it.act
@@ -530,35 +531,29 @@ level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs:
 	}
 	if loaded {
 		// what the place holds: the lamp, the devices of the spindle, the actions of the place
-		d := &shown.data
-		guards := card(d.guard_seals)
-		veiled := false
-		for e in d.blocks {
-			veiled ||= e.trait == .Veiled
-		}
-		holds := [?]struct {
-			on:  bool,
+		devices := [?]struct {
+			id:  Codex_Id,
 			key: i18n.Key,
 		} {
-			{d.has_lamp, .Lamp_Button},
-			{len(d.sigils) > guards, .Device_Seals},
-			{guards > 0, .Device_Guard},
-			{veiled, .Device_Veiled},
-			{len(d.handles) > 0, .Device_Handles},
-			{len(d.sundials) > 0, .Device_Sundials},
-			{len(d.rams) > 0, .Device_Rams},
-			{len(d.pomegranates) > 0, .Device_Pomegranates},
-			{len(d.caves) > 0, .Device_Caves},
-			{len(d.eagles) > 0, .Device_Eagle},
-			{d.has_boat || len(d.ferries) > 0, .Device_Boat},
-			{len(d.rests) > 0, .Device_Braziers},
+			{.Lamp, .Lamp_Button},
+			{.Seal, .Device_Seals},
+			{.Guard, .Device_Guard},
+			{.Veiled, .Device_Veiled},
+			{.Handle, .Device_Handles},
+			{.Time, .Device_Sundials},
+			{.Rams, .Device_Rams},
+			{.Flip, .Device_Pomegranates},
+			{.Cave, .Device_Caves},
+			{.Eagle, .Device_Eagle},
+			{.Boat, .Device_Boat},
+			{.Rest, .Device_Braziers},
 		}
 		labels := make([dynamic]string, context.temp_allocator)
 		if shown.dioramas > 1 {
 			append(&labels, fmt.tprintf(i18n.tr(.Device_Dioramas), shown.dioramas))
 		}
-		for h in holds {
-			if h.on {
+		for h in devices {
+			if holds(&shown.data, h.id) {
 				append(&labels, i18n.tr(h.key))
 			}
 		}

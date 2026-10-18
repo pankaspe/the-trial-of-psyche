@@ -80,6 +80,7 @@ What changed, step by step: the [changelog](https://trialofpsyche.com/changelog)
 | into a cave · call the eagle | Space | A |
 | back to the last brazier · hold: restart | R | B |
 | where is Psyche? | Tab | Y |
+| Psyche's Notebook: the mechanics met so far | C | X |
 | skip a cutscene (hold) | Space or Enter | A or B |
 | levels: pictures or constellation | Tab | Y |
 | erase a game | Del | X |

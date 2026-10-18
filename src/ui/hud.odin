@@ -989,6 +989,47 @@ tutorial_sign :: proc(u: ^Ui, g: ^game.Game, key: i18n.Key, c: Vec2, col: rl.Col
 		rl.DrawLineEx(c + Vec2{-4, -14} * s, c + Vec2{2, -3} * s, 2 * s, col)
 		rl.DrawLineEx(c + Vec2{2, -3} * s, c + Vec2{-3, 5} * s, 2 * s, col)
 		rl.DrawLineEx(c + Vec2{-3, 5} * s, c + Vec2{3, 14} * s, 2 * s, col)
+	case .Codex_Stairs_Title:
+		// a flight of three steps, its treads one after the other in sight
+		k := math.mod(g.time, 2.4) / 2.4
+		for n in 0 ..< 3 {
+			x := -18 + f32(n) * 12
+			y := 14 - f32(n) * 10
+			lit := k > f32(n) * 0.25
+			rl.DrawLineEx(c + Vec2{x, y} * s, c + Vec2{x + 12, y} * s, 3 * s, lit ? col : fade(col, 0.35))
+			rl.DrawLineEx(c + Vec2{x + 12, y} * s, c + Vec2{x + 12, y - 10} * s, 3 * s, lit ? col : fade(col, 0.35))
+		}
+	case .Codex_Dead_End_Title:
+		// a tile with a cross over it
+		tile(c + {0, 6 * s}, 22 * s, col, false)
+		rl.DrawLineEx(c + Vec2{-9, -9} * s, c + Vec2{9, 9} * s, 3 * s, col)
+		rl.DrawLineEx(c + Vec2{9, -9} * s, c + Vec2{-9, 9} * s, 3 * s, col)
+	case .Codex_Veiled_Title:
+		// a stone that comes and goes, gold
+		k := 0.35 + 0.65 * (0.5 + 0.5 * math.sin(g.time * 1.8))
+		tile(c + {0, -8 * s}, 20 * s, fade(col, k), true)
+		rl.DrawLineEx(c + Vec2{-20, -8} * s, c + Vec2{-20, 6} * s, 2 * s, fade(col, k))
+		rl.DrawLineEx(c + Vec2{20, -8} * s, c + Vec2{20, 6} * s, 2 * s, fade(col, k))
+		rl.DrawLineEx(c + Vec2{0, 2} * s, c + Vec2{0, 16} * s, 2 * s, fade(col, k))
+		rl.DrawLineEx(c + Vec2{-20, 6} * s, c + Vec2{0, 16} * s, 2 * s, fade(col, k))
+		rl.DrawLineEx(c + Vec2{20, 6} * s, c + Vec2{0, 16} * s, 2 * s, fade(col, k))
+	case .Codex_Lamp_Title:
+		lamp_icon(u, c, 1.1 * s, col, true, g.time)
+	case .Codex_Handle_Title:
+		// the handle's capstan, turning a quarter now and then
+		crank_icon(u, c, 1.1 * s, col, math.PI * 0.5 * fx.sine_in_out(fx.clamp01(math.mod(g.time, 2.0) / 0.8)))
+	case .Codex_Rams_Title:
+		// a ram's head: two curled horns
+		for sgn in ([2]f32{-1, 1}) {
+			rl.DrawRing(c + Vec2{sgn * 11, -4} * s, 6 * s, 9 * s, 0, 300, 24, col)
+		}
+		tri(c + Vec2{-6, -2} * s, c + Vec2{6, -2} * s, c + Vec2{0, 18} * s, col)
+	case .Codex_Cave_Title:
+		// the mouth of a cave in the rock
+		rl.DrawRing(c + {0, 8 * s}, 14 * s, 18 * s, 180, 360, 24, col)
+		rl.DrawLineEx(c + Vec2{-16, 8} * s, c + Vec2{-16, 18} * s, 4 * s, col)
+		rl.DrawLineEx(c + Vec2{16, 8} * s, c + Vec2{16, 18} * s, 4 * s, col)
+		rl.DrawLineEx(c + Vec2{-26, 18} * s, c + Vec2{26, 18} * s, 2.5 * s, col)
 	case .Hint_Fragment:
 		// the scroll of the count, glowing
 		glow_dot(c, 22 * s, {255, 214, 140, 255}, 0.5 + 0.3 * breathe(u, g.time, 3))

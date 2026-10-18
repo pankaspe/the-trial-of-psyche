@@ -39,6 +39,7 @@ Screen :: enum u8 {
 	Levels,
 	Games, // the games side by side: continue one, start one, erase one
 	Book,
+	Codex, // Psyche's Notebook: the mechanics met so far
 	Card, // the card before an act
 	Play,
 	Fragment, // a fragment of the tale just found: the game waits while it is read
@@ -71,6 +72,7 @@ App :: struct {
 	scene:           render.Scene,
 	screen:          Screen,
 	settings_from:   Screen,
+	codex_from:      Screen,
 	menu_fade:       f32, // < 0 unless the title menu is fading out
 	card_t:          f32, // time on the ending card
 	ending:          Ending_Info,
@@ -314,7 +316,7 @@ update_sound :: proc(app: ^App) {
 	audio.set_near(.Fire, g.active && !going_black ? fire : 0, pan)
 	duck: f32 = 0
 	#partial switch app.screen {
-	case .Fragment, .Mechanic, .Pause, .Settings, .Ending, .Card, .Levels, .Games, .Book:
+	case .Fragment, .Mechanic, .Pause, .Settings, .Ending, .Card, .Levels, .Games, .Book, .Codex:
 		duck = 1
 	}
 	audio.set_duck(duck)
@@ -668,7 +670,7 @@ frame :: proc(app: ^App) {
 	if app.screen == .Play && app.menu_fade < 0 {
 		play_input(app)
 	}
-	paused := app.screen == .Pause || app.screen == .Fragment || app.screen == .Mechanic || (app.screen == .Settings && app.settings_from == .Pause)
+	paused := app.screen == .Pause || app.screen == .Fragment || app.screen == .Mechanic || (app.screen == .Settings && app.settings_from == .Pause) || (app.screen == .Codex && app.codex_from != .Title)
 	if !paused {
 		poll_dead_ends(app)
 		game.update(g, dt)
@@ -728,7 +730,7 @@ frame :: proc(app: ^App) {
 	update_black(app, dt)
 	update_passage(app, dt)
 	update_levels(app, dt)
-	side := app.screen == .Levels || app.screen == .Games || app.screen == .Settings
+	side := app.screen == .Levels || app.screen == .Games || app.screen == .Settings || app.screen == .Codex
 	app.stage = clamp(app.stage + (side ? dt : -dt) / STAGE_TIME, 0, 1)
 	app.scene.stage = app.stage
 	update_sound(app)
@@ -894,6 +896,8 @@ back :: proc(app: ^App) -> bool {
 		app.screen = .Title
 	case .Book:
 		app.screen = .Title
+	case .Codex:
+		app.screen = app.codex_from
 	case .Card:
 		dismiss_act_card(app)
 	case .Fragment:
@@ -941,6 +945,9 @@ global_keys :: proc(app: ^App) {
 	}
 	if app.screen == .Card && (rl.IsKeyPressed(.ENTER) || rl.IsKeyPressed(.SPACE)) {
 		dismiss_act_card(app)
+	}
+	if app.screen == .Codex && (rl.IsKeyPressed(.C) || input.take(.West)) {
+		back(app) // the key that opened it closes it
 	}
 	if app.screen == .Fragment && (rl.IsKeyPressed(.ENTER) || rl.IsKeyPressed(.KP_ENTER)) {
 		close_fragment(app)
@@ -1011,6 +1018,9 @@ play_input :: proc(app: ^App) {
 	}
 	if rl.IsKeyPressed(.TAB) {
 		game.point_at_psyche(g)
+	}
+	if rl.IsKeyPressed(.C) {
+		open_codex(app)
 	}
 	if rl.IsKeyPressed(.Q) || rl.IsKeyPressed(.LEFT) {
 		game.request_turn(g, -1)
@@ -1117,6 +1127,9 @@ pad_play :: proc(app: ^App) {
 	if input.take(.North) {
 		game.point_at_psyche(g)
 	}
+	if input.take(.West) {
+		open_codex(app)
+	}
 	turn := input.flick()
 	if input.take(.LB) {
 		turn = -1
@@ -1157,6 +1170,8 @@ draw_screens :: proc(app: ^App) {
 		case .Book:
 			ui.book_open(&app.book)
 			app.screen = .Book
+		case .Codex:
+			open_codex(app)
 		case .Settings:
 			open_settings(app)
 		case .Quit:
@@ -1183,6 +1198,15 @@ draw_screens :: proc(app: ^App) {
 	case .Book:
 		if ui.book(u, app.prog, &app.book) {
 			app.screen = .Title
+		}
+	case .Codex:
+		in_play := app.codex_from != .Title
+		reach := progress.current_level(app.prog)
+		if in_play {
+			reach = max(reach, g.level_index)
+		}
+		if ui.codex(u, g, reach, in_play) {
+			back(app)
 		}
 	case .Card:
 		c := app.act_card
@@ -1226,6 +1250,8 @@ draw_screens :: proc(app: ^App) {
 			app.screen = .Play
 		case .Restart:
 			play_level(app)
+		case .Codex:
+			open_codex(app)
 		case .Settings:
 			open_settings(app)
 		case .Main_Menu:
@@ -1260,7 +1286,7 @@ draw_screens :: proc(app: ^App) {
 			}
 		case .Main_Menu:
 			to_title(app)
-		case .None, .Play, .Levels, .Games, .Book, .Settings, .Quit, .Resume, .Restart, .Back:
+		case .None, .Play, .Levels, .Games, .Book, .Codex, .Settings, .Quit, .Resume, .Restart, .Back:
 		}
 	}
 	if u.toast_visible {
@@ -1273,6 +1299,11 @@ to_title :: proc(app: ^App) {
 	if new_level(app, progress.current_level(app.prog)) {
 		app.screen = .Title
 	}
+}
+
+open_codex :: proc(app: ^App) {
+	app.codex_from = app.screen
+	app.screen = .Codex
 }
 
 open_settings :: proc(app: ^App) {
