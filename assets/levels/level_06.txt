@@ -167,7 +167,6 @@ rest 13 13 1
 rest 2 3 11
 lamp
 intro intro_ii_2
-outro outro_ii_2
 
 # candelabra waiting for the lamp along the way
 candelabrum 9 13 1 py
@@ -184,3 +183,82 @@ prop reeds 12 14 1 py
 prop reeds 3 14 1 py
 prop reeds 4 14 1 px
 prop shrub 1 11 2 px
+
+diorama
+# Pan's meadow (the second diorama): from the top of the crag a gentle
+# way down to the river's high brow, where Pan sits with Echo and the goats
+# graze along the bank (V.25). A breath: steps down, a plank over the brook
+# that the lamp shows (two candelabra mark it), the meadow by the water.
+# Turning twice, the crag's corner joins the terrace over the brook (view 2),
+# a short way for whoever finds it. The fragment: an islet of reeds in the
+# river, joined to the crag in view 2.
+size 11
+biome river
+floor basin 0 0 10 10
+# the brow of the crag where she comes out (h6)
+ground 2 2 0 5
+ground 3 2 0 5
+ground 2 3 0 5
+ground 3 3 0 5
+# steps down east to a ledge (h5)
+ground 4 2 0 4
+steps 4 2 5 mx
+ground 5 2 0 4
+ground 6 2 0 4
+# steps down south to the terrace over the brook (h4)
+ground 6 3 0 3
+steps 6 3 4 my
+ground 6 4 0 3
+ground 6 5 0 3
+# the brook: a plank the lamp shows
+veiled 6 6 3 plank_y
+# the far terrace (h4)
+ground 6 7 0 3
+ground 5 7 0 3
+ground 4 7 0 3
+# down to Pan's meadow by the water (h2)
+ground 4 8 0 2
+steps 4 8 3 my
+ground 4 9 0 2
+ground 3 9 0 1
+steps 3 9 2 px
+ground 2 9 0 1
+ground 2 8 0 1
+ground 3 8 0 1
+# Pan's seat: a boulder by the water
+ground 1 8 0 1
+prop boulder 1 8 2 px
+# the islet of reeds (the fragment)
+rock 9 7 0 1
+prop reeds 9 7 2 px
+prop reeds 9 7 2 my
+# firs on the crag's spurs, a boulder in the river
+ground 1 4 0 4
+prop spruce 1 4 5
+ground 8 4 0 2
+prop spruce 8 4 3
+ground 1 6 0 2
+prop spruce 1 6 3
+ground 4 4 0 2
+prop spruce 4 4 3
+ground 2 5 0 1
+prop spruce 2 5 2
+ground 7 9 0 0
+prop spruce 7 9 1
+ground 8 6 0 0
+prop boulder 8 6 1
+# reeds and shrubs along the way
+prop reeds 2 9 2 py
+prop reeds 3 8 2 my
+prop shrub 4 7 4 py
+prop shrub 6 4 4 mx
+prop shrub 2 3 6 py
+start 2 2 6
+exit 2 8 2
+fragment 9 7 2
+lamp
+intro intro_ii_2b
+outro outro_ii_2
+# two candelabra mark the brook, waiting for the lamp
+candelabrum 6 5 4 px
+candelabrum 6 7 4 my

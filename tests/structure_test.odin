@@ -97,7 +97,7 @@ progress_sealed :: proc(t: ^testing.T) {
 
 	old: progress.Progress
 	progress.parse_legacy("completed = I.1 III.3 III.4 E\nfragments = I.1 III.3b III.4\nachievements = tale_1 trust wedding no_wasted_light\n", &old)
-	testing.expect(t, old.completed == {0, 10} && old.fragments == {0, 20}, "a plain save keeps only the levels built while saves were plain")
+	testing.expect(t, old.completed == {0, 10} && old.fragments == {0, 21}, "a plain save keeps only the levels built while saves were plain")
 	testing.expect(t, old.achievements == {.Tale_1, .No_Wasted_Light}, "a plain save can't finish the game")
 }
 

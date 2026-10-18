@@ -158,6 +158,7 @@ Key :: enum u16 {
 	Fragment_05,
 	Fragment_05b, // II.1 hides two: the god seen by the lamp, the arrow
 	Fragment_06,
+	Fragment_06b, // II.2's meadow: Pan and Echo
 	Fragment_07,
 	Fragment_07b, // II.3 hides two: Psyche's lie to her sister, the gull
 	Fragment_08,
@@ -293,6 +294,7 @@ Key :: enum u16 {
 	Intro_I_4b, // I.4's second diorama: the tower
 	Intro_II_1,
 	Intro_II_2,
+	Intro_II_2b, // II.2's second diorama: Pan's meadow
 	Intro_II_3,
 	Intro_II_4,
 	Intro_III_1,
@@ -762,6 +764,7 @@ IT := [Key]string {
 	.Fragment_05b   = "Alla luce della lampada non c'è nessuna belva: c'è Amore, il più bello degli Dèi. Capelli d'oro profumati d'ambrosia, ali di rugiada che brillano sulle spalle. Anche la fiamma, vedendolo, si ravviva.",
 	.Fragment_05    = "Mentre guarda le armi del Dio, Psiche si punge con una delle sue frecce. Così, senza saperlo, si innamora di Amore.",
 	.Fragment_06    = "Le fiaccole nuziali fanno fumo nero, il flauto suona un lamento. Tutta la città accompagna la sposa come a un funerale.",
+	.Fragment_06b   = "Pan teneva tra le braccia Eco, la dea dei monti, e le insegnava canti di ogni sorta. Intorno, le capre pascolavano libere lungo la riva.",
 	.Fragment_07    = "Un gabbiano bianco si tuffa in fondo al mare e racconta tutto a Venere. «Suo figlio è ferito, e ama una mortale!».",
 	.Fragment_07b   = "Psiche racconta alla sorella: «Alla luce della lampada ho visto il mio sposo: era Amore in persona. Svegliato dall'olio, mi ha cacciata: “Vattene. Sposerò tua sorella.” E ha ordinato a Zefiro di portarmi via.»",
 	.Fragment_08    = "Venere rimprovera il figlio con parole dure e lo chiude in una stanza della sua casa, perché non riveda la fanciulla.",
@@ -898,6 +901,7 @@ IT := [Key]string {
 	.Intro_I_4b     = "La torre dello sposo. Ogni gradino la avvicina al letto, e a ciò che le sorelle chiamano mostro.",
 	.Intro_II_1     = "Psiche si rialza tra le rocce del bosco. Per ritrovarlo dovrà attraversare la notte.",
 	.Intro_II_2     = "Disperata, Psiche si getta nel fiume. Ma il fiume teme il dio che brucia perfino le acque, e con un'onda gentile la posa sulla riva.",
+	.Intro_II_2b    = "In cima alla rupe il vento porta un suono di canne. Giù, sull'alto ciglio del fiume, qualcuno suona il flauto.",
 	.Intro_II_3     = "Psiche va dalla sorella maggiore e le dice: «Il mio sposo ora vuole te.» La sorella corre alla rupe, senza dirlo a nessuno.",
 	.Intro_II_4     = "Psiche vaga giorno e notte in cerca dello sposo. Al tramonto trova un tempio di Cerere e di Giunone: spighe e falci in disordine, doni appesi alle colonne.",
 	.Intro_III_1    = "È ancora giorno nella casa di Venere. Nel cortile, una meridiana segna le ore.",
@@ -1185,6 +1189,7 @@ EN := [Key]string {
 	.Fragment_05b   = "In the lamplight there is no beast: there is Love, the fairest of the gods. Golden hair fragrant with ambrosia, dewy wings shining on his shoulders. Even the flame, seeing him, burns brighter.",
 	.Fragment_05    = "Looking at the god's weapons, Psyche pricks herself on one of his arrows. So, without knowing it, she falls in love with Love.",
 	.Fragment_06    = "The wedding torches burn with black smoke, the flute plays a lament. The whole city follows the bride as if to a funeral.",
+	.Fragment_06b   = "Pan held Echo, the goddess of the mountains, in his arms and taught her songs of every kind. All around, the goats grazed freely along the bank.",
 	.Fragment_07    = "A white gull dives to the bottom of the sea and tells Venus everything: her son is wounded, and he loves a mortal.",
 	.Fragment_07b   = "Psyche tells her sister: “By the lamplight I saw my husband: it was Love himself. Woken by the oil, he drove me out: ‘Go. I will marry your sister.’ And he bade Zephyr carry me away.”",
 	.Fragment_08    = "Venus scolds her son with harsh words and locks him in a room of her house, so that he will not see the girl again.",
@@ -1321,6 +1326,7 @@ EN := [Key]string {
 	.Intro_I_4b     = "The bridegroom's tower. Every step brings her nearer the bed, and what her sisters call a monster.",
 	.Intro_II_1     = "Psyche rises among the rocks of the forest. To find him again she must cross the night.",
 	.Intro_II_2     = "In despair, Psyche throws herself into the river. But the river fears the god who burns even the waters, and with a gentle wave it sets her on the bank.",
+	.Intro_II_2b    = "At the top of the crag the wind carries a sound of reeds. Below, on the river's high brow, someone is playing a pipe.",
 	.Intro_II_3     = "Psyche goes to her eldest sister and tells her: “My husband wants you now.” The sister runs to the crag, telling no one.",
 	.Intro_II_4     = "Psyche wanders day and night in search of her husband. At dusk she finds a temple of Ceres and Juno: wheat and sickles in disorder, gifts hung on the columns.",
 	.Intro_III_1    = "It is still day in the house of Venus. In the court, a sundial tells the hours.",

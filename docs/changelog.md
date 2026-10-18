@@ -10,6 +10,7 @@ Kinds: **feature** (new code or mechanic) · **level** (a level built or rebuilt
 
 | Title | Kind | Description |
 |---|---|---|
+| II.2: Pan's meadow | level | A second diorama after the crag: a gentle way down to the river's high brow where Pan sits (V.25), a plank the lamp shows, a short way for whoever turns twice; a new fragment (II.2b, Pan and Echo). |
 | README | docs | New title shot (New game, Games), two shots of the new screens (the games, the constellation), the new controls. |
 | Cupid as light | rework | Cupid is a figure of pure light that breathes, with trails of light for wings (a ripple running along them, quicker in flight); his robe mesh and feathers removed. |
 | The act as a constellation | feature | In the level select Tab (pad Y) turns the row of pictures into a constellation: a star per level, lit lines where the tale went on, a level's other dioramas as small stars rising from it. |
