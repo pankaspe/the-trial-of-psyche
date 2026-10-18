@@ -10,6 +10,7 @@ import "core:mem/virtual"
 import "core:os"
 import "core:strconv"
 import "core:strings"
+import "core:time"
 import rl "vendor:raylib"
 import "vendor:raylib/rlgl"
 
@@ -19,6 +20,7 @@ import "game"
 import "input"
 import "iso"
 import "level"
+import "progress"
 import "render"
 import pl "palace"
 import "settings"
@@ -96,9 +98,27 @@ SHOT_SCRIPT := [?]Shot_Step {
 	{0.1, "", proc(app: ^App) {app.levels.sel.level = 16}},
 	{1.0, "02b_levels_unbuilt", nil},
 	{0.1, "", proc(app: ^App) {leave_levels(app, true); app.screen = .Games}},
+	{0.1, "", proc(app: ^App) {
+			// three games side by side, saved on different days
+			fake :: proc(levels, fragments: int, days: f64) -> progress.Slot_Info {
+				info := progress.Slot_Info{used = true, saved = time.time_add(time.now(), -time.Duration(days * 24 * f64(time.Hour)))}
+				for i in 0 ..< levels {
+					info.prog.completed += {i}
+				}
+				for i in 0 ..< fragments {
+					info.prog.fragments += {i}
+				}
+				return info
+			}
+			app.slots[0].saved = time.now()
+			app.slots[1] = fake(6, 9, 3)
+			app.slots[3] = fake(14, 27, 12)
+		}},
 	{1.0, "02b_games", nil},
 	{0.1, "", proc(app: ^App) {app.games.confirm = 1; app.games.sel = 1}},
 	{0.3, "02b_games_erase", nil},
+	{0.1, "", proc(app: ^App) {app.games.confirm = 0; app.screen = .Title; app.playing = true; new_level(app, 0)}},
+	{1.2, "02b_title_continue", nil},
 	{0.1, "", proc(app: ^App) {app.prog.achievements = {.No_Wasted_Light}; app.book = {level = 2}; app.screen = .Book}},
 	{0.6, "02c_book", nil},
 	{0.1, "", proc(app: ^App) {app.book = {tab = 1, level = 4, flip = 1, flip_t = 0}}},

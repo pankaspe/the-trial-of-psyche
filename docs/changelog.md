@@ -10,6 +10,7 @@ Kinds: **feature** (new code or mechanic) · **level** (a level built or rebuilt
 
 | Title | Kind | Description |
 |---|---|---|
+| Shots of the games | tooling | The shots script shows the games list with three saves, the erase question and the title on Continue. |
 | Five games | feature | Up to five saves side by side ("Games" on the title: continue one, start a new one, erase one); the old save becomes game 1. The title opens on Continue or New game. |
 | Levels of several dioramas, shown | ui | In the level select a small plate per diorama on the tile and a "2 dioramas" plaque in the panel. |
 | The act's plaque | ui | "Act III 100% complete": a gilt plaque over the diorama instead of the round medal. |
