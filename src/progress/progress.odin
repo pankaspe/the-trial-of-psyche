@@ -17,6 +17,7 @@ import "core:crypto/chacha20poly1305"
 import "base:runtime"
 import "core:fmt"
 import "core:os"
+import "core:strconv"
 import "core:strings"
 import "core:time"
 
@@ -101,6 +102,22 @@ Progress :: struct {
 	completed:    Level_Set,
 	fragments:    Fragment_Set,
 	achievements: Achievements,
+	resume:       Resume,
+}
+
+// Where a level of several dioramas was left: the diorama reached, played
+// again from its start (0: none), and what the dioramas done before it
+// carried for the lamp's achievement.
+Resume :: struct {
+	level:     int,
+	diorama:   int,
+	lightings: int,
+	lamp_par:  int,
+}
+
+// The diorama level `index` starts from: the one reached, else its first.
+resume_at :: proc(p: Progress, index: int) -> int {
+	return p.resume.level == index ? p.resume.diorama : 0
 }
 
 // How a level was finished.
@@ -153,6 +170,9 @@ level_fragments :: proc(p: Progress, level: int) -> (found: int) {
 // A level was finished; returns the achievements it unlocked.
 complete_level :: proc(p: ^Progress, r: Result) -> (unlocked: Achievements) {
 	p.completed += {r.level}
+	if p.resume.level == r.level {
+		p.resume = {}
+	}
 	earned: Achievements
 	if r.trust {
 		earned += {.Trust}
@@ -410,6 +430,9 @@ serialize :: proc(p: Progress, allocator := context.allocator) -> string {
 		fmt.sbprintf(&b, " %s", ACHIEVEMENT_ID[a])
 	}
 	fmt.sbprintln(&b)
+	if r := p.resume; r.diorama > 0 {
+		fmt.sbprintfln(&b, "resume = %s %d %d %d", content.LEVELS[r.level].id, r.diorama, r.lightings, r.lamp_par)
+	}
 	return strings.to_string(b)
 }
 
@@ -417,6 +440,10 @@ serialize :: proc(p: Progress, allocator := context.allocator) -> string {
 parse :: proc(text: string, p: ^Progress) {
 	rest := text
 	for key, line in settings.config_entries(&rest) {
+		if key == "resume" {
+			parse_resume(line, p)
+			continue
+		}
 		values := line
 		for word in strings.fields_iterator(&values) {
 			switch key {
@@ -439,6 +466,30 @@ parse :: proc(text: string, p: ^Progress) {
 					}
 				}
 			}
+		}
+	}
+}
+
+// "III.5 2 3 3": the level's id, the diorama reached, the lightings and the
+// lamp's par carried; anything else is ignored.
+@(private)
+parse_resume :: proc(line: string, p: ^Progress) {
+	words := strings.fields(line, context.temp_allocator)
+	if len(words) != 4 {
+		return
+	}
+	r: Resume
+	ok1, ok2, ok3: bool
+	r.diorama, ok1 = strconv.parse_int(words[1])
+	r.lightings, ok2 = strconv.parse_int(words[2])
+	r.lamp_par, ok3 = strconv.parse_int(words[3])
+	if !ok1 || !ok2 || !ok3 || r.diorama <= 0 {
+		return
+	}
+	for info, i in content.LEVELS {
+		if info.id == words[0] {
+			r.level = i
+			p.resume = r
 		}
 	}
 }

@@ -85,6 +85,7 @@ Settings :: struct {
 	endless_oil:   bool, // the lamp never runs dry
 	lamp_toggle:   bool, // the lamp is pressed to light and pressed again to put out, instead of held
 	see_through:   bool, // the stones between the camera and Psyche fade: she is never lost behind a wall
+	highlight:     bool, // a faint glow over what changes the diorama (handles, sundials, perches, caves, moorings)
 	slot:          int, // the game being played, 1 ..= SAVE_SLOTS
 }
 
@@ -104,6 +105,7 @@ defaults :: proc() -> Settings {
 		skill_labels = .Hover,
 		hold_time = 1.5,
 		see_through = true,
+		highlight = true,
 		slot = 1,
 	}
 }
@@ -175,6 +177,7 @@ serialize :: proc(s: Settings, allocator := context.allocator) -> string {
 	fmt.sbprintfln(&b, "endless_oil = %v", s.endless_oil)
 	fmt.sbprintfln(&b, "lamp_toggle = %v", s.lamp_toggle)
 	fmt.sbprintfln(&b, "see_through = %v", s.see_through)
+	fmt.sbprintfln(&b, "highlight = %v", s.highlight)
 	fmt.sbprintfln(&b, "slot = %d", s.slot)
 	return strings.to_string(b)
 }
@@ -280,6 +283,8 @@ parse :: proc(text: string, s: ^Settings) {
 			boolean(value, &s.lamp_toggle)
 		case "see_through":
 			boolean(value, &s.see_through)
+		case "highlight":
+			boolean(value, &s.highlight)
 		case "slot":
 			if v, ok := strconv.parse_int(value, 10); ok && v >= 1 && v <= SAVE_SLOTS {
 				s.slot = v

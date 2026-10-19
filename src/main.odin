@@ -190,7 +190,7 @@ startup :: proc(app: ^App) -> bool {
 		app.cfg.quality = app.shots.quality
 	}
 	ui.init(&app.ui)
-	if !new_level(app, progress.current_level(app.prog)) {
+	if !load_current(app) {
 		return false
 	}
 	app.screen = .Title
@@ -517,20 +517,30 @@ play_level :: proc(app: ^App) {
 }
 
 // Start level `index`: the act card first when the level opens an act. A
-// level not built yet shows only its act card, then the title.
+// level not built yet shows only its act card, then the title. A level of
+// several dioramas left half way starts again from the diorama reached,
+// unless `from_start`.
 // `from_title`: the sleeping palace behind the title is this level, wake it.
-start_level :: proc(app: ^App, index: int, from_title := false) {
+start_level :: proc(app: ^App, index: int, from_title := false, from_start := false) {
 	if !content.is_built(index) {
 		open_act_card(app, content.LEVELS[index].act, true)
 		return
 	}
-	if !(from_title && app.game.level_index == index && !app.game.active) {
-		if !new_level(app, index) {
+	if from_start && app.prog.resume.level == index && app.prog.resume.diorama > 0 {
+		app.prog.resume = {}
+		save_progress(app)
+	}
+	diorama := progress.resume_at(app.prog, index)
+	if !(from_title && app.game.level_index == index && app.game.diorama == diorama && !app.game.active) {
+		if !new_level(app, index, diorama) {
 			return
 		}
 	}
+	if diorama > 0 {
+		app.carried = {app.prog.resume.lightings, app.prog.resume.lamp_par}
+	}
 	// a level with a prologue opens its act with the cutscene, not the card
-	if content.opens_act(index) && !app.game.data.has_prologue {
+	if content.opens_act(index) && diorama == 0 && !app.game.data.has_prologue {
 		open_act_card(app, content.LEVELS[index].act, false)
 		return
 	}
@@ -567,6 +577,9 @@ next_diorama :: proc(app: ^App) {
 	if new_level(app, g.level_index, g.diorama + 1) {
 		app.carried = carried
 		game.begin(g, arrival = true, veiled = false)
+		// a game left now starts again from this diorama
+		app.prog.resume = {g.level_index, g.diorama, carried.lightings, carried.lamp_par}
+		save_progress(app)
 	}
 }
 
@@ -675,6 +688,7 @@ frame :: proc(app: ^App) {
 		poll_dead_ends(app)
 		game.update(g, dt)
 		app.scene.see_through = app.cfg.see_through
+		app.scene.highlight = app.cfg.highlight
 		render.scene_update(&app.scene, g, dt)
 	}
 	if app.menu_fade >= 0 {
@@ -1188,10 +1202,10 @@ draw_screens :: proc(app: ^App) {
 			app.screen = .Title
 		}
 	case .Levels:
-		chosen, back := ui.level_select(u, app.prog, &app.levels.sel, app.levels.pictures[:], g, levels_veil(app))
+		chosen, from_start, back := ui.level_select(u, app.prog, &app.levels.sel, app.levels.pictures[:], g, levels_veil(app))
 		if chosen >= 0 {
 			leave_levels(app, false)
-			start_level(app, chosen)
+			start_level(app, chosen, from_start = from_start)
 		} else if back {
 			leave_levels(app, true)
 		}
@@ -1296,9 +1310,15 @@ draw_screens :: proc(app: ^App) {
 
 // Back to the title, over the level the player would continue from.
 to_title :: proc(app: ^App) {
-	if new_level(app, progress.current_level(app.prog)) {
+	if load_current(app) {
 		app.screen = .Title
 	}
+}
+
+// Load the level the player would continue from, at the diorama reached.
+load_current :: proc(app: ^App) -> bool {
+	index := progress.current_level(app.prog)
+	return new_level(app, index, progress.resume_at(app.prog, index))
 }
 
 open_codex :: proc(app: ^App) {
@@ -1395,7 +1415,7 @@ erase_game :: proc(app: ^App, slot: int) {
 	app.slots[slot - 1] = {}
 	if slot == app.cfg.slot {
 		app.prog, app.playing = {}, false
-		new_level(app, progress.current_level(app.prog))
+		load_current(app)
 	}
 }
 

@@ -145,6 +145,8 @@ Key :: enum u16 {
 	Levels_Done,
 	Act_Sealed,
 	Levels_Open,
+	Levels_Resume, // a level of several dioramas left half way: "from diorama 2 of 3"
+	Levels_From_Start,
 	Level_Locked,
 	Fragments_Label,
 
@@ -290,6 +292,7 @@ Key :: enum u16 {
 	Set_Reduce_Motion,
 	Set_Endless_Oil,
 	Set_See_Through,
+	Set_Highlight,
 	Set_Lamp_Toggle,
 	Controls,
 	Controls_Dark,
@@ -813,6 +816,8 @@ IT := [Key]string {
 	.Levels_Done    = "Completato",
 	.Act_Sealed     = "%s completato al 100%%",
 	.Levels_Open    = "Da giocare",
+	.Levels_Resume  = "Si riprende dal diorama %d di %d",
+	.Levels_From_Start = "dall'inizio",
 	.Level_Locked   = "Finisci prima i livelli che lo precedono",
 	.Fragments_Label = "Frammenti",
 
@@ -959,6 +964,7 @@ IT := [Key]string {
 	.Set_Reduce_Motion = "Riduci il movimento",
 	.Set_Endless_Oil = "L'olio non finisce",
 	.Set_See_Through = "Psiche visibile tra le pareti",
+	.Set_Highlight  = "Evidenzia gli oggetti",
 	.Set_Lamp_Toggle = "Lucerna: premi invece di tenere",
 	.Controls       = "Clic: cammina  ·  Q / E: ruota il palazzo  ·  1 / tasto destro: lucerna  ·  2: fuso  ·  Spazio: azione del luogo  ·  Tab: dov'è Psiche  ·  C: taccuino  ·  R: braciere (tieni premuto: ricomincia)  ·  Esc: pausa",
 	.Controls_Dark  = "Clic: cammina  ·  Q / E: ruota il palazzo  ·  Spazio: azione del luogo  ·  Tab: dov'è Psiche  ·  C: taccuino  ·  R: braciere (tieni premuto: ricomincia)  ·  Esc: pausa",
@@ -1298,6 +1304,8 @@ EN := [Key]string {
 	.Levels_Done    = "Completed",
 	.Act_Sealed     = "%s 100%% complete",
 	.Levels_Open    = "Not yet played",
+	.Levels_Resume  = "Resumes from diorama %d of %d",
+	.Levels_From_Start = "from the start",
 	.Level_Locked   = "Finish the levels before it first",
 	.Fragments_Label = "Fragments",
 
@@ -1444,6 +1452,7 @@ EN := [Key]string {
 	.Set_Reduce_Motion = "Reduce motion",
 	.Set_Endless_Oil = "Endless oil",
 	.Set_See_Through = "Psyche seen through walls",
+	.Set_Highlight  = "Highlight the devices",
 	.Set_Lamp_Toggle = "Lamp: press instead of hold",
 	.Controls       = "Click: walk  ·  Q / E: turn the palace  ·  1 / right click: lamp  ·  2: spindle  ·  Space: action of the place  ·  Tab: where is Psyche  ·  C: notebook  ·  R: brazier (hold: start again)  ·  Esc: pause",
 	.Controls_Dark  = "Click: walk  ·  Q / E: turn the palace  ·  Space: action of the place  ·  Tab: where is Psyche  ·  C: notebook  ·  R: brazier (hold: start again)  ·  Esc: pause",

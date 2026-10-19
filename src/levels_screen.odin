@@ -19,6 +19,7 @@ THUMB_SIZE :: [2]i32{512, 288}
 Levels_Screen :: struct {
 	sel:      ui.Level_Select,
 	from:     int, // the level behind the title when the screen opened: back to it on leaving
+	from_diorama: int, // and its diorama
 	swap_t:   f32, // < 0, or time since the world began to darken for another level
 	thumbs:   [content.LEVEL_COUNT]rl.RenderTexture2D, // a picture per built level (made on demand)
 	pictures: [content.LEVEL_COUNT]rl.Texture2D, // their textures, for the ui (id 0: none yet)
@@ -32,6 +33,7 @@ enter_levels :: proc(app: ^App) {
 	l := &app.levels
 	l.sel.level = progress.current_level(app.prog)
 	l.from = app.game.level_index
+	l.from_diorama = app.game.diorama
 	l.swap_t = -1
 }
 
@@ -45,7 +47,7 @@ leave_levels :: proc(app: ^App, to_title: bool) {
 	}
 	if to_title {
 		app.screen = .Title
-		new_level(app, l.from)
+		new_level(app, l.from, l.from_diorama)
 	}
 }
 

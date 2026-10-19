@@ -10,6 +10,8 @@ Kinds: **feature** (new code or mechanic) · **level** (a level built or rebuilt
 
 | Title | Kind | Description |
 |---|---|---|
+| Devices glow | feature | A faint warm glow, breathing slowly, over everything that changes the diorama or takes her elsewhere: handles, sundials, the eagles' perches, the caves' mouths, the moorings where a ferry waits; the handles get a ring of light on their stone (amber by day). Seen even half hidden; an accessibility setting, on by default. |
+| Saved inside a level | feature | In a level of several dioramas the game remembers the diorama reached: Continue and the level select start again from it (the diorama from its start), the level select says so, and R (pad West) starts the level from the beginning. |
 | III.5: the gardens of the Hours and the terraces at evening | level | The Order of the Box grows to three dioramas, the finale of Act III. The gardens of the Hours (VI.16): three L slabs of plank turned by crossed handles, two terraces each with its sundial, rams at evening and stairs of the sun by day, the eagle to the gate. The terraces at evening (VI.16-17): illusions in two views, two seals, two veiled bridges, a stair of the sun between two sundials, the eagle to the top of the highest tower. Two new fragments (III.5d, III.5e). |
 
 ## 2026-10-18

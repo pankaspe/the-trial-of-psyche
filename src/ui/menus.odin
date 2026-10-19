@@ -129,6 +129,7 @@ Hint_Keys :: enum u8 {
 	Shoulders,
 	South,
 	Erase, // Delete on the keyboard, West on the pad
+	Restart, // R on the keyboard, West on the pad
 }
 
 Hint :: struct {
@@ -148,6 +149,7 @@ hint_row :: proc(u: ^Ui, pos: Vec2, hints: []Hint, centred := false) {
 		case .Shoulders: return pad_button_width(u, .LB) + 6 * s + pad_button_width(u, .RB)
 		case .South: return pad_button_width(u, .South)
 		case .Erase: return u.pad ? pad_button_width(u, .West) : key_cap_width(u, i18n.tr(.Key_Delete), s)
+		case .Restart: return u.pad ? pad_button_width(u, .West) : key_cap_width(u, "R", s)
 		}
 		return 0
 	}
@@ -174,6 +176,8 @@ hint_row :: proc(u: ^Ui, pos: Vec2, hints: []Hint, centred := false) {
 			pad_button(u, .South, {x, pos.y}, 0.9)
 		case .Erase:
 			control(u, i18n.tr(.Key_Delete), .West, {x, pos.y}, 0.9)
+		case .Restart:
+			control(u, "R", .West, {x, pos.y}, 0.9)
 		}
 		x += keys_width(u, h.keys) + 12 * s
 		text(u, i18n.tr(h.label), {x, pos.y + 2 * s}, st, .Left)
@@ -435,7 +439,7 @@ Level_Select :: struct {
 // `thumbs`: a picture per level (id 0: none yet); `shown`: the level drawn
 // behind, whose data the panel reads once it is the chosen one; `veil`: how
 // dark the world is drawn (the picture changing, a level not built).
-level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs: []rl.Texture2D, shown: ^game.Game, veil: f32) -> (chosen: int, back: bool) {
+level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs: []rl.Texture2D, shown: ^game.Game, veil: f32) -> (chosen: int, from_start, back: bool) {
 	chosen = -1
 	s := u.scale
 	// another act (LB RB, ↑ ↓, a tab): a pluck, a step higher for each act
@@ -571,7 +575,17 @@ level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs:
 		}
 	}
 	status := !built ? i18n.tr(.Level_Unbuilt) : (!open ? i18n.tr(.Level_Locked) : (done ? i18n.tr(.Levels_Done) : i18n.tr(.Levels_Open)))
-	text(u, status, {x0, y}, {size = 24, color = done ? GOLD : DIM, face = .Italic, shadow = true}, .Left)
+	// a level of several dioramas left half way: it goes on from the one reached
+	reached := progress.resume_at(prog, ls.level)
+	resumes := open && reached > 0 && loaded
+	if resumes {
+		status = fmt.tprintf(i18n.tr(.Levels_Resume), reached + 1, shown.dioramas)
+	}
+	text(u, status, {x0, y}, {size = 24, color = done || resumes ? GOLD : DIM, face = .Italic, shadow = true}, .Left)
+	if resumes && (rl.IsKeyPressed(.R) || input.take(.West)) {
+		from_start = true
+		play = true
+	}
 
 	// the act's levels: a row of pictures, or a constellation (Tab, the pad's North)
 	if rl.IsKeyPressed(.TAB) || input.take(.North) || view_toggle(u, ls.graph) {
@@ -591,9 +605,14 @@ level_select :: proc(u: ^Ui, prog: progress.Progress, ls: ^Level_Select, thumbs:
 
 	// how to move about it
 	foot := Vec2{x0, u.height - FOOT_Y * s}
-	if u.pad {
+	switch {
+	case u.pad && resumes:
+		hint_row(u, foot, {{.Shoulders, .Levels_Act}, {.South, .Levels_Play}, {.Restart, .Levels_From_Start}})
+	case u.pad:
 		hint_row(u, foot, {{.Shoulders, .Levels_Act}, {.South, .Levels_Play}})
-	} else {
+	case resumes:
+		hint_row(u, foot, {{.Left_Right, .Levels_Level}, {.Up_Down, .Levels_Act}, {.Enter, .Levels_Play}, {.Restart, .Levels_From_Start}})
+	case:
 		hint_row(u, foot, {{.Left_Right, .Levels_Level}, {.Up_Down, .Levels_Act}, {.Enter, .Levels_Play}})
 	}
 	back = panel_back(u, focus = false)
@@ -1406,6 +1425,12 @@ settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, na
 		y += row
 		if step := option_row(u, i18n.tr(.Set_See_Through), on_off(cfg.see_through), y, left, right); step != 0 {
 			cfg.see_through = !cfg.see_through
+			changes += {.Access}
+		}
+		line(u, left, right, y)
+		y += row
+		if step := option_row(u, i18n.tr(.Set_Highlight), on_off(cfg.highlight), y, left, right); step != 0 {
+			cfg.highlight = !cfg.highlight
 			changes += {.Access}
 		}
 		line(u, left, right, y)

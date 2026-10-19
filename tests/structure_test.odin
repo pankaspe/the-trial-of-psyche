@@ -65,10 +65,14 @@ progress_round_trip :: proc(t: ^testing.T) {
 	p.completed = {0, 3}
 	p.fragments = {3, 4, 20}
 	p.achievements = {.Trust, .No_Wasted_Light}
+	p.resume = {level = 12, diorama = 2, lightings = 3, lamp_par = 3}
 	text := progress.serialize(p, context.temp_allocator)
 	back: progress.Progress
 	progress.parse(text, &back)
 	testing.expectf(t, back == p, "progress survives a save and a load:\n%v\n%v\n%s", p, back, text)
+	testing.expect(t, progress.resume_at(back, 12) == 2 && progress.resume_at(back, 11) == 0, "a level left half way goes on from the diorama reached")
+	progress.complete_level(&back, {level = 12})
+	testing.expect(t, back.resume == {}, "finished, it starts from its first diorama again")
 
 	odd: progress.Progress
 	progress.parse("completed = I.4 Z.9\nfragments = nothing\nachievements = trust flying\ngarbage\n", &odd)

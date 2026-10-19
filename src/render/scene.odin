@@ -236,6 +236,7 @@ Scene :: struct {
 	pieces:     [dynamic]Piece,
 	see:        []f32, // per piece: 0 .. 1 faded, standing between the camera and Psyche
 	see_through: bool, // the accessibility setting (fade them)
+	highlight:   bool, // the accessibility setting: a faint glow over the devices (draw_devices)
 	fit:        Rect, // proto pixels that hold the palace from every view
 	motes:      fx.Pool(64), // drifting in front of everything (proto px)
 	sparks:     fx.Pool(64), // around Cupid (world)
@@ -878,7 +879,7 @@ draw_world :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 	draw_figures(r, g)
 	draw_floors(g, time)
 	draw_pieces(r, s, g, true)
-	draw_decals(g)
+	draw_decals(g, s.highlight)
 	draw_glows(r, s, g, v)
 	draw_trace(s, g, v)
 	draw_mist(r, s, v)
@@ -2025,7 +2026,7 @@ draw_swamp :: proc(f: level.Floor, z: f32, time: f32, surface, glint: Color4) {
 
 // Oil stains, Psyche's shadow and the cracks of the illusions.
 @(private)
-draw_decals :: proc(g: ^game.Game) {
+draw_decals :: proc(g: ^game.Game, highlight: bool) {
 	rlgl.DrawRenderBatchActive()
 	rlgl.DisableDepthMask()
 	rlgl.SetTexture(rlgl.GetTextureIdDefault())
@@ -2070,16 +2071,27 @@ draw_decals :: proc(g: ^game.Game) {
 		}
 	}
 
-	// the sundials that turn the time: a soft ring of light on their stone,
-	// golden by day, rose at evening, breathing slowly
-	for c, n in g.data.sundials {
+	// a soft ring of light on a device's stone, breathing slowly
+	device_ring :: proc(g: ^game.Game, c: Cell, n: int, col: Color4) {
 		k := 0.6 + 0.4 * math.sin(g.time * 1.4 + f32(n))
-		col := fx.lerp(Color4{1.0, 0.92, 0.55, 0.32}, Color4{1.0, 0.62, 0.72, 0.32}, g.evening)
 		rise, clear := placed(g, c)
+		col := col
 		col.a *= k * clear
 		at := pl.node_world(&g.palace, c) + {0, 0, rise}
 		floor_ring(at + {0, 0, 0.007}, 0.32, 0.05, col)
 		floor_ellipse(at + {0, 0, 0.006}, 0.3, 0.3, {col.r, col.g, col.b, col.a * 0.25})
+	}
+	// the sundials that turn the time: golden by day, rose at evening
+	for c, n in g.data.sundials {
+		device_ring(g, c, n, fx.lerp(Color4{1.0, 0.92, 0.55, 0.32}, Color4{1.0, 0.62, 0.72, 0.32}, g.evening))
+	}
+	// the handles, with the accessibility setting: bronze light at night, a
+	// deeper amber by day (a pale glow is lost on sunlit stone)
+	if highlight {
+		col := fx.lerp(Color4{1.0, 0.72, 0.38, 0.34}, Color4{0.78, 0.42, 0.1, 0.6}, look_of(g).daylight)
+		for h, n in g.data.handles {
+			device_ring(g, h.cell, n, col)
+		}
 	}
 
 	// Jupiter's eagles: a faint golden ring on each perch; standing on one,
@@ -2248,6 +2260,50 @@ draw_mist :: proc(r: ^Renderer, s: ^Scene, v: View) {
 	rlgl.EnableDepthMask()
 }
 
+// Accessibility: a faint warm glow, breathing slowly, over everything that
+// changes the diorama or takes her elsewhere (handles, sundials, the eagles'
+// perches, the caves' mouths, the moorings where a ferry waits), seen even
+// half hidden behind a wall. Not the seals nor the veiled stones: the lamp's
+// secrets (they answer her flame). The pomegranates have their own gleam.
+@(private)
+draw_devices :: proc(g: ^game.Game, v: View) {
+	t := g.reduce_motion ? 0 : g.time
+	device :: proc(g: ^game.Game, v: View, c: Cell, at: Vec3, n: int, t: f32) {
+		rise, clear := placed(g, c)
+		breath := (0.8 + 0.2 * math.sin(t * 1.1 + f32(n) * 1.9)) * clear
+		p := shown(g, Vec3{f32(c.x), f32(c.y), f32(c.z) + rise} + at, false)
+		glow(v, p, 50, {1.0, 0.76, 0.42, 0.2 * breath}, toward = 1.0)
+		glow(v, p, 14, {1.0, 0.88, 0.62, 0.32 * breath}, toward = 1.0)
+	}
+	n := 0
+	for h in g.data.handles {
+		device(g, v, h.cell, {CRANK_AXIS.x, CRANK_AXIS.y, CRANK_AXIS.z + 0.1}, n, t)
+		n += 1
+	}
+	for c in g.data.sundials {
+		device(g, v, c, {CRANK_AXIS.x, CRANK_AXIS.y, CRANK_AXIS.z * SUNDIAL_SCALE + 0.1}, n, t)
+		n += 1
+	}
+	for e in g.data.eagles {
+		device(g, v, e.from, {0.8, 0.2, 0.45}, n, t)
+		n += 1
+	}
+	for c in g.data.caves {
+		d := iso.DIR_VEC[c.dir]
+		device(g, v, c.cell, {0.5 + 0.45 * f32(d.x), 0.5 + 0.45 * f32(d.y), 0.4}, n, t)
+		n += 1
+	}
+	for f, i in g.data.ferries {
+		for end, k in f.ends {
+			if pl.boat_moored(g.palace.boats, i, k) {
+				d := iso.DIR_VEC[end.dir]
+				device(g, v, end.cell, {0.5 + 0.5 * f32(d.x), 0.5 + 0.5 * f32(d.y), 0.15}, n, t)
+			}
+			n += 1
+		}
+	}
+}
+
 // Something at c answering the flame she carries (`sense` 0 .. 1): a faint
 // warmth, and `motes` of gold rising (a still glow with reduce motion).
 flame_answer :: proc(g: ^game.Game, v: View, c: Vec3, sense: f32, seed: u32, motes: int) {
@@ -2373,6 +2429,9 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 			glow(v, c + {0, 0, 0.6}, 12, {0.92, 0.97, 1.0, 0.45 * pulse * ea}, 8)
 		}
 		glow(v, shown(g, c + {0, 0, -0.25}, under), 40, {0.85, 0.93, 1.0, 0.45 * ea})
+	}
+	if s.highlight {
+		draw_devices(g, v)
 	}
 	// Proserpina's pomegranates: a dark red gleam on both faces of their stones
 	for c, n in g.data.pomegranates {
