@@ -6,6 +6,12 @@ Kinds: **feature** (new code or mechanic) · **level** (a level built or rebuilt
 **rework** (something existing redone) · **refactor** (same behaviour, cleaner code) ·
 **fix** · **removal** · **sound** · **ui** · **tooling** · **docs**
 
+## 2026-10-19
+
+| Title | Kind | Description |
+|---|---|---|
+| III.5: the gardens of the Hours and the terraces at evening | level | The Order of the Box grows to three dioramas, the finale of Act III. The gardens of the Hours (VI.16): three L slabs of plank turned by crossed handles, two terraces each with its sundial, rams at evening and stairs of the sun by day, the eagle to the gate. The terraces at evening (VI.16-17): illusions in two views, two seals, two veiled bridges, a stair of the sun between two sundials, the eagle to the top of the highest tower. Two new fragments (III.5d, III.5e). |
+
 ## 2026-10-18
 
 | Title | Kind | Description |

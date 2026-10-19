@@ -36,11 +36,12 @@
 # rock south of the hidden stair, joined in view 2 at evening; III.5c (VI.16,
 # the box) on a rock under the rope bridge, joined to the eagle's crag in
 # view 1: the bridge woken first.
+# Two dioramas follow: the gardens of the Hours (handles and the time) and the
+# terraces at evening (illusions, the lamp, the seals and the time).
 size 15
 biome venus
 lamp 3
 intro intro_iii_5
-outro outro_iii_5
 floor basin -1 -1 15 12
 
 # --- C: the court of arrival (h2) --------------------------------------------
@@ -218,3 +219,293 @@ column 1 11 0 1
 fragment 1 11 2
 column 12 2 0 1
 fragment 12 2 2
+
+diorama
+# The gardens of the Hours (the second diorama, VI.16): Venus's hanging
+# gardens, kept by the Hours. Islands in the pool round three marble slabs,
+# each an L of two arms about its hub that turns a quarter at a time (the
+# spindle on a handle); two terraces with a sundial each. No lamp here: the
+# handles and the time.
+#   - the west slab (pivot 4 4) joins two of: the north islet (the start),
+#     the west islet, the south-west islet, the middle islet;
+#   - the east slab (pivot 8 4): the middle islet, the north-east islet, the
+#     east islet, the islet under the middle terrace;
+#   - the south slab (pivot 8 8): the islet under the middle terrace, the
+#     fragment's islet, the south-east islet, the perch;
+#   - the handles are crossed: the middle islet's turns the east slab, the
+#     east islet's the west slab, the west islet's and the south-east
+#     islet's the south slab;
+#   - the middle terrace (h3, a sundial): a ram climbs to it from the middle
+#     islet at evening, a stair of the sun from the islet under it by day;
+#     the west terrace (h3, a sundial) the same from the south-west islet
+#     (the ram) and the west islet (the stair of the sun);
+#   - the perch: the eagle to the gate of the gardens (h5, the exit).
+# Solution (solver: 72 steps, 9 handles, 6 times turned, 1 flight, 16
+# decisions; every sundial, ram, handle needed, no dead ends).
+# Fragment III.5d (VI.16, Venus spent her beauty on her son) on the islet
+# west of the south slab: the slab turned there late, then back.
+size 13
+biome venus
+floor basin -1 -1 13 13
+intro intro_iii_5b
+
+# --- the north islet (h2): the start, a brazier ---------------------------------
+column 4 2 0 1
+column 4 1 0 1
+start 4 1 2
+rest 4 1 2
+prop rose 4 1 2 mx
+
+# --- the west islet (h2): a handle of the south slab, a stair of the sun --------
+column 2 4 0 1
+column 1 4 0 1
+prop rail 1 4 2 py
+column 2 5 0 1
+sunlit 2 5 2 py
+
+# --- the west terrace (h3): a sundial ---------------------------------------------
+column 2 6 0 2
+column 1 6 0 2
+sundial 1 6 3
+prop rail 2 6 3 py
+prop rail 1 6 3 mx
+prop rail 1 6 3 my
+prop rail 1 6 3 py
+
+# --- the south-west islet (h2): the ram up to the west terrace --------------------
+column 4 6 0 1
+column 4 7 0 1
+column 3 6 0 1
+ram 3 6 2 mx
+
+# --- the middle islet (h2): a handle of the east slab, the ram up to the terrace --
+column 6 4 0 1
+column 6 3 0 1
+column 6 5 0 1
+ram 6 5 2 py
+
+# --- the middle terrace (h3): a sundial; a stair of the sun from the islet under it
+column 6 6 0 2
+sundial 6 6 3
+prop rail 6 6 3 mx
+prop rail 6 6 3 py
+column 7 6 0 1
+sunlit 7 6 2 mx
+column 8 6 0 1
+
+# --- the north-east islet (h2): nothing but roses ----------------------------------
+column 8 2 0 1
+column 8 1 0 1
+prop statue 8 1 2 py
+prop rose 8 2 2 px
+
+# --- the east islet (h2): a handle of the west slab ---------------------------------
+column 10 4 0 1
+column 11 4 0 1
+
+# --- the south-east islet (h2): a handle of the south slab -------------------------
+column 10 8 0 1
+column 11 8 0 1
+
+# --- the perch (h2): the eagle to the gate of the gardens (h5, the exit) ------------
+column 8 10 0 1
+column 8 11 0 1
+eagle 8 11 2 2 10 5
+column 2 10 0 4
+exit 2 10 5
+prop rail 2 10 5 mx
+prop rail 2 10 5 py
+
+# --- the slabs ------------------------------------------------------------------------
+# 0: the west slab, joining the north islet and the middle islet
+part 4 4
+block 4 4 1
+block 4 3 1 plank_y
+block 5 4 1 plank
+prop rope 4 3 2 mx
+prop rope 4 3 2 px
+prop rope 5 4 2 my
+prop rope 5 4 2 py
+end
+# 1: the east slab, joining the east islet and the islet under the terrace
+part 8 4
+block 8 4 1
+block 9 4 1 plank
+block 8 5 1 plank_y
+prop rope 9 4 2 my
+prop rope 9 4 2 py
+prop rope 8 5 2 mx
+prop rope 8 5 2 px
+end
+# 2: the south slab, joining the south-east islet and the perch
+part 8 8
+block 8 8 1
+block 9 8 1 plank
+block 8 9 1 plank_y
+prop rope 9 8 2 my
+prop rope 9 8 2 py
+prop rope 8 9 2 mx
+prop rope 8 9 2 px
+end
+
+# the handles, crossed
+handle 6 3 2 1
+handle 11 4 2 0
+handle 1 4 2 2
+handle 11 8 2 2
+
+# --- decoration: roses and myrtles ---------------------------------------------------
+prop myrtle 4 2 2 px
+prop rose 6 3 2 mx
+prop myrtle 11 4 2 px
+prop rose 10 8 2 py
+prop myrtle 8 11 2 py
+prop rose 2 4 2 my
+prop myrtle 4 7 2 py
+prop rose 6 8 2 py
+prop myrtle 2 6 3 px
+
+# --- the fragment's islet (III.5d) ----------------------------------------------------
+column 6 8 0 1
+column 5 8 0 1
+fragment 5 8 2
+
+diorama
+# The terraces at evening (the third diorama, VI.16-17): the last of Venus's
+# house, its terraces over the pool and the highest tower. Illusions, the
+# lamp, two seals, veiled stones, two sundials and the eagle: what the day
+# shows, the evening hides, and only the flame makes real.
+#   - the court of the start (h2): the first sundial, a brazier; a short
+#     bridge of veiled stones west to the low court (h2);
+#   - the low court: a stair of the sun up to the west terrace (h3, the
+#     second sundial); at evening, in view 1, its edge looks joined to the
+#     high terrace (h4) in the east;
+#   - the west terrace: at evening, in view 3, its edge looks joined to the
+#     seal court (h2) in the north, where the first seal raises the stone
+#     between the high terrace and the north terrace (h4);
+#   - the north terrace: a bridge of veiled stones to the second seal (h4),
+#     which raises the stone between the seal court and the perch;
+#   - the perch (h2): the eagle to the top of the highest tower (h7, the exit).
+# The flame works only at evening, the stair of the sun stands only by day,
+# and each terrace has its own hour: the time is turned seven times.
+# Solution (solver: 69 steps, 5 turns, 3 lightings, 7 times turned, 1 flight,
+# 16 decisions; both sundials and the eagle needed, no dead ends).
+size 13
+biome venus
+lamp 3
+floor basin -1 -1 13 13
+intro intro_iii_5c
+outro outro_iii_5
+
+# --- the court of the start (h2): the first sundial, a brazier -------------------
+column 9 10 0 1
+column 10 10 0 1
+column 9 11 0 1
+column 10 11 0 1
+start 9 11 2
+rest 9 11 2
+sundial 10 11 2
+prop rail 10 10 2 my
+
+# --- the veiled bridge west to the low court --------------------------------------
+veiled 8 10 1
+veiled 7 10 1
+
+# --- the low court (h2), the stair of the sun up to the west terrace ---------------
+column 6 10 0 1
+column 5 10 0 1
+column 5 11 0 1
+column 6 11 0 1
+prop rail 5 11 2 mx
+column 4 10 0 1
+sunlit 4 10 2 mx
+
+# --- the west terrace (h3): the second sundial --------------------------------------
+column 3 10 0 2
+column 3 9 0 2
+column 2 9 0 2
+column 2 10 0 2
+sundial 2 10 3
+prop rail 3 9 3 px
+
+# --- the seal court (h2): the first seal --------------------------------------------
+column 3 7 0 1
+column 4 7 0 1
+column 3 6 0 1
+column 4 6 0 1
+sigil 3 6 2
+
+# --- the stone the second seal raises; the perch (h2) --------------------------------
+column 3 5 0 0
+rise 3 5 1 2
+column 3 4 0 1
+column 4 4 0 1
+eagle 3 4 2 1 1 7
+
+# --- the highest tower (h7, the exit) ---------------------------------------------------
+column 1 1 0 6
+exit 1 1 7
+
+# --- the high terrace (h4), the stone the first seal raises, the north terrace (h4) --
+column 8 7 0 3
+column 8 6 0 3
+column 9 6 0 3
+column 8 5 0 2
+rise 8 5 3 1
+column 8 4 0 3
+column 9 4 0 3
+
+# --- the veiled bridge north to the second seal (h4) ---------------------------------
+veiled 9 3 3
+veiled 9 2 3
+column 9 1 0 3
+column 10 1 0 3
+sigil 10 1 4
+
+
+# --- decoration: balustrades, roses and myrtles, urns on pillars in the pool, candles
+prop rose 10 10 2 px
+prop myrtle 9 10 2 my
+prop rose 6 11 2 py
+prop myrtle 6 10 2 my
+prop rose 2 9 3 mx
+prop rail 2 9 3 mx
+prop rail 2 10 3 mx
+prop rail 2 10 3 py
+prop rail 3 10 3 py
+prop myrtle 4 6 2 px
+prop rose 3 7 2 mx
+prop rail 3 6 2 mx
+prop rail 4 6 2 my
+prop rail 4 4 2 py
+prop rail 3 4 2 mx
+prop rail 1 1 7 mx
+prop rail 1 1 7 my
+prop rail 9 6 4 px
+prop rail 9 6 4 my
+prop rail 8 7 4 mx
+prop rose 9 6 4 px
+prop rail 9 4 4 px
+prop rail 8 4 4 mx
+prop rail 10 1 4 px
+prop rail 10 1 4 my
+prop rail 9 1 4 my
+prop rose 10 1 4 px
+prop rail 7 2 4 my
+column 11 6 0 4
+prop urn 11 6 5
+column 0 6 0 3
+prop urn 0 6 4
+column 6 4 0 2
+prop urn 6 4 3
+column 11 2 0 1
+prop rose 11 2 2 py
+column 0 12 0 1
+prop myrtle 0 12 2 px
+prop sconce 9 6 3 px
+prop sconce 8 7 3 py
+prop sconce 3 10 2 py
+
+# --- the fragment (III.5e): a pinnacle the perch looks joined to in view 1 ------------
+column 7 2 0 3
+fragment 7 2 4

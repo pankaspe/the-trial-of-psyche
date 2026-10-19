@@ -181,6 +181,8 @@ Key :: enum u16 {
 	Fragment_14,
 	Fragment_14b, // Venus: you seem a witch
 	Fragment_14c, // the box, and come back soon
+	Fragment_14d, // III.5's gardens of the Hours: Venus spent her beauty on her son
+	Fragment_14e, // III.5's terraces: Psyche knows she is sent to her death
 	Fragment_15,
 	Fragment_15b,
 	Fragment_16,
@@ -311,6 +313,8 @@ Key :: enum u16 {
 	Intro_III_4,
 	Intro_III_4b, // III.4's second diorama: the gorges of deceit
 	Intro_III_5,
+	Intro_III_5b, // III.5's second diorama: the gardens of the Hours
+	Intro_III_5c, // III.5's third diorama: the terraces at evening
 	Intro_IV_1,
 	Intro_IV_2,
 	Intro_IV_3,
@@ -844,6 +848,8 @@ IT := [Key]string {
 	.Fragment_14    = "«Va' da Proserpina» dice Venere, «e chiedile un po' della sua bellezza, quanto basta per un giorno.»",
 	.Fragment_14b   = "Venere la guarda torva: «Ormai mi sembri una strega, una maga grande e profonda, se hai obbedito così bene ai miei ordini. Ma c'è ancora una cosa che devi fare per me.»",
 	.Fragment_14c   = "«Prendi questo vaso. E torna presto: devo ungermi della sua bellezza prima di andare al teatro degli dèi.»",
+	.Fragment_14d   = "«E dille che la mia l'ho consumata tutta, vegliando sul figlio malato.»",
+	.Fragment_14e   = "Allora Psiche comprese che la sua sorte era giunta alla fine: senza più veli, la spingevano verso la morte.",
 	.Fragment_15    = "«Ma soprattutto, ti dico: il vaso che porterai, non aprirlo e non guardarci dentro. Non essere curiosa del tesoro della bellezza divina.»",
 	.Fragment_15b   = "«Più avanti, vecchie tessitrici ti pregheranno di dare loro una mano al telaio. Non toccare la tela: sono insidie di Venere, perché ti cada di mano una focaccia.»",
 	.Fragment_16    = "Psiche passa oltre in silenzio: davanti all'asinaio zoppo, al morto che dal fiume tende le mani, alle vecchie che la chiamano al telaio. Non tocca nulla, non risponde a nessuno: stringe le sue focacce.",
@@ -975,6 +981,8 @@ IT := [Key]string {
 	.Intro_III_4    = "Sulla vetta l'acqua nera grida. Le aquile ti portano lassù, ma dove ti posano l'ora resta quella: sceglila prima di volare.",
 	.Intro_III_4b   = "L'aquila è volata via con l'urna. Tra queste gole le rocce s'ingannano a vicenda: guardale da ogni lato, e cerca la rupe dove tornerà.",
 	.Intro_III_5    = "Di nuovo nella casa di Venere. Per uscirne servirà ogni cosa imparata: la lucerna, il fuso, la grotta, l'aquila.",
+	.Intro_III_5b   = "Le Ore custodiscono i giardini di Venere: i ponti girano, e il gregge del Sole si china solo a sera.",
+	.Intro_III_5c   = "Scende la sera sulle terrazze di Venere: ciò che il giorno mostra, la sera lo nasconde.",
 	.Intro_IV_1     = "La torre ti ha detto la via. Scendi: in fondo, sull'acqua scura, aspetta il traghettatore.",
 	.Intro_IV_2     = "Oltre il fiume, il regno di Proserpina pende sotto la terra dei morti, come un riflesso nell'acqua.",
 	.Intro_IV_3     = "Qui la terra dei morti e il regno di Proserpina camminano sulla stessa pietra: uno sopra, l'altro sotto.",
@@ -1325,6 +1333,8 @@ EN := [Key]string {
 	.Fragment_14    = "“Go to Proserpina,” says Venus, “and ask her for a little of her beauty, enough for a single day.”",
 	.Fragment_14b   = "Venus glares at her: “By now you seem to me a witch, a great and deep enchantress, to have obeyed my orders so well. But there is still one thing you must do for me.”",
 	.Fragment_14c   = "“Take this box. And come back soon: I must anoint myself with her beauty before I go to the theatre of the gods.”",
+	.Fragment_14d   = "“And tell her I have worn all mine away, watching over my sick son.”",
+	.Fragment_14e   = "Then Psyche understood that her fortune had come to its end: with no more pretence, she was being driven to her death.",
 	.Fragment_15    = "«But above all, I tell you: the box you will carry, do not open it, do not look inside. Do not be curious about the treasure of divine beauty.»",
 	.Fragment_15b   = "«Further on, old women weaving will beg you to lend a hand at the loom. Do not touch the cloth: these are Venus's snares, to make you drop a cake.»",
 	.Fragment_16    = "Psyche passes on in silence: by the lame driver, by the dead man reaching out of the river, by the old women calling her to the loom. She touches nothing, answers no one: she holds her cakes tight.",
@@ -1456,6 +1466,8 @@ EN := [Key]string {
 	.Intro_III_4    = "At the summit the black water cries out. The eagles carry you up, but where they set you down the hour stays as it was: choose it before you fly.",
 	.Intro_III_4b   = "The eagle has flown off with the urn. In these gorges the rocks deceive one another: look at them from every side, and find the crag where it will return.",
 	.Intro_III_5    = "Back in the house of Venus. To leave it she will need everything she has learned: the lamp, the spindle, the cave, the eagle.",
+	.Intro_III_5b   = "The Hours keep the gardens of Venus: the bridges turn, and the Sun's flock lies down only at evening.",
+	.Intro_III_5c   = "Evening falls on the terraces of Venus: what the day shows, the evening hides.",
 	.Intro_IV_1     = "The tower has told you the way. Go down: at the bottom, on the dark water, the ferryman waits.",
 	.Intro_IV_2     = "Beyond the river, Proserpina's kingdom hangs under the land of the dead, like a reflection in water.",
 	.Intro_IV_3     = "Here the land of the dead and Proserpina's kingdom walk on the same stone: one above, the other below.",

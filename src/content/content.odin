@@ -120,6 +120,8 @@ FRAGMENTS := [?]Fragment_Info {
 	{"III.5", 12, .Fragment_14, "VI.16"},
 	{"III.5b", 12, .Fragment_14b, "VI.16"},
 	{"III.5c", 12, .Fragment_14c, "VI.16"},
+	{"III.5d", 12, .Fragment_14d, "VI.16"}, // the gardens of the Hours
+	{"III.5e", 12, .Fragment_14e, "VI.17"}, // the terraces at evening
 	{"IV.1", 13, .Fragment_15, "VI.19"},
 	{"IV.1b", 13, .Fragment_15b, "VI.19"},
 	{"IV.2", 14, .Fragment_16, "VI.20"},
@@ -140,7 +142,7 @@ FRAGMENT_COUNT :: len(FRAGMENTS)
 
 // The Book shows the fragments in the order of Apuleius' text, not of the
 // levels: fragment indices, in reading order.
-BOOK_ORDER := [FRAGMENT_COUNT]int{0, 1, 4, 8, 2, 3, 5, 7, 6, 9, 11, 10, 12, 14, 13, 15, 16, 17, 19, 18, 20, 21, 23, 25, 28, 26, 22, 27, 24, 30, 29, 31, 36, 35, 37, 33, 38, 32, 34, 39, 41, 43, 42, 44, 40, 45}
+BOOK_ORDER := [FRAGMENT_COUNT]int{0, 1, 4, 8, 2, 3, 5, 7, 6, 9, 11, 10, 12, 14, 13, 15, 16, 17, 19, 18, 20, 21, 23, 25, 28, 26, 22, 27, 24, 30, 29, 32, 31, 33, 38, 37, 39, 35, 40, 34, 36, 41, 43, 45, 44, 46, 42, 47}
 
 // The fragments of a level: FRAGMENTS[first:][:count].
 level_fragments :: proc(level: int) -> (first, count: int) {
