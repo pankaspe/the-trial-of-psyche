@@ -239,11 +239,12 @@ at_spot :: proc(st: State, spot: Spot) -> bool {
 	return st.cell == spot.cell && st.cfg.upside == spot.under
 }
 
-// Search from the start to `goal`; `avoid` is never entered (to prove the
-// fragment optional). `limit` > 0: give up past that many states. `dead`:
-// filled with the states that cannot reach the goal any more. The palace is
-// left as loaded (nothing changed, view 0).
-solve :: proc(p: ^Palace, goal: Spot, avoid: Maybe(Spot) = nil, allocator := context.allocator, limit := 0, dead: ^[dynamic]State = nil) -> (sol: Solution) {
+// Search from the start (or `from`: then only as far as the goal) to `goal`;
+// `avoid` is never entered (to prove the fragment optional). `limit` > 0:
+// give up past that many states. `dead`: filled with the states that cannot
+// reach the goal any more. The palace is left as loaded (nothing changed,
+// view 0).
+solve :: proc(p: ^Palace, goal: Spot, avoid: Maybe(Spot) = nil, allocator := context.allocator, limit := 0, dead: ^[dynamic]State = nil, from: Maybe(State) = nil) -> (sol: Solution) {
 	context.allocator = allocator
 	s := Solver{p = p}
 	s.cache = make(map[Config]^Config_Graph)
@@ -289,7 +290,11 @@ solve :: proc(p: ^Palace, goal: Spot, avoid: Maybe(Spot) = nil, allocator := con
 	}
 
 	start_cfg := Config{day = len(p.data.sundials) > 0}
-	push(&entries, &seen, &buckets, &edges, Entry{state = {start_cfg, p.data.start, 0, false, {}}, parent = -1, move = .Start})
+	first, partway := from.?
+	if !partway {
+		first = {start_cfg, p.data.start, 0, false, {}}
+	}
+	push(&entries, &seen, &buckets, &edges, Entry{state = first, parent = -1, move = .Start})
 	goal_id: i32 = -1
 	search: for cost := 0; cost < len(buckets); cost += 1 {
 		for k := 0; k < len(buckets[cost]); k += 1 {
@@ -305,6 +310,9 @@ solve :: proc(p: ^Palace, goal: Spot, avoid: Maybe(Spot) = nil, allocator := con
 			st := entries[id].state
 			if at_spot(st, goal) && goal_id < 0 {
 				goal_id = id
+				if partway {
+					break search
+				}
 			}
 			g := graph_of(&s, st.cfg)
 			p.upside = st.cfg.upside // the lookups below read it (graph_of configures only when it builds)

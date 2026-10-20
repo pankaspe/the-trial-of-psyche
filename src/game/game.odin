@@ -279,6 +279,7 @@ Game :: struct {
 	pointer:        f32, // its fade, 0..1
 	dead_ends:      map[pl.State]struct {}, // the states that cannot reach the goal any more (`find_dead_ends`)
 	dead_end:       bool, // Psyche is in one
+	guide:          Guide, // an aid: the way to the next thing to do (`show_guide`)
 	cine_out:       f32, // time since the prologue gave way to play, < 0 before (the bars withdraw)
 	arrive_t:       f32, // time since the arrival from the last level began, < 0 without one
 	rise_t:         [level.MAX_SEALS]f32, // per seal: time since it was lit, < 0 before
@@ -626,6 +627,7 @@ update :: proc(g: ^Game, dt: f32) {
 	update_hud(g, dt)
 	update_pointer(g, dt)
 	update_dead_end(g)
+	update_guide(g, dt)
 	teach_fragments(g)
 	// in the dark the music is veiled; her light opens it
 	audio.set_veil(g.data.has_lamp ? 1 - g.light : 0)
@@ -2638,6 +2640,146 @@ know_dead_ends :: proc(g: ^Game, dead: []pl.State) {
 
 DEAD_END_LIMIT :: 100_000
 
+// --- the guide (an aid of the Story difficulty) ---
+
+// What to do where the guide's trail ends.
+Guide_Do :: enum u8 {
+	Exit, // walk on: the way leads out
+	Turn_Left,
+	Turn_Right,
+	Light,
+	Douse,
+	Spindle, // a handle, a sundial, a pomegranate
+	Eagle,
+	Ferry,
+	Cave,
+}
+
+GUIDE_KEY := [Guide_Do]Key {
+	.Exit       = .Guide_Exit,
+	.Turn_Left  = .Guide_Turn_Left,
+	.Turn_Right = .Guide_Turn_Right,
+	.Light      = .Guide_Light,
+	.Douse      = .Guide_Douse,
+	.Spindle    = .Guide_Spindle,
+	.Eagle      = .Guide_Eagle,
+	.Ferry      = .Guide_Ferry,
+	.Cave       = .Guide_Cave,
+}
+
+GUIDE_TIME :: 12.0 // seconds the trail shows
+GUIDE_LIMIT :: 400_000 // states: past that the way is not searched
+
+Guide :: struct {
+	cells: sa.Small_Array(128, Cell), // from her feet to where to act (the frame of the world up now)
+	then:  Guide_Do,
+	asked: pl.State, // the state it was found from: any change but her steps ends it
+	time:  f32, // left to show, 0: none
+}
+
+// The best way from state `from` of a level (its text) to its goal, in
+// `allocator`; nil if there is none or the search is too big. The app runs it
+// on a worker thread, on its own copy of the level.
+search_guide :: proc(text: string, from: pl.State, allocator := context.allocator) -> []pl.Plan_Step {
+	scratch: virtual.Arena
+	if virtual.arena_init_growing(&scratch) != nil {
+		return nil
+	}
+	defer virtual.arena_destroy(&scratch)
+	alloc := virtual.arena_allocator(&scratch)
+	data, err := level.parse(text, alloc)
+	if err != nil {
+		return nil
+	}
+	p: pl.Palace
+	pl.init(&p, &data, alloc)
+	sol := pl.solve(&p, pl.goal_cell(&p), nil, alloc, GUIDE_LIMIT, from = from)
+	if sol.given_up || !sol.solved {
+		return nil
+	}
+	return slice.clone(sol.plan[:], allocator)
+}
+
+// The state the guide is asked from (and the dead ends looked up in).
+state_now :: proc(g: ^Game) -> pl.State {
+	return pl.state_of(&g.palace, g.psyche.cell, g.lamp_on)
+}
+
+// A way found from `from` (`search_guide`): its first stretch shown, up to
+// the first thing to do but walk, and named. Nothing if she has moved since.
+show_guide :: proc(g: ^Game, from: pl.State, plan: []pl.Plan_Step) {
+	if plan == nil || g.phase != .Play || state_now(g) != from {
+		return
+	}
+	gd := Guide{asked = from, time = GUIDE_TIME}
+	sa.push_back(&gd.cells, from.cell)
+	walk: for st in plan {
+		switch st.move {
+		case .Start:
+		case .Step:
+			if pl.is_passage(&g.palace, sa.get(gd.cells, sa.len(gd.cells) - 1), st.cell) {
+				gd.then = .Cave
+				break walk
+			}
+			sa.push_back(&gd.cells, st.cell)
+		case .Turn_Left:
+			gd.then = .Turn_Left
+			break walk
+		case .Turn_Right:
+			gd.then = .Turn_Right
+			break walk
+		case .Light:
+			gd.then = .Light
+			break walk
+		case .Douse:
+			gd.then = .Douse
+			break walk
+		case .Handle, .Time, .Overturn:
+			gd.then = .Spindle
+			break walk
+		case .Flight:
+			gd.then = .Eagle
+			break walk
+		case .Ferry:
+			gd.then = .Ferry
+			break walk
+		}
+	}
+	g.guide = gd
+	hint(g, GUIDE_KEY[gd.then], GUIDE_TIME, true)
+}
+
+// The trail fades with time, and goes as soon as anything but her steps
+// changes (the thing done, or another); the stones she has passed leave it.
+@(private)
+update_guide :: proc(g: ^Game, dt: f32) {
+	gd := &g.guide
+	if gd.time <= 0 {
+		return
+	}
+	gd.time = max(gd.time - dt, 0)
+	now := state_now(g)
+	now.cell = gd.asked.cell
+	if now != gd.asked || g.phase != .Play {
+		gd.time = 0
+	}
+	if gd.time == 0 {
+		for key in GUIDE_KEY {
+			if g.hud.hint.key == key {
+				hide(&g.hud.hint)
+			}
+		}
+		return
+	}
+	for i in 1 ..< sa.len(gd.cells) {
+		if sa.get(gd.cells, i) == g.psyche.cell {
+			sa.consume(&gd.cells, i)
+			break
+		}
+	}
+}
+
+
 // Standing still in a dead end: the way out is the brazier, or the level
 // again; said each time she walks into one, gone when she is out.
 @(private)
@@ -2645,8 +2787,7 @@ update_dead_end :: proc(g: ^Game) {
 	if len(g.dead_ends) == 0 || g.phase != .Play || g.psyche.walking || g.turning {
 		return
 	}
-	st := pl.state_of(&g.palace, g.psyche.cell, g.lamp_on)
-	dead := g.dead_end_hints && st in g.dead_ends
+	dead := g.dead_end_hints && state_now(g) in g.dead_ends
 	if dead == g.dead_end {
 		return
 	}

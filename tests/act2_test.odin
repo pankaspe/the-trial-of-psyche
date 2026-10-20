@@ -50,6 +50,35 @@ play_plan :: proc(t: ^testing.T, g: ^game.Game, plan: []palace.Plan_Step) -> boo
 }
 
 @(test)
+guide_shows_the_way :: proc(t: ^testing.T) {
+	g: game.Game
+	defer game.destroy(&g)
+	// the gap is closed by a veiled stone: walk up to it, then light the lamp
+	LEVEL :: `size 9
+block 0 0 0
+block 1 0 0
+block 3 0 0
+block 4 0 0
+veiled 2 0 0
+start 0 0 1
+exit 4 0 1
+lamp
+`
+	if !load_text(t, &g, LEVEL) {
+		return
+	}
+	from := game.state_now(&g)
+	plan := game.search_guide(LEVEL, from, context.temp_allocator)
+	testing.expect(t, plan != nil, "a way is found from where she stands")
+	game.show_guide(&g, from, plan)
+	testing.expectf(t, g.guide.time > 0 && g.guide.then == .Light, "the way leads to the lamp (%v)", g.guide.then)
+	testing.expect(t, g.hud.hint.active && g.hud.hint.key == .Guide_Light, "and says so")
+	game.toggle_lamp(&g)
+	run(&g, 0.5)
+	testing.expect(t, g.guide.time == 0, "lit, the trail is gone")
+}
+
+@(test)
 dead_end_is_told :: proc(t: ^testing.T) {
 	g: game.Game
 	defer game.destroy(&g)

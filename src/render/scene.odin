@@ -8,6 +8,7 @@ package render
 
 import "core:math"
 import "core:slice"
+import sa "core:container/small_array"
 import rl "vendor:raylib"
 import "vendor:raylib/rlgl"
 
@@ -2325,6 +2326,30 @@ device_stones :: proc(g: ^game.Game) -> [dynamic]Device_Stone {
 	return stones
 }
 
+// An aid: the way to the next thing to do (game.show_guide), a trail of
+// little lights in the hints' colour on the stones from her feet, a pulse
+// running along it, a brighter light where to act.
+@(private)
+draw_guide :: proc(g: ^game.Game, v: View) {
+	gd := &g.guide
+	n := sa.len(gd.cells)
+	if gd.time <= 0 || n == 0 {
+		return
+	}
+	a := fx.clamp01(gd.time / 1.5) * fx.clamp01((game.GUIDE_TIME - gd.time) / 0.4)
+	h := HINT_COLOR
+	t := g.reduce_motion ? 0 : g.time
+	for i in 0 ..< n {
+		p := pl.stand_world(&g.palace, sa.get(gd.cells, i)) + {0, 0, 0.06}
+		run := math.pow(0.5 + 0.5 * math.cos(t * 3 - f32(i) * 0.7), 6)
+		glow(v, p, 13, {h.r, h.g, h.b, a * (0.6 + 0.4 * run)}, 0.6, toward = 0.3)
+	}
+	end := pl.stand_world(&g.palace, sa.get(gd.cells, n - 1)) + {0, 0, 0.1}
+	breath := 0.75 + 0.25 * math.sin(t * 2.4)
+	glow(v, end, 46, {h.r, h.g, h.b, 0.5 * a * breath}, 0.6, toward = 0.3)
+	glow(v, end + {0, 0, 0.5}, 14, {0.92, 0.9, 1.0, 0.5 * a * breath}, 6, toward = 0.3)
+}
+
 // Something at c answering the flame she carries (`sense` 0 .. 1): a faint
 // halo and `motes` little stars twinkling about it, in the hints' colour (a
 // still halo with reduce motion).
@@ -2460,6 +2485,7 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 		}
 		glow(v, shown(g, c + {0, 0, -0.25}, under), 40, {0.85, 0.93, 1.0, 0.45 * ea})
 	}
+	draw_guide(g, v)
 	// Proserpina's pomegranates: a dark red gleam on both faces of their stones
 	for c, n in g.data.pomegranates {
 		_, clear := placed(g, c)

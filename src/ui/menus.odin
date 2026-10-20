@@ -1244,6 +1244,7 @@ AID_NAME := [progress.Aid]i18n.Key {
 	.Sense       = .Set_Sense,
 	.Dead_Ends   = .Set_Dead_Ends,
 	.Endless_Oil = .Set_Endless_Oil,
+	.Guide       = .Set_Guide,
 }
 
 @(private)

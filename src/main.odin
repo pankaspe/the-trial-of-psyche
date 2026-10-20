@@ -114,6 +114,8 @@ App :: struct {
 	skip_t:          f32, // how long the cutscene's skip has been held, < 0 when up
 	lamp_down:       bool, // the lamp's key, button or slot was held last frame
 	dead_ends:       Dead_Ends,
+	guide:           Guide_Search,
+	diorama_text:    string, // the text of the diorama loaded (the guide searches its own copy)
 	focus_screen:    Screen, // the screen the UI's focus belongs to
 	levels:          Levels_Screen,
 	stage:           f32, // 0 .. 1: the diorama moved to the right for a side panel (the level select, the settings)
@@ -222,6 +224,7 @@ shutdown :: proc(app: ^App) {
 	render.shutdown(&app.renderer)
 	audio.shutdown()
 	drop_dead_ends(&app.dead_ends)
+	drop_guide(&app.guide)
 	rl.CloseWindow()
 }
 
@@ -259,7 +262,8 @@ new_level :: proc(app: ^App, index: int, diorama := 0) -> bool {
 			g.fragments_known += {i}
 		}
 	}
-	want_dead_ends(app, index, diorama, level.dioramas(source)[diorama], keep = source == content.LEVELS[index].source)
+	app.diorama_text = level.dioramas(source)[diorama]
+	want_dead_ends(app, index, diorama, app.diorama_text, keep = source == content.LEVELS[index].source)
 	if diorama == 0 {
 		app.carried = {}
 	}
@@ -693,6 +697,7 @@ frame :: proc(app: ^App) {
 	paused := app.screen == .Pause || app.screen == .Fragment || app.screen == .Mechanic || (app.screen == .Settings && app.settings_from == .Pause) || (app.screen == .Codex && app.codex_from != .Title)
 	if !paused {
 		poll_dead_ends(app)
+		poll_guide(app)
 		game.update(g, dt)
 		app.scene.see_through = app.cfg.see_through
 		app.scene.highlight = .Highlight in app.prog.aids
@@ -1042,6 +1047,7 @@ play_input :: proc(app: ^App) {
 	}
 	if rl.IsKeyPressed(.TAB) {
 		game.point_at_psyche(g)
+		ask_guide(app)
 	}
 	if rl.IsKeyPressed(.C) {
 		open_codex(app)
@@ -1150,6 +1156,7 @@ pad_play :: proc(app: ^App) {
 	}
 	if input.take(.North) {
 		game.point_at_psyche(g)
+		ask_guide(app)
 	}
 	if input.take(.West) {
 		open_codex(app)

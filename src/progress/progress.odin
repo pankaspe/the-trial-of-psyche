@@ -112,6 +112,7 @@ Aid :: enum u8 {
 	Sense,       // seals and veiled stones sparkle as her flame nears
 	Dead_Ends,   // she is told when she stands in a dead end
 	Endless_Oil, // the lamp never runs dry
+	Guide,       // the light on Psyche also shows the way to the next thing to do
 }
 
 Aids :: bit_set[Aid]
@@ -122,6 +123,7 @@ AID_ID := [Aid]string {
 	.Sense       = "sense",
 	.Dead_Ends   = "dead_ends",
 	.Endless_Oil = "endless_oil",
+	.Guide       = "guide",
 }
 
 // Chosen when a game starts: each sets the aids (changed one by one later,
