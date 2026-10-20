@@ -951,18 +951,23 @@ seam_edge :: proc(g: ^game.Game, e: [2]i32) -> (p0, p1, inward: Vec3) {
 // --- drawing -----------------------------------------------------------------------
 
 draw_world :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
-	roll := backdrop_roll(g)
+	roll := backdrop_roll(g, v)
 	for &side in roll.sides[:roll.count] {
 		lk := side.look
-		draw_sky(r, s, g, v, time, lk, side.tiles)
-		draw_bolt(g, v)
+		// the sky going away stays whole under the one coming (only its clouds and ranges go)
+		whole := side.tiles
+		if whole.y < 0 {
+			whole.y = -2
+		}
+		draw_sky(r, s, g, side.view, time, lk, whole)
+		draw_bolt(g, side.view)
 		if lk.islands {
-			draw_islands(g, v, time)
+			draw_islands(g, side.view, time)
 		}
 		if lk.ridges > 0 {
-			draw_ridges(r, s, g, v, lk, side.tiles)
+			draw_ridges(r, s, g, side.view, lk, side.tiles)
 		}
-		draw_clouds(r, s, g, v, time, false, lk, 1, side.tiles)
+		draw_clouds(r, s, g, side.view, time, false, lk, 1, side.tiles)
 	}
 
 	begin_3d(v)
@@ -981,10 +986,11 @@ draw_world :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 	// they never pass over it
 	// (the old ones until half way, then the new: none shows by then)
 	for &side, i in roll.sides[:roll.count] {
-		if roll.count == 2 && (i == 1) != (side.tiles.x >= 0.5) {
+		second_half := (side.tiles.w > 0) == (side.tiles.x <= 0.5) // the seam past the middle of the screen
+		if roll.count == 2 && (i == 1) != second_half {
 			continue
 		}
-		draw_clouds(r, s, g, v, time, true, side.look, (1 - roll.glow) * (1 - roll.glow), side.tiles)
+		draw_clouds(r, s, g, side.view, time, true, side.look, (1 - roll.glow) * (1 - roll.glow), side.tiles)
 	}
 	draw_motes(r, s, v)
 	draw_markers(g, v)
@@ -997,26 +1003,27 @@ draw_world :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 	}
 }
 
-// The far backdrop as the world turns over: it breaks into tiles, as the
-// diorama does between the levels, each going from the sky turning away to
-// the other's in a wave (up the screen as the world turns over, down as it
-// turns back), the old tiles dropping a little, the new rising into place
-// (tiles.glsl). Otherwise one side: the look of now.
+// The far backdrop as the world turns over: the sky of the world going away
+// rolls off the screen (up as the world turns over, down as it turns back),
+// the other's rolls in after it, and where they meet the backdrop breaks into
+// small diamond tiles (tiles.glsl), as the diorama does between the levels.
+// Otherwise one side: the look of now, the whole screen.
 Backdrop_Side :: struct {
 	look:  ^Look,
+	view:  View, // the backdrop moved by its share of the roll
 	tiles: [4]f32, // tiles.glsl `tiles` (but the aspect, set per draw); y = 0: none
 }
 
 Backdrop_Roll :: struct {
 	sides: [2]Backdrop_Side,
 	count: int,
-	glow:  f32, // how far into the turn, 0 at its ends .. 1 half way
+	glow:  f32, // how far into the roll, 0 at its ends .. 1 half way
 }
 
 @(private)
-backdrop_roll :: proc(g: ^game.Game) -> (roll: Backdrop_Roll) {
+backdrop_roll :: proc(g: ^game.Game, v: View) -> (roll: Backdrop_Roll) {
 	if g.phase != .Overturn || !g.data.has_upside {
-		roll.sides[0] = {look_of(g), {}}
+		roll.sides[0] = {look_of(g), v, {}}
 		roll.count = 1
 		return
 	}
@@ -1026,9 +1033,22 @@ backdrop_roll :: proc(g: ^game.Game) -> (roll: Backdrop_Roll) {
 	looks[1] = LOOKS[over ? g.data.upside : g.data.setting]
 	k := fx.clamp01(game.overturn_shown(g))
 	k = over ? k : 1 - k
-	wave: f32 = over ? 1 : -1
-	roll.sides[0] = {&looks[0], {k, -1, 0, wave}}
-	roll.sides[1] = {&looks[1], {k, 1, 0, wave}}
+	h := v.height
+	moved :: proc(v: View, dy: f32) -> View {
+		out := v
+		out.backdrop_center.y -= dy / v.backdrop_zoom
+		return out
+	}
+	band := 0.16 * math.sin(math.PI * k) + 0.001 // the seam's half width (screen heights), closing at the ends
+	if over {
+		seam := 1 - k
+		roll.sides[0] = {&looks[0], moved(v, -k * h), {seam, -1, 0, band}}
+		roll.sides[1] = {&looks[1], moved(v, (1 - k) * h), {seam, 1, 0, band}}
+	} else {
+		seam := k
+		roll.sides[0] = {&looks[0], moved(v, k * h), {seam, -1, 0, -band}}
+		roll.sides[1] = {&looks[1], moved(v, -(1 - k) * h), {seam, 1, 0, -band}}
+	}
 	roll.count = 2
 	roll.glow = math.sin(math.PI * k)
 	return
