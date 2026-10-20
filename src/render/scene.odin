@@ -120,6 +120,7 @@ Backdrop_Uniform :: enum u8 {
 	Birds,
 	Cloud_Light,
 	Lava,
+	Front,
 	Edge,
 	Crest_Color,
 	Color_Far,
@@ -152,6 +153,7 @@ BACKDROP_NAME := [Backdrop_Uniform]cstring {
 	.Birds        = "birds",
 	.Cloud_Light  = "cloud_light",
 	.Lava         = "lava",
+	.Front        = "front",
 	.Edge         = "edge",
 	.Crest_Color  = "crest_color",
 	.Color_Far    = "color_far",
@@ -3279,6 +3281,7 @@ draw_clouds :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, view: View, time: f3
 	set_bv3(b, .Tint, front ? lk.cloud_front : lk.cloud_back)
 	set_bv3(b, .Crest_Color, lk.cloud_crest)
 	set_bf(b, .Lava, lk.lava)
+	set_bf(b, .Front, front ? 1 : 0)
 	set_edge(b, edge, a.y, c.y - a.y)
 	rl.BeginShaderMode(b.shader)
 	full_rect(r, {a.x, a.y, c.x - a.x, c.y - a.y})

@@ -12,6 +12,7 @@ uniform vec3 tint;
 uniform float density;
 uniform vec3 crest_color; // sunlight on the crests (black at night)
 uniform float lava;       // 0 .. 1: a sea of lava instead
+uniform float front;      // 1: the layer drawn in front of the diorama
 
 uniform vec3 edge;   // the skies rolling: x the seam, y its half width (both in this rectangle's uv, y down), z 1 shown below it / -1 above / 0 everywhere
 
@@ -78,7 +79,9 @@ void main() {
         vec3 lc = mix(crust, hot, clamp(max(vein * 0.85, pool) * pulse, 0.0, 1.0));
         lc = mix(lc, vec3(0.55, 0.12, 0.04), (1.0 - smoothstep(0.0, 0.5, uv.y)) * 0.5); // the heat haze far off
         col = mix(col, lc, lava);
-        a = mix(a, smoothstep(0.0, 0.18, uv.y) * density, lava);
+        // in front of the diorama only its lowest edge: a sea lies under it, never over it
+        float from = front > 0.5 ? 0.62 : 0.0;
+        a = mix(a, smoothstep(from, from + 0.25, uv.y) * density, lava);
     }
     finalColor = vec4(col, a * edge_alpha());
 }
