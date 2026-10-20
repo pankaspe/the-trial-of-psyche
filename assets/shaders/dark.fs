@@ -1,8 +1,9 @@
 #version 330
 // Dark matter between two skies as the world turns over: a band of ink across
 // the screen along the seam where one sky gives way to the other, its edges
-// frayed, threads curling slowly in it, the brightest along its rims, a few
-// motes of gold drifting like a far galaxy (once the dark between the levels).
+// frayed and flowing, tendrils of the same ink reaching from it into both
+// skies like smoke, a few motes of gold drifting in it (once the dark between
+// the levels).
 
 in vec2 fragTexCoord;
 
@@ -52,15 +53,15 @@ void main() {
     float r = abs(p.y);
     float dark = smoothstep(1.0 + fray, 0.3 + fray, r);
 
-    // faint threads within the ink
+    // a faint sheen where the ink folds, no colour of its own
     float ridge = 1.0 - abs(2.0 * fbm(q * 1.7 + warp * 2.3) - 1.0);
-    vec3 ink = vec3(0.018, 0.014, 0.035);
-    vec3 col = ink + vec3(0.30, 0.25, 0.44) * pow(ridge, 12.0) * 0.6;
+    vec3 ink = vec3(0.02, 0.016, 0.03);
+    vec3 col = ink + vec3(0.07) * pow(ridge, 12.0);
 
-    // tendrils of light: the level lines of a slow flow field, long soft
-    // curves running across the seam from one sky into the other, a thin
-    // core in a halo (measured in pixels), lit here and there along their
-    // length, the light running along them
+    // tendrils of the same ink: the level lines of a slow flow field, long
+    // soft curves running across the seam from one sky into the other, a
+    // thin core in a haze of smoke (measured in pixels), drawn here and there
+    // along their length, the ink running along them
     float across = uv.y - line.x; // screen heights from the seam
     vec2 fp = vec2(uv.x * aspect * 3.2, across * 1.1);
     vec2 fw = vec2(fbm(fp * 0.9 + vec2(t * 0.05, -t * 0.04)), fbm(fp * 0.9 + vec2(3.7, t * 0.06)));
@@ -69,12 +70,11 @@ void main() {
     float px = min(lines, 1.0 - lines) / max(fwidth(field), 1e-5); // pixels to the nearest line
     float width = 0.9 + 1.0 * fbm(fp * 2.0 + t * 0.15);
     float core = exp(-pow(px / width, 2.0));
-    float halo = exp(-pow(px / (width * 7.0), 2.0)) * 0.45;
+    float halo = exp(-pow(px / (width * 6.0), 2.0)) * 0.35;
     float lit = smoothstep(0.36, 0.68, fbm(vec2(floor(field) * 3.1 + fp.y * 2.5 - t * 0.5, fp.x * 0.3)));
     float near = smoothstep(0.26, 0.04, abs(across)) * smoothstep(0.0, 0.3, line.y / 0.07);
     float reach = clamp((core + halo) * lit * near, 0.0, 1.0);
-    vec3 glow = mix(vec3(0.55, 0.42, 0.95), vec3(0.9, 0.84, 1.0), core);
-    col = mix(col, glow, reach * (1.0 - 0.4 * dark));
+    col = mix(col, ink, reach);
 
     // motes of gold drifting in it
     vec2 s = vec2(p.x * 26.0 - t * 0.6, p.y * w * 26.0);

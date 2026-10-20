@@ -3013,7 +3013,7 @@ draw_trace :: proc(s: ^Scene, g: ^game.Game, v: View) {
 	// the cube's twelve edges, as pairs of corners (bit 0 x, bit 1 y, bit 2 z)
 	EDGES :: [12][2]u8{{0, 1}, {2, 3}, {4, 5}, {6, 7}, {0, 2}, {1, 3}, {4, 6}, {5, 7}, {0, 4}, {1, 5}, {2, 6}, {3, 7}}
 	GOLD :: Vec3{0.98, 0.76, 0.36}
-	DARK :: Vec3{0.66, 0.54, 1.0} // the threads of the dark matter between the skies (dark.fs)
+	DARK :: Vec3{0.02, 0.016, 0.03} // the ink of the dark matter between the skies (dark.fs)
 	tint := turning ? DARK : GOLD
 	halo: f32 = turning ? TRACE_HALO * 1.5 : TRACE_HALO
 	Edge :: struct {
@@ -3052,8 +3052,9 @@ draw_trace :: proc(s: ^Scene, g: ^game.Game, v: View) {
 	}
 	rlgl.DrawRenderBatchActive()
 	rlgl.DisableDepthMask()
-	// the halo: light added about each line, bright at the line, nothing at its rim
-	rl.BeginBlendMode(.ADDITIVE)
+	// the halo: light added about each line, bright at the line, nothing at
+	// its rim (as the world turns over, a soft shadow of ink instead)
+	rl.BeginBlendMode(turning ? .ALPHA : .ADDITIVE)
 	rlgl.SetTexture(rlgl.GetTextureIdDefault())
 	right, up := billboard_axes(v)
 	rlgl.Begin(rlgl.TRIANGLES)
