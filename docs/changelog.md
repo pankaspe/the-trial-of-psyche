@@ -6,6 +6,15 @@ Kinds: **feature** (new code or mechanic) · **level** (a level built or rebuilt
 **rework** (something existing redone) · **refactor** (same behaviour, cleaner code) ·
 **fix** · **removal** · **sound** · **ui** · **tooling** · **docs**
 
+## 2026-10-20
+
+| Title | Kind | Description |
+|---|---|---|
+| Difficulty | feature | A new game asks how to play: Story (every aid, endless oil, the guide), Normal (the hints, the oil counted) or Puzzle (no help at all). Each aid can be changed alone in a new Difficulty tab of the settings; the choice is kept in the game's save. |
+| The guide | feature | In Story, the light on Psyche (Tab, the pad's North) also shows the way: a trail of violet lights from her feet to the next place to act, and what to do there (turn, light the lamp, use the spindle, call the eagle...). |
+| Morning skies | rework | The sunny settings now have a morning light: a cool blue shade, warm sunlit faces and pale tops, so the blocks read clearly; a deeper blue sky with the sun lower, white clouds drifting across it, and birds far off (swallows, Venus's doves, a raptor over the Styx). |
+| Hints in violet | rework | The stone under every device (handles, sundials, perches, caves, moorings) glows softly from within, breathing, instead of the rings and halos; seals and veiled stones near her flame twinkle with little violet stars instead of gold sparks, never taken for a brazier's embers. |
+
 ## 2026-10-19
 
 | Title | Kind | Description |
