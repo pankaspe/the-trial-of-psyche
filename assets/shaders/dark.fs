@@ -41,8 +41,9 @@ void main() {
     // across the band: 0 on the seam, 1 at its edges
     vec2 p = vec2(uv.x * aspect, (uv.y - line.x) / w);
 
-    // the ink drifts along the seam, curling
-    vec2 q = vec2(p.x * 2.6 + time * 0.04, p.y * 0.9);
+    // the ink drifts along the seam, curling (stretched across it: its
+    // threads run long, from one sky into the other)
+    vec2 q = vec2(p.x * 2.6 + time * 0.04, p.y * 0.42);
     vec2 warp = vec2(fbm(q + vec2(0.0, time * 0.05)), fbm(q + vec2(5.2, -time * 0.04)));
     float f = fbm(q + warp * 1.6);
 
@@ -58,6 +59,9 @@ void main() {
     vec3 ink = vec3(0.018, 0.014, 0.035);
     vec3 col = ink + vec3(0.34, 0.29, 0.46) * thread * (0.15 + 0.85 * rim);
     col += vec3(0.85, 0.62, 0.38) * pow(ridge, 26.0) * 0.35 * rim;
+    // past the ink the brightest threads reach on into both skies, fading
+    float reach = pow(ridge, 16.0) * smoothstep(2.6, 0.9, r) * (1.0 - dark);
+    col = mix(col, vec3(0.66, 0.54, 1.0), reach);
 
     // motes of gold drifting in it
     vec2 s = vec2(p.x * 26.0 - time * 0.6, p.y * w * 26.0);
@@ -68,5 +72,5 @@ void main() {
         float twinkle = 0.55 + 0.45 * sin(time * (1.0 + 2.0 * m) + m * 40.0);
         col += vec3(1.0, 0.82, 0.5) * smoothstep(0.14, 0.0, length(s - at)) * twinkle * dark * 0.9;
     }
-    finalColor = vec4(col, clamp(dark * 0.9, 0.0, 1.0) * step(1e-4, line.y));
+    finalColor = vec4(col, clamp(max(dark * 0.9, reach * 0.8), 0.0, 1.0) * step(1e-4, line.y));
 }
