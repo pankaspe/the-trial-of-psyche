@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/screenshots/banner.jpg" alt="The Trial of Psyche — Apuleius, Metamorphoses IV–VI: the temple of Ceres and Juno at dusk over a sea of clouds" width="100%">
+<img src="docs/screenshots/banner.jpg" alt="The Trial of Psyche — Apuleius, Metamorphoses IV–VI" width="100%">
 
 *An isometric puzzle about seeing and trusting,<br>
 from Apuleius' tale of Cupid and Psyche.*
@@ -11,7 +11,7 @@ from Apuleius' tale of Cupid and Psyche.*
 
 <br><br>
 
-<img src="docs/screenshots/mechanics.gif" alt="A mechanic from each act: the lamp shows the truth and a seal raises a bridge (Act I); the spindle turns the temple's rings (Act II); a sundial brings the evening to the house of Venus (Act III); the world turns over onto the inferno (Act IV)" width="100%">
+<img src="docs/screenshots/mechanics.gif" alt="A mechanic from each act: the lamp shows the truth and a seal raises a bridge (Act I); the spindle turns the temple's rings (Act II); a sundial brings the evening to the house of Venus (Act III); on the way back the world turns over onto the inferno by night (Act IV)" width="100%">
 
 <br><br>
 
