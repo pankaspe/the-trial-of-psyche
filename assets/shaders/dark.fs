@@ -1,20 +1,27 @@
 #version 330
-// Dark matter between two skies as the world turns over: a band of ink across
-// the screen along the seam where one sky gives way to the other, its edges
-// frayed and flowing, tendrils of the same ink reaching from it into both
-// skies like smoke, a few motes of gold drifting in it (once the dark between
-// the levels).
+// The seam of two skies as the world turns over: a thin line of dark matter
+// across the screen where one sky gives way to the other, jagged like a
+// range of mountains seen from both worlds (peaks rising into the sky above,
+// their mirror hanging into the one below), and a web of veins of the same
+// ink branching out from it into both skies, finer and fainter the further
+// they reach (once the dark between the levels). One colour: the ink.
 
 in vec2 fragTexCoord;
 
 uniform float time;
 uniform float aspect;
-uniform vec2 line; // x the seam (screen uv, y down), y the band's half height (screen uv; 0: none)
+uniform vec2 line; // x the seam (screen uv, y down), y how high its peaks rise (screen uv; 0: none)
 
 out vec4 finalColor;
 
+const vec3 INK = vec3(0.02, 0.016, 0.03);
+
 float hash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+vec2 hash2(vec2 p) {
+    return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);
 }
 
 float noise(vec2 p) {
@@ -36,55 +43,77 @@ float fbm(vec2 p) {
     return v;
 }
 
+// A range of peaks along x: sharp crests, smaller ones between (0 .. ~1).
+float range(float x, float seed) {
+    float h = 0.0;
+    float a = 1.0;
+    for (int i = 0; i < 5; i++) {
+        float n = noise(vec2(x, seed + float(i) * 7.3));
+        float r = 1.0 - abs(2.0 * n - 1.0);
+        h += a * r * r;
+        x *= 2.1;
+        a *= 0.45;
+    }
+    return h * 0.62;
+}
+
+// How far `x` is from the nearest edge of a web of cells (their points
+// drifting slowly): 0 on an edge.
+float web(vec2 x) {
+    vec2 n = floor(x);
+    vec2 f = fract(x);
+    float f1 = 8.0;
+    float f2 = 8.0;
+    for (int j = -1; j <= 1; j++) {
+        for (int i = -1; i <= 1; i++) {
+            vec2 g = vec2(float(i), float(j));
+            vec2 o = hash2(n + g);
+            o = 0.5 + 0.42 * sin(time * 0.25 + 6.2831 * o);
+            float d = length(g + o - f);
+            if (d < f1) {
+                f2 = f1;
+                f1 = d;
+            } else if (d < f2) {
+                f2 = d;
+            }
+        }
+    }
+    return f2 - f1;
+}
+
+// A line of the web, `px` pixels wide: 1 on it, a soft edge.
+float vein(float e, float px) {
+    float d = e / max(fwidth(e), 1e-5); // pixels from the edge
+    return exp(-pow(d / px, 2.0));
+}
+
 void main() {
     vec2 uv = fragTexCoord;
-    float w = max(line.y, 1e-4);
-    // across the band: 0 on the seam, 1 at its edges
-    vec2 p = vec2(uv.x * aspect, (uv.y - line.x) / w);
-    float t = time;
-
-    // the ink flows along the seam, folding over itself
-    vec2 q = vec2(p.x * 2.2 + t * 0.07, p.y * 0.8);
-    vec2 warp = vec2(fbm(q + vec2(0.0, t * 0.11)), fbm(q + vec2(5.2, -t * 0.09)));
-    float f = fbm(q + warp * 1.8 + vec2(t * 0.03, 0.0));
-
-    // its edges soft and moving
-    float fray = (f - 0.5) * 0.55;
-    float r = abs(p.y);
-    float dark = smoothstep(1.0 + fray, 0.3 + fray, r);
-
-    // a faint sheen where the ink folds, no colour of its own
-    float ridge = 1.0 - abs(2.0 * fbm(q * 1.7 + warp * 2.3) - 1.0);
-    vec3 ink = vec3(0.02, 0.016, 0.03);
-    vec3 col = ink + vec3(0.07) * pow(ridge, 12.0);
-
-    // tendrils of the same ink: the level lines of a slow flow field, long
-    // soft curves running across the seam from one sky into the other, a
-    // thin core in a haze of smoke (measured in pixels), drawn here and there
-    // along their length, the ink running along them
-    float across = uv.y - line.x; // screen heights from the seam
-    vec2 fp = vec2(uv.x * aspect * 3.2, across * 1.1);
-    vec2 fw = vec2(fbm(fp * 0.9 + vec2(t * 0.05, -t * 0.04)), fbm(fp * 0.9 + vec2(3.7, t * 0.06)));
-    float field = fbm(fp + fw * 1.2 + vec2(-t * 0.04, t * 0.03)) * 5.0;
-    float lines = fract(field);
-    float px = min(lines, 1.0 - lines) / max(fwidth(field), 1e-5); // pixels to the nearest line
-    float width = 0.9 + 1.0 * fbm(fp * 2.0 + t * 0.15);
-    float core = exp(-pow(px / width, 2.0));
-    float halo = exp(-pow(px / (width * 6.0), 2.0)) * 0.35;
-    float lit = smoothstep(0.36, 0.68, fbm(vec2(floor(field) * 3.1 + fp.y * 2.5 - t * 0.5, fp.x * 0.3)));
-    float near = smoothstep(0.26, 0.04, abs(across)) * smoothstep(0.0, 0.3, line.y / 0.07);
-    float reach = clamp((core + halo) * lit * near, 0.0, 1.0);
-    col = mix(col, ink, reach);
-
-    // motes of gold drifting in it
-    vec2 s = vec2(p.x * 26.0 - t * 0.6, p.y * w * 26.0);
-    vec2 cell = floor(s);
-    float m = hash(cell);
-    if (m > 0.9) {
-        vec2 at = cell + vec2(hash(cell + 1.3), hash(cell + 4.1));
-        float twinkle = 0.55 + 0.45 * sin(t * (1.0 + 2.0 * m) + m * 40.0);
-        col += vec3(1.0, 0.82, 0.5) * smoothstep(0.14, 0.0, length(s - at)) * twinkle * dark * 0.9;
+    if (line.y <= 1e-4) {
+        discard;
     }
-    float a = max(dark * 0.88, clamp(reach, 0.0, 1.0) * 0.85);
-    finalColor = vec4(col, a * step(1e-4, line.y));
+    float t = time;
+    float x = uv.x * aspect;
+    float across = uv.y - line.x; // screen heights from the seam, down into the sky below
+
+    // the ridge: a thin core, peaks above and their mirror below, slowly shifting
+    float drift = t * 0.02;
+    float up = line.y * (0.12 + range(x * 5.0 + drift, 1.0));
+    float down = line.y * (0.12 + range(x * 5.0 + drift + 0.37, 4.0));
+    float edge = across < 0.0 ? -across - up : across - down; // < 0 inside
+    float aa = fwidth(across);
+    float ridge = 1.0 - smoothstep(-aa, aa, edge);
+
+    // the web: veins of ink branching from the ridge, finer and sparser away from it
+    float reach = abs(across) / max(line.y, 1e-4); // in peak heights
+    vec2 w = vec2(fbm(vec2(x * 3.0, across * 6.0) + t * 0.04), fbm(vec2(x * 3.0 + 5.2, across * 6.0) - t * 0.03));
+    vec2 p = vec2(x * 7.0, across * 9.0) + (w - 0.5) * 1.6;
+    float coarse = vein(web(p), 1.3) * smoothstep(5.5, 1.0, reach);
+    float fine = vein(web(p * 2.3 + 11.0), 0.9) * smoothstep(3.0, 0.6, reach);
+    // the veins come and go along their length, slowly
+    float live = smoothstep(0.3, 0.6, fbm(vec2(x * 4.0, across * 5.0) + vec2(-t * 0.06, t * 0.05)));
+    float veins = max(coarse * 0.85, fine * 0.6) * live;
+
+    float a = max(ridge, veins) * smoothstep(0.0, 0.25, line.y / 0.035);
+    finalColor = vec4(INK, a * 0.95);
 }

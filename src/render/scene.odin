@@ -1046,8 +1046,8 @@ backdrop_roll :: proc(g: ^game.Game, v: View) -> (roll: Backdrop_Roll) {
 		out.backdrop_center.y -= dy / v.backdrop_zoom
 		return out
 	}
-	band := 0.07 * math.sin(math.PI * k) // the dark band's half height (screen heights), thin at the ends
-	cut := 0.4 * band + 0.002 // the skies' soft cut, well inside the band
+	band := 0.035 * math.sin(math.PI * k) // how high the seam's peaks rise (screen heights), none at the ends
+	cut := 0.1 * band + 0.001 // the skies' soft cut, inside the seam's ridge
 	seam := over ? 1 - k : k
 	roll.line = {seam, band}
 	if over {
@@ -1070,7 +1070,7 @@ set_seam :: proc(b: Backdrop, seam: [4]f32, v: View, r: rl.Rectangle) {
 	set_bv4(b, .Rect, {r.x / v.width, r.y / v.height, r.width / v.width, r.height / v.height})
 }
 
-// The band of dark matter along the seam of the skies rolling.
+// The seam of dark matter between the skies rolling (dark.fs).
 @(private)
 draw_dark :: proc(r: ^Renderer, v: View, time: f32, line: Vec2) {
 	if line.y <= 0.001 {
