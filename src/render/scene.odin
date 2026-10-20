@@ -8,6 +8,7 @@ package render
 
 import "core:math"
 import "core:slice"
+import "core:strings"
 import sa "core:container/small_array"
 import rl "vendor:raylib"
 import "vendor:raylib/rlgl"
@@ -121,7 +122,8 @@ Backdrop_Uniform :: enum u8 {
 	Cloud_Light,
 	Lava,
 	Front,
-	Edge,
+	Tiles,
+	Rect,
 	Crest_Color,
 	Color_Far,
 	Color_Mid,
@@ -154,7 +156,8 @@ BACKDROP_NAME := [Backdrop_Uniform]cstring {
 	.Cloud_Light  = "cloud_light",
 	.Lava         = "lava",
 	.Front        = "front",
-	.Edge         = "edge",
+	.Tiles        = "tiles",
+	.Rect         = "rect",
 	.Crest_Color  = "crest_color",
 	.Color_Far    = "color_far",
 	.Color_Mid    = "color_mid",
@@ -188,16 +191,23 @@ init :: proc(r: ^Renderer) {
 	for name, u in UNIFORM_NAME {
 		r.loc[u] = rl.GetShaderLocation(shader, name)
 	}
-	load_backdrop :: proc(fs: cstring) -> (b: Backdrop) {
-		b.shader = rl.LoadShaderFromMemory(nil, fs)
+	load_backdrop :: proc(fs: cstring, tiled := false) -> (b: Backdrop) {
+		src := fs
+		if tiled {
+			// the tiles' code after the #version line
+			text := string(fs)
+			nl := strings.index_byte(text, '\n') + 1
+			src = strings.clone_to_cstring(strings.concatenate({text[:nl], content.SHADER_TILES, text[nl:]}, context.temp_allocator), context.temp_allocator)
+		}
+		b.shader = rl.LoadShaderFromMemory(nil, src)
 		for name, u in BACKDROP_NAME {
 			b.loc[u] = rl.GetShaderLocation(b.shader, name)
 		}
 		return
 	}
-	r.sky = load_backdrop(content.SHADER_SKY_FS)
-	r.ridges = load_backdrop(content.SHADER_RIDGES_FS)
-	r.clouds = load_backdrop(content.SHADER_CLOUDS_FS)
+	r.sky = load_backdrop(content.SHADER_SKY_FS, true)
+	r.ridges = load_backdrop(content.SHADER_RIDGES_FS, true)
+	r.clouds = load_backdrop(content.SHADER_CLOUDS_FS, true)
 	r.veil = load_backdrop(content.SHADER_VEIL_FS)
 	r.veil_alpha = rl.GetShaderLocation(r.veil.shader, "alpha")
 	build_meshes(&r.meshes)
@@ -941,18 +951,18 @@ seam_edge :: proc(g: ^game.Game, e: [2]i32) -> (p0, p1, inward: Vec3) {
 // --- drawing -----------------------------------------------------------------------
 
 draw_world :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
-	roll := backdrop_roll(g, v)
+	roll := backdrop_roll(g)
 	for &side in roll.sides[:roll.count] {
 		lk := side.look
-		draw_sky(r, s, g, side.view, time, lk, side.away ? {} : side.edge)
-		draw_bolt(g, side.view)
+		draw_sky(r, s, g, v, time, lk, side.tiles)
+		draw_bolt(g, v)
 		if lk.islands {
-			draw_islands(g, side.view, time)
+			draw_islands(g, v, time)
 		}
 		if lk.ridges > 0 {
-			draw_ridges(r, s, g, side.view, lk, side.edge)
+			draw_ridges(r, s, g, v, lk, side.tiles)
 		}
-		draw_clouds(r, s, g, side.view, time, false, lk, 1, side.edge)
+		draw_clouds(r, s, g, v, time, false, lk, 1, side.tiles)
 	}
 
 	begin_3d(v)
@@ -969,8 +979,12 @@ draw_world :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 
 	// the clouds in front of the diorama thin away while the skies roll, so
 	// they never pass over it
-	for &side in roll.sides[:roll.count] {
-		draw_clouds(r, s, g, side.view, time, true, side.look, (1 - roll.glow) * (1 - roll.glow), side.edge)
+	// (the old ones until half way, then the new: none shows by then)
+	for &side, i in roll.sides[:roll.count] {
+		if roll.count == 2 && (i == 1) != (side.tiles.x >= 0.5) {
+			continue
+		}
+		draw_clouds(r, s, g, v, time, true, side.look, (1 - roll.glow) * (1 - roll.glow), side.tiles)
 	}
 	draw_motes(r, s, v)
 	draw_markers(g, v)
@@ -983,27 +997,26 @@ draw_world :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 	}
 }
 
-// The far backdrop as the world turns over: the sky of the world going away
-// rolls off the screen (up as the world turns over, down as it turns back),
-// the other's comes in after it, fading in across a wide soft band. Otherwise
-// one side: the look of now, the whole screen.
+// The far backdrop as the world turns over: it breaks into tiles, as the
+// diorama does between the levels, each going from the sky turning away to
+// the other's in a wave (up the screen as the world turns over, down as it
+// turns back), the old tiles dropping a little, the new rising into place
+// (tiles.glsl). Otherwise one side: the look of now.
 Backdrop_Side :: struct {
-	look: ^Look,
-	view: View, // the backdrop moved by its share of the roll
-	edge: Vec3, // its fade at the seam: the seam's screen row, the band's half height, 1 shown below / -1 above (0: none)
-	away: bool, // the sky going away: under the other, its sky stays whole (only its clouds fade)
+	look:  ^Look,
+	tiles: [4]f32, // tiles.glsl `tiles` (but the aspect, set per draw); y = 0: none
 }
 
 Backdrop_Roll :: struct {
 	sides: [2]Backdrop_Side,
 	count: int,
-	glow:  f32, // how far into the roll, 0 at its ends .. 1 half way
+	glow:  f32, // how far into the turn, 0 at its ends .. 1 half way
 }
 
 @(private)
-backdrop_roll :: proc(g: ^game.Game, v: View) -> (roll: Backdrop_Roll) {
+backdrop_roll :: proc(g: ^game.Game) -> (roll: Backdrop_Roll) {
 	if g.phase != .Overturn || !g.data.has_upside {
-		roll.sides[0] = {look_of(g), v, {}, false}
+		roll.sides[0] = {look_of(g), {}}
 		roll.count = 1
 		return
 	}
@@ -1013,26 +1026,22 @@ backdrop_roll :: proc(g: ^game.Game, v: View) -> (roll: Backdrop_Roll) {
 	looks[1] = LOOKS[over ? g.data.upside : g.data.setting]
 	k := fx.clamp01(game.overturn_shown(g))
 	k = over ? k : 1 - k
-	h := v.height
-	moved :: proc(v: View, dy: f32) -> View {
-		out := v
-		out.backdrop_center.y -= dy / v.backdrop_zoom
-		return out
-	}
-	band := 0.22 * h * math.sin(math.PI * k) + 1 // closing as the roll ends
-	if over {
-		seam := h * (1 - k)
-		// the clouds going away are gone before the seam (their own lower edge rides on it)
-		roll.sides[0] = {&looks[0], moved(v, -k * h), {seam - band * 0.6, band * 0.4, -1}, true}
-		roll.sides[1] = {&looks[1], moved(v, (1 - k) * h), {seam, band, 1}, false}
-	} else {
-		seam := h * k
-		roll.sides[0] = {&looks[0], moved(v, k * h), {seam + band * 0.6, band * 0.4, 1}, true}
-		roll.sides[1] = {&looks[1], moved(v, -(1 - k) * h), {seam, band, -1}, false}
-	}
+	wave: f32 = over ? 1 : -1
+	roll.sides[0] = {&looks[0], {k, -1, 0, wave}}
+	roll.sides[1] = {&looks[1], {k, 1, 0, wave}}
 	roll.count = 2
 	roll.glow = math.sin(math.PI * k)
 	return
+}
+
+// The tiles of the backdrop turning (Backdrop_Side.tiles) for a backdrop
+// drawn over the screen rectangle `r`.
+@(private)
+set_tiles :: proc(b: Backdrop, tiles: [4]f32, v: View, r: rl.Rectangle) {
+	t := tiles
+	t.z = v.width / v.height
+	set_bv4(b, .Tiles, t)
+	set_bv4(b, .Rect, {r.x / v.width, r.y / v.height, r.width / v.width, r.height / v.height})
 }
 
 // A bolt of lightning in the sky behind the level while it flashes
@@ -3159,11 +3168,10 @@ set_bv2 :: proc(b: Backdrop, u: Backdrop_Uniform, value: Vec2) {
 	rl.SetShaderValue(b.shader, b.loc[u], &v, .VEC2)
 }
 
-// The seam's fade (Backdrop_Side.edge) for a backdrop drawn over the screen
-// rows top .. top + height, in that rectangle's uv.
 @(private)
-set_edge :: proc(b: Backdrop, edge: Vec3, top, height: f32) {
-	set_bv3(b, .Edge, {(edge.x - top) / height, edge.y / height, edge.z})
+set_bv4 :: proc(b: Backdrop, u: Backdrop_Uniform, value: [4]f32) {
+	v := value
+	rl.SetShaderValue(b.shader, b.loc[u], &v, .VEC4)
 }
 
 @(private)
@@ -3212,10 +3220,10 @@ draw_veil :: proc(r: ^Renderer, g: ^game.Game, width, height, time: f32) {
 }
 
 @(private)
-draw_sky :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32, lk: ^Look, edge: Vec3) {
+draw_sky :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32, lk: ^Look, tiles: [4]f32) {
 	b := r.sky
 	set_sky_uniforms(b, s, g, v, lk)
-	set_edge(b, edge, 0, v.height)
+	set_tiles(b, tiles, v, {0, 0, v.width, v.height})
 	set_bf(b, .Light_Amount, g.light * 0.8)
 	set_bf(b, .Time, time)
 	set_bv3(b, .Sky_Top, lk.sky_top)
@@ -3236,10 +3244,10 @@ draw_sky :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32, lk:
 
 // The mountain ranges between the sky and the sea of clouds.
 @(private)
-draw_ridges :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, lk: ^Look, edge: Vec3) {
+draw_ridges :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, lk: ^Look, tiles: [4]f32) {
 	b := r.ridges
 	set_sky_uniforms(b, s, g, v, lk)
-	set_edge(b, edge, 0, v.height)
+	set_tiles(b, tiles, v, {0, 0, v.width, v.height})
 	set_bf(b, .Light_Amount, g.light * 0.8)
 	set_bv3(b, .Color_Far, lk.ridge_color[0])
 	set_bv3(b, .Color_Mid, lk.ridge_color[1])
@@ -3265,7 +3273,7 @@ backdrop_view :: proc(s: ^Scene, g: ^game.Game, v: View, k: f32) -> View {
 }
 
 @(private)
-draw_clouds :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, view: View, time: f32, front: bool, lk: ^Look, alpha: f32 = 1, edge: Vec3 = {}) {
+draw_clouds :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, view: View, time: f32, front: bool, lk: ^Look, alpha: f32 = 1, tiles: [4]f32 = {}) {
 	if alpha <= 0.003 {
 		return
 	}
@@ -3282,7 +3290,7 @@ draw_clouds :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, view: View, time: f3
 	set_bv3(b, .Crest_Color, lk.cloud_crest)
 	set_bf(b, .Lava, lk.lava)
 	set_bf(b, .Front, front ? 1 : 0)
-	set_edge(b, edge, a.y, c.y - a.y)
+	set_tiles(b, tiles, v, {a.x, a.y, c.x - a.x, c.y - a.y})
 	rl.BeginShaderMode(b.shader)
 	full_rect(r, {a.x, a.y, c.x - a.x, c.y - a.y})
 	rl.EndShaderMode()

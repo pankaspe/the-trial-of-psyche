@@ -14,19 +14,8 @@ uniform vec3 crest_color; // sunlight on the crests (black at night)
 uniform float lava;       // 0 .. 1: a sea of lava instead
 uniform float front;      // 1: the layer drawn in front of the diorama
 
-uniform vec3 edge;   // the skies rolling: x the seam, y its half width (both in this rectangle's uv, y down), z 1 shown below it / -1 above / 0 everywhere
 
 out vec4 finalColor;
-
-// How much of this backdrop shows here as the skies roll (`edge`): it fades
-// in across a wide soft band about the seam.
-float edge_alpha() {
-    if (edge.z == 0.0) {
-        return 1.0;
-    }
-    float k = smoothstep(edge.x - edge.y, edge.x + edge.y, fragTexCoord.y);
-    return edge.z > 0.0 ? k : 1.0 - k;
-}
 
 float hash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -53,6 +42,7 @@ float fbm(vec2 p) {
 
 void main() {
     vec2 uv = fragTexCoord;
+    float shown = tile_turn(uv);
     vec2 p = vec2(uv.x * 5.0 + shift + time * 0.012, uv.y * 3.0);
     float n = fbm(p) * 0.65 + fbm(p * 2.3 - vec2(time * 0.02, 0.0)) * 0.35;
     // billows: brighter crests on top of each cloud
@@ -83,5 +73,5 @@ void main() {
         float from = front > 0.5 ? 0.62 : 0.0;
         a = mix(a, smoothstep(from, from + 0.25, uv.y) * density, lava);
     }
-    finalColor = vec4(col, a * edge_alpha());
+    finalColor = vec4(col, a * shown);
 }

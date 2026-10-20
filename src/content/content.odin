@@ -182,6 +182,7 @@ SHADER_PALACE_FS :: #load("../../assets/shaders/palace.fs", cstring)
 SHADER_SKY_FS :: #load("../../assets/shaders/sky.fs", cstring)
 SHADER_CLOUDS_FS :: #load("../../assets/shaders/clouds.fs", cstring)
 SHADER_RIDGES_FS :: #load("../../assets/shaders/ridges.fs", cstring)
+SHADER_TILES :: #load("../../assets/shaders/tiles.glsl", string) // joined to the sky's, the ridges' and the clouds'
 SHADER_VEIL_FS :: #load("../../assets/shaders/veil.fs", cstring)
 SHADER_BLUR_FS :: #load("../../assets/shaders/blur.fs", cstring)
 

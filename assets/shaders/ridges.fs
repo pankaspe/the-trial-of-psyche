@@ -19,19 +19,8 @@ uniform vec3 halo_color;
 uniform float halo_width;
 uniform vec3 haze;
 
-uniform vec3 edge;   // the skies rolling: x the seam, y its half width (both in this rectangle's uv, y down), z 1 shown below it / -1 above / 0 everywhere
 
 out vec4 finalColor;
-
-// How much of this backdrop shows here as the skies roll (`edge`): it fades
-// in across a wide soft band about the seam.
-float edge_alpha() {
-    if (edge.z == 0.0) {
-        return 1.0;
-    }
-    float k = smoothstep(edge.x - edge.y, edge.x + edge.y, fragTexCoord.y);
-    return edge.z > 0.0 ? k : 1.0 - k;
-}
 
 const float TAU = 6.2831853;
 
@@ -81,6 +70,7 @@ vec3 shade(vec3 base, float x, float y, float top, float span, float seed, float
 
 void main() {
     vec2 uv = fragTexCoord;
+    float shown = tile_turn(uv);
     float x = uv.x;
     float y = uv.y;
     float b0 = horizon - 0.02;
@@ -103,5 +93,5 @@ void main() {
         discard;
     }
     col = mix(col, col * vec3(1.4, 1.1, 0.8), light_amount * 0.4);
-    finalColor = vec4(col, edge_alpha());
+    finalColor = vec4(col, shown);
 }
