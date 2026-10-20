@@ -23,6 +23,8 @@ uniform float halo_width;
 uniform float stars;
 uniform vec3 haze;
 uniform float night_clouds; // 0 none .. 1 dark clouds drifting across the moon
+uniform float day_clouds;   // 0 none .. 1 white clouds drifting across the sun
+uniform float birds;        // 0 none, 1 swallows, 2 doves, 3 a raptor (render/setting.odin Birds)
 
 // The drifting night clouds: soft ellipses around the moon's height (the first
 // three cross the moon; render/setting.odin `moon_cover` mirrors them).
@@ -47,6 +49,18 @@ float cloud(vec2 uv, vec2 c, float w, float h, float rag) {
 }
 
 out vec4 finalColor;
+
+// A bird far off, `p` in units of its half span (y down), `aa` a pixel in
+// those units: two wings bent at the wrist, beating (`flap` -1 down .. 1 up),
+// a small body. Its coverage.
+float bird(vec2 p, float flap, float aa) {
+    float x = abs(p.x);
+    float y = -flap * (0.35 * min(x, 0.45) + 0.9 * max(x - 0.45, 0.0)) + 0.12 * x * x;
+    float th = 0.13 * (1.0 - 0.75 * min(x, 1.0)) + 0.3 * aa;
+    float wing = (1.0 - smoothstep(th - aa, th + aa, abs(p.y - y))) * (1.0 - smoothstep(1.0 - aa, 1.0 + aa, x));
+    float body = 1.0 - smoothstep(1.0 - aa * 4.0, 1.0 + aa * 4.0, length(p * vec2(4.5, 6.0)));
+    return max(wing, body);
+}
 
 float hash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -101,6 +115,70 @@ void main() {
         float rim = dens * (1.0 - dens) * 4.0;
         float lit = exp(-md * 6.0) * (0.3 + rim);
         col = mix(col, body + orb_color * 0.4 * lit, dens * 0.94 * night_clouds);
+    }
+    // day clouds: white heaps drifting across the sun, their bellies flat and
+    // in shade, a bright lining when the sun is behind them
+    if (day_clouds > 0.0) {
+        float dens = 0.0;
+        float top = 0.0;
+        for (int i = 0; i < CLOUDS; i++) {
+            float cx = fract(C_PHASE[i] + time * C_SPEED[i]) * 1.9 - 0.45 - shift * 0.03;
+            float cy = mp.y + C_DY[i];
+            float rag = (noise(uv * vec2(14.0, 22.0) + vec2(time * 0.02 + float(i) * 7.0, float(i))) - 0.5) * 0.7
+                + (noise(uv * vec2(46.0, 70.0) + float(i) * 3.0) - 0.5) * 0.25;
+            float d = cloud(uv, vec2(cx, cy), C_W[i], C_H[i], rag);
+            d *= smoothstep(cy + 0.55 * C_H[i], cy + 0.25 * C_H[i], uv.y);
+            if (d > dens) {
+                dens = d;
+                top = smoothstep(cy + 0.45 * C_H[i], cy - 0.8 * C_H[i], uv.y);
+            }
+        }
+        vec3 shade = mix(sky_mid, vec3(0.80, 0.82, 0.90), 0.55);
+        vec3 body = mix(shade, vec3(1.0, 0.99, 0.96), top);
+        float rim = dens * (1.0 - dens) * 4.0;
+        body += orb_color * exp(-md * 7.0) * (0.2 + 0.8 * rim);
+        col = mix(col, body, dens * 0.96 * day_clouds);
+    }
+    // birds far off, now and then (each kind its own flight)
+    if (birds > 0.5) {
+        vec2 a = vec2(aspect, 1.0);
+        float px = fwidth(uv.y);
+        float cov = 0.0;
+        vec3 ink = vec3(0.10, 0.10, 0.17);
+        if (birds < 1.5) {
+            // swallows: a loose band darting across, beating in bursts
+            float cyc = time / 26.0;
+            float u = fract(cyc) * 26.0 / 9.0; // across in 9 s, then 17 s of empty sky
+            float seed = floor(cyc);
+            for (int i = 0; i < 5; i++) {
+                float fi = float(i);
+                float k = u - 0.05 * fi - 0.04 * hash(vec2(fi, seed));
+                vec2 pos = vec2(-0.1 + 1.25 * k - shift * 0.03,
+                    0.14 + 0.12 * hash(vec2(seed, fi + 2.0)) + 0.025 * sin(time * 1.7 + fi * 2.0));
+                float burst = step(0.45, fract(time * 0.5 + hash(vec2(fi, 9.0))));
+                float flap = mix(0.25, sin(time * 15.0 + fi * 1.3), burst);
+                cov = max(cov, bird((uv - pos) * a / 0.0075, flap, px / 0.0075));
+            }
+        } else if (birds < 2.5) {
+            // white doves: a small flock flying slowly across
+            ink = vec3(0.96, 0.95, 0.97);
+            float cyc = time / 40.0;
+            float u = fract(cyc) * 40.0 / 18.0;
+            for (int i = 0; i < 4; i++) {
+                float fi = float(i);
+                vec2 off = vec2(-0.04 * fi + 0.015 * sin(fi * 2.3), 0.018 * sin(fi * 1.7) + 0.01 * fi);
+                vec2 pos = vec2(-0.1 + 1.2 * u - shift * 0.03, 0.2 + 0.02 * sin(time * 0.4)) + off;
+                cov = max(cov, bird((uv - pos) * a / 0.008, sin(time * 8.0 + fi * 0.9), px / 0.008));
+            }
+        } else {
+            // a raptor circling high on the warm air, its wings still, a beat now and then
+            float w = time * 0.22;
+            float depth = 0.85 + 0.15 * sin(w);
+            vec2 pos = vec2(0.66 + 0.1 * cos(w) - shift * 0.03, 0.17 + 0.03 * sin(w));
+            float beat = smoothstep(0.85, 1.0, sin(time * 0.31)) * sin(time * 9.0);
+            cov = bird((uv - pos) * a / (0.012 * depth), 0.3 + 0.5 * beat, px / (0.012 * depth));
+        }
+        col = mix(col, mix(ink, col, 0.25), cov);
     }
     // drifting haze bands, low in the sky
     float m = noise(uv * vec2(3.0, 6.0) + vec2(time * 0.015 + shift * 0.1, 0.0)) * 0.6

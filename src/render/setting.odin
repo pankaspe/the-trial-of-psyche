@@ -36,8 +36,20 @@ Look :: struct {
 	candles:       bool, // the candles on the walls are lit
 	gloom:         f32, // 0 .. 1: how much darker the stones are than under a clear moon
 	moon_clouds:   f32, // 0 none .. 1 dark clouds drifting across the moon (they dim the stones)
+	day_clouds:    f32, // 0 none .. 1 white clouds drifting across the sun (they dim the stones a little)
+	morning:       f32, // 0 .. 1: by day, the stones in the morning light (cool shade, warm sun, pale tops)
+	birds:         Birds, // flying far off in the sky (never with reduce motion)
 	rock:          Vec3, // the living rock's tint (zero: its own earth colours)
 	mote:          Color4,
+}
+
+// The birds of a sky (sky.fs `birds`): 1 swallows darting in a loose band,
+// 2 white doves flying slowly in a flock, 3 a raptor circling high.
+Birds :: enum u8 {
+	None,
+	Swallows,
+	Doves,
+	Raptor,
 }
 
 LOOKS := [level.Setting]Look {
@@ -157,16 +169,16 @@ LOOKS := [level.Setting]Look {
 		daylight = 1,
 		mote = {1.0, 0.8, 0.5, 0.45},
 	},
-	// the sisters' crag by day: a high clear sky, the sun to one side, blue
-	// ranges far off, white clouds below; bare rock lit warm
+	// the sisters' crag by day: a clear morning sky, the sun to one side, white
+	// clouds drifting by, swallows; blue ranges far off; bare rock lit warm
 	.Crag_Day = {
-		sky_top = {0.16, 0.32, 0.62},
-		sky_mid = {0.40, 0.58, 0.82},
+		sky_top = {0.12, 0.30, 0.64},
+		sky_mid = {0.36, 0.56, 0.84},
 		sky_horizon = {0.80, 0.86, 0.90},
-		orb_pos = {0.22, 0.16},
+		orb_pos = {0.22, 0.3},
 		orb_radius = 0.03,
 		orb_color = {1.0, 0.98, 0.9},
-		halo_color = {0.55, 0.6, 0.62},
+		halo_color = {0.62, 0.58, 0.50},
 		halo_width = 4,
 		stars = 0,
 		haze = {0.70, 0.78, 0.86},
@@ -182,6 +194,9 @@ LOOKS := [level.Setting]Look {
 		glint = {1.0, 0.98, 0.88, 0.6},
 		daylight = 1,
 		mote = {1.0, 1.0, 0.95, 0.3},
+		morning = 1,
+		day_clouds = 1,
+		birds = .Swallows,
 	},
 	// the temple of Ceres and Juno at dusk, among the ranges: the sun is gone,
 	// a warm afterglow behind the far ridges, the first stars, a young moon;
@@ -237,19 +252,19 @@ LOOKS := [level.Setting]Look {
 		candles = true,
 		mote = {1.0, 0.76, 0.82, 0.45},
 	},
-	// the Sun's pastures at noon: a high hot sky, the sun overhead, green-blue
-	// ranges in the haze, white clouds gilded below; pollen drifting
+	// the Sun's pastures in the morning: a deep blue sky, the sun still low, white
+	// clouds drifting across it, swallows; green-blue ranges in the haze; pollen
 	.Pasture_Day = {
-		sky_top = {0.18, 0.36, 0.68},
-		sky_mid = {0.46, 0.62, 0.84},
+		sky_top = {0.13, 0.33, 0.70},
+		sky_mid = {0.40, 0.60, 0.88},
 		sky_horizon = {0.93, 0.89, 0.78},
-		orb_pos = {0.72, 0.13},
+		orb_pos = {0.72, 0.3},
 		orb_radius = 0.034,
 		orb_color = {1.0, 0.98, 0.88},
-		halo_color = {0.72, 0.64, 0.46},
+		halo_color = {0.76, 0.62, 0.42},
 		halo_width = 4,
 		stars = 0,
-		haze = {0.82, 0.82, 0.74},
+		haze = {0.70, 0.72, 0.66},
 		islands = false,
 		ridges = 1,
 		ridge_color = {{0.60, 0.68, 0.66}, {0.46, 0.56, 0.48}, {0.33, 0.43, 0.32}},
@@ -262,6 +277,9 @@ LOOKS := [level.Setting]Look {
 		glint = {1.0, 0.96, 0.78, 0.6},
 		daylight = 1,
 		mote = {1.0, 0.94, 0.6, 0.35},
+		morning = 1,
+		day_clouds = 1,
+		birds = .Swallows,
 	},
 	// the same at evening: the sun low on the far ranges, amber and violet, the
 	// first stars; the rams' fleece burns gold in the last light
@@ -289,19 +307,19 @@ LOOKS := [level.Setting]Look {
 		daylight = 0.9,
 		mote = {1.0, 0.8, 0.5, 0.45},
 	},
-	// the house of Venus by day: a pale gold sky warming to rose low down, the
-	// sun high in a soft halo, the clouds below white and pink, her candles out
+	// the house of Venus in the morning: a blue sky warming to rose low down, the
+	// sun in a soft halo, white clouds drifting, her doves; her candles out
 	.Venus_Day = {
-		sky_top = {0.30, 0.42, 0.72},
-		sky_mid = {0.66, 0.66, 0.84},
+		sky_top = {0.20, 0.36, 0.72},
+		sky_mid = {0.52, 0.62, 0.88},
 		sky_horizon = {1.0, 0.86, 0.80},
-		orb_pos = {0.28, 0.14},
+		orb_pos = {0.28, 0.3},
 		orb_radius = 0.03,
 		orb_color = {1.0, 0.97, 0.90},
-		halo_color = {0.80, 0.66, 0.62},
+		halo_color = {0.84, 0.64, 0.58},
 		halo_width = 4,
 		stars = 0,
-		haze = {0.92, 0.82, 0.84},
+		haze = {0.80, 0.72, 0.76},
 		islands = false,
 		ridges = 1,
 		ridge_color = {{0.76, 0.70, 0.80}, {0.64, 0.56, 0.70}, {0.52, 0.44, 0.60}},
@@ -314,6 +332,9 @@ LOOKS := [level.Setting]Look {
 		glint = {1.0, 0.94, 0.90, 0.6},
 		daylight = 1,
 		mote = {1.0, 0.86, 0.90, 0.4},
+		morning = 1,
+		day_clouds = 1,
+		birds = .Doves,
 	},
 	// the gorge under the Styx's crag: no moon at all, a few cold stars, black
 	// peaks against a sky barely lighter than they are, the black water below;
@@ -342,13 +363,13 @@ LOOKS := [level.Setting]Look {
 		gloom = 0.6,
 		mote = {0.55, 0.6, 0.9, 0.3},
 	},
-	// the summit of the Styx's crag by day: a pale scorched sky, a small white
-	// sun, grey-blue peaks in the glare, the black water still black
+	// the summit of the Styx's crag by day: a pale blue sky, a small white sun,
+	// a few clouds, a raptor circling; grey-blue peaks, the black water still black
 	.Styx_Day = {
-		sky_top = {0.26, 0.34, 0.52},
-		sky_mid = {0.56, 0.60, 0.70},
+		sky_top = {0.18, 0.28, 0.52},
+		sky_mid = {0.48, 0.56, 0.72},
 		sky_horizon = {0.86, 0.84, 0.80},
-		orb_pos = {0.30, 0.12},
+		orb_pos = {0.30, 0.28},
 		orb_radius = 0.026,
 		orb_color = {1.0, 1.0, 0.96},
 		halo_color = {0.70, 0.70, 0.66},
@@ -368,6 +389,9 @@ LOOKS := [level.Setting]Look {
 		daylight = 1,
 		rock = {0.46, 0.48, 0.56},
 		mote = {1.0, 1.0, 0.9, 0.25},
+		morning = 1,
+		day_clouds = 0.6,
+		birds = .Raptor,
 	},
 	// the same at evening: the sun low and red behind the far peaks, the sky
 	// darkening to violet above, the crags black against the glow
@@ -541,7 +565,7 @@ LOOKS := [level.Setting]Look {
 	},
 }
 
-// The night clouds of sky.fs, as they cover the moon's centre at `time`
+// The clouds of sky.fs (by night or by day), as they cover the orb's centre at `time`
 // (`angle`: the view turn, which pans the sky).
 MOON_CLOUDS :: 3
 @(private = "file")
@@ -559,8 +583,8 @@ LOBE := [3][2]f32{{-0.55, 0.15}, {0.0, -0.3}, {0.5, 0.1}}
 @(private = "file")
 LOBE_S := [3]f32{0.7, 1.0, 0.75}
 
-moon_cover :: proc(lk: ^Look, time, angle, aspect: f32) -> f32 {
-	if lk.moon_clouds <= 0 {
+orb_cover :: proc(lk: ^Look, time, angle, aspect: f32) -> f32 {
+	if lk.moon_clouds <= 0 && lk.day_clouds <= 0 {
 		return 0
 	}
 	shift := angle
@@ -579,7 +603,7 @@ moon_cover :: proc(lk: ^Look, time, angle, aspect: f32) -> f32 {
 			cover = max(cover, u * u * (3 - 2 * u))
 		}
 	}
-	return cover * lk.moon_clouds * 0.93
+	return cover * 0.93
 }
 
 // The palace of voices by night, its candles lit for her: the night's look,
@@ -643,6 +667,8 @@ blend :: proc(a, b: Look, t: f32) -> (o: Look) {
 	o.daylight = mixf(a.daylight, b.daylight, t)
 	o.gloom = mixf(a.gloom, b.gloom, t)
 	o.moon_clouds = mixf(a.moon_clouds, b.moon_clouds, t)
+	o.day_clouds = mixf(a.day_clouds, b.day_clouds, t)
+	o.morning = mixf(a.morning, b.morning, t)
 	o.rock = mix3(a.rock, b.rock, t)
 	o.mote = mix4(a.mote, b.mote, t)
 	return

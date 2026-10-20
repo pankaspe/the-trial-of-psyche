@@ -23,6 +23,7 @@ uniform float mist_bottom;
 uniform float screen_height;
 uniform vec3 mist_color;
 uniform float daylight;      // 0 the moonlit palette .. 1 the low sun of a setting (no lamp needed)
+uniform float morning;       // 0..1: by day, the morning light instead of the low sun's (sunset)
 uniform float moonlight;     // the moon's light on the stones: < 1 in a darker night, or behind a cloud
 uniform vec3 rock_tint;      // the living rock's tint in this setting (1: its own colours)
 uniform float sun_truth;     // 0..1: the sun is up and shows true depth (a level with day and evening)
@@ -125,6 +126,29 @@ vec3 sunset(float m, float t, vec3 warm) {
         return ramp(vec3(0.07, 0.04, 0.07), vec3(0.30, 0.17, 0.12), vec3(0.50, 0.32, 0.20), t);
     }
     return warm;            // blossom, Venus: as in the warm light
+}
+
+// The morning light: a cool blue shade on the faces away from the sun, the
+// sunlit faces warm, the tops pale; three tones well apart, so the blocks read.
+vec3 morning_light(float m, float t, vec3 warm) {
+    if (m < 0.5) {          // marble
+        return ramp(vec3(0.24, 0.27, 0.46), vec3(0.80, 0.56, 0.38), vec3(1.0, 0.96, 0.88), t);
+    } else if (m < 1.5) {   // masonry
+        return ramp(vec3(0.16, 0.17, 0.34), vec3(0.62, 0.42, 0.30), vec3(0.90, 0.80, 0.66), t);
+    } else if (m < 2.5) {   // foliage
+        return ramp(vec3(0.05, 0.10, 0.16), vec3(0.22, 0.36, 0.16), vec3(0.52, 0.66, 0.30), t);
+    } else if (m < 3.5) {   // bronze
+        return ramp(vec3(0.12, 0.09, 0.16), vec3(0.62, 0.40, 0.16), vec3(1.0, 0.84, 0.46), t);
+    } else if (m < 6.5) {   // the figures: as in the lamp light
+        return warm;
+    } else if (m < 7.5) {   // grass
+        return ramp(vec3(0.07, 0.14, 0.20), vec3(0.34, 0.50, 0.22), vec3(0.68, 0.80, 0.40), t);
+    } else if (m < 8.5) {   // mountain stone
+        return ramp(vec3(0.18, 0.19, 0.32), vec3(0.64, 0.48, 0.34), vec3(0.94, 0.86, 0.70), t);
+    } else if (m < 9.5) {   // wood
+        return ramp(vec3(0.08, 0.06, 0.12), vec3(0.42, 0.26, 0.14), vec3(0.62, 0.44, 0.28), t);
+    }
+    return warm;
 }
 
 float hash(vec2 p) {
@@ -365,7 +389,7 @@ void main() {
         night = mix(night, c * mix(vec3(0.32, 0.22, 0.34), vec3(1.06, 0.94, 0.84), t), daylight);
     } else {
         palette(m, t, night, warm);
-        night = mix(night, sunset(m, t, warm), daylight);
+        night = mix(night, mix(sunset(m, t, warm), morning_light(m, t, warm), morning), daylight);
     }
     night *= moonlight;
     vec3 col = mix(night, warm, lit);

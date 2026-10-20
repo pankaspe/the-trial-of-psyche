@@ -54,6 +54,7 @@ Uniform :: enum u8 {
 	Corrupt,
 	Hint,
 	Hint_Color,
+	Morning,
 }
 
 @(private)
@@ -84,6 +85,7 @@ UNIFORM_NAME := [Uniform]cstring {
 	.Corrupt       = "corrupt",
 	.Hint          = "hint",
 	.Hint_Color    = "hint_color",
+	.Morning       = "morning",
 	.Candles       = "candles",
 	.Candle_Reach  = "candle_reach",
 	.Candle_Count  = "candle_count",
@@ -109,6 +111,8 @@ Backdrop_Uniform :: enum u8 {
 	Stars,
 	Haze,
 	Night_Clouds,
+	Day_Clouds,
+	Birds,
 	Crest_Color,
 	Color_Far,
 	Color_Mid,
@@ -136,6 +140,8 @@ BACKDROP_NAME := [Backdrop_Uniform]cstring {
 	.Stars        = "stars",
 	.Haze         = "haze",
 	.Night_Clouds = "night_clouds",
+	.Day_Clouds   = "day_clouds",
+	.Birds        = "birds",
 	.Crest_Color  = "crest_color",
 	.Color_Far    = "color_far",
 	.Color_Mid    = "color_mid",
@@ -251,7 +257,7 @@ Scene :: struct {
 	mist:       fx.Pool(128), // the Stygian sleep out of Proserpina's box (world, dark)
 	rng:        fx.Rng,
 	mote:       Color4, // the colour of the drifting motes (from the setting)
-	moon_cover: f32, // how much the night clouds hide the moon now (0..1)
+	orb_cover:  f32, // how much the clouds hide the moon or the sun now (0..1)
 	// a tall level (`tier` lines): the camera frames one band of heights at a
 	// time and pans up or down when Psyche changes band
 	frames:     [level.MAX_TIERS]Rect, // proto pixels that hold each band from every view
@@ -1008,7 +1014,8 @@ set_frame_uniforms :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	set_f(r, .Daylight, lk.daylight)
 	set_f(r, .Sun_Truth, game.has_time(g) ? 1 - g.evening : 0)
 	set_v3(r, .Rock_Tint, lk.rock == {} ? {1, 1, 1} : lk.rock)
-	set_f(r, .Moonlight, (1 - lk.gloom) * (1 - 0.45 * s.moon_cover))
+	set_f(r, .Moonlight, (1 - lk.gloom) * (1 - (0.45 * lk.moon_clouds + 0.16 * lk.day_clouds) * s.orb_cover))
+	set_f(r, .Morning, lk.morning)
 	all := make([dynamic]Flame, 0, len(g.data.props) + len(g.data.candelabra), context.temp_allocator)
 	append(&all, ..candle_lights(g))
 	append(&all, ..fire_lights(g))
@@ -2940,7 +2947,9 @@ draw_sky :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 	set_bv3(b, .Orb_Color, lk.orb_color)
 	set_bf(b, .Stars, lk.stars)
 	set_bf(b, .Night_Clouds, lk.moon_clouds)
-	s.moon_cover = moon_cover(lk, time, g.angle, v.width / v.height)
+	set_bf(b, .Day_Clouds, lk.day_clouds)
+	set_bf(b, .Birds, g.reduce_motion ? 0 : f32(lk.birds))
+	s.orb_cover = orb_cover(lk, time, g.angle, v.width / v.height)
 	rl.BeginShaderMode(b.shader)
 	full_rect(r, {0, 0, v.width, v.height})
 	rl.EndShaderMode()
