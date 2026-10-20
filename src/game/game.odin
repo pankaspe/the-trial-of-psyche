@@ -2145,8 +2145,24 @@ exit_charon :: proc(g: ^Game) -> Charon {
 		t := g.phase == .Finished ? BOAT_END : g.phase_t
 		c.face = b.yaw
 		c.pole = poling(t - BOAT_PUSH)
+	} else if !g.ferried {
+		with_landing(g, &c, g.data.boat.cell)
 	}
 	return c
+}
+
+// A boat moored at `landing` rises and sinks with its stone as the diorama
+// comes together or breaks up.
+@(private)
+with_landing :: proc(g: ^Game, c: ^Charon, landing: Cell) {
+	k := assembly(g, landing - {0, 0, 1}, 1)
+	if k >= 1 {
+		return
+	}
+	drop := Vec3{0, 0, -9 * (1 - k) * (upright(g, false) ? 1 : -1)} // a boat is of the world above
+	c.boat.mid += drop
+	c.pos += drop
+	c.alpha *= fx.clamp01(k * 1.6)
 }
 
 // How far the pole leans, `t` seconds after he pushes off.
@@ -2242,6 +2258,7 @@ ferry_charon :: proc(g: ^Game, i: int) -> Charon {
 		c.face += short_turn(c.face, heading) * fx.sine_in_out(fx.clamp01(min(s, 1 - s) / 0.12))
 		c.pole = poling((u - FERRY_IN) * FERRY_TIME)
 	}
+	with_landing(g, &c, g.data.ferries[i].ends[i in g.palace.boats ? 1 : 0].cell)
 	return c
 }
 

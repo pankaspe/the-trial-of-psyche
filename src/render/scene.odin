@@ -1192,7 +1192,7 @@ MAX_CANDLES :: level.MAX_LIGHTS // as in palace.fs
 // Where candelabrum i's foot is drawn now (it rises with the palace on arrival).
 candelabrum_world :: proc(g: ^game.Game, i: int) -> Vec3 {
 	p := game.candelabrum_base(g, i)
-	p.z -= 9 * (1 - game.assembly(g, g.data.candelabra[i].cell, 1))
+	p.z -= 9 * (1 - game.assembly(g, g.data.candelabra[i].cell, 1)) * down(g, g.data.candelabra[i].under)
 	return p
 }
 
@@ -1240,7 +1240,7 @@ fire_lights :: proc(g: ^game.Game) -> []Flame {
 prop_flame :: proc(g: ^game.Game, prop: level.Prop, at: Vec3) -> (pos: Vec3, seen: f32) {
 	pos = Vec3{f32(prop.cell.x), f32(prop.cell.y), f32(prop.cell.z)} + at
 	k := game.assembly(g, prop.cell, 1)
-	pos.z -= 9 * (1 - k)
+	pos.z -= 9 * (1 - k) * down(g, prop.under)
 	seen = k * k
 	return shown(g, pos, prop.under), seen
 }
@@ -1359,7 +1359,7 @@ piece_state :: proc(g: ^game.Game, p: Piece, i: int) -> (lift, alpha: f32, visib
 	}
 	// the palace rises into place on arrival, or breaks up for the level's next diorama
 	rise, clear := placed(g, piece_cell(g, p), piece_jitter(i))
-	lift += rise
+	lift += rise * down(g, p.under)
 	alpha *= clear
 	if g.collapse_t >= 0 {
 		keep := g.collapse_keep
@@ -1386,6 +1386,13 @@ piece_jitter :: proc(i: int) -> f32 {
 placed :: proc(g: ^game.Game, c: Cell, jitter: f32 = 1) -> (lift, alpha: f32) {
 	k := game.assembly(g, c, jitter)
 	return -9 * (1 - k), fx.clamp01(k * 1.6)
+}
+
+// Which way is down for a thing of one world, in its own frame: 1 for the
+// world up, -1 for the one that hangs (what sinks away goes down on screen).
+@(private)
+down :: proc(g: ^game.Game, under: bool) -> f32 {
+	return game.upright(g, under) ? 1 : -1
 }
 
 // How far a stone standing only by day has crumbled (0 by day .. 1 at evening),
@@ -2894,7 +2901,7 @@ draw_trace :: proc(s: ^Scene, g: ^game.Game, v: View) {
 	GOLD :: Vec3{0.98, 0.76, 0.36}
 	LAVA :: Vec3{1.0, 0.42, 0.1}
 	tint := turning ? LAVA : GOLD
-	halo: f32 = turning ? TRACE_HALO * 2.2 : TRACE_HALO
+	halo: f32 = turning ? TRACE_HALO * 1.5 : TRACE_HALO
 	Edge :: struct {
 		a, b:  Vec3,
 		alpha: f32,
@@ -2919,7 +2926,7 @@ draw_trace :: proc(s: ^Scene, g: ^game.Game, v: View) {
 		alpha := fade * fx.sine_in_out(fx.clamp01(k / 0.7)) // each block's lines come up as it rises
 		if turning {
 			c := piece_cell(g, p)
-			alpha = math.sqrt(apart(g, {f32(c.x) + 0.5, f32(c.y) + 0.5, f32(c.z) + 0.5})) // (the same in either world's frame)
+			alpha = 0.7 * math.sqrt(apart(g, {f32(c.x) + 0.5, f32(c.y) + 0.5, f32(c.z) + 0.5})) // (the same in either world's frame)
 			if alpha < 0.01 {
 				continue
 			}
@@ -2944,7 +2951,7 @@ draw_trace :: proc(s: ^Scene, g: ^game.Game, v: View) {
 		}
 		d /= n
 		side := (right * -d.y - up * d.x) * halo // across the line on screen
-		core := Color4{tint.x, tint.y, tint.z, e.alpha * (turning ? 0.55 : 0.35)}
+		core := Color4{tint.x, tint.y, tint.z, e.alpha * (turning ? 0.3 : 0.35)}
 		rim := Color4{tint.x, tint.y, tint.z, 0}
 		for sgn in ([2]f32{-1, 1}) {
 			a2, b2 := e.a + side * sgn, e.b + side * sgn
