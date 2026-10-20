@@ -29,6 +29,7 @@ size 15
 biome taenarus
 setting asphodel_night
 lamp
+floor water faint -2 -2 16 16 5
 duality
 block 1 5 4 rock
 block 1 6 4 rock

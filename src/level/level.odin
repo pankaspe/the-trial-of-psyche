@@ -219,11 +219,13 @@ RIM_NAME := [Rim]string {
 Fluid :: enum u8 {
 	Water,
 	Swamp, // still, green-brown, duckweed and slow bubbles
+	Faint, // a faint sheen of water, almost clear, fading far toward the edges
 }
 
 FLUID_NAME := [Fluid]string {
 	.Water = "water",
 	.Swamp = "swamp",
+	.Faint = "faint",
 }
 
 Floor :: struct {

@@ -1774,7 +1774,7 @@ draw_boats :: proc(r: ^Renderer, g: ^game.Game) {
 		if c.alpha < 0.003 {
 			continue
 		}
-		if len(g.data.floors) == 0 {
+		if !floats_boats(g) {
 			boat_water(g, c)
 		}
 		m := turn_matrix(g, false) // of the world above, in a level with pomegranates
@@ -1798,8 +1798,20 @@ draw_boats :: proc(r: ^Renderer, g: ^game.Game) {
 	}
 }
 
-// A diorama with no floor of water still floats its boats: a patch of dark
-// water about each, going where it goes, a few glints drifting on it.
+// Does a floor of water bear the boats (else each has a patch of its own)?
+@(private)
+floats_boats :: proc(g: ^game.Game) -> bool {
+	for f in g.data.floors {
+		if f.fluid != .Faint {
+			return true
+		}
+	}
+	return false
+}
+
+// A diorama with no floor of water (or only a faint sheen) still floats its
+// boats: a patch of dark water about each, going where it goes, a few glints
+// drifting on it.
 @(private)
 boat_water :: proc(g: ^game.Game, c: game.Charon) {
 	lk := look_of(g)
@@ -1950,6 +1962,7 @@ floor_strip :: proc(a, b, side: Vec3, width: f32, c: Color4) {
 	rlgl.End()
 }
 
+FAINT :: 0.3 // a faint sheen of water: this much of the setting's water
 WATER_DEPTH :: 0.28 // the water's surface: this far under the platforms it lies by (level floor_h)
 
 // What the diorama stands on (`floor` lines; a basin's marble is built as
@@ -1982,11 +1995,18 @@ draw_floors :: proc(g: ^game.Game, time: f32) {
 			lum := 0.299 * surface.r + 0.587 * surface.g + 0.114 * surface.b
 			surface = {SWAMP.r * lum, SWAMP.g * lum, SWAMP.b * lum, SWAMP.a}
 		}
+		faint := f.fluid == .Faint
+		if faint {
+			// a sheen: the water lit by the sky, thin
+			surface = fx.lerp(surface, Color4{glint.r, glint.g, glint.b, surface.a}, 0.45)
+			surface.a *= FAINT
+		}
 		surface.a *= present
 		x0, y0 := f32(w[0]), f32(w[1])
 		x1, y1 := f32(w[2] + 1), f32(w[3] + 1)
-		// a river fades into the mist over its last 1.2 cells, a basin holds it to the rim
-		fade: f32 = f.kind == .Water ? 1.2 : 0
+		// a river fades into the mist over its last 1.2 cells (a faint sheen
+		// over a third of the way in), a basin holds it to the rim
+		fade: f32 = f.kind == .Water ? (faint ? min(x1 - x0, y1 - y0) / 3 : 1.2) : 0
 		point :: proc(x, y, z, x0, y0, x1, y1, fade: f32, lamp: Vec3, warm: f32, surface: Color4) {
 			a := water_edge(x, x0, x1, fade) * water_edge(y, y0, y1, fade)
 			a = a * a * (3 - 2 * a)
@@ -2010,9 +2030,13 @@ draw_floors :: proc(g: ^game.Game, time: f32) {
 			}
 		}
 		rlgl.End()
+		glint := glint
+		if faint {
+			glint.a *= 0.7
+		}
 		if f.fluid == .Swamp {
 			draw_swamp(f, z, time, surface, glint)
-		} else if !g.reduce_motion {
+		} else if !g.reduce_motion && !faint {
 			draw_fish(g, f, z, time, surface, glint, fade)
 		}
 		// glints of moonlight drifting with the current (a swamp has none)
@@ -2039,7 +2063,7 @@ draw_floors :: proc(g: ^game.Game, time: f32) {
 				continue
 			}
 			t := math.mod(time * (f.fluid == .Swamp ? 0.12 : 0.35) + fx.hash01(u32(i) * 7), 1)
-			foam := f.fluid == .Swamp ? Color4{0.55, 0.62, 0.35, 0.18} : Color4{0.7, 0.8, 1.0, 0.3}
+			foam := f.fluid == .Swamp ? Color4{0.55, 0.62, 0.35, 0.18} : Color4{0.7, 0.8, 1.0, faint ? 0.12 : 0.3}
 			k := game.assembly(g, c, piece_jitter(i)) // gone as soon as its stone starts down
 			floor_ring({f32(c.x) + 0.5, f32(c.y) + 0.5, z + 0.002}, 0.68 + 0.12 * t, 0.025, {foam.r, foam.g, foam.b, foam.a * (1 - t) * k * k * k * k})
 		}

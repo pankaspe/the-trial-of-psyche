@@ -39,6 +39,7 @@
 # a chain of illusions in three views (the hardest of the game).
 size 17
 biome taenarus
+floor water faint -2 -2 18 18 5
 duality
 lamp
 box
