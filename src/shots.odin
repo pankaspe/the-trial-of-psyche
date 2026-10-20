@@ -68,7 +68,7 @@ place :: proc(app: ^App, c: iso.Cell) {
 }
 
 // Seconds into the first overturn at which --plan takes a frame.
-TURN_FRAMES := [?]f32{0.35, 1.2, 1.7, 2.05, 2.5, 3.0}
+TURN_FRAMES := [?]f32{0.3, 0.8, 1.15, 1.4, 1.75, 2.3}
 
 SHOT_SCRIPT := [?]Shot_Step {
 	{1.5, "01_menu", nil},

@@ -120,6 +120,7 @@ Backdrop_Uniform :: enum u8 {
 	Birds,
 	Cloud_Light,
 	Lava,
+	Edge,
 	Crest_Color,
 	Color_Far,
 	Color_Mid,
@@ -151,6 +152,7 @@ BACKDROP_NAME := [Backdrop_Uniform]cstring {
 	.Birds        = "birds",
 	.Cloud_Light  = "cloud_light",
 	.Lava         = "lava",
+	.Edge         = "edge",
 	.Crest_Color  = "crest_color",
 	.Color_Far    = "color_far",
 	.Color_Mid    = "color_mid",
@@ -511,6 +513,13 @@ turn_angle :: proc(g: ^game.Game, under: bool) -> f32 {
 // A point of one world (`under`), where it is drawn now. The game's own
 // points (Psyche, her path) are of the world up now: `g.palace.upside`.
 shown :: proc(g: ^game.Game, w: Vec3, under: bool) -> Vec3 {
+	t := turned(g, w, under)
+	return t + exploded(g, t)
+}
+
+// A point of one world turned with it (without the coming apart).
+@(private)
+turned :: proc(g: ^game.Game, w: Vec3, under: bool) -> Vec3 {
 	a := turn_angle(g, under)
 	if a == 0 {
 		return w
@@ -519,6 +528,23 @@ shown :: proc(g: ^game.Game, w: Vec3, under: bool) -> Vec3 {
 	c, s := math.cos(a), math.sin(a)
 	dy, dz := w.y - y0, w.z - z0
 	return {w.x, y0 + c * dy - s * dz, z0 + s * dy + c * dz}
+}
+
+// The world turning over comes a little apart, as the dioramas do between
+// the levels, and together again: each stone drawn away from the axle (by
+// how far it is from it), the slices along the axle a little after or before
+// one another. `p` is where the stone is turned to now.
+@(private)
+exploded :: proc(g: ^game.Game, p: Vec3) -> Vec3 {
+	if g.phase != .Overturn || len(g.data.pomegranates) == 0 {
+		return {}
+	}
+	y0, z0 := f32(g.data.size) * 0.5, f32(g.data.axle) + 0.5
+	away := Vec3{0, p.y - y0, p.z - z0}
+	r := math.sqrt(away.y * away.y + away.z * away.z)
+	delay := 0.14 * fx.hash01(u32(i32(math.floor(p.x)) + 64)) + 0.1 * fx.clamp01(r / 6)
+	u := fx.progress(g.phase_t, game.OVERTURN_PREP + delay * game.OVERTURN_SPIN, 0.7 * game.OVERTURN_SPIN)
+	return away * (0.085 * math.sin(u * math.PI))
 }
 
 // The same half turn for a piece of one world.
@@ -898,18 +924,16 @@ seam_edge :: proc(g: ^game.Game, e: [2]i32) -> (p0, p1, inward: Vec3) {
 draw_world :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 	roll := backdrop_roll(g, v)
 	for &side in roll.sides[:roll.count] {
-		clip_begin(side.clip, v)
 		lk := side.look
-		draw_sky(r, s, g, side.view, time, lk)
+		draw_sky(r, s, g, side.view, time, lk, side.away ? {} : side.edge)
 		draw_bolt(g, side.view)
 		if lk.islands {
 			draw_islands(g, side.view, time)
 		}
 		if lk.ridges > 0 {
-			draw_ridges(r, s, g, side.view, lk)
+			draw_ridges(r, s, g, side.view, lk, side.edge)
 		}
-		draw_clouds(r, s, g, side.view, time, false, lk)
-		clip_end(side.clip)
+		draw_clouds(r, s, g, side.view, time, false, lk, 1, side.edge)
 	}
 
 	begin_3d(v)
@@ -927,11 +951,8 @@ draw_world :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 	// the clouds in front of the diorama thin away while the skies roll, so
 	// they never pass over it
 	for &side in roll.sides[:roll.count] {
-		clip_begin(side.clip, v)
-		draw_clouds(r, s, g, side.view, time, true, side.look, (1 - roll.glow) * (1 - roll.glow))
-		clip_end(side.clip)
+		draw_clouds(r, s, g, side.view, time, true, side.look, (1 - roll.glow) * (1 - roll.glow), side.edge)
 	}
-	draw_roll_seam(roll, v)
 	draw_motes(r, s, v)
 	draw_markers(g, v)
 	draw_teach(g, v, time)
@@ -945,25 +966,25 @@ draw_world :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 
 // The far backdrop as the world turns over: the sky of the world going away
 // rolls off the screen (up as the world turns over, down as it turns back),
-// the other's comes in after it, a seam of light between them. Otherwise one
-// side: the look of now, the whole screen.
+// the other's comes in after it, fading in across a wide soft band. Otherwise
+// one side: the look of now, the whole screen.
 Backdrop_Side :: struct {
 	look: ^Look,
 	view: View, // the backdrop moved by its share of the roll
-	clip: Maybe([2]f32), // the screen rows it covers (nil: all of them)
+	edge: Vec3, // its fade at the seam: the seam's screen row, the band's half height, 1 shown below / -1 above (0: none)
+	away: bool, // the sky going away: under the other, its sky stays whole (only its clouds fade)
 }
 
 Backdrop_Roll :: struct {
 	sides: [2]Backdrop_Side,
 	count: int,
-	seam:  f32, // the screen row between them
-	glow:  f32, // the seam's light, 0 .. 1
+	glow:  f32, // how far into the roll, 0 at its ends .. 1 half way
 }
 
 @(private)
 backdrop_roll :: proc(g: ^game.Game, v: View) -> (roll: Backdrop_Roll) {
 	if g.phase != .Overturn || !g.data.has_upside {
-		roll.sides[0] = {look_of(g), v, nil}
+		roll.sides[0] = {look_of(g), v, {}, false}
 		roll.count = 1
 		return
 	}
@@ -979,47 +1000,20 @@ backdrop_roll :: proc(g: ^game.Game, v: View) -> (roll: Backdrop_Roll) {
 		out.backdrop_center.y -= dy / v.backdrop_zoom
 		return out
 	}
+	band := 0.22 * h * math.sin(math.PI * k) + 1 // closing as the roll ends
 	if over {
-		roll.seam = h * (1 - k)
-		roll.sides[0] = {&looks[0], moved(v, -k * h), {0, roll.seam}}
-		roll.sides[1] = {&looks[1], moved(v, (1 - k) * h), {roll.seam, h}}
+		seam := h * (1 - k)
+		// the clouds going away are gone before the seam (their own lower edge rides on it)
+		roll.sides[0] = {&looks[0], moved(v, -k * h), {seam - band * 0.6, band * 0.4, -1}, true}
+		roll.sides[1] = {&looks[1], moved(v, (1 - k) * h), {seam, band, 1}, false}
 	} else {
-		roll.seam = h * k
-		roll.sides[0] = {&looks[0], moved(v, k * h), {roll.seam, h}}
-		roll.sides[1] = {&looks[1], moved(v, -(1 - k) * h), {0, roll.seam}}
+		seam := h * k
+		roll.sides[0] = {&looks[0], moved(v, k * h), {seam + band * 0.6, band * 0.4, 1}, true}
+		roll.sides[1] = {&looks[1], moved(v, -(1 - k) * h), {seam, band, -1}, false}
 	}
 	roll.count = 2
 	roll.glow = math.sin(math.PI * k)
 	return
-}
-
-@(private)
-clip_begin :: proc(clip: Maybe([2]f32), v: View) {
-	if rows, ok := clip.?; ok {
-		rl.BeginScissorMode(0, i32(rows[0]), i32(v.width), i32(math.ceil(rows[1] - rows[0])))
-	}
-}
-
-@(private)
-clip_end :: proc(clip: Maybe([2]f32)) {
-	if clip != nil {
-		rl.EndScissorMode()
-	}
-}
-
-// The seam between the two skies as they roll: a band of light.
-@(private)
-draw_roll_seam :: proc(roll: Backdrop_Roll, v: View) {
-	if roll.count < 2 || roll.glow < 0.01 {
-		return
-	}
-	rl.BeginBlendMode(.ADDITIVE)
-	band := 70 * v.height / 1080
-	warm := to_color({1.0, 0.6, 0.45, 0.5 * roll.glow})
-	clear := to_color({1.0, 0.6, 0.45, 0})
-	rl.DrawRectangleGradientV(0, i32(roll.seam - band), i32(v.width), i32(band), clear, warm)
-	rl.DrawRectangleGradientV(0, i32(roll.seam), i32(v.width), i32(band), warm, clear)
-	rl.EndBlendMode()
 }
 
 // A bolt of lightning in the sky behind the level while it flashes
@@ -1287,7 +1281,9 @@ piece_matrix :: proc(g: ^game.Game, p: Piece, lift: f32) -> rl.Matrix {
 		a := game.part_angle(g, int(p.part - 1)) * math.PI * 0.5
 		m = rl.MatrixTranslate(c.x, c.y, 0) * rl.MatrixRotateZ(a) * rl.MatrixTranslate(-c.x, -c.y, 0) * m
 	}
-	return turn_matrix(g, p.under) * m
+	center := Vec3{f32(p.cell.x) + 0.5, f32(p.cell.y) + 0.5, f32(p.cell.z) + 0.5}
+	off := exploded(g, turned(g, center, p.under))
+	return rl.MatrixTranslate(off.x, off.y, off.z) * turn_matrix(g, p.under) * m
 }
 
 // The cell a piece stands in now.
@@ -3062,6 +3058,13 @@ set_bv2 :: proc(b: Backdrop, u: Backdrop_Uniform, value: Vec2) {
 	rl.SetShaderValue(b.shader, b.loc[u], &v, .VEC2)
 }
 
+// The seam's fade (Backdrop_Side.edge) for a backdrop drawn over the screen
+// rows top .. top + height, in that rectangle's uv.
+@(private)
+set_edge :: proc(b: Backdrop, edge: Vec3, top, height: f32) {
+	set_bv3(b, .Edge, {(edge.x - top) / height, edge.y / height, edge.z})
+}
+
 @(private)
 set_bv3 :: proc(b: Backdrop, u: Backdrop_Uniform, value: Vec3) {
 	v := value
@@ -3108,9 +3111,10 @@ draw_veil :: proc(r: ^Renderer, g: ^game.Game, width, height, time: f32) {
 }
 
 @(private)
-draw_sky :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32, lk: ^Look) {
+draw_sky :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32, lk: ^Look, edge: Vec3) {
 	b := r.sky
 	set_sky_uniforms(b, s, g, v, lk)
+	set_edge(b, edge, 0, v.height)
 	set_bf(b, .Light_Amount, g.light * 0.8)
 	set_bf(b, .Time, time)
 	set_bv3(b, .Sky_Top, lk.sky_top)
@@ -3131,9 +3135,10 @@ draw_sky :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32, lk:
 
 // The mountain ranges between the sky and the sea of clouds.
 @(private)
-draw_ridges :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, lk: ^Look) {
+draw_ridges :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, lk: ^Look, edge: Vec3) {
 	b := r.ridges
 	set_sky_uniforms(b, s, g, v, lk)
+	set_edge(b, edge, 0, v.height)
 	set_bf(b, .Light_Amount, g.light * 0.8)
 	set_bv3(b, .Color_Far, lk.ridge_color[0])
 	set_bv3(b, .Color_Mid, lk.ridge_color[1])
@@ -3159,7 +3164,7 @@ backdrop_view :: proc(s: ^Scene, g: ^game.Game, v: View, k: f32) -> View {
 }
 
 @(private)
-draw_clouds :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, view: View, time: f32, front: bool, lk: ^Look, alpha: f32 = 1) {
+draw_clouds :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, view: View, time: f32, front: bool, lk: ^Look, alpha: f32 = 1, edge: Vec3 = {}) {
 	if alpha <= 0.003 {
 		return
 	}
@@ -3175,6 +3180,7 @@ draw_clouds :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, view: View, time: f3
 	set_bv3(b, .Tint, front ? lk.cloud_front : lk.cloud_back)
 	set_bv3(b, .Crest_Color, lk.cloud_crest)
 	set_bf(b, .Lava, lk.lava)
+	set_edge(b, edge, a.y, c.y - a.y)
 	rl.BeginShaderMode(b.shader)
 	full_rect(r, {a.x, a.y, c.x - a.x, c.y - a.y})
 	rl.EndShaderMode()

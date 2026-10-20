@@ -49,7 +49,19 @@ float cloud(vec2 uv, vec2 c, float w, float h, float rag) {
     return d;
 }
 
+uniform vec3 edge;   // the skies rolling: x the seam, y its half width (both in this rectangle's uv, y down), z 1 shown below it / -1 above / 0 everywhere
+
 out vec4 finalColor;
+
+// How much of this backdrop shows here as the skies roll (`edge`): it fades
+// in across a wide soft band about the seam.
+float edge_alpha() {
+    if (edge.z == 0.0) {
+        return 1.0;
+    }
+    float k = smoothstep(edge.x - edge.y, edge.x + edge.y, fragTexCoord.y);
+    return edge.z > 0.0 ? k : 1.0 - k;
+}
 
 // A bird far off, `p` in units of its half span (y down), `aa` a pixel in
 // those units: two wings bent at the wrist, beating (`flap` -1 down .. 1 up),
@@ -187,5 +199,5 @@ void main() {
     col += haze * m * smoothstep(0.35, 1.0, y);
     // the lamp warms the air
     col = mix(col, col * vec3(1.6, 1.1, 0.7) + vec3(0.04, 0.02, 0.0), light_amount * 0.5);
-    finalColor = vec4(col, 1.0);
+    finalColor = vec4(col, edge_alpha());
 }

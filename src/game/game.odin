@@ -109,9 +109,9 @@ EAGLE_HOLD :: 0.82 // how far above her feet the eagle holds her
 // The world turning over on a pomegranate: a breath (the pomegranate wakes,
 // the world leans back), the half turn, falling faster as it goes, then a
 // swing past its end, settling.
-OVERTURN_PREP :: 0.6
-OVERTURN_SPIN :: 2.2
-OVERTURN_SETTLE :: 0.6
+OVERTURN_PREP :: 0.45
+OVERTURN_SPIN :: 1.75
+OVERTURN_SETTLE :: 0.45
 OVERTURN_TIME :: OVERTURN_PREP + OVERTURN_SPIN + OVERTURN_SETTLE
 DESCENT_TIME :: 2.0 // the sky following her down (a level that goes down), at most this long from top to foot
 

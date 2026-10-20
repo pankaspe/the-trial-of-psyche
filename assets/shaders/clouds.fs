@@ -13,7 +13,19 @@ uniform float density;
 uniform vec3 crest_color; // sunlight on the crests (black at night)
 uniform float lava;       // 0 .. 1: a sea of lava instead
 
+uniform vec3 edge;   // the skies rolling: x the seam, y its half width (both in this rectangle's uv, y down), z 1 shown below it / -1 above / 0 everywhere
+
 out vec4 finalColor;
+
+// How much of this backdrop shows here as the skies roll (`edge`): it fades
+// in across a wide soft band about the seam.
+float edge_alpha() {
+    if (edge.z == 0.0) {
+        return 1.0;
+    }
+    float k = smoothstep(edge.x - edge.y, edge.x + edge.y, fragTexCoord.y);
+    return edge.z > 0.0 ? k : 1.0 - k;
+}
 
 float hash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -68,5 +80,5 @@ void main() {
         col = mix(col, lc, lava);
         a = mix(a, smoothstep(0.0, 0.18, uv.y) * density, lava);
     }
-    finalColor = vec4(col, a);
+    finalColor = vec4(col, a * edge_alpha());
 }
