@@ -530,21 +530,38 @@ turned :: proc(g: ^game.Game, w: Vec3, under: bool) -> Vec3 {
 	return {w.x, y0 + c * dy - s * dz, z0 + s * dy + c * dz}
 }
 
-// The world turning over comes a little apart, as the dioramas do between
-// the levels, and together again: each stone drawn away from the axle (by
-// how far it is from it), the slices along the axle a little after or before
-// one another. `p` is where the stone is turned to now.
+// The world turning over comes apart, as the dioramas do between the levels,
+// and together again: each stone thrown out from the axle, the farthest the
+// most, quickly, then eased back into place by the end of the turn; the
+// slices along the axle a little after or before one another. `p` is where
+// the stone is turned to now.
 @(private)
 exploded :: proc(g: ^game.Game, p: Vec3) -> Vec3 {
-	if g.phase != .Overturn || len(g.data.pomegranates) == 0 {
+	k := apart(g, p)
+	if k == 0 {
 		return {}
 	}
 	y0, z0 := f32(g.data.size) * 0.5, f32(g.data.axle) + 0.5
 	away := Vec3{0, p.y - y0, p.z - z0}
 	r := math.sqrt(away.y * away.y + away.z * away.z)
-	delay := 0.14 * fx.hash01(u32(i32(math.floor(p.x)) + 64)) + 0.1 * fx.clamp01(r / 6)
-	u := fx.progress(g.phase_t, game.OVERTURN_PREP + delay * game.OVERTURN_SPIN, 0.7 * game.OVERTURN_SPIN)
-	return away * (0.085 * math.sin(u * math.PI))
+	if r < 0.01 {
+		return {}
+	}
+	return away / r * (0.08 * r + 0.04 * r * r) * k
+}
+
+// How far apart the stone at `p` is as the world turns over: 0 .. 1 .. 0.
+@(private)
+apart :: proc(g: ^game.Game, p: Vec3) -> f32 {
+	if g.phase != .Overturn || len(g.data.pomegranates) == 0 {
+		return 0
+	}
+	y0, z0 := f32(g.data.size) * 0.5, f32(g.data.axle) + 0.5
+	r := math.sqrt((p.y - y0) * (p.y - y0) + (p.z - z0) * (p.z - z0))
+	delay := 0.12 * fx.hash01(u32(i32(math.floor(p.x)) + 64)) + 0.08 * fx.clamp01(r / 6)
+	u := fx.progress(g.phase_t, game.OVERTURN_PREP * 0.6 + delay * game.OVERTURN_SPIN, 0.8 * game.OVERTURN_SPIN)
+	OUT :: 0.35 // the part of it spent going out
+	return u < OUT ? fx.cubic_out(u / OUT) : 1 - fx.sine_in_out((u - OUT) / (1 - OUT))
 }
 
 // The same half turn for a piece of one world.
@@ -2865,13 +2882,19 @@ TRACE_HALO :: 5 // the halo's half width (pixels of the projection at zoom 1)
 
 @(private)
 draw_trace :: proc(s: ^Scene, g: ^game.Game, v: View) {
+	// arriving: gold; the world turning over: the lava's light, each stone's
+	// lines as bright as it is apart
 	fade := game.trace(g)
-	if fade <= 0.003 {
+	turning := g.phase == .Overturn && len(g.data.pomegranates) > 0
+	if fade <= 0.003 && !turning {
 		return
 	}
 	// the cube's twelve edges, as pairs of corners (bit 0 x, bit 1 y, bit 2 z)
 	EDGES :: [12][2]u8{{0, 1}, {2, 3}, {4, 5}, {6, 7}, {0, 2}, {1, 3}, {4, 6}, {5, 7}, {0, 4}, {1, 5}, {2, 6}, {3, 7}}
 	GOLD :: Vec3{0.98, 0.76, 0.36}
+	LAVA :: Vec3{1.0, 0.42, 0.1}
+	tint := turning ? LAVA : GOLD
+	halo: f32 = turning ? TRACE_HALO * 2.2 : TRACE_HALO
 	Edge :: struct {
 		a, b:  Vec3,
 		alpha: f32,
@@ -2894,6 +2917,13 @@ draw_trace :: proc(s: ^Scene, g: ^game.Game, v: View) {
 		}
 		grow := fx.cubic_out(fx.clamp01(k * 1.2)) // each edge drawn out from its first corner
 		alpha := fade * fx.sine_in_out(fx.clamp01(k / 0.7)) // each block's lines come up as it rises
+		if turning {
+			c := piece_cell(g, p)
+			alpha = math.sqrt(apart(g, {f32(c.x) + 0.5, f32(c.y) + 0.5, f32(c.z) + 0.5})) // (the same in either world's frame)
+			if alpha < 0.01 {
+				continue
+			}
+		}
 		for e in EDGES {
 			a := corner(m, e[0])
 			append(&edges, Edge{a, fx.lerp(a, corner(m, e[1]), grow), alpha})
@@ -2913,9 +2943,9 @@ draw_trace :: proc(s: ^Scene, g: ^game.Game, v: View) {
 			continue
 		}
 		d /= n
-		side := (right * -d.y - up * d.x) * TRACE_HALO // across the line on screen
-		core := Color4{GOLD.x, GOLD.y, GOLD.z, e.alpha * 0.35}
-		rim := Color4{GOLD.x, GOLD.y, GOLD.z, 0}
+		side := (right * -d.y - up * d.x) * halo // across the line on screen
+		core := Color4{tint.x, tint.y, tint.z, e.alpha * (turning ? 0.55 : 0.35)}
+		rim := Color4{tint.x, tint.y, tint.z, 0}
 		for sgn in ([2]f32{-1, 1}) {
 			a2, b2 := e.a + side * sgn, e.b + side * sgn
 			color(core); vtx(e.a)
@@ -2933,7 +2963,7 @@ draw_trace :: proc(s: ^Scene, g: ^game.Game, v: View) {
 	rl.BeginBlendMode(.ALPHA)
 	rlgl.Begin(rlgl.LINES)
 	for e in edges {
-		color({GOLD.x, GOLD.y, GOLD.z, e.alpha})
+		color({tint.x, tint.y, tint.z, e.alpha})
 		vtx(e.a)
 		vtx(e.b)
 	}
