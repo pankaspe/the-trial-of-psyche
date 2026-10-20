@@ -108,7 +108,9 @@ void main() {
     float reach = abs(across) / max(line.y, 1e-4); // in peak heights
     vec2 w = vec2(fbm(vec2(x * 3.0, across * 6.0) + t * 0.04), fbm(vec2(x * 3.0 + 5.2, across * 6.0) - t * 0.03));
     vec2 p = vec2(x * 7.0, across * 9.0) + (w - 0.5) * 1.6;
-    float coarse = vein(web(p), 1.3) * smoothstep(5.5, 1.0, reach);
+    // a few of them thicker, here and there
+    float thick = smoothstep(0.58, 0.82, noise(p * 0.3 + vec2(3.0, 7.0)));
+    float coarse = vein(web(p), 1.3 + 1.5 * thick) * smoothstep(5.5 + thick, 1.0, reach);
     float fine = vein(web(p * 2.3 + 11.0), 0.9) * smoothstep(3.0, 0.6, reach);
     // the veins come and go along their length, slowly
     float live = smoothstep(0.3, 0.6, fbm(vec2(x * 4.0, across * 5.0) + vec2(-t * 0.06, t * 0.05)));
