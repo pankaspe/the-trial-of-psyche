@@ -39,6 +39,9 @@ Look :: struct {
 	day_clouds:    f32, // 0 none .. 1 white clouds drifting across the sun (they dim the stones a little)
 	morning:       f32, // 0 .. 1: by day, the stones in the morning light (cool shade, warm sun, pale tops)
 	birds:         Birds, // flying far off in the sky (never with reduce motion)
+	cloud_light:   Vec3, // the day clouds' lit tops (zero: white)
+	lava:          f32, // 0 .. 1: a sea of lava under the diorama instead of the clouds
+	under_glow:    Vec3, // the stones lit from below (the lava's light), strongest low down
 	rock:          Vec3, // the living rock's tint (zero: its own earth colours)
 	mote:          Color4,
 }
@@ -481,65 +484,100 @@ LOOKS := [level.Setting]Look {
 		candles = true,
 		mote = {1.0, 0.45, 0.25, 0.45},
 	},
-	// the land of the dead by night: the ash has swallowed the sun, a cold pale
-	// moon, a few stars, embers glowing low on the horizon behind black crags;
-	// the candles lit
-	.Taenarus_Night = {
-		sky_top = {0.012, 0.008, 0.02},
-		sky_mid = {0.06, 0.025, 0.04},
-		sky_horizon = {0.34, 0.09, 0.06},
-		orb_pos = {0.72, 0.22},
-		orb_radius = 0.018,
-		orb_color = {0.80, 0.76, 0.72},
-		halo_color = {0.12, 0.06, 0.06},
-		halo_width = 5,
+	// the land of the dead over Proserpina's kingdom: a cold violet dusk (the
+	// top of the tower's, deeper), a pale sun of the dead low down, clouds of
+	// ash drifting across it, violet ranges, lilac mist below; candles lit
+	.Asphodel = {
+		sky_top = {0.05, 0.035, 0.14},
+		sky_mid = {0.26, 0.14, 0.32},
+		sky_horizon = {0.62, 0.34, 0.48},
+		orb_pos = {0.72, 0.32},
+		orb_radius = 0.022,
+		orb_color = {0.88, 0.80, 0.94},
+		halo_color = {0.24, 0.13, 0.28},
+		halo_width = 7,
 		stars = 0.35,
-		haze = {0.16, 0.05, 0.05},
+		haze = {0.30, 0.16, 0.30},
 		islands = false,
 		ridges = 1,
-		ridge_color = {{0.14, 0.05, 0.06}, {0.08, 0.03, 0.04}, {0.035, 0.012, 0.02}},
-		ridge_rim = {0.70, 0.22, 0.10},
-		cloud_back = {0.14, 0.05, 0.05},
-		cloud_front = {0.20, 0.07, 0.06},
-		cloud_crest = {0.40, 0.12, 0.05},
-		mist = {0.10, 0.03, 0.04},
-		water = {0.03, 0.01, 0.02, 0.94},
-		glint = {0.90, 0.72, 0.62, 0.4},
-		daylight = 0.32,
-		gloom = 0.3,
-		rock = {0.56, 0.46, 0.48},
+		ridge_color = {{0.32, 0.19, 0.36}, {0.21, 0.12, 0.27}, {0.11, 0.07, 0.17}},
+		ridge_rim = {0.82, 0.58, 0.84},
+		cloud_back = {0.28, 0.16, 0.32},
+		cloud_front = {0.36, 0.22, 0.40},
+		cloud_crest = {0.30, 0.16, 0.30},
+		mist = {0.20, 0.12, 0.24},
+		water = {0.06, 0.04, 0.10, 0.92},
+		glint = {0.85, 0.72, 1.0, 0.4},
+		daylight = 0.45,
+		gloom = 0.15,
+		rock = {0.62, 0.56, 0.70},
 		candles = true,
-		mote = {1.0, 0.45, 0.25, 0.4},
+		day_clouds = 0.75,
+		cloud_light = {0.56, 0.42, 0.62},
+		mote = {0.85, 0.75, 1.0, 0.35},
+	},
+	// the same by night: a violet dark, a cold pale moon, the ash drifting
+	// over it, a few stars; the candles lit
+	.Asphodel_Night = {
+		sky_top = {0.012, 0.01, 0.04},
+		sky_mid = {0.08, 0.05, 0.14},
+		sky_horizon = {0.26, 0.14, 0.30},
+		orb_pos = {0.74, 0.24},
+		orb_radius = 0.026,
+		orb_color = {0.84, 0.82, 0.94},
+		halo_color = {0.10, 0.07, 0.16},
+		halo_width = 9,
+		stars = 0.7,
+		haze = {0.12, 0.07, 0.16},
+		islands = false,
+		ridges = 1,
+		ridge_color = {{0.14, 0.09, 0.20}, {0.08, 0.05, 0.13}, {0.035, 0.025, 0.07}},
+		ridge_rim = {0.56, 0.44, 0.72},
+		cloud_back = {0.12, 0.08, 0.18},
+		cloud_front = {0.17, 0.11, 0.24},
+		cloud_crest = {0.20, 0.12, 0.26},
+		mist = {0.08, 0.05, 0.13},
+		water = {0.03, 0.02, 0.06, 0.94},
+		glint = {0.8, 0.76, 1.0, 0.35},
+		daylight = 0.22,
+		gloom = 0.3,
+		rock = {0.56, 0.52, 0.66},
+		candles = true,
+		moon_clouds = 0.6,
+		mote = {0.8, 0.72, 1.0, 0.35},
 	},
 	// Proserpina's kingdom, under the land of the dead (the world turned over):
-	// a still violet dark, the pale sun of the dead low and cold, no stars to
-	// speak of, lilac mist; the candles lit
+	// the inferno, a sky of fire darkening above, black ranges against the
+	// glow, a sea of lava under the diorama, embers rising; the stones lit red
+	// from below; the candles lit
 	.Dis = {
-		sky_top = {0.02, 0.014, 0.05},
-		sky_mid = {0.09, 0.06, 0.16},
-		sky_horizon = {0.30, 0.20, 0.36},
-		orb_pos = {0.70, 0.26},
-		orb_radius = 0.035,
-		orb_color = {0.82, 0.76, 0.96},
-		halo_color = {0.17, 0.11, 0.26},
-		halo_width = 8,
-		stars = 0.25,
-		haze = {0.20, 0.14, 0.28},
+		sky_top = {0.07, 0.012, 0.01},
+		sky_mid = {0.36, 0.07, 0.03},
+		sky_horizon = {1.0, 0.38, 0.08},
+		orb_pos = {0.5, 1.0},
+		orb_radius = 0,
+		orb_color = {0, 0, 0},
+		halo_color = {0.45, 0.10, 0.02},
+		halo_width = 2.5,
+		stars = 0,
+		haze = {0.50, 0.14, 0.04},
 		islands = false,
 		ridges = 1,
-		ridge_color = {{0.17, 0.12, 0.25}, {0.10, 0.07, 0.17}, {0.05, 0.035, 0.09}},
-		ridge_rim = {0.62, 0.50, 0.82},
-		cloud_back = {0.16, 0.11, 0.24},
-		cloud_front = {0.22, 0.16, 0.30},
-		cloud_crest = {0.30, 0.20, 0.40},
-		mist = {0.12, 0.08, 0.18},
-		water = {0.04, 0.03, 0.08, 0.92},
-		glint = {0.8, 0.7, 1.0, 0.4},
-		daylight = 0.25,
-		gloom = 0.15,
-		rock = {0.78, 0.72, 0.90},
+		ridge_color = {{0.30, 0.06, 0.04}, {0.17, 0.035, 0.03}, {0.07, 0.012, 0.015}},
+		ridge_rim = {1.0, 0.44, 0.12},
+		cloud_back = {0.30, 0.06, 0.03},
+		cloud_front = {0.40, 0.09, 0.04},
+		cloud_crest = {0.70, 0.24, 0.04},
+		mist = {0.30, 0.06, 0.03},
+		water = {0.20, 0.04, 0.01, 0.92},
+		glint = {1.0, 0.5, 0.15, 0.5},
+		daylight = 0.35,
+		gloom = 0.2,
+		rock = {0.72, 0.48, 0.44},
 		candles = true,
-		mote = {0.85, 0.75, 1.0, 0.45},
+		lava = 1,
+		under_glow = {0.75, 0.2, 0.03},
+		mote = {1.0, 0.5, 0.14, 0.75},
 	},
 	// the palace of voices at twilight: the sun is gone, its last light low on
 	// the clouds, the first stars, the moon rising; the candles are lit
@@ -669,6 +707,9 @@ blend :: proc(a, b: Look, t: f32) -> (o: Look) {
 	o.moon_clouds = mixf(a.moon_clouds, b.moon_clouds, t)
 	o.day_clouds = mixf(a.day_clouds, b.day_clouds, t)
 	o.morning = mixf(a.morning, b.morning, t)
+	o.cloud_light = mix3(a.cloud_light == {} ? {1, 1, 1} : a.cloud_light, b.cloud_light == {} ? {1, 1, 1} : b.cloud_light, t)
+	o.lava = mixf(a.lava, b.lava, t)
+	o.under_glow = mix3(a.under_glow, b.under_glow, t)
 	o.rock = mix3(a.rock, b.rock, t)
 	o.mote = mix4(a.mote, b.mote, t)
 	return

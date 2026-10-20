@@ -67,6 +67,9 @@ place :: proc(app: ^App, c: iso.Cell) {
 	g.psyche.pos = pl.stand_world(&g.palace, c)
 }
 
+// Seconds into the first overturn at which --plan takes a frame.
+TURN_FRAMES := [?]f32{0.35, 1.2, 1.7, 2.05, 2.5, 3.0}
+
 SHOT_SCRIPT := [?]Shot_Step {
 	{1.5, "01_menu", nil},
 	{0.1, "", proc(app: ^App) {new_level(app, TEMPLE_LEVEL)}},
@@ -345,6 +348,7 @@ Shots :: struct {
 	record: bool, // --record (with --plan): every frame at RECORD_FPS instead, for a video
 	cave_shot: int, // --plan: the last move shot at a cave's mouth or a perch (the action of the place shows)
 	cross_shot: int, // --plan: the last move shot halfway across in Charon's boat
+	turn_shot:  int, // --plan: frames taken of the first overturn
 	cine_shot: int, // --plan: shots taken of the opening cutscene (one every CINE_SHOT_EVERY s)
 	no_ui: bool, // --no-ui: the world only (backdrops for mockups and stills)
 	survey: bool, // --survey: the level from the four views, band by band (a tall level), no walking
@@ -585,6 +589,11 @@ plan_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool)
 		}
 		virtual.arena_destroy(&s.arena)
 		return "", true
+	}
+	// the first time the world turns over: a few frames of it
+	if g.phase == .Overturn && s.turn_shot < len(TURN_FRAMES) && g.phase_t >= TURN_FRAMES[s.turn_shot] {
+		s.turn_shot += 1
+		return fmt.tprintf("p%03d_turning_%d", s.move, s.turn_shot), false
 	}
 	if g.psyche.step_kind == .Ferry && s.cross_shot < s.move && g.psyche.step_t > game.FERRY_TIME * 0.5 {
 		// halfway across in Charon's boat

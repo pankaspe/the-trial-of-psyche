@@ -10,6 +10,9 @@ Kinds: **feature** (new code or mechanic) · **level** (a level built or rebuilt
 
 | Title | Kind | Description |
 |---|---|---|
+| Two worlds, one stone | rework | Proserpina's flip: the world above is now the land of the dead in a cold violet dusk, clouds of ash drifting; the world under is the inferno, a sky of fire over a sea of lava, embers rising, the stones lit red from below. |
+| The world turns over | feature | A new flip: the pomegranate wakes and its seeds of light spiral out, the world leans back, falls over faster and faster, swings past and settles; the skies roll (the old one goes up, the fire comes from below, a seam of light between), a wave of light and embers runs along the axle edge-on, and Psyche turns head over heels with it. |
+| No more rings | fix | The sundials', perches' and pomegranates' rings are gone: their glowing stones are the only hint (none in Puzzle). After Charon's boat the diorama now breaks up like every other. |
 | Difficulty | feature | A new game asks how to play: Story (every aid, endless oil, the guide), Normal (the hints, the oil counted) or Puzzle (no help at all). Each aid can be changed alone in a new Difficulty tab of the settings; the choice is kept in the game's save. |
 | The guide | feature | In Story, the light on Psyche (Tab, the pad's North) also shows the way: a trail of violet lights from her feet to the next place to act, and what to do there (turn, light the lamp, use the spindle, call the eagle...). |
 | Morning skies | rework | The sunny settings now have a morning light: a cool blue shade, warm sunlit faces and pale tops, so the blocks read clearly; a deeper blue sky with the sun lower, white clouds drifting across it, and birds far off (swallows, Venus's doves, a raptor over the Styx). |

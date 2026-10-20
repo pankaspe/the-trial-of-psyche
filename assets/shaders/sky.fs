@@ -24,6 +24,7 @@ uniform float stars;
 uniform vec3 haze;
 uniform float night_clouds; // 0 none .. 1 dark clouds drifting across the moon
 uniform float day_clouds;   // 0 none .. 1 white clouds drifting across the sun
+uniform vec3 cloud_light;   // the day clouds' lit tops
 uniform float birds;        // 0 none, 1 swallows, 2 doves, 3 a raptor (render/setting.odin Birds)
 
 // The drifting night clouds: soft ellipses around the moon's height (the first
@@ -133,8 +134,8 @@ void main() {
                 top = smoothstep(cy + 0.45 * C_H[i], cy - 0.8 * C_H[i], uv.y);
             }
         }
-        vec3 shade = mix(sky_mid, vec3(0.80, 0.82, 0.90), 0.55);
-        vec3 body = mix(shade, vec3(1.0, 0.99, 0.96), top);
+        vec3 shade = mix(sky_mid, cloud_light * vec3(0.80, 0.82, 0.90), 0.55);
+        vec3 body = mix(shade, cloud_light * vec3(1.0, 0.99, 0.96), top);
         float rim = dens * (1.0 - dens) * 4.0;
         body += orb_color * exp(-md * 7.0) * (0.2 + 0.8 * rim);
         col = mix(col, body, dens * 0.96 * day_clouds);

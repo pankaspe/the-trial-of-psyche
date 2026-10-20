@@ -97,7 +97,7 @@ BIOMES := [Biome]Biome_Info {
 	},
 	.Taenarus = {
 		name = "taenarus",
-		light = .Taenarus,
+		light = .Asphodel,
 		upside = .Dis,
 		rim = .Rock,
 		props = #partial {.Lip = 3, .Boulder = 2, .Shrub = 1, .Cairn = 1, .Pine = 1, .Fire = 1},

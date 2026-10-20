@@ -11,6 +11,7 @@ uniform float time;
 uniform vec3 tint;
 uniform float density;
 uniform vec3 crest_color; // sunlight on the crests (black at night)
+uniform float lava;       // 0 .. 1: a sea of lava instead
 
 out vec4 finalColor;
 
@@ -48,5 +49,24 @@ void main() {
     vec3 col = tint * (0.7 + crest * 0.9);
     col += vec3(0.5, 0.32, 0.15) * crest * light_amount * 0.35;
     col += crest_color * crest;
-    finalColor = vec4(col, body * fade * density);
+    float a = body * fade * density;
+    if (lava > 0.0) {
+        // a sea of lava: a dark crust broken by glowing veins and molten pools,
+        // in perspective (finer toward the horizon), flowing slowly, breathing
+        float d = 1.0 / (0.22 + uv.y);
+        vec2 q = vec2((uv.x - 0.5) * 3.2 * d + shift * 0.6, 2.2 * d);
+        float n1 = fbm(q + vec2(time * 0.012, time * 0.02));
+        float n2 = fbm(q * 1.7 + vec2(-time * 0.018, 0.0) + n1 * 1.5);
+        float w = fwidth(n2) + 0.025;
+        float vein = 1.0 - smoothstep(0.0, w, abs(n2 - 0.5));
+        float pool = smoothstep(0.6, 0.78, n1);
+        float pulse = 0.78 + 0.22 * sin(time * 1.1 + n1 * 14.0);
+        vec3 crust = vec3(0.06, 0.015, 0.012) * (0.6 + 0.8 * n2);
+        vec3 hot = mix(vec3(0.95, 0.24, 0.03), vec3(1.0, 0.72, 0.28), pool);
+        vec3 lc = mix(crust, hot, clamp(max(vein * 0.85, pool) * pulse, 0.0, 1.0));
+        lc = mix(lc, vec3(0.55, 0.12, 0.04), (1.0 - smoothstep(0.0, 0.5, uv.y)) * 0.5); // the heat haze far off
+        col = mix(col, lc, lava);
+        a = mix(a, smoothstep(0.0, 0.18, uv.y) * density, lava);
+    }
+    finalColor = vec4(col, a);
 }

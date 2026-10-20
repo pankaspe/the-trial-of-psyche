@@ -96,8 +96,9 @@ Setting :: enum u8 {
 	Styx_Evening, // the same at evening: a low red sun, the peaks black against it
 	Tower_Dusk, // the top of the high tower at dusk: the sky still rose, a red glow rising from below
 	Taenarus, // the foot of Taenarus, the mouth of the underworld: a red sky, ash, the dark water
-	Taenarus_Night, // the same by night: a black sky, embers low on the horizon, a cold pale moon
-	Dis, // Proserpina's kingdom, the world turned over: a still violet dark, a pale sun of the dead
+	Asphodel, // the land of the dead over Proserpina's kingdom: a cold violet dusk, clouds of ash drifting
+	Asphodel_Night, // the same by night: a violet dark, a cold pale moon, the ash over it
+	Dis, // Proserpina's kingdom, the world turned over: a sky of fire over a sea of lava
 }
 
 SETTING_NAME := [Setting]string {
@@ -119,7 +120,8 @@ SETTING_NAME := [Setting]string {
 	.Styx_Evening  = "styx_evening",
 	.Tower_Dusk    = "tower_dusk",
 	.Taenarus      = "taenarus",
-	.Taenarus_Night = "taenarus_night",
+	.Asphodel      = "asphodel",
+	.Asphodel_Night = "asphodel_night",
 	.Dis           = "dis",
 }
 

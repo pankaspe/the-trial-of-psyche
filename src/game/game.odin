@@ -106,7 +106,13 @@ FLIGHT_TAKE :: 0.2 // ...the part of it where the eagle comes down to her...
 FLIGHT_LAND :: 0.86 // ...and where she touches the ground again
 EAGLE_RETURN :: 3.2 // the eagle flying back to its perch
 EAGLE_HOLD :: 0.82 // how far above her feet the eagle holds her
-OVERTURN_TIME :: 2.6 // the world turning over on a pomegranate
+// The world turning over on a pomegranate: a breath (the pomegranate wakes,
+// the world leans back), the half turn, falling faster as it goes, then a
+// swing past its end, settling.
+OVERTURN_PREP :: 0.6
+OVERTURN_SPIN :: 2.2
+OVERTURN_SETTLE :: 0.6
+OVERTURN_TIME :: OVERTURN_PREP + OVERTURN_SPIN + OVERTURN_SETTLE
 DESCENT_TIME :: 2.0 // the sky following her down (a level that goes down), at most this long from top to foot
 
 Phase :: enum u8 {
@@ -617,7 +623,12 @@ update :: proc(g: ^Game, dt: f32) {
 	if has_time(g) {
 		g.evening = fx.move_toward(g.evening, g.palace.day ? 0 : 1, dt / TIME_TURN)
 	}
-	g.overturn = fx.move_toward(g.overturn, g.palace.upside ? 1 : 0, dt / OVERTURN_TIME)
+	if g.phase == .Overturn {
+		u := fx.progress(g.phase_t, OVERTURN_PREP, OVERTURN_SPIN)
+		g.overturn = g.palace.upside ? u : 1 - u
+	} else {
+		g.overturn = fx.move_toward(g.overturn, g.palace.upside ? 1 : 0, dt / OVERTURN_SPIN)
+	}
 	if g.data.has_below && g.phase != .Prologue {
 		g.descent = fx.move_toward(g.descent, descent_target(g), dt / DESCENT_TIME)
 	}
@@ -680,7 +691,10 @@ update :: proc(g: ^Game, dt: f32) {
 			set_phase(g, .Play)
 		}
 	case .Overturn:
-		if crossed(g.phase_t, dt, OVERTURN_TIME * 0.92) {
+		if crossed(g.phase_t, dt, OVERTURN_PREP + OVERTURN_SPIN * 0.5) {
+			audio.play(.Reveal, -14, audio.semitones(-7)) // edge-on: the two worlds meet
+		}
+		if crossed(g.phase_t, dt, OVERTURN_PREP + OVERTURN_SPIN) {
 			audio.play(.Thud, -9, 0.6)
 		}
 		if g.phase_t >= OVERTURN_TIME {
@@ -1641,7 +1655,6 @@ turn_over :: proc(g: ^Game) {
 	}
 	audio.play(.Rumble, -10, 0.55)
 	audio.play(.Wind, -12, 0.6)
-	audio.play(.Reveal, -14, audio.semitones(-7))
 	learn(g, .Hint_Pomegranate)
 }
 
@@ -1651,7 +1664,33 @@ overturn_lift :: proc(g: ^Game) -> f32 {
 	if g.phase != .Overturn {
 		return 0
 	}
-	return 0.24 * math.sin(math.PI * fx.clamp01(g.phase_t / OVERTURN_TIME))
+	return 0.34 * math.sin(math.PI * fx.progress(g.phase_t, OVERTURN_PREP * 0.5, OVERTURN_SPIN + OVERTURN_PREP))
+}
+
+// How far the world has turned over as it is drawn (0 .. 1): while it turns,
+// leaning back a little first, falling faster as it goes, swinging past the
+// end and settling (its speed kept through the end of the turn).
+overturn_shown :: proc(g: ^Game) -> f32 {
+	if g.phase != .Overturn {
+		return fx.sine_in_out(g.overturn)
+	}
+	u := fx.progress(g.phase_t, OVERTURN_PREP, OVERTURN_SPIN)
+	k := u * u * (2 - u) // slow away, its speed whole at the end
+	lean := fx.progress(g.phase_t, 0, OVERTURN_PREP)
+	k -= 0.03 * math.sin(lean * math.PI)
+	swing := fx.progress(g.phase_t, OVERTURN_PREP + OVERTURN_SPIN, OVERTURN_SETTLE)
+	k += OVERTURN_SETTLE / (math.PI * OVERTURN_SPIN) * math.sin(swing * math.PI) * (1 - swing)
+	return g.palace.upside ? k : 1 - k
+}
+
+// Psyche head over heels while the world turns over under her: a full turn
+// about the axle's direction, upside down half way (0 outside the turn).
+somersault :: proc(g: ^Game) -> f32 {
+	if g.phase != .Overturn {
+		return 0
+	}
+	u := fx.sine_in_out(fx.progress(g.phase_t, OVERTURN_PREP + 0.15 * OVERTURN_SPIN, 0.8 * OVERTURN_SPIN))
+	return (g.palace.upside ? 1 : -1) * math.TAU * u
 }
 
 // A world point in the frame of the world turned over: the half turn about

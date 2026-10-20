@@ -24,6 +24,8 @@ uniform float screen_height;
 uniform vec3 mist_color;
 uniform float daylight;      // 0 the moonlit palette .. 1 the low sun of a setting (no lamp needed)
 uniform float morning;       // 0..1: by day, the morning light instead of the low sun's (sunset)
+uniform vec3 under_glow;     // the stones lit from below (a sea of lava), strongest low down
+uniform float glow_low;      // the lowest stones' height
 uniform float moonlight;     // the moon's light on the stones: < 1 in a darker night, or behind a cloud
 uniform vec3 rock_tint;      // the living rock's tint in this setting (1: its own colours)
 uniform float sun_truth;     // 0..1: the sun is up and shows true depth (a level with day and evening)
@@ -415,6 +417,12 @@ void main() {
         col *= mix(1.0, mix(0.8, 1.04, dn), sun_truth * (1.0 - light_amount));
     } else {
         col += vec3(0.98, 0.93, 0.90) * glow;
+    }
+    // the lava's light from below: on the lowest stones most, on the faces that look down
+    if (!figure && dot(under_glow, vec3(1.0)) > 0.0) {
+        float low = 1.0 - smoothstep(glow_low, glow_low + 5.0, fragWorld.z);
+        float facing = n.z < -0.5 ? 1.0 : (n.z > 0.5 ? 0.25 : 0.6);
+        col += under_glow * low * facing;
     }
     // a corrupt stone: dark veins running through it, a little ashen
     float vein = 0.0;

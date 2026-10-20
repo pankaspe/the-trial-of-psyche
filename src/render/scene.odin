@@ -56,6 +56,8 @@ Uniform :: enum u8 {
 	Hint,
 	Hint_Color,
 	Morning,
+	Under_Glow,
+	Glow_Low,
 }
 
 @(private)
@@ -87,6 +89,8 @@ UNIFORM_NAME := [Uniform]cstring {
 	.Hint          = "hint",
 	.Hint_Color    = "hint_color",
 	.Morning       = "morning",
+	.Under_Glow    = "under_glow",
+	.Glow_Low      = "glow_low",
 	.Candles       = "candles",
 	.Candle_Reach  = "candle_reach",
 	.Candle_Count  = "candle_count",
@@ -114,6 +118,8 @@ Backdrop_Uniform :: enum u8 {
 	Night_Clouds,
 	Day_Clouds,
 	Birds,
+	Cloud_Light,
+	Lava,
 	Crest_Color,
 	Color_Far,
 	Color_Mid,
@@ -143,6 +149,8 @@ BACKDROP_NAME := [Backdrop_Uniform]cstring {
 	.Night_Clouds = "night_clouds",
 	.Day_Clouds   = "day_clouds",
 	.Birds        = "birds",
+	.Cloud_Light  = "cloud_light",
+	.Lava         = "lava",
 	.Crest_Color  = "crest_color",
 	.Color_Far    = "color_far",
 	.Color_Mid    = "color_mid",
@@ -497,7 +505,7 @@ turn_angle :: proc(g: ^game.Game, under: bool) -> f32 {
 	if len(g.data.pomegranates) == 0 {
 		return 0
 	}
-	return math.PI * (fx.sine_in_out(g.overturn) - (under ? 1 : 0))
+	return math.PI * (game.overturn_shown(g) - (under ? 1 : 0))
 }
 
 // A point of one world (`under`), where it is drawn now. The game's own
@@ -774,6 +782,20 @@ scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
 			color = {1.0, 0.82, 0.45, 0.85},
 		})
 	}
+	// edge-on as the world turns over: embers burst from the axle, both ways
+	if mid := f32(game.OVERTURN_PREP + game.OVERTURN_SPIN * 0.5); g.phase == .Overturn && g.phase_t >= mid && g.phase_t - dt < mid {
+		y, z := f32(g.data.size) * 0.5, f32(g.data.axle) + 0.5
+		for _ in 0 ..< 60 {
+			fx.emit(&s.embers, {
+				pos   = {fx.rand_range(&s.rng, 0, f32(g.data.size)), y, z},
+				vel   = {fx.rand_range(&s.rng, -0.3, 0.3), fx.rand_range(&s.rng, -1.2, 1.2), fx.rand_range(&s.rng, -1.4, 1.4)},
+				accel = {0, 0, 0.3},
+				life  = 1.8,
+				size  = 32 * fx.rand_range(&s.rng, 0.08, 0.22),
+				color = {1.0, 0.62, 0.4, 0.9},
+			})
+		}
+	}
 	// sparks rising from the pieces as the diorama breaks up
 	if g.parting && g.phase == .Ending_Exit {
 		for p, i in s.pieces {
@@ -874,16 +896,21 @@ seam_edge :: proc(g: ^game.Game, e: [2]i32) -> (p0, p1, inward: Vec3) {
 // --- drawing -----------------------------------------------------------------------
 
 draw_world :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
-	lk := look_of(g)
-	draw_sky(r, s, g, v, time)
-	draw_bolt(g, v)
-	if lk.islands {
-		draw_islands(g, v, time)
+	roll := backdrop_roll(g, v)
+	for &side in roll.sides[:roll.count] {
+		clip_begin(side.clip, v)
+		lk := side.look
+		draw_sky(r, s, g, side.view, time, lk)
+		draw_bolt(g, side.view)
+		if lk.islands {
+			draw_islands(g, side.view, time)
+		}
+		if lk.ridges > 0 {
+			draw_ridges(r, s, g, side.view, lk)
+		}
+		draw_clouds(r, s, g, side.view, time, false, lk)
+		clip_end(side.clip)
 	}
-	if lk.ridges > 0 {
-		draw_ridges(r, s, g, v)
-	}
-	draw_clouds(r, s, g, v, time, false)
 
 	begin_3d(v)
 	set_frame_uniforms(r, s, g, v)
@@ -897,7 +924,14 @@ draw_world :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 	draw_mist(r, s, v)
 	end_3d()
 
-	draw_clouds(r, s, g, v, time, true)
+	// the clouds in front of the diorama thin away while the skies roll, so
+	// they never pass over it
+	for &side in roll.sides[:roll.count] {
+		clip_begin(side.clip, v)
+		draw_clouds(r, s, g, side.view, time, true, side.look, (1 - roll.glow) * (1 - roll.glow))
+		clip_end(side.clip)
+	}
+	draw_roll_seam(roll, v)
 	draw_motes(r, s, v)
 	draw_markers(g, v)
 	draw_teach(g, v, time)
@@ -907,6 +941,85 @@ draw_world :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 		rl.DrawRectangleV({0, 0}, {v.width, v.height}, to_color({1.0, 0.86, 0.8, 0.42 * f}))
 		rl.EndBlendMode()
 	}
+}
+
+// The far backdrop as the world turns over: the sky of the world going away
+// rolls off the screen (up as the world turns over, down as it turns back),
+// the other's comes in after it, a seam of light between them. Otherwise one
+// side: the look of now, the whole screen.
+Backdrop_Side :: struct {
+	look: ^Look,
+	view: View, // the backdrop moved by its share of the roll
+	clip: Maybe([2]f32), // the screen rows it covers (nil: all of them)
+}
+
+Backdrop_Roll :: struct {
+	sides: [2]Backdrop_Side,
+	count: int,
+	seam:  f32, // the screen row between them
+	glow:  f32, // the seam's light, 0 .. 1
+}
+
+@(private)
+backdrop_roll :: proc(g: ^game.Game, v: View) -> (roll: Backdrop_Roll) {
+	if g.phase != .Overturn || !g.data.has_upside {
+		roll.sides[0] = {look_of(g), v, nil}
+		roll.count = 1
+		return
+	}
+	@(static) looks: [2]Look
+	over := g.palace.upside // turning over (else back)
+	looks[0] = LOOKS[over ? g.data.setting : g.data.upside] // the world turning away
+	looks[1] = LOOKS[over ? g.data.upside : g.data.setting]
+	k := fx.clamp01(game.overturn_shown(g))
+	k = over ? k : 1 - k
+	h := v.height
+	moved :: proc(v: View, dy: f32) -> View {
+		out := v
+		out.backdrop_center.y -= dy / v.backdrop_zoom
+		return out
+	}
+	if over {
+		roll.seam = h * (1 - k)
+		roll.sides[0] = {&looks[0], moved(v, -k * h), {0, roll.seam}}
+		roll.sides[1] = {&looks[1], moved(v, (1 - k) * h), {roll.seam, h}}
+	} else {
+		roll.seam = h * k
+		roll.sides[0] = {&looks[0], moved(v, k * h), {roll.seam, h}}
+		roll.sides[1] = {&looks[1], moved(v, -(1 - k) * h), {0, roll.seam}}
+	}
+	roll.count = 2
+	roll.glow = math.sin(math.PI * k)
+	return
+}
+
+@(private)
+clip_begin :: proc(clip: Maybe([2]f32), v: View) {
+	if rows, ok := clip.?; ok {
+		rl.BeginScissorMode(0, i32(rows[0]), i32(v.width), i32(math.ceil(rows[1] - rows[0])))
+	}
+}
+
+@(private)
+clip_end :: proc(clip: Maybe([2]f32)) {
+	if clip != nil {
+		rl.EndScissorMode()
+	}
+}
+
+// The seam between the two skies as they roll: a band of light.
+@(private)
+draw_roll_seam :: proc(roll: Backdrop_Roll, v: View) {
+	if roll.count < 2 || roll.glow < 0.01 {
+		return
+	}
+	rl.BeginBlendMode(.ADDITIVE)
+	band := 70 * v.height / 1080
+	warm := to_color({1.0, 0.6, 0.45, 0.5 * roll.glow})
+	clear := to_color({1.0, 0.6, 0.45, 0})
+	rl.DrawRectangleGradientV(0, i32(roll.seam - band), i32(v.width), i32(band), clear, warm)
+	rl.DrawRectangleGradientV(0, i32(roll.seam), i32(v.width), i32(band), warm, clear)
+	rl.EndBlendMode()
 }
 
 // A bolt of lightning in the sky behind the level while it flashes
@@ -993,11 +1106,13 @@ set_v3 :: proc(r: ^Renderer, u: Uniform, value: Vec3) {
 set_frame_uniforms :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	axis := depth_axis(v)
 	dmin, dmax: f32 = 1e30, -1e30
+	low: i32 = 1 << 20
 	for p in s.pieces {
 		c := piece_cell(g, p)
 		d := linalg_dot(Vec3{f32(c.x) + 0.5, f32(c.y) + 0.5, f32(c.z)}, axis)
 		dmin = min(dmin, d)
 		dmax = max(dmax, d + 1)
+		low = min(low, c.z)
 	}
 	set_f(r, .Light_Amount, g.light)
 	set_f(r, .Flicker, g.flicker)
@@ -1018,6 +1133,8 @@ set_frame_uniforms :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	set_v3(r, .Rock_Tint, lk.rock == {} ? {1, 1, 1} : lk.rock)
 	set_f(r, .Moonlight, (1 - lk.gloom) * (1 - (0.45 * lk.moon_clouds + 0.16 * lk.day_clouds) * s.orb_cover))
 	set_f(r, .Morning, lk.morning)
+	set_v3(r, .Under_Glow, lk.under_glow)
+	set_f(r, .Glow_Low, f32(low))
 	all := make([dynamic]Flame, 0, len(g.data.props) + len(g.data.candelabra), context.temp_allocator)
 	append(&all, ..candle_lights(g))
 	append(&all, ..fire_lights(g))
@@ -1349,14 +1466,14 @@ draw_pieces :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, transparent: bool) {
 		if p.cube {
 			// the face seen on top (the world turning over shows its undersides
 			// from half way: then up is down in the frame of the world up now)
-			up: i32 = (g.overturn > 0.5) == g.palace.upside ? 1 : -1
+			up: i32 = (game.overturn_shown(g) > 0.5) == g.palace.upside ? 1 : -1
 			covered := pl.solid_at(&g.palace, piece_cell(g, p) + {0, 0, up}).kind != .None
 			material = covered ? .Masonry : .Marble
 			detail = covered ? 2 : 1
 			ground, lawn := p.ground, p.lawn
 			if g.data.duality && level.world_cell(&g.data, p.cell, p.under).z == g.data.axle {
 				// the floor of both worlds: rock to the dead, marble to her kingdom
-				ground = g.overturn <= 0.5
+				ground = game.overturn_shown(g) <= 0.5
 				lawn &&= ground
 			}
 			if ground {
@@ -1377,7 +1494,7 @@ draw_pieces :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, transparent: bool) {
 			}
 		}
 		// hanging upside down (more than half turned): its courses and bevels turned with it
-		if (p.under != (g.overturn > 0.5)) && len(g.data.pomegranates) > 0 {
+		if (p.under != (game.overturn_shown(g) > 0.5)) && len(g.data.pomegranates) > 0 {
 			set_f(r, .Turned, 1)
 		}
 		m := piece_matrix(g, p, lift)
@@ -1397,6 +1514,22 @@ draw_pieces :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, transparent: bool) {
 	}
 }
 
+// Psyche turns head over heels about this height of her figure (game.somersault).
+SOMERSAULT_MID :: 0.3
+
+// A point carried with her as she turns head over heels.
+@(private)
+tumbled :: proc(g: ^game.Game, p: Vec3) -> Vec3 {
+	a := game.somersault(g)
+	if a == 0 {
+		return p
+	}
+	mid := g.psyche.pos + {0, 0, SOMERSAULT_MID}
+	c, s := math.cos(a), math.sin(a)
+	d := p - mid
+	return mid + {d.x, c * d.y - s * d.z, s * d.y + c * d.z}
+}
+
 // How much the dark around Psyche asks for her own light: the night
 // settings fully, the lit ones little, less while she holds the lamp lit.
 @(private)
@@ -1413,12 +1546,16 @@ draw_figures :: proc(r: ^Renderer, g: ^game.Game) {
 	fall := game.sleep_fall(g)
 	base := psy.pos + {0, 0, bob + 0.1 * fall}
 	rot := rl.MatrixRotateZ(psy.yaw) * rl.MatrixRotateY(1.42 * fall)
-	body := rl.MatrixTranslate(base.x, base.y, base.z) * rot
+	// head over heels while the world turns over (about her middle)
+	flip := game.somersault(g)
+	mid := base + {0, 0, SOMERSAULT_MID}
+	tumble := rl.MatrixTranslate(mid.x, mid.y, mid.z) * rl.MatrixRotateX(flip) * rl.MatrixTranslate(-mid.x, -mid.y, -mid.z)
+	body := tumble * rl.MatrixTranslate(base.x, base.y, base.z) * rot
 	set_piece_uniforms(r, .Psyche, 0, 0, game.psyche_alpha(g), 0.9, 0.04 + 0.07 * psyche_dark(g))
 	rl.DrawMesh(r.meshes[.Robe], r.material, body)
 	rl.DrawMesh(r.meshes[.Head], r.material, body * rl.MatrixTranslate(0, 0, 0.548) * rl.MatrixScale(0.046, 0.046, 0.05))
 	if g.data.has_lamp && g.phase != .Prologue && fall < 0.3 {
-		lamp := game.lamp_world(g)
+		lamp := tumbled(g, game.lamp_world(g))
 		set_piece_uniforms(r, .Bronze, 0, 0, game.psyche_alpha(g) * (1 - fall / 0.3), 0.9, 0)
 		rl.DrawMesh(r.meshes[.Lamp], r.material, rl.MatrixTranslate(lamp.x, lamp.y, lamp.z - 0.05))
 	}
@@ -2061,20 +2198,6 @@ draw_decals :: proc(g: ^game.Game) {
 	end_turn()
 	floor_ellipse(g.psyche.pos + {0, 0, 0.006}, 0.13, 0.13, {0, 0, 0.04, 0.4 * game.psyche_alpha(g)})
 
-	// Proserpina's pomegranates: a ring of dark red on both faces of their stones
-	for c, n in g.data.pomegranates {
-		k := 0.6 + 0.4 * math.sin(g.time * 1.2 + f32(n))
-		rise, clear := placed(g, c)
-		col := Color4{0.95, 0.3, 0.32, 0.3 * k * clear}
-		for under in ([2]bool{false, true}) {
-			begin_turn(g, under)
-			p := Vec3{f32(c.x) + 0.5, f32(c.y) + 0.5, f32(c.z) + 0.007 + rise}
-			floor_ring(p, 0.32, 0.05, col)
-			floor_ellipse(p - {0, 0, 0.001}, 0.3, 0.3, {col.r, col.g, col.b, col.a * 0.22})
-			end_turn()
-		}
-	}
-
 	// the world as described (lawns, sundials, perches, parts), turned with it
 	begin_turn(g, false)
 	// a few small flowers in the grass, pale in the moonlight
@@ -2265,21 +2388,29 @@ Device_Stone :: struct {
 	strength: f32,
 }
 
-// Accessibility (the setting `highlight`): the stone under everything that
-// changes the diorama or takes her elsewhere (handles, sundials, the eagles'
-// perches, the caves' mouths, the moorings where a ferry waits) glows faintly,
-// breathing slowly. Not the seals nor the veiled stones: the lamp's secrets
-// (they sparkle as her flame nears). The world above only, upright.
+// An aid (`highlight`): the stone under everything that changes the diorama
+// or takes her elsewhere (handles, sundials, Proserpina's pomegranates, the
+// eagles' perches, the caves' mouths, the moorings where a ferry waits) glows
+// faintly, breathing slowly. Not the seals nor the veiled stones: the lamp's
+// secrets (they sparkle as her flame nears). The world above only, upright,
+// but the pomegranates: their stones are of both worlds (on the axle, the
+// same cell in either frame).
 @(private)
 device_stones :: proc(g: ^game.Game) -> [dynamic]Device_Stone {
 	stones := make([dynamic]Device_Stone, 0, 16, context.temp_allocator)
-	if g.palace.upside || g.phase == .Overturn {
+	if g.phase == .Overturn {
 		return stones
 	}
 	add :: proc(stones: ^[dynamic]Device_Stone, g: ^game.Game, c: Cell) {
 		_, clear := placed(g, c)
 		breath: f32 = g.reduce_motion ? 0.75 : 0.6 + 0.4 * math.sin(g.time * 2.2 + f32(len(stones)) * 1.9)
 		append(stones, Device_Stone{c - {0, 0, 1}, breath * clear})
+	}
+	for c in g.data.pomegranates {
+		add(&stones, g, c)
+	}
+	if g.palace.upside {
+		return stones
 	}
 	for h in g.data.handles {
 		add(&stones, g, h.cell)
@@ -2301,6 +2432,37 @@ device_stones :: proc(g: ^game.Game) -> [dynamic]Device_Stone {
 		}
 	}
 	return stones
+}
+
+// The world turning over: the pomegranate under her wakes, its seeds of
+// light spiralling out; edge-on, a wave of light runs along the axle, where
+// the two worlds meet.
+@(private)
+draw_overturn :: proc(g: ^game.Game, v: View) {
+	if g.phase != .Overturn {
+		return
+	}
+	t := g.phase_t
+	stone := g.psyche.pos - {0, 0, game.overturn_lift(g)} + {0, 0, 0.04}
+	if wake := fx.progress(t, 0, game.OVERTURN_PREP + 0.6); wake < 1 {
+		a := math.sin(wake * math.PI)
+		glow(v, stone, 64, {1.0, 0.3, 0.32, 0.6 * a}, 0.6, toward = 0.3)
+		for i in 0 ..< 12 {
+			ang := f32(i) * math.TAU / 12 + wake * 4
+			r := 0.1 + 0.85 * fx.cubic_out(wake)
+			p := stone + {r * math.cos(ang), r * math.sin(ang), 0.15 * math.sin(wake * math.PI + f32(i))}
+			glow(v, p, 10, {1.0, 0.36, 0.38, a}, toward = 0.3)
+		}
+	}
+	// edge-on: the axle at the rotation's centre (it does not move as the world turns)
+	k := game.overturn_shown(g)
+	if wave := math.exp(-((k - 0.5) / 0.09) * ((k - 0.5) / 0.09)); wave > 0.01 {
+		y, z := f32(g.data.size) * 0.5, f32(g.data.axle) + 0.5
+		for x := f32(-0.5); x <= f32(g.data.size) + 0.5; x += 0.5 {
+			glow(v, {x, y, z}, 44, {1.0, 0.55, 0.42, 0.22 * wave}, 0.5)
+			glow(v, {x, y, z}, 14, {1.0, 0.9, 0.8, 0.5 * wave}, 0.4)
+		}
+	}
 }
 
 // An aid: the way to the next thing to do (game.show_guide), a trail of
@@ -2374,9 +2536,11 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	// her body a faint rose, her wings of energy small, violet to blue (the
 	// soul's butterfly), quicker as she walks; gone as the sleep lays her down
 	if pa := game.psyche_alpha(g) * (1 - game.sleep_fall(g)); pa > 0.003 {
-		glow(v, psy.pos + {0, 0, 0.26}, 15, {1.0, 0.6, 0.78, 0.16 * pa}, 1.8, toward = 0.3)
+		glow(v, tumbled(g, psy.pos + {0, 0, 0.26}), 15, {1.0, 0.6, 0.78, 0.16 * pa}, 1.8, toward = 0.3)
 		fwd := Vec3{math.cos(psy.yaw), math.sin(psy.yaw), 0}
-		light_wings(v, psy.pos + {0, 0, 0.4} - fwd * 0.035, t, PSYCHE_WINGS, psy.walking ? 3.5 : 1, pa)
+		// quicker as she walks, flaring as she turns head over heels
+		pace: f32 = game.somersault(g) != 0 ? 6 : psy.walking ? 3.5 : 1
+		light_wings(v, tumbled(g, psy.pos + {0, 0, 0.4} - fwd * 0.035), t, PSYCHE_WINGS, pace, pa)
 	}
 	// where she is (game.point_at_psyche): a shaft of soft light coming down
 	// on her, as over a fragment but orange-red (never taken for the diorama's
@@ -2463,6 +2627,7 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 		glow(v, shown(g, c + {0, 0, -0.25}, under), 40, {0.85, 0.93, 1.0, 0.45 * ea})
 	}
 	draw_guide(g, v)
+	draw_overturn(g, v)
 	// Proserpina's pomegranates: a dark red gleam on both faces of their stones
 	for c, n in g.data.pomegranates {
 		_, clear := placed(g, c)
@@ -2906,8 +3071,8 @@ set_bv3 :: proc(b: Backdrop, u: Backdrop_Uniform, value: Vec3) {
 // Where the sky meets the sea of clouds, in screen uv (the bottom of the
 // screen when the setting has no ranges: the night sky as it always was).
 @(private)
-horizon_uv :: proc(s: ^Scene, g: ^game.Game, view: View) -> f32 {
-	if look_of(g).ridges == 0 {
+horizon_uv :: proc(s: ^Scene, g: ^game.Game, view: View, lk: ^Look) -> f32 {
+	if lk.ridges == 0 {
 		return 1
 	}
 	v := backdrop_view(s, g, view, 0.25)
@@ -2916,11 +3081,10 @@ horizon_uv :: proc(s: ^Scene, g: ^game.Game, view: View) -> f32 {
 
 // The sky and the far ranges share the orb, the horizon and the turn.
 @(private)
-set_sky_uniforms :: proc(b: Backdrop, s: ^Scene, g: ^game.Game, v: View) {
-	lk := look_of(g)
+set_sky_uniforms :: proc(b: Backdrop, s: ^Scene, g: ^game.Game, v: View, lk: ^Look) {
 	set_bf(b, .Shift, g.angle)
 	set_bf(b, .Aspect, v.width / v.height)
-	set_bf(b, .Horizon, horizon_uv(s, g, v))
+	set_bf(b, .Horizon, horizon_uv(s, g, v, lk))
 	set_bv2(b, .Orb_Pos, lk.orb_pos)
 	set_bv3(b, .Halo_Color, lk.halo_color)
 	set_bf(b, .Halo_Width, lk.halo_width)
@@ -2944,10 +3108,9 @@ draw_veil :: proc(r: ^Renderer, g: ^game.Game, width, height, time: f32) {
 }
 
 @(private)
-draw_sky :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
+draw_sky :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32, lk: ^Look) {
 	b := r.sky
-	lk := look_of(g)
-	set_sky_uniforms(b, s, g, v)
+	set_sky_uniforms(b, s, g, v, lk)
 	set_bf(b, .Light_Amount, g.light * 0.8)
 	set_bf(b, .Time, time)
 	set_bv3(b, .Sky_Top, lk.sky_top)
@@ -2958,6 +3121,7 @@ draw_sky :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 	set_bf(b, .Stars, lk.stars)
 	set_bf(b, .Night_Clouds, lk.moon_clouds)
 	set_bf(b, .Day_Clouds, lk.day_clouds)
+	set_bv3(b, .Cloud_Light, lk.cloud_light == {} ? {1, 1, 1} : lk.cloud_light)
 	set_bf(b, .Birds, g.reduce_motion ? 0 : f32(lk.birds))
 	s.orb_cover = orb_cover(lk, time, g.angle, v.width / v.height)
 	rl.BeginShaderMode(b.shader)
@@ -2967,10 +3131,9 @@ draw_sky :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 
 // The mountain ranges between the sky and the sea of clouds.
 @(private)
-draw_ridges :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
+draw_ridges :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, lk: ^Look) {
 	b := r.ridges
-	lk := look_of(g)
-	set_sky_uniforms(b, s, g, v)
+	set_sky_uniforms(b, s, g, v, lk)
 	set_bf(b, .Light_Amount, g.light * 0.8)
 	set_bv3(b, .Color_Far, lk.ridge_color[0])
 	set_bv3(b, .Color_Mid, lk.ridge_color[1])
@@ -2996,19 +3159,22 @@ backdrop_view :: proc(s: ^Scene, g: ^game.Game, v: View, k: f32) -> View {
 }
 
 @(private)
-draw_clouds :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, view: View, time: f32, front: bool) {
+draw_clouds :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, view: View, time: f32, front: bool, lk: ^Look, alpha: f32 = 1) {
+	if alpha <= 0.003 {
+		return
+	}
 	v := backdrop_view(s, g, view, 0.5)
 	b := r.clouds
-	lk := look_of(g)
 	top := s.fit.y + s.fit.h - (front ? 330 : 520)
 	a := proto_to_screen(v, {s.fit.x - 1400, top})
 	c := proto_to_screen(v, {s.fit.x + s.fit.w + 1400, top + 700})
 	set_bf(b, .Light_Amount, g.light)
 	set_bf(b, .Shift, g.angle * 0.8)
 	set_bf(b, .Time, time)
-	set_bf(b, .Density, front ? 0.9 : 1.0)
+	set_bf(b, .Density, (front ? 0.9 : 1.0) * alpha)
 	set_bv3(b, .Tint, front ? lk.cloud_front : lk.cloud_back)
 	set_bv3(b, .Crest_Color, lk.cloud_crest)
+	set_bf(b, .Lava, lk.lava)
 	rl.BeginShaderMode(b.shader)
 	full_rect(r, {a.x, a.y, c.x - a.x, c.y - a.y})
 	rl.EndShaderMode()

@@ -27,7 +27,7 @@ intro intro_iv_5
 outro outro_iv_5
 size 15
 biome taenarus
-setting taenarus_night
+setting asphodel_night
 lamp
 floor basin 0 -1 14 15 5
 duality

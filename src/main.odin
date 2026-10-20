@@ -306,8 +306,9 @@ SETTING_BED := [level.Setting]audio.Bed {
 	.Styx_Evening  = .Styx,
 	.Tower_Dusk    = .Mountain,
 	.Taenarus      = .Styx,
-	.Taenarus_Night = .Styx,
-	.Dis           = .Deep_Night,
+	.Asphodel      = .Deep_Night,
+	.Asphodel_Night = .Deep_Night,
+	.Dis           = .Fire,
 }
 
 // What the mixer plays: the act's music (silent while the screen goes
