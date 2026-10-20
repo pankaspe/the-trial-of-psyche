@@ -38,6 +38,7 @@ Screen :: enum u8 {
 	Title,
 	Levels,
 	Games, // the games side by side: continue one, start one, erase one
+	Difficulty, // a new game's difficulty, before it starts
 	Book,
 	Codex, // Psyche's Notebook: the mechanics met so far
 	Card, // the card before an act
@@ -66,6 +67,11 @@ App :: struct {
 	playing:         bool, // that game has begun (its slot holds a save)
 	slots:           [progress.SLOTS]progress.Slot_Info, // read when the list of games opens
 	games:           ui.Games_State,
+	new_game:        struct {
+		slot: int, // the game's slot
+		from: Screen, // where back goes
+		sel:  progress.Difficulty,
+	},
 	renderer:        render.Renderer,
 	ui:              ui.Ui,
 	game:            game.Game,
@@ -152,6 +158,7 @@ main :: proc() {
 
 startup :: proc(app: ^App) -> bool {
 	app.cfg = app.shooting ? settings.defaults() : settings.load()
+	app.prog.aids = progress.DIFFICULTY_AIDS[.Normal] // the shots' own game
 	if !app.shooting {
 		progress.migrate()
 		app.prog, app.playing = progress.load(app.cfg.slot)
@@ -316,7 +323,7 @@ update_sound :: proc(app: ^App) {
 	audio.set_near(.Fire, g.active && !going_black ? fire : 0, pan)
 	duck: f32 = 0
 	#partial switch app.screen {
-	case .Fragment, .Mechanic, .Pause, .Settings, .Ending, .Card, .Levels, .Games, .Book, .Codex:
+	case .Fragment, .Mechanic, .Pause, .Settings, .Ending, .Card, .Levels, .Games, .Difficulty, .Book, .Codex:
 		duck = 1
 	}
 	audio.set_duck(duck)
@@ -688,7 +695,8 @@ frame :: proc(app: ^App) {
 		poll_dead_ends(app)
 		game.update(g, dt)
 		app.scene.see_through = app.cfg.see_through
-		app.scene.highlight = app.cfg.highlight
+		app.scene.highlight = .Highlight in app.prog.aids
+		app.scene.sense = .Sense in app.prog.aids
 		render.scene_update(&app.scene, g, dt)
 	}
 	if app.menu_fade >= 0 {
@@ -744,7 +752,7 @@ frame :: proc(app: ^App) {
 	update_black(app, dt)
 	update_passage(app, dt)
 	update_levels(app, dt)
-	side := app.screen == .Levels || app.screen == .Games || app.screen == .Settings || app.screen == .Codex
+	side := app.screen == .Levels || app.screen == .Games || app.screen == .Difficulty || app.screen == .Settings || app.screen == .Codex
 	app.stage = clamp(app.stage + (side ? dt : -dt) / STAGE_TIME, 0, 1)
 	app.scene.stage = app.stage
 	update_sound(app)
@@ -908,6 +916,8 @@ back :: proc(app: ^App) -> bool {
 		leave_levels(app, true)
 	case .Games:
 		app.screen = .Title
+	case .Difficulty:
+		app.screen = app.new_game.from
 	case .Book:
 		app.screen = .Title
 	case .Codex:
@@ -1163,7 +1173,8 @@ draw_screens :: proc(app: ^App) {
 	u.hud_size = app.cfg.hud_size
 	u.labels_always = app.cfg.skill_labels == .Always
 	u.reduce_motion = app.cfg.reduce_motion
-	g.endless_oil = app.cfg.endless_oil
+	g.endless_oil = .Endless_Oil in app.prog.aids
+	g.dead_end_hints = .Dead_Ends in app.prog.aids
 	i18n.set_variant(.Lamp_Toggle, app.cfg.lamp_toggle)
 	i18n.set_variant(.Restart_Twice, app.cfg.restart_twice)
 	g.reduce_motion = app.cfg.reduce_motion
@@ -1176,7 +1187,11 @@ draw_screens :: proc(app: ^App) {
 		}
 		switch act {
 		case .Play:
-			start_level(app, progress.current_level(app.prog), true)
+			if app.playing {
+				start_level(app, progress.current_level(app.prog), true)
+			} else {
+				ask_difficulty(app, app.cfg.slot, .Title)
+			}
 		case .Levels:
 			app.screen = .Levels
 		case .Games:
@@ -1200,6 +1215,13 @@ draw_screens :: proc(app: ^App) {
 			play_game(app, chosen)
 		} else if back {
 			app.screen = .Title
+		}
+	case .Difficulty:
+		d, ok, back := ui.difficulty_menu(u, &app.new_game.sel)
+		if ok {
+			begin_game(app, app.new_game.slot, d)
+		} else if back {
+			app.screen = app.new_game.from
 		}
 	case .Levels:
 		chosen, from_start, back := ui.level_select(u, app.prog, &app.levels.sel, app.levels.pictures[:], g, levels_veil(app))
@@ -1275,7 +1297,7 @@ draw_screens :: proc(app: ^App) {
 	case .Settings:
 		m := rl.GetCurrentMonitor()
 		native := [2]i32{rl.GetMonitorWidth(m), rl.GetMonitorHeight(m)}
-		changes, back := ui.settings_menu(u, &app.cfg, app.resolutions[:app.resolution_count], native)
+		changes, back := ui.settings_menu(u, &app.cfg, &app.prog.aids, app.resolutions[:app.resolution_count], native)
 		if changes != {} {
 			apply(app, changes)
 		}
@@ -1367,8 +1389,12 @@ apply :: proc(app: ^App, changes: ui.Setting_Changes) {
 		audio.set_volumes(c.master, c.music, c.sfx)
 	}
 	// sliders are saved when the panel closes, not on every step of a drag
-	if changes - {.Volumes} != {} {
+	if changes - {.Volumes, .Aids} != {} {
 		save_settings(app)
+	}
+	// the aids are the game's (a game not yet begun takes them when it starts)
+	if .Aids in changes && app.playing {
+		save_progress(app)
 	}
 }
 
@@ -1397,12 +1423,34 @@ read_slots :: proc(app: ^App) {
 	}
 }
 
-// Play the game of a slot (an empty one: a new game), from where it stands.
+// Play the game of a slot from where it stands (an empty one: a new game,
+// its difficulty asked first).
 @(private)
 play_game :: proc(app: ^App, slot: int) {
+	if !app.slots[slot - 1].used {
+		ask_difficulty(app, slot, .Games)
+		return
+	}
 	app.cfg.slot = slot
 	save_settings(app)
-	app.prog, app.playing = app.slots[slot - 1].prog, app.slots[slot - 1].used
+	app.prog, app.playing = app.slots[slot - 1].prog, true
+	start_level(app, progress.current_level(app.prog), true)
+}
+
+// A new game in `slot`: its difficulty first (back goes to `from`).
+@(private)
+ask_difficulty :: proc(app: ^App, slot: int, from: Screen) {
+	app.new_game = {slot = slot, from = from, sel = .Normal}
+	app.screen = .Difficulty
+}
+
+// The new game begins with the aids of its difficulty, saved in its slot.
+@(private)
+begin_game :: proc(app: ^App, slot: int, d: progress.Difficulty) {
+	app.cfg.slot = slot
+	save_settings(app)
+	app.prog, app.playing = {aids = progress.DIFFICULTY_AIDS[d]}, false
+	save_progress(app)
 	start_level(app, progress.current_level(app.prog), true)
 }
 

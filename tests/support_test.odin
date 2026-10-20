@@ -25,7 +25,6 @@ settings_round_trip :: proc(t: ^testing.T) {
 	s.hold_time = 2.5
 	s.restart_twice = true
 	s.reduce_motion = true
-	s.endless_oil = true
 	s.pad_glyphs = .PlayStation
 	text := settings.serialize(s, context.temp_allocator)
 	back := settings.defaults()

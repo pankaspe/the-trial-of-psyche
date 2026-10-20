@@ -246,7 +246,8 @@ Scene :: struct {
 	pieces:     [dynamic]Piece,
 	see:        []f32, // per piece: 0 .. 1 faded, standing between the camera and Psyche
 	see_through: bool, // the accessibility setting (fade them)
-	highlight:   bool, // the accessibility setting: the devices' stones glow (device_stones)
+	highlight:   bool, // an aid: the devices' stones glow (device_stones)
+	sense:       bool, // an aid: seals and veiled stones sparkle as her flame nears (flame_answer)
 	fit:        Rect, // proto pixels that hold the palace from every view
 	motes:      fx.Pool(64), // drifting in front of everything (proto px)
 	sparks:     fx.Pool(64), // around Cupid (world)
@@ -2574,6 +2575,9 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	// an unlit seal or a veiled stone near her in the dark: little stars
 	// twinkling about it
 	for c0, k in g.data.sigils {
+		if !s.sense {
+			break
+		}
 		if sense := game.seal_sense(g, k); sense >= 0.01 {
 			c := shown(g, Vec3{f32(c0.x) + 0.5, f32(c0.y) + 0.5, f32(c0.z) + 0.05}, k in g.data.sigils_under)
 			_, clear := placed(g, c0)
@@ -2581,6 +2585,9 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 		}
 	}
 	for e, i in g.data.blocks {
+		if !s.sense {
+			break
+		}
 		if sense := game.veil_sense(g, i); sense >= 0.01 {
 			c0 := pl.block_cell(&g.palace, i)
 			c := shown(g, Vec3{f32(c0.x) + 0.5, f32(c0.y) + 0.5, f32(c0.z) + 1.05}, e.under)

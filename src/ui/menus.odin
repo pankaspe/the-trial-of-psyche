@@ -1202,6 +1202,7 @@ Setting_Field :: enum u8 {
 	Debug,
 	Quality,
 	Access, // the accessibility options (read by the app every frame)
+	Aids, // the game's aids (kept in its save)
 }
 
 Setting_Changes :: bit_set[Setting_Field]
@@ -1209,6 +1210,7 @@ Setting_Changes :: bit_set[Setting_Field]
 // The pages of the settings panel.
 Settings_Tab :: enum u8 {
 	General,
+	Aids,
 	Graphics,
 	Audio,
 	Access,
@@ -1217,9 +1219,31 @@ Settings_Tab :: enum u8 {
 @(private)
 TAB_KEY := [Settings_Tab]i18n.Key {
 	.General  = .Set_General,
+	.Aids     = .Set_Aids,
 	.Graphics = .Set_Graphics,
 	.Audio    = .Set_Audio,
 	.Access   = .Set_Access,
+}
+
+DIFFICULTY_NAME := [progress.Difficulty]i18n.Key {
+	.Story  = .Difficulty_Story,
+	.Normal = .Difficulty_Normal,
+	.Puzzle = .Difficulty_Puzzle,
+}
+
+DIFFICULTY_DESC := [progress.Difficulty]i18n.Key {
+	.Story  = .Difficulty_Story_Desc,
+	.Normal = .Difficulty_Normal_Desc,
+	.Puzzle = .Difficulty_Puzzle_Desc,
+}
+
+// The aids one by one, in the settings.
+@(private)
+AID_NAME := [progress.Aid]i18n.Key {
+	.Highlight   = .Set_Highlight,
+	.Sense       = .Set_Sense,
+	.Dead_Ends   = .Set_Dead_Ends,
+	.Endless_Oil = .Set_Endless_Oil,
 }
 
 @(private)
@@ -1246,10 +1270,10 @@ QUALITY_DESC := [settings.Quality]i18n.Key {
 	.Ultra  = .Quality_Ultra_Desc,
 }
 
-// The settings panel, in tabs: edits `cfg` in place and reports what changed.
-// On the Graphics tab the game behind shows through, so the quality can be
-// judged while it is changed.
-settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, native: [2]i32) -> (changes: Setting_Changes, back: bool) {
+// The settings panel, in tabs: edits `cfg` and the game's `aids` in place and
+// reports what changed. On the Graphics tab the game behind shows through, so
+// the quality can be judged while it is changed.
+settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, aids: ^progress.Aids, resolutions: [][2]i32, native: [2]i32) -> (changes: Setting_Changes, back: bool) {
 	s := u.scale
 	tab := &u.settings_tab
 	// the lamp's side, the game clear on the right (the diorama moved there)
@@ -1380,6 +1404,26 @@ settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, na
 			changes += {.Volumes}
 		}
 
+	case .Aids:
+		// the difficulty sets every aid; changed one by one it is no longer one of them
+		d, chosen := progress.difficulty_of(aids^)
+		name := i18n.tr(chosen ? DIFFICULTY_NAME[d] : .Difficulty_Custom)
+		if step := option_row(u, i18n.tr(.Set_Difficulty), name, y, left, right); step != 0 {
+			n := len(progress.Difficulty)
+			next := chosen ? progress.Difficulty((int(d) + step + n) % n) : .Normal
+			aids^ = progress.DIFFICULTY_AIDS[next]
+			changes += {.Aids}
+		}
+		line(u, left, right, y)
+		y += row
+		for key, a in AID_NAME {
+			if step := option_row(u, i18n.tr(key), on_off(a in aids), y, left, right); step != 0 {
+				aids^ ~= {a}
+				changes += {.Aids}
+			}
+			line(u, left, right, y)
+			y += row
+		}
 	case .Access:
 		// the next value in a list, `step` places on, wrapping
 		pick :: proc(list: []f32, value: f32, step: int) -> f32 {
@@ -1425,18 +1469,6 @@ settings_menu :: proc(u: ^Ui, cfg: ^settings.Settings, resolutions: [][2]i32, na
 		y += row
 		if step := option_row(u, i18n.tr(.Set_See_Through), on_off(cfg.see_through), y, left, right); step != 0 {
 			cfg.see_through = !cfg.see_through
-			changes += {.Access}
-		}
-		line(u, left, right, y)
-		y += row
-		if step := option_row(u, i18n.tr(.Set_Highlight), on_off(cfg.highlight), y, left, right); step != 0 {
-			cfg.highlight = !cfg.highlight
-			changes += {.Access}
-		}
-		line(u, left, right, y)
-		y += row
-		if step := option_row(u, i18n.tr(.Set_Endless_Oil), on_off(cfg.endless_oil), y, left, right); step != 0 {
-			cfg.endless_oil = !cfg.endless_oil
 			changes += {.Access}
 		}
 		line(u, left, right, y)
@@ -1563,6 +1595,60 @@ games_menu :: proc(u: ^Ui, slots: []progress.Slot_Info, current: int, gs: ^Games
 		hint_row(u, foot, {{.South, .Levels_Play}, {.Erase, .Game_Erase}})
 	} else {
 		hint_row(u, foot, {{.Up_Down, .Set_Hint_Choose}, {.Enter, .Levels_Play}, {.Erase, .Game_Erase}})
+	}
+	back = panel_back(u, focus = false)
+	return
+}
+
+// A new game's difficulty, in the side panel: the three side by side as the
+// games are, each its name and what it gives. `sel` the one chosen with the
+// keys or the mouse (the pad has the focus); `chosen` ok when one is taken.
+difficulty_menu :: proc(u: ^Ui, sel: ^progress.Difficulty) -> (chosen: progress.Difficulty, ok, back: bool) {
+	s := u.scale
+	side_panel(u)
+	x0 := PANEL_X * s
+	w := PANEL_W * s
+	y := panel_head(u, caps(i18n.tr(.New_Game)), i18n.tr(.Difficulty_Head)) + 10 * s
+	ROW :: 150
+	if rl.IsKeyPressed(.UP) {
+		sel^ = progress.Difficulty(max(int(sel^) - 1, 0))
+	}
+	if rl.IsKeyPressed(.DOWN) {
+		sel^ = progress.Difficulty(min(int(sel^) + 1, len(progress.Difficulty) - 1))
+	}
+	enter := !u.pad && (rl.IsKeyPressed(.ENTER) || rl.IsKeyPressed(.SPACE))
+	for d in progress.Difficulty {
+		r := rl.Rectangle{x0 - 20 * s, y, w + 40 * s, (ROW - 14) * s}
+		add_hot(u, r)
+		focus := focusable(u, r)
+		over := mouse_over(u, r)
+		if over && u.mouse_moved {
+			sel^ = d
+		}
+		hover := u.pad ? focus : sel^ == d
+		if hover {
+			rl.DrawRectangleRec(r, fade({40, 24, 14, 255}, 0.55))
+			corner_frame(u, r, 1, s, BRIGHT)
+		} else {
+			rl.DrawRectangleRec(r, fade({13, 11, 20, 255}, 0.45))
+			rl.DrawRectangleLinesEx(r, max(s, 1), fade(GOLD, 0.25))
+		}
+		top := r.y + 16 * s
+		text(u, i18n.tr(DIFFICULTY_NAME[d]), {x0, top}, {size = 32, color = hover ? BRIGHT : TEXT, face = .Semi, shadow = true}, .Left)
+		desc := Style{size = 22, color = hover ? TEXT : DIM, face = .Italic, shadow = true}
+		paragraph(u, i18n.tr(DIFFICULTY_DESC[d]), {x0, top + 46 * s}, desc, w - 20 * s, 1, 1.25, .Left)
+		if (u.pad && activated(u, focus)) || (over && u.pressed) || (hover && enter) {
+			audio.play(.Tap, -14)
+			chosen, ok = d, true
+		}
+		y += ROW * s
+	}
+	text(u, i18n.tr(.Difficulty_Note), {x0, y + 6 * s}, {size = 22, color = DIM, face = .Italic, shadow = true}, .Left)
+	foot := Vec2{x0, u.height - FOOT_Y * s}
+	if u.pad {
+		hint_row(u, foot, {{.South, .Levels_Play}})
+	} else {
+		hint_row(u, foot, {{.Up_Down, .Set_Hint_Choose}, {.Enter, .Levels_Play}})
 	}
 	back = panel_back(u, focus = false)
 	return

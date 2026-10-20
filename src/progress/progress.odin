@@ -103,6 +103,49 @@ Progress :: struct {
 	fragments:    Fragment_Set,
 	achievements: Achievements,
 	resume:       Resume,
+	aids:         Aids, // chosen with the game's difficulty, changed in the settings
+}
+
+// The help a game is played with.
+Aid :: enum u8 {
+	Highlight,   // the stones under the devices glow
+	Sense,       // seals and veiled stones sparkle as her flame nears
+	Dead_Ends,   // she is told when she stands in a dead end
+	Endless_Oil, // the lamp never runs dry
+}
+
+Aids :: bit_set[Aid]
+
+@(private)
+AID_ID := [Aid]string {
+	.Highlight   = "highlight",
+	.Sense       = "sense",
+	.Dead_Ends   = "dead_ends",
+	.Endless_Oil = "endless_oil",
+}
+
+// Chosen when a game starts: each sets the aids (changed one by one later,
+// the game's difficulty no longer one of them: `difficulty_of`).
+Difficulty :: enum u8 {
+	Story,  // to live the tale: every aid
+	Normal, // the hints, the oil counted
+	Puzzle, // no help at all
+}
+
+DIFFICULTY_AIDS := [Difficulty]Aids {
+	.Story  = ~Aids{},
+	.Normal = {.Highlight, .Sense, .Dead_Ends},
+	.Puzzle = {},
+}
+
+// The difficulty whose aids these are (ok false: changed one by one).
+difficulty_of :: proc(aids: Aids) -> (d: Difficulty, ok: bool) {
+	for a, k in DIFFICULTY_AIDS {
+		if a == aids {
+			return k, true
+		}
+	}
+	return
 }
 
 // Where a level of several dioramas was left: the diorama reached, played
@@ -433,16 +476,26 @@ serialize :: proc(p: Progress, allocator := context.allocator) -> string {
 	if r := p.resume; r.diorama > 0 {
 		fmt.sbprintfln(&b, "resume = %s %d %d %d", content.LEVELS[r.level].id, r.diorama, r.lightings, r.lamp_par)
 	}
+	fmt.sbprint(&b, "aids =")
+	for a in p.aids {
+		fmt.sbprintf(&b, " %s", AID_ID[a])
+	}
+	fmt.sbprintln(&b)
 	return strings.to_string(b)
 }
 
-// Read `key = value` lines into p; unknown keys, levels and achievements are ignored.
+// Read `key = value` lines into p; unknown keys, levels and achievements are
+// ignored. A game saved before the aids were chosen plays with Normal's.
 parse :: proc(text: string, p: ^Progress) {
 	rest := text
+	p.aids = DIFFICULTY_AIDS[.Normal]
 	for key, line in settings.config_entries(&rest) {
 		if key == "resume" {
 			parse_resume(line, p)
 			continue
+		}
+		if key == "aids" {
+			p.aids = {}
 		}
 		values := line
 		for word in strings.fields_iterator(&values) {
@@ -463,6 +516,12 @@ parse :: proc(text: string, p: ^Progress) {
 				for id, a in ACHIEVEMENT_ID {
 					if id == word {
 						p.achievements += {a}
+					}
+				}
+			case "aids":
+				for id, a in AID_ID {
+					if id == word {
+						p.aids += {a}
 					}
 				}
 			}

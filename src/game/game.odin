@@ -243,7 +243,8 @@ Game :: struct {
 	teach_card:     bool, // set by the app while the mechanic's card is on screen
 	teach_after:    f32, // time since that card was closed, < 0 before
 	trust_allowed:  bool, // set by the app: the game has been finished once
-	endless_oil:    bool, // set by the app (accessibility): the lamp never runs dry
+	endless_oil:    bool, // set by the app (an aid): the lamp never runs dry
+	dead_end_hints: bool, // set by the app (an aid): she is told when she stands in a dead end
 	reduce_motion:  bool, // set by the app (accessibility): the screen does not shake
 	fragments_known: Fragment_Set, // set by the app: collected in an earlier play
 	fragments_taken: Fragment_Set, // picked up in this play
@@ -2645,7 +2646,7 @@ update_dead_end :: proc(g: ^Game) {
 		return
 	}
 	st := pl.state_of(&g.palace, g.psyche.cell, g.lamp_on)
-	dead := st in g.dead_ends
+	dead := g.dead_end_hints && st in g.dead_ends
 	if dead == g.dead_end {
 		return
 	}

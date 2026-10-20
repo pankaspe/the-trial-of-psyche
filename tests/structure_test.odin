@@ -66,6 +66,7 @@ progress_round_trip :: proc(t: ^testing.T) {
 	p.fragments = {3, 4, 20}
 	p.achievements = {.Trust, .No_Wasted_Light}
 	p.resume = {level = 12, diorama = 2, lightings = 3, lamp_par = 3}
+	p.aids = {.Sense, .Endless_Oil}
 	text := progress.serialize(p, context.temp_allocator)
 	back: progress.Progress
 	progress.parse(text, &back)
@@ -77,6 +78,10 @@ progress_round_trip :: proc(t: ^testing.T) {
 	odd: progress.Progress
 	progress.parse("completed = I.4 Z.9\nfragments = nothing\nachievements = trust flying\ngarbage\n", &odd)
 	testing.expect(t, odd.completed == {3} && odd.fragments == {} && odd.achievements == {.Trust}, "unknown ids are ignored")
+	testing.expect(t, odd.aids == progress.DIFFICULTY_AIDS[.Normal], "a game saved before the aids plays with Normal's")
+	puzzle: progress.Progress
+	progress.parse(progress.serialize({aids = {}}, context.temp_allocator), &puzzle)
+	testing.expect(t, puzzle.aids == {}, "no aids at all is kept")
 }
 
 @(test)

@@ -20,6 +20,7 @@ load_text :: proc(t: ^testing.T, g: ^game.Game, text: string, slot := 4) -> bool
 		return false
 	}
 	game.begin(g, prologue = false)
+	g.dead_end_hints = true // played with Normal's aids
 	run(g, 0.1)
 	return true
 }

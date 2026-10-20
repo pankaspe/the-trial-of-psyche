@@ -82,10 +82,8 @@ Settings :: struct {
 	hold_time:     f32, // seconds R is held to restart the level (one of HOLD_TIMES)
 	restart_twice: bool, // R pressed twice restarts, instead of held
 	reduce_motion: bool, // no pulsing or breathing in the HUD, no screen shake
-	endless_oil:   bool, // the lamp never runs dry
 	lamp_toggle:   bool, // the lamp is pressed to light and pressed again to put out, instead of held
 	see_through:   bool, // the stones between the camera and Psyche fade: she is never lost behind a wall
-	highlight:     bool, // a faint glow over what changes the diorama (handles, sundials, perches, caves, moorings)
 	slot:          int, // the game being played, 1 ..= SAVE_SLOTS
 }
 
@@ -105,7 +103,6 @@ defaults :: proc() -> Settings {
 		skill_labels = .Hover,
 		hold_time = 1.5,
 		see_through = true,
-		highlight = true,
 		slot = 1,
 	}
 }
@@ -174,10 +171,8 @@ serialize :: proc(s: Settings, allocator := context.allocator) -> string {
 	fmt.sbprintfln(&b, "hold_time = %.2f", s.hold_time)
 	fmt.sbprintfln(&b, "restart_twice = %v", s.restart_twice)
 	fmt.sbprintfln(&b, "reduce_motion = %v", s.reduce_motion)
-	fmt.sbprintfln(&b, "endless_oil = %v", s.endless_oil)
 	fmt.sbprintfln(&b, "lamp_toggle = %v", s.lamp_toggle)
 	fmt.sbprintfln(&b, "see_through = %v", s.see_through)
-	fmt.sbprintfln(&b, "highlight = %v", s.highlight)
 	fmt.sbprintfln(&b, "slot = %d", s.slot)
 	return strings.to_string(b)
 }
@@ -277,14 +272,10 @@ parse :: proc(text: string, s: ^Settings) {
 			boolean(value, &s.restart_twice)
 		case "reduce_motion":
 			boolean(value, &s.reduce_motion)
-		case "endless_oil":
-			boolean(value, &s.endless_oil)
 		case "lamp_toggle":
 			boolean(value, &s.lamp_toggle)
 		case "see_through":
 			boolean(value, &s.see_through)
-		case "highlight":
-			boolean(value, &s.highlight)
 		case "slot":
 			if v, ok := strconv.parse_int(value, 10); ok && v >= 1 && v <= SAVE_SLOTS {
 				s.slot = v
