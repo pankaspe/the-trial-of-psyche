@@ -346,6 +346,8 @@ Shots :: struct {
 	has_quality: bool,
 	plan:  bool, // --plan: play the solver's plan of the level, a shot after every decision
 	record: bool, // --record (with --plan): every frame at RECORD_FPS instead, for a video
+	record_from: int, // --record-from N: frames before N are not written
+	record_to:   int, // --record-to N: the recording stops at frame N (0: at the plan's end)
 	cave_shot: int, // --plan: the last move shot at a cave's mouth or a perch (the action of the place shows)
 	cross_shot: int, // --plan: the last move shot halfway across in Charon's boat
 	turn_shot:  int, // --plan: frames taken of the first overturn
@@ -397,6 +399,10 @@ shots_from_args :: proc(args: []string) -> (s: Shots, ok: bool) {
 		case "--diorama":
 			n, _ := strconv.parse_int(args[i + 1], 10)
 			s.diorama = clamp(n, 0, level.MAX_DIORAMAS - 1)
+		case "--record-from":
+			s.record_from, _ = strconv.parse_int(args[i + 1], 10)
+		case "--record-to":
+			s.record_to, _ = strconv.parse_int(args[i + 1], 10)
 		case "--file":
 			if text, err := os.read_entire_file_from_path(args[i + 1], context.allocator); err == nil {
 				s.file = string(text)
@@ -441,8 +447,13 @@ shots_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool
 			name = ""
 			// from the level's start: its prologue, its title, then the plan
 			if s.step >= 1 && !done {
-				name = fmt.tprintf("f%05d", s.frame)
+				if s.frame >= s.record_from {
+					name = fmt.tprintf("f%05d", s.frame)
+				}
 				s.frame += 1
+				if s.record_to > 0 && s.frame >= s.record_to {
+					return name, true // a window of the recording (--record-from, --record-to)
+				}
 			}
 			if done {
 				write_sound_log(app, s)
