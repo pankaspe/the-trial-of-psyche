@@ -52,6 +52,8 @@ Uniform :: enum u8 {
 	Rock_Tint,
 	Turned,
 	Corrupt,
+	Hint,
+	Hint_Color,
 }
 
 @(private)
@@ -80,6 +82,8 @@ UNIFORM_NAME := [Uniform]cstring {
 	.Rock_Tint     = "rock_tint",
 	.Turned        = "turned",
 	.Corrupt       = "corrupt",
+	.Hint          = "hint",
+	.Hint_Color    = "hint_color",
 	.Candles       = "candles",
 	.Candle_Reach  = "candle_reach",
 	.Candle_Count  = "candle_count",
@@ -236,7 +240,7 @@ Scene :: struct {
 	pieces:     [dynamic]Piece,
 	see:        []f32, // per piece: 0 .. 1 faded, standing between the camera and Psyche
 	see_through: bool, // the accessibility setting (fade them)
-	highlight:   bool, // the accessibility setting: a faint glow over the devices (draw_devices)
+	highlight:   bool, // the accessibility setting: the devices' stones glow (device_stones)
 	fit:        Rect, // proto pixels that hold the palace from every view
 	motes:      fx.Pool(64), // drifting in front of everything (proto px)
 	sparks:     fx.Pool(64), // around Cupid (world)
@@ -991,6 +995,7 @@ set_frame_uniforms :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 	set_f(r, .Flicker, g.flicker)
 	set_v3(r, .Lamp_Pos, game.lamp_world(g))
 	set_f(r, .Lamp_Radius, LAMP_RADIUS)
+	set_v3(r, .Hint_Color, HINT_COLOR)
 	set_v2(r, .View_Right, screen_right_xy(v))
 	set_v3(r, .Depth_Axis, axis)
 	set_f(r, .Depth_Min, dmin)
@@ -1125,6 +1130,7 @@ set_piece_uniforms :: proc(r: ^Renderer, material: Material, detail, hidden, alp
 	set_f(r, .Glow, glow)
 	set_f(r, .Turned, 0)
 	set_f(r, .Corrupt, 0)
+	set_f(r, .Hint, 0)
 }
 
 // Where a point given in cell space of block entry i is in the world now
@@ -1323,6 +1329,7 @@ draw_pieces :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, transparent: bool) {
 	if transparent {
 		slice.sort_by(order[:], proc(a, b: Drawn) -> bool {return a.depth < b.depth})
 	}
+	stones := s.highlight ? device_stones(g) : nil
 	for o in order {
 		i := o.index
 		p := s.pieces[i]
@@ -1354,6 +1361,11 @@ draw_pieces :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, transparent: bool) {
 		set_piece_uniforms(r, material, detail, hidden ? (ghost_veil ? 2 : 1) : 0, alpha, 0.25, 0)
 		if p.block >= 0 && g.data.blocks[p.block].trap {
 			set_f(r, .Corrupt, 1)
+		}
+		for st in stones {
+			if st.cell == piece_cell(g, p) {
+				set_f(r, .Hint, st.strength)
+			}
 		}
 		// hanging upside down (more than half turned): its courses and bevels turned with it
 		if (p.under != (g.overturn > 0.5)) && len(g.data.pomegranates) > 0 {
@@ -2081,16 +2093,11 @@ draw_decals :: proc(g: ^game.Game, highlight: bool) {
 		floor_ring(at + {0, 0, 0.007}, 0.32, 0.05, col)
 		floor_ellipse(at + {0, 0, 0.006}, 0.3, 0.3, {col.r, col.g, col.b, col.a * 0.25})
 	}
-	// the sundials that turn the time: golden by day, rose at evening
-	for c, n in g.data.sundials {
-		device_ring(g, c, n, fx.lerp(Color4{1.0, 0.92, 0.55, 0.32}, Color4{1.0, 0.62, 0.72, 0.32}, g.evening))
-	}
-	// the handles, with the accessibility setting: bronze light at night, a
-	// deeper amber by day (a pale glow is lost on sunlit stone)
-	if highlight {
-		col := fx.lerp(Color4{1.0, 0.72, 0.38, 0.34}, Color4{0.78, 0.42, 0.1, 0.6}, look_of(g).daylight)
-		for h, n in g.data.handles {
-			device_ring(g, h.cell, n, col)
+	// the sundials that turn the time: golden by day, rose at evening (with the
+	// setting `highlight` their stones glow instead: device_stones)
+	if !highlight {
+		for c, n in g.data.sundials {
+			device_ring(g, c, n, fx.lerp(Color4{1.0, 0.92, 0.55, 0.32}, Color4{1.0, 0.62, 0.72, 0.32}, g.evening))
 		}
 	}
 
@@ -2099,8 +2106,9 @@ draw_decals :: proc(g: ^game.Game, highlight: bool) {
 	for e, n in g.data.eagles {
 		k := 0.6 + 0.4 * math.sin(g.time * 1.4 + f32(n))
 		rise, clear := placed(g, e.from)
-		col := Color4{1.0, 0.84, 0.5, 0.26 * k * clear}
-		floor_ring(pl.node_world(&g.palace, e.from) + {0, 0, 0.007 + rise}, 0.32, 0.04, col)
+		if !highlight {
+			floor_ring(pl.node_world(&g.palace, e.from) + {0, 0, 0.007 + rise}, 0.32, 0.04, {1.0, 0.84, 0.5, 0.26 * k * clear})
+		}
 		if game.at_eagle(g) && g.psyche.cell == e.from {
 			land := pl.node_world(&g.palace, e.to) + {0, 0, 0.007}
 			floor_ring(land, 0.3 + 0.04 * k, 0.06, {1.0, 0.86, 0.5, 0.55 * k})
@@ -2260,63 +2268,77 @@ draw_mist :: proc(r: ^Renderer, s: ^Scene, v: View) {
 	rlgl.EnableDepthMask()
 }
 
-// Accessibility: a faint warm glow, breathing slowly, over everything that
+// The colour of the hints (the devices' stones, the sparkles of what answers
+// her flame): Psyche's own violet-blue, never a light of the world (the golds
+// of the sun and Cupid, the amber of the fires and braziers).
+HINT_COLOR :: Vec3{0.6, 0.56, 1.0}
+
+// A stone whose top glows from within (palace.fs `hint`), 0 .. 1.
+Device_Stone :: struct {
+	cell:     Cell,
+	strength: f32,
+}
+
+// Accessibility (the setting `highlight`): the stone under everything that
 // changes the diorama or takes her elsewhere (handles, sundials, the eagles'
-// perches, the caves' mouths, the moorings where a ferry waits), seen even
-// half hidden behind a wall. Not the seals nor the veiled stones: the lamp's
-// secrets (they answer her flame). The pomegranates have their own gleam.
+// perches, the caves' mouths, the moorings where a ferry waits) glows faintly,
+// breathing slowly. Not the seals nor the veiled stones: the lamp's secrets
+// (they sparkle as her flame nears). The world above only, upright.
 @(private)
-draw_devices :: proc(g: ^game.Game, v: View) {
-	t := g.reduce_motion ? 0 : g.time
-	device :: proc(g: ^game.Game, v: View, c: Cell, at: Vec3, n: int, t: f32) {
-		rise, clear := placed(g, c)
-		breath := (0.8 + 0.2 * math.sin(t * 1.1 + f32(n) * 1.9)) * clear
-		p := shown(g, Vec3{f32(c.x), f32(c.y), f32(c.z) + rise} + at, false)
-		glow(v, p, 50, {1.0, 0.76, 0.42, 0.2 * breath}, toward = 1.0)
-		glow(v, p, 14, {1.0, 0.88, 0.62, 0.32 * breath}, toward = 1.0)
+device_stones :: proc(g: ^game.Game) -> [dynamic]Device_Stone {
+	stones := make([dynamic]Device_Stone, 0, 16, context.temp_allocator)
+	if g.palace.upside || g.phase == .Overturn {
+		return stones
 	}
-	n := 0
+	add :: proc(stones: ^[dynamic]Device_Stone, g: ^game.Game, c: Cell) {
+		_, clear := placed(g, c)
+		breath: f32 = g.reduce_motion ? 0.75 : 0.6 + 0.4 * math.sin(g.time * 2.2 + f32(len(stones)) * 1.9)
+		append(stones, Device_Stone{c - {0, 0, 1}, breath * clear})
+	}
 	for h in g.data.handles {
-		device(g, v, h.cell, {CRANK_AXIS.x, CRANK_AXIS.y, CRANK_AXIS.z + 0.1}, n, t)
-		n += 1
+		add(&stones, g, h.cell)
 	}
 	for c in g.data.sundials {
-		device(g, v, c, {CRANK_AXIS.x, CRANK_AXIS.y, CRANK_AXIS.z * SUNDIAL_SCALE + 0.1}, n, t)
-		n += 1
+		add(&stones, g, c)
 	}
 	for e in g.data.eagles {
-		device(g, v, e.from, {0.8, 0.2, 0.45}, n, t)
-		n += 1
+		add(&stones, g, e.from)
 	}
 	for c in g.data.caves {
-		d := iso.DIR_VEC[c.dir]
-		device(g, v, c.cell, {0.5 + 0.45 * f32(d.x), 0.5 + 0.45 * f32(d.y), 0.4}, n, t)
-		n += 1
+		add(&stones, g, c.cell)
 	}
 	for f, i in g.data.ferries {
 		for end, k in f.ends {
 			if pl.boat_moored(g.palace.boats, i, k) {
-				d := iso.DIR_VEC[end.dir]
-				device(g, v, end.cell, {0.5 + 0.5 * f32(d.x), 0.5 + 0.5 * f32(d.y), 0.15}, n, t)
+				add(&stones, g, end.cell)
 			}
-			n += 1
 		}
 	}
+	return stones
 }
 
 // Something at c answering the flame she carries (`sense` 0 .. 1): a faint
-// warmth, and `motes` of gold rising (a still glow with reduce motion).
+// halo and `motes` little stars twinkling about it, in the hints' colour (a
+// still halo with reduce motion).
 flame_answer :: proc(g: ^game.Game, v: View, c: Vec3, sense: f32, seed: u32, motes: int) {
-	glow(v, c, 50, {1.0, 0.7, 0.35, 0.3 * sense}, 0.5, toward = 1.0)
+	h := HINT_COLOR
+	glow(v, c, 46, {h.r, h.g, h.b, 0.24 * sense}, 0.5, toward = 1.0)
 	if g.reduce_motion {
 		return
 	}
 	t := f32(g.time)
 	for m in 0 ..< motes {
-		h := seed * 31 + u32(m) * 7
-		u := math.mod(t * (0.22 + 0.08 * fx.hash01(h)) + fx.hash01(h + 1), 1)
-		drift := Vec3{0.32 * (fx.hash01(h + 2) - 0.5) + 0.05 * math.sin(t * 1.4 + f32(m)), 0.32 * (fx.hash01(h + 3) - 0.5), 0.1 + 0.9 * u}
-		glow(v, c + drift, 7, {1.0, 0.72, 0.35, sense * math.sin(u * math.PI)}, 1.2, toward = 0.4)
+		k := seed * 31 + u32(m) * 7
+		cycle := t * (0.55 + 0.25 * fx.hash01(k)) + fx.hash01(k + 1)
+		u := cycle - math.floor(cycle)
+		// each twinkle somewhere new about the stone
+		n := k + 97 * u32(i32(math.floor(cycle)) & 0xffff)
+		p := c + {0.7 * (fx.hash01(n + 2) - 0.5), 0.7 * (fx.hash01(n + 3) - 0.5), 0.05 + 0.4 * fx.hash01(n + 4)}
+		a := sense * math.pow(math.sin(u * math.PI), 3)
+		// a star: a bright point, two thin rays across
+		glow(v, p, 6, {0.92, 0.9, 1.0, a}, toward = 0.4)
+		glow(v, p, 16, {h.r, h.g, h.b, 0.8 * a}, 0.1, toward = 0.4)
+		glow(v, p, 1.6, {h.r, h.g, h.b, 0.8 * a}, 10, toward = 0.4)
 	}
 }
 
@@ -2430,9 +2452,6 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 		}
 		glow(v, shown(g, c + {0, 0, -0.25}, under), 40, {0.85, 0.93, 1.0, 0.45 * ea})
 	}
-	if s.highlight {
-		draw_devices(g, v)
-	}
 	// Proserpina's pomegranates: a dark red gleam on both faces of their stones
 	for c, n in g.data.pomegranates {
 		_, clear := placed(g, c)
@@ -2545,8 +2564,8 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 		pulse := 0.25 + 0.55 * (0.5 + 0.5 * math.cos(g.rise_t[k] * math.PI / 1.4))
 		glow(v, c, 70, {1.0, 0.75, 0.35, pulse * game.assembly(g, c0, 1)})
 	}
-	// an unlit seal or a veiled stone near her in the dark: a faint warmth and
-	// motes of gold rising
+	// an unlit seal or a veiled stone near her in the dark: little stars
+	// twinkling about it
 	for c0, k in g.data.sigils {
 		if sense := game.seal_sense(g, k); sense >= 0.01 {
 			c := shown(g, Vec3{f32(c0.x) + 0.5, f32(c0.y) + 0.5, f32(c0.z) + 0.05}, k in g.data.sigils_under)
@@ -2559,7 +2578,7 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 			c0 := pl.block_cell(&g.palace, i)
 			c := shown(g, Vec3{f32(c0.x) + 0.5, f32(c0.y) + 0.5, f32(c0.z) + 1.05}, e.under)
 			_, clear := placed(g, c0)
-			flame_answer(g, v, c, 0.7 * sense * clear, 1000 + u32(i), 2)
+			flame_answer(g, v, c, 0.7 * sense * clear, 1000 + u32(i), 3)
 		}
 	}
 	// Jupiter's eagles: a golden light about them, brighter in flight

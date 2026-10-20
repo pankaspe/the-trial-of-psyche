@@ -42,6 +42,8 @@ uniform float alpha;
 uniform float shade_soft;    // width of the left/right tone blend (curved figures)
 uniform float glow;          // figures: inner light
 uniform float turned;        // 1: the piece hangs upside down (Proserpina's flip): its local up is down
+uniform float hint;          // 0..1: a device's stone, its top glowing from within (accessibility)
+uniform vec3 hint_color;     // the hints' colour: Psyche's violet-blue
 uniform float corrupt;       // 1: a veiled stone that closes the way: ashen and cracked
 
 out vec4 finalColor;
@@ -397,6 +399,17 @@ void main() {
         float ash = dot(col, vec3(0.333));
         col = mix(col, vec3(ash) * vec3(0.92, 0.86, 1.0), 0.45);
         col = mix(col, vec3(0.10, 0.04, 0.12), vein * 0.8);
+    }
+    // a device's stone: its top tinted by a light from within, brighter toward
+    // the middle (a tint as much as a light: a pale glow is lost on sunlit marble)
+    if (hint > 0.0 && n.z > 0.5) {
+        float e = tile_edge(L.xy);
+        float inner = smoothstep(0.0, 0.05, e);
+        float core = 0.5 + 0.5 * smoothstep(0.05, 0.5, e);
+        float bright = max(dot(col, vec3(0.333)), 0.3);
+        // by day deeper: the tint carries it where light would not
+        col = mix(col, hint_color * bright * mix(1.3, 0.95, daylight), hint * mix(0.5, 0.8, daylight) * inner);
+        col += hint_color * hint * 0.16 * core * inner;
     }
     // the foot of the palace sinks into the sea of mist
     float sy = screen_height - gl_FragCoord.y;
