@@ -229,7 +229,7 @@ Game :: struct {
 	overturn:       f32, // 0 the world as described .. 1 turned over, follows palace.upside (render turns the world by it)
 	descent:        f32, // a level that goes down: 0 at the start's height .. 1 at the exit's (the look at its foot)
 	ferried:        bool, // the exit was by Charon's boat (phase Ending_Exit: its own timeline)
-	parting:        bool, // the exit leads into the level's next diorama: this one breaks up (no wind, no veil)
+	parting:        bool, // at the exit this diorama breaks up (after the boat, if it took her), in the open: no veil
 	arrive_veiled:  bool, // the arrival comes through the veil (not from the level's diorama before)
 	arrive_traced:  bool, // set by the app: between levels, gold traces the blocks as they rise
 	boxed:          bool, // the exit opened Proserpina's box (phase Ending_Exit: its own timeline)
@@ -693,6 +693,9 @@ update :: proc(g: ^Game, dt: f32) {
 	case .Ending_Exit:
 		if g.ferried {
 			update_ferry(g, dt)
+			if g.phase_t - dt < BOAT_PART && g.phase_t >= BOAT_PART {
+				audio.play(.Rumble, -14, 0.8) // the boat is gone: the diorama breaks up
+			}
 		}
 		if g.boxed {
 			update_box(g, dt)
@@ -1889,7 +1892,7 @@ start_ending :: proc(g: ^Game, p: Phase) {
 		audio.play(.Good, -2)
 	case .Ending_Exit:
 		g.boxed = g.data.has_box && !g.ferried
-		g.parting = !g.ferried && !g.boxed
+		g.parting = !g.boxed
 		switch {
 		case g.ferried: audio.play(.Oar, -10)
 		case g.boxed: audio.play(.Wind, -16, 0.5)
@@ -1898,9 +1901,6 @@ start_ending :: proc(g: ^Game, p: Phase) {
 	case .Play, .Sigil, .Mechanism, .Time, .Overturn, .Prologue, .Arrival, .Finished:
 	}
 }
-
-// The veil between the levels closes this long after the boat is lost in the mist.
-VEIL_IN_TIME :: 1.8
 
 // Timeline of an arrival: the palace rises into place from the start outward
 // (out of the veil after the boat), Psyche comes down onto the start.
@@ -1945,13 +1945,20 @@ arrival_rise :: proc(g: ^Game, d: f32, jitter: f32) -> f32 {
 // the diorama breaking up.
 exit_end :: proc(g: ^Game) -> f32 {
 	switch {
-	case g.ferried: return BOAT_END
+	case g.ferried: return BOAT_PART + PART_END
 	case g.boxed: return BOX_END
 	}
 	return PART_END
 }
 
-// Timeline of a diorama breaking up at an exit (but the boat's and the box's):
+// Time into the break-up of the diorama at its exit (0 before it begins: it
+// begins at once, or once the boat is lost in the mist).
+part_t :: proc(g: ^Game) -> f32 {
+	t := g.phase == .Finished ? exit_end(g) : g.phase_t
+	return max(t - (g.ferried ? BOAT_PART : 0), 0)
+}
+
+// Timeline of a diorama breaking up at an exit (but the box's):
 // the pieces sink away from the far side in, the stones under her last, and
 // she goes down with them.
 PART_END :: 2.8
@@ -1973,9 +1980,8 @@ assembly :: proc(g: ^Game, c: Cell, jitter: f32) -> f32 {
 	case g.phase == .Arrival:
 		return arrival_rise(g, spread(c - g.data.start), jitter)
 	case g.parting && (g.phase == .Ending_Exit || g.phase == .Finished):
-		t := g.phase == .Finished ? PART_END : g.phase_t
 		near := fx.clamp01(1 - spread(c - g.psyche.cell) / f32(g.data.size))
-		return 1 - fx.quad_in(fx.progress(t, 0.2 + PART_SPREAD * near + jitter * 0.15, PART_FALL))
+		return 1 - fx.quad_in(fx.progress(part_t(g), 0.2 + PART_SPREAD * near + jitter * 0.15, PART_FALL))
 	}
 	return 1
 }
@@ -1987,21 +1993,20 @@ floors_shown :: proc(g: ^Game) -> f32 {
 		// once the rim is up round it (arrival_rise: the far edge comes last)
 		return fx.progress(g.arrive_t, 0.95 + 0.08 * f32(g.data.size), 0.8)
 	case g.parting && (g.phase == .Ending_Exit || g.phase == .Finished):
-		return 1 - fx.progress(g.phase == .Finished ? PART_END : g.phase_t, 0.2, 0.6) // gone as the rim starts down
+		return 1 - fx.progress(part_t(g), 0.2, 0.6) // gone as the rim starts down
 	}
 	return 1
 }
 
-// The veil between the levels over the world: closing as the boat is lost in
-// the mist (or the box's sleep falls), opening as she arrives after it.
+// The veil between the levels over the world: closing as the box's sleep
+// falls, opening as she arrives after it.
 // 0: no veil, 1: closed.
 veil :: proc(g: ^Game) -> f32 {
 	switch {
 	case g.parting && (g.phase == .Ending_Exit || g.phase == .Finished), g.phase == .Arrival && !g.arrive_veiled:
 		return 0 // the diorama breaks up and the next rises, in the open
 	case g.phase == .Ending_Exit:
-		start: f32 = g.ferried ? BOAT_VEIL : BOX_VEIL
-		return fx.sine_in_out(fx.progress(g.phase_t, start, g.boxed ? BOX_VEIL_TIME : VEIL_IN_TIME))
+		return fx.sine_in_out(fx.progress(g.phase_t, BOX_VEIL, BOX_VEIL_TIME))
 	case g.phase == .Finished && g.ending == .Exit:
 		return 1
 	case g.phase == .Arrival:
@@ -2013,7 +2018,7 @@ veil :: proc(g: ^Game) -> f32 {
 // How far Psyche has gone down with her stone (cells, below zero) as the
 // diorama breaks up at the exit.
 exit_lift :: proc(g: ^Game) -> f32 {
-	if !g.parting || g.phase != .Ending_Exit && g.phase != .Finished {
+	if !g.parting || g.ferried || g.phase != .Ending_Exit && g.phase != .Finished {
 		return 0
 	}
 	return -9 * (1 - assembly(g, g.psyche.cell - {0, 0, 1}, 1))
@@ -2028,7 +2033,7 @@ BOAT_COIN :: 1.2 // the coin passes from her to him...
 BOAT_COIN_TIME :: 0.9 // ...this long
 BOAT_PUSH :: 2.4 // he pushes off
 BOAT_GONE :: 4.6 // cells the boat goes before the veil hides it
-BOAT_VEIL :: 4.6 // the veil starts to close
+BOAT_PART :: 4.6 // the boat lost in the mist, the diorama starts to break up
 BOAT_END :: 6.6
 BOAT_STERN :: 0.55 // the stern, cells out from the landing's centre (render's Boat)...
 BOAT_LENGTH :: 1.78 // ...and the boat's length to the prow

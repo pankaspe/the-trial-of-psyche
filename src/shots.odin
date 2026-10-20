@@ -575,6 +575,11 @@ plan_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool)
 			s.shot = -2
 			return "p999_ferry", false
 		}
+		if g.ferried && s.shot == -2 && game.part_t(g) > 1.2 {
+			// the boat gone, the diorama breaking up
+			s.shot = -6
+			return "p999b_parting", false
+		}
 		if s.t < game.exit_end(g) + 1.4 {
 			return "", false
 		}

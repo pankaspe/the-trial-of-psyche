@@ -338,9 +338,8 @@ BLACK_OUT :: 1.0
 BLACK_IN :: 0.8
 
 // On to the next level. Within an act the next level comes into focus
-// where the last broke up, and rises (after the boat, Psyche arrives
-// through the veil); at the end of an act the screen goes black and the next
-// act opens with its own card or cutscene.
+// where the last broke up, and rises; at the end of an act the screen goes
+// black and the next act opens with its own card or cutscene.
 continue_story :: proc(app: ^App) {
 	next := app.ending.level + 1
 	if app.ending.ending != .Exit || content.closes_act(app.ending.level) || !content.is_built(next) {
@@ -351,8 +350,7 @@ continue_story :: proc(app: ^App) {
 	arrive_at(app, next)
 }
 
-// Into level `index` after an exit: into focus where the one played broke
-// up, through the veil if the boat took her.
+// Into level `index` after an exit: into focus where the one played broke up.
 arrive_at :: proc(app: ^App, index: int) {
 	if app.game.parting {
 		start_passage(app, index)
@@ -417,8 +415,7 @@ passage_blur :: proc(app: ^App) -> (blur, held: f32) {
 		return
 	}
 	if g.parting && !game.leads_on(g) && (g.phase == .Ending_Exit || g.phase == .Finished) {
-		t := g.phase == .Finished ? game.PART_END : g.phase_t
-		blur = fx.sine_in_out(fx.progress(t, PASSAGE_BLUR, game.PART_END - PASSAGE_BLUR))
+		blur = fx.sine_in_out(fx.progress(game.part_t(g), PASSAGE_BLUR, game.PART_END - PASSAGE_BLUR))
 	}
 	return
 }

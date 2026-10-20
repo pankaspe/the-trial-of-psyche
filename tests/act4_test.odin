@@ -40,13 +40,14 @@ boat_ferries_her_away :: proc(t: ^testing.T) {
 	testing.expect(t, !game.is_over(&g), "the landing does not end the level by itself")
 	testing.expect(t, game.at_boat(&g) && g.hud.hint.key == .Hint_Boat, "Charon waits, and she is told how to board")
 	testing.expect(t, game.board_boat(&g) && g.ferried, "Space: into the boat")
-	testing.expect(t, game.exit_lift(&g) == 0, "the diorama does not break up: the boat takes her")
+	testing.expect(t, game.exit_lift(&g) == 0, "she does not sink with her stone: the boat takes her")
 	run(&g, game.BOAT_PUSH + 1)
 	testing.expect(t, g.psyche.pos.x > 3.5 + game.BOAT_SEAT, "she goes with the boat, out over the water")
 	testing.expect(t, g.lightning_t >= 0, "the sky cracks as he takes the coin")
-	run(&g, game.BOAT_END)
+	testing.expect(t, game.assembly(&g, {0, 0, 0}, 0) == 1, "the diorama stands while the boat goes")
+	run(&g, game.exit_end(&g))
 	testing.expect(t, g.phase == .Finished && g.ending == .Exit, "the crossing ends the level")
-	testing.expect(t, game.veil(&g) == 1, "behind the veil")
+	testing.expect(t, game.assembly(&g, {0, 0, 0}, 0) == 0 && game.veil(&g) == 0, "once the boat is gone, the diorama breaks up in the open")
 }
 
 // A dark stretch: the stones to the exit appear only in the light of the

@@ -228,6 +228,8 @@ psyche_alpha :: proc(g: ^Game) -> f32 {
 	switch {
 	case g.phase == .Arrival && !g.arrive_veiled:
 		return fx.progress(g.arrive_t, 0.8, 0.8)
+	case g.ferried:
+		return 1 - boat_fade(g) // into the mist with the boat
 	case g.parting:
 		return passage_alpha(g) * fx.clamp01(1 + exit_lift(g) / 3)
 	case g.phase != .Prologue:
