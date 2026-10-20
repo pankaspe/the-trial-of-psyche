@@ -1774,6 +1774,9 @@ draw_boats :: proc(r: ^Renderer, g: ^game.Game) {
 		if c.alpha < 0.003 {
 			continue
 		}
+		if len(g.data.floors) == 0 {
+			boat_water(g, c)
+		}
 		m := turn_matrix(g, false) // of the world above, in a level with pomegranates
 		yaw := c.boat.yaw
 		d := Vec3{math.cos(yaw), math.sin(yaw), 0}
@@ -1793,6 +1796,41 @@ draw_boats :: proc(r: ^Renderer, g: ^game.Game) {
 		rl.DrawMesh(r.meshes[.Robe], r.material, m * rl.MatrixTranslate(c.pos.x, c.pos.y, c.pos.z) * rl.MatrixRotateZ(c.face) * rl.MatrixScale(1.12, 1.12, 1.24))
 		rl.DrawMesh(r.meshes[.Head], r.material, m * rl.MatrixTranslate(c.pos.x, c.pos.y, c.pos.z + 0.66) * rl.MatrixRotateZ(c.face) * rl.MatrixTranslate(0.012, 0, 0) * rl.MatrixScale(0.056, 0.054, 0.062))
 	}
+}
+
+// A diorama with no floor of water still floats its boats: a patch of dark
+// water about each, going where it goes, a few glints drifting on it.
+@(private)
+boat_water :: proc(g: ^game.Game, c: game.Charon) {
+	lk := look_of(g)
+	water := lk.water.a > 0 ? lk.water : Color4{0.08, 0.12, 0.27, 0.8}
+	glint := lk.glint.a > 0 ? lk.glint : Color4{0.65, 0.75, 1.0, 0.4}
+	at := c.boat.mid + {0, 0, game.BOAT_DRAFT - WATER_DEPTH}
+	u := Vec3{math.cos(c.boat.yaw), math.sin(c.boat.yaw), 0}
+	w := Vec3{-u.y, u.x, 0}
+	rlgl.DrawRenderBatchActive()
+	rlgl.DisableDepthMask()
+	rlgl.SetTexture(rlgl.GetTextureIdDefault())
+	begin_turn(g, false) // of the world above, in a level with pomegranates
+	// soft at its rim: rings of water, each a little smaller and denser
+	LAYERS :: 6
+	for k in 0 ..< LAYERS {
+		s := 1 - f32(k) / LAYERS * 0.7
+		ellipse_3d(at, u, w, 1.25 * s, 0.75 * s, 0, {water.r, water.g, water.b, water.a * 0.3 * c.alpha}, 24)
+	}
+	t := f32(g.time)
+	for k in 0 ..< 4 {
+		h := u32(k) * 31 + 7
+		p := math.mod(t * (0.1 + 0.05 * fx.hash01(h)) + fx.hash01(h + 1), 1)
+		along := -0.9 + 1.8 * p
+		across := 0.5 * (fx.hash01(h + 2) - 0.5)
+		a := math.sin(p * math.PI) * c.alpha
+		from := at + u * along + w * across + {0, 0, 0.003}
+		floor_strip(from, from + u * (0.12 + 0.12 * fx.hash01(h + 3)), w, 0.02, {glint.r, glint.g, glint.b, glint.a * a})
+	}
+	end_turn()
+	rlgl.DrawRenderBatchActive()
+	rlgl.EnableDepthMask()
 }
 
 // How visible fragment i's scroll is: faint when collected in an earlier
