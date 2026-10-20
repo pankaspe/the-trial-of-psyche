@@ -891,7 +891,7 @@ draw_world :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View, time: f32) {
 	draw_figures(r, g)
 	draw_floors(g, time)
 	draw_pieces(r, s, g, true)
-	draw_decals(g, s.highlight)
+	draw_decals(g)
 	draw_glows(r, s, g, v)
 	draw_trace(s, g, v)
 	draw_mist(r, s, v)
@@ -2047,7 +2047,7 @@ draw_swamp :: proc(f: level.Floor, z: f32, time: f32, surface, glint: Color4) {
 
 // Oil stains, Psyche's shadow and the cracks of the illusions.
 @(private)
-draw_decals :: proc(g: ^game.Game, highlight: bool) {
+draw_decals :: proc(g: ^game.Game) {
 	rlgl.DrawRenderBatchActive()
 	rlgl.DisableDepthMask()
 	rlgl.SetTexture(rlgl.GetTextureIdDefault())
@@ -2092,32 +2092,9 @@ draw_decals :: proc(g: ^game.Game, highlight: bool) {
 		}
 	}
 
-	// a soft ring of light on a device's stone, breathing slowly
-	device_ring :: proc(g: ^game.Game, c: Cell, n: int, col: Color4) {
-		k := 0.6 + 0.4 * math.sin(g.time * 1.4 + f32(n))
-		rise, clear := placed(g, c)
-		col := col
-		col.a *= k * clear
-		at := pl.node_world(&g.palace, c) + {0, 0, rise}
-		floor_ring(at + {0, 0, 0.007}, 0.32, 0.05, col)
-		floor_ellipse(at + {0, 0, 0.006}, 0.3, 0.3, {col.r, col.g, col.b, col.a * 0.25})
-	}
-	// the sundials that turn the time: golden by day, rose at evening (with the
-	// setting `highlight` their stones glow instead: device_stones)
-	if !highlight {
-		for c, n in g.data.sundials {
-			device_ring(g, c, n, fx.lerp(Color4{1.0, 0.92, 0.55, 0.32}, Color4{1.0, 0.62, 0.72, 0.32}, g.evening))
-		}
-	}
-
-	// Jupiter's eagles: a faint golden ring on each perch; standing on one,
-	// the ring where it will set her down breathes brighter
+	// Jupiter's eagles: standing on a perch, a ring breathes where it will set her down
 	for e, n in g.data.eagles {
 		k := 0.6 + 0.4 * math.sin(g.time * 1.4 + f32(n))
-		rise, clear := placed(g, e.from)
-		if !highlight {
-			floor_ring(pl.node_world(&g.palace, e.from) + {0, 0, 0.007 + rise}, 0.32, 0.04, {1.0, 0.84, 0.5, 0.26 * k * clear})
-		}
 		if game.at_eagle(g) && g.psyche.cell == e.from {
 			land := pl.node_world(&g.palace, e.to) + {0, 0, 0.007}
 			floor_ring(land, 0.3 + 0.04 * k, 0.06, {1.0, 0.86, 0.5, 0.55 * k})
