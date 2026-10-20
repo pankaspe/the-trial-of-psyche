@@ -78,7 +78,7 @@ float noise(vec2 p) {
 
 void main() {
     vec2 uv = fragTexCoord;
-    float shown = tile_turn(uv);
+    float shown = seam_cut(uv);
     float y = uv.y / max(horizon, 0.05); // 0 zenith .. 1 horizon
     vec3 col = mix(sky_top, sky_mid, smoothstep(0.0, 0.6, y));
     col = mix(col, sky_horizon, smoothstep(0.35, 1.0, y));

@@ -70,7 +70,7 @@ vec3 shade(vec3 base, float x, float y, float top, float span, float seed, float
 
 void main() {
     vec2 uv = fragTexCoord;
-    float shown = tile_turn(uv);
+    float shown = seam_cut(uv);
     float x = uv.x;
     float y = uv.y;
     float b0 = horizon - 0.02;

@@ -42,7 +42,7 @@ float fbm(vec2 p) {
 
 void main() {
     vec2 uv = fragTexCoord;
-    float shown = tile_turn(uv);
+    float shown = seam_cut(uv);
     vec2 p = vec2(uv.x * 5.0 + shift + time * 0.012, uv.y * 3.0);
     float n = fbm(p) * 0.65 + fbm(p * 2.3 - vec2(time * 0.02, 0.0)) * 0.35;
     // billows: brighter crests on top of each cloud
