@@ -1046,7 +1046,7 @@ backdrop_roll :: proc(g: ^game.Game, v: View) -> (roll: Backdrop_Roll) {
 		out.backdrop_center.y -= dy / v.backdrop_zoom
 		return out
 	}
-	band := 0.1 * math.sin(math.PI * k) // the dark band's half height (screen heights), thin at the ends
+	band := 0.07 * math.sin(math.PI * k) // the dark band's half height (screen heights), thin at the ends
 	cut := 0.4 * band + 0.002 // the skies' soft cut, well inside the band
 	seam := over ? 1 - k : k
 	roll.line = {seam, band}

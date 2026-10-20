@@ -40,37 +40,51 @@ void main() {
     float w = max(line.y, 1e-4);
     // across the band: 0 on the seam, 1 at its edges
     vec2 p = vec2(uv.x * aspect, (uv.y - line.x) / w);
+    float t = time;
 
-    // the ink drifts along the seam, curling (stretched across it: its
-    // threads run long, from one sky into the other)
-    vec2 q = vec2(p.x * 2.6 + time * 0.04, p.y * 0.42);
-    vec2 warp = vec2(fbm(q + vec2(0.0, time * 0.05)), fbm(q + vec2(5.2, -time * 0.04)));
-    float f = fbm(q + warp * 1.6);
+    // the ink flows along the seam, folding over itself
+    vec2 q = vec2(p.x * 2.2 + t * 0.07, p.y * 0.8);
+    vec2 warp = vec2(fbm(q + vec2(0.0, t * 0.11)), fbm(q + vec2(5.2, -t * 0.09)));
+    float f = fbm(q + warp * 1.8 + vec2(t * 0.03, 0.0));
 
-    // its frayed edges
-    float fray = (f - 0.5) * 0.9;
+    // its edges soft and moving
+    float fray = (f - 0.5) * 0.55;
     float r = abs(p.y);
-    float dark = smoothstep(1.0 + fray, 0.55 + fray, r);
+    float dark = smoothstep(1.0 + fray, 0.3 + fray, r);
 
-    // threads: the ridges of the warped noise, brightest toward the rims
+    // faint threads within the ink
     float ridge = 1.0 - abs(2.0 * fbm(q * 1.7 + warp * 2.3) - 1.0);
-    float thread = pow(ridge, 10.0);
-    float rim = smoothstep(0.0, 0.5, dark) * smoothstep(1.0, 0.45, dark);
     vec3 ink = vec3(0.018, 0.014, 0.035);
-    vec3 col = ink + vec3(0.34, 0.29, 0.46) * thread * (0.15 + 0.85 * rim);
-    col += vec3(0.85, 0.62, 0.38) * pow(ridge, 26.0) * 0.35 * rim;
-    // past the ink the brightest threads reach on into both skies, fading
-    float reach = pow(ridge, 16.0) * smoothstep(2.6, 0.9, r) * (1.0 - dark);
-    col = mix(col, vec3(0.66, 0.54, 1.0), reach);
+    vec3 col = ink + vec3(0.30, 0.25, 0.44) * pow(ridge, 12.0) * 0.6;
+
+    // tendrils of light: the level lines of a slow flow field, long soft
+    // curves running across the seam from one sky into the other, a thin
+    // core in a halo (measured in pixels), lit here and there along their
+    // length, the light running along them
+    float across = uv.y - line.x; // screen heights from the seam
+    vec2 fp = vec2(uv.x * aspect * 3.2, across * 1.1);
+    vec2 fw = vec2(fbm(fp * 0.9 + vec2(t * 0.05, -t * 0.04)), fbm(fp * 0.9 + vec2(3.7, t * 0.06)));
+    float field = fbm(fp + fw * 1.2 + vec2(-t * 0.04, t * 0.03)) * 5.0;
+    float lines = fract(field);
+    float px = min(lines, 1.0 - lines) / max(fwidth(field), 1e-5); // pixels to the nearest line
+    float width = 0.9 + 1.0 * fbm(fp * 2.0 + t * 0.15);
+    float core = exp(-pow(px / width, 2.0));
+    float halo = exp(-pow(px / (width * 7.0), 2.0)) * 0.45;
+    float lit = smoothstep(0.36, 0.68, fbm(vec2(floor(field) * 3.1 + fp.y * 2.5 - t * 0.5, fp.x * 0.3)));
+    float near = smoothstep(0.26, 0.04, abs(across)) * smoothstep(0.0, 0.3, line.y / 0.07);
+    float reach = clamp((core + halo) * lit * near, 0.0, 1.0);
+    vec3 glow = mix(vec3(0.55, 0.42, 0.95), vec3(0.9, 0.84, 1.0), core);
+    col = mix(col, glow, reach * (1.0 - 0.4 * dark));
 
     // motes of gold drifting in it
-    vec2 s = vec2(p.x * 26.0 - time * 0.6, p.y * w * 26.0);
+    vec2 s = vec2(p.x * 26.0 - t * 0.6, p.y * w * 26.0);
     vec2 cell = floor(s);
     float m = hash(cell);
     if (m > 0.9) {
         vec2 at = cell + vec2(hash(cell + 1.3), hash(cell + 4.1));
-        float twinkle = 0.55 + 0.45 * sin(time * (1.0 + 2.0 * m) + m * 40.0);
+        float twinkle = 0.55 + 0.45 * sin(t * (1.0 + 2.0 * m) + m * 40.0);
         col += vec3(1.0, 0.82, 0.5) * smoothstep(0.14, 0.0, length(s - at)) * twinkle * dark * 0.9;
     }
-    finalColor = vec4(col, clamp(max(dark * 0.9, reach * 0.8), 0.0, 1.0) * step(1e-4, line.y));
+    float a = max(dark * 0.88, clamp(reach, 0.0, 1.0) * 0.85);
+    finalColor = vec4(col, a * step(1e-4, line.y));
 }
