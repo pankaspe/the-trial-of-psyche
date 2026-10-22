@@ -43,6 +43,7 @@ Screen :: enum u8 {
 	Difficulty, // a new game's difficulty, before it starts
 	Book,
 	Codex, // Psyche's Notebook: the mechanics met so far
+	Profile, // the game's profile: what she gathered, the doors to the Book, the Notebook, the achievements, the games
 	Card, // the card before an act
 	Play,
 	Fragment, // a fragment of the tale just found: the game waits while it is read
@@ -81,6 +82,7 @@ App :: struct {
 	screen:          Screen,
 	settings_from:   Screen,
 	codex_from:      Screen,
+	profile_from:    Screen, // where the profile goes back to (the title or the pause)
 	menu_fade:       f32, // < 0 unless the title menu is fading out
 	splash_t:        f32, // time on the splash
 	splash_out:      f32, // < 0, or time since the lamp was lit on the splash
@@ -699,7 +701,7 @@ frame :: proc(app: ^App) {
 	if app.screen == .Play && app.menu_fade < 0 {
 		play_input(app)
 	}
-	paused := app.screen == .Pause || app.screen == .Fragment || app.screen == .Mechanic || (app.screen == .Settings && app.settings_from == .Pause) || (app.screen == .Codex && app.codex_from != .Title)
+	paused := app.screen == .Pause || app.screen == .Fragment || app.screen == .Mechanic || (app.screen == .Settings && app.settings_from == .Pause) || ((app.screen == .Codex || app.screen == .Profile) && in_play(app)) || ((app.screen == .Book || app.screen == .Games) && app.profile_from != .Title)
 	if !paused {
 		poll_dead_ends(app)
 		poll_guide(app)
@@ -763,7 +765,7 @@ frame :: proc(app: ^App) {
 	update_black(app, dt)
 	update_passage(app, dt)
 	update_levels(app, dt)
-	side := app.screen == .Title || app.screen == .Levels || app.screen == .Games || app.screen == .Difficulty || app.screen == .Settings || app.screen == .Codex
+	side := app.screen == .Title || app.screen == .Profile || app.screen == .Levels || app.screen == .Games || app.screen == .Difficulty || app.screen == .Settings || app.screen == .Codex
 	app.stage = clamp(app.stage + (side ? dt : -dt) / STAGE_TIME, 0, 1)
 	app.scene.stage = app.stage
 	update_sound(app)
@@ -926,11 +928,13 @@ back :: proc(app: ^App) -> bool {
 	case .Levels:
 		leave_levels(app, true)
 	case .Games:
-		app.screen = .Title
+		app.screen = .Profile
+	case .Profile:
+		app.screen = app.profile_from
 	case .Difficulty:
 		app.screen = app.new_game.from
 	case .Book:
-		app.screen = .Title
+		app.screen = .Profile
 	case .Codex:
 		app.screen = app.codex_from
 	case .Card:
@@ -1196,6 +1200,22 @@ update_splash :: proc(app: ^App, dt: f32) {
 	}
 }
 
+// The Notebook or the profile opened over a level in play (from the pause,
+// or in play), not from the title.
+in_play :: proc(app: ^App) -> bool {
+	from := app.screen == .Codex ? app.codex_from : app.screen
+	if from == .Profile {
+		from = app.profile_from
+	}
+	return from != .Title && from != .Profile
+}
+
+// The profile, from the title or the pause.
+open_profile :: proc(app: ^App, from: Screen) {
+	app.profile_from = from
+	app.screen = .Profile
+}
+
 // Under Continue on the title: the level to go on with, and its diorama.
 title_where :: proc(app: ^App) -> string {
 	cur := progress.current_level(app.prog)
@@ -1245,20 +1265,35 @@ draw_screens :: proc(app: ^App) {
 		case .Levels:
 			app.screen = .Levels
 		case .Profile:
-			ui.book_open(&app.book) // until the profile is built
-			app.screen = .Book
-		case .Games:
-			app.screen = .Games
-		case .Book:
-			ui.book_open(&app.book)
-			app.screen = .Book
-		case .Codex:
-			open_codex(app)
+			open_profile(app, .Title)
 		case .Settings:
 			open_settings(app)
 		case .Quit:
 			app.quit = true
-		case .None, .Resume, .Restart, .Main_Menu, .Retry, .Next, .Back:
+		case .None, .Games, .Book, .Codex, .Resume, .Restart, .Main_Menu, .Retry, .Next, .Back:
+		}
+	case .Profile:
+		reach := progress.current_level(app.prog)
+		if app.profile_from != .Title {
+			reach = max(reach, g.level_index)
+		}
+		act, leave := ui.profile(u, app.prog, app.cfg.slot, reach)
+		switch act {
+		case .Book:
+			ui.book_open(&app.book)
+			app.screen = .Book
+		case .Achievements:
+			app.book.tab = ui.BOOK_ACHIEVEMENTS
+			ui.book_open(&app.book)
+			app.screen = .Book
+		case .Codex:
+			open_codex(app)
+		case .Games:
+			app.screen = .Games
+		case .None:
+			if leave {
+				back(app)
+			}
 		}
 	case .Games:
 		chosen, erase, back := ui.games_menu(u, app.slots[:], app.cfg.slot, &app.games)
@@ -1267,7 +1302,7 @@ draw_screens :: proc(app: ^App) {
 		} else if chosen > 0 {
 			play_game(app, chosen)
 		} else if back {
-			app.screen = .Title
+			app.screen = .Profile
 		}
 	case .Difficulty:
 		d, ok, back := ui.difficulty_menu(u, &app.new_game.sel)
@@ -1286,15 +1321,15 @@ draw_screens :: proc(app: ^App) {
 		}
 	case .Book:
 		if ui.book(u, app.prog, &app.book) {
-			app.screen = .Title
+			app.screen = .Profile
 		}
 	case .Codex:
-		in_play := app.codex_from != .Title
+		over_level := in_play(app)
 		reach := progress.current_level(app.prog)
-		if in_play {
+		if over_level {
 			reach = max(reach, g.level_index)
 		}
-		if ui.codex(u, g, reach, in_play) {
+		if ui.codex(u, g, reach, over_level) {
 			back(app)
 		}
 	case .Card:

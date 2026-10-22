@@ -291,26 +291,11 @@ title_menu :: proc(u: ^Ui, playing: bool, where_: string, alpha: f32 = 1, lift: 
 	if !playing {
 		items[0].key = .New_Game
 	}
-	// the keys move the light too
-	step := 0
-	if rl.IsKeyPressed(.DOWN) || rl.IsKeyPressed(.S) {
-		step = 1
-	} else if rl.IsKeyPressed(.UP) || rl.IsKeyPressed(.W) {
-		step = -1
-	}
-	if step != 0 && alpha > 0.5 {
-		u.menu_lit = clamp(u.menu_lit + step, 0, len(items) - 1)
-		audio.play(.Tap, -22)
-	}
-	lit := clamp(u.menu_lit, 0, len(items) - 1)
+	lit := lamp_keys(u, &u.menu_lit, len(items), alpha > 0.5)
 	y = u.height * 0.5 - 100 * s - lift * s
 	for it, i in items {
 		sub := i == 0 && playing ? where_ : ""
-		clicked, hover := lamp_item(u, i18n.tr(it.key), sub, {x, y}, i == lit, abs(i - lit), alpha)
-		if hover && (u.pad || u.mouse_moved) {
-			u.menu_lit = i
-		}
-		if clicked || (i == lit && alpha > 0.5 && rl.IsKeyPressed(.ENTER)) {
+		if lamp_choice(u, &u.menu_lit, i, i18n.tr(it.key), sub, {x, y}, 34, alpha) {
 			act = it.act
 		}
 		y += (sub != "" ? (i == lit ? 104 : 92) : 70) * s
@@ -322,13 +307,41 @@ title_menu :: proc(u: ^Ui, playing: bool, where_: string, alpha: f32 = 1, lift: 
 	return
 }
 
+// The lamplit menus' keys: up and down (or W and S) move the light over
+// `n` entries; returns the entry lit.
+lamp_keys :: proc(u: ^Ui, lit: ^int, n: int, live: bool) -> int {
+	step := 0
+	if rl.IsKeyPressed(.DOWN) || rl.IsKeyPressed(.S) {
+		step = 1
+	} else if rl.IsKeyPressed(.UP) || rl.IsKeyPressed(.W) {
+		step = -1
+	}
+	if step != 0 && live {
+		lit^ = clamp(lit^ + step, 0, n - 1)
+		audio.play(.Tap, -22)
+	}
+	lit^ = clamp(lit^, 0, n - 1)
+	return lit^
+}
+
+// Entry `i` of a lamplit menu whose light is on `lit^` (the mouse or the
+// pad moves it there); true when chosen (a click, South, or Enter on it).
+lamp_choice :: proc(u: ^Ui, lit: ^int, i: int, label, sub: string, pos: Vec2, size: f32, alpha: f32) -> bool {
+	on := i == lit^
+	clicked, hover := lamp_item(u, label, sub, pos, on, abs(i - lit^), size, alpha)
+	if hover && (u.pad || u.mouse_moved) {
+		lit^ = i
+	}
+	return clicked || (on && alpha > 0.5 && rl.IsKeyPressed(.ENTER))
+}
+
 // An entry of the lamplit menu, `pos` its left end on the line's middle:
-// lit (the flame, a halo, a line `sub` under it), or `far` entries away
-// from the lit one, fainter. Returns whether it was chosen and is hovered.
-lamp_item :: proc(u: ^Ui, label, sub: string, pos: Vec2, lit: bool, far: int, alpha: f32) -> (clicked, hover: bool) {
+// lit (the flame, a halo, larger), or `far` entries away from the lit one,
+// fainter; a line `sub` under it. Returns whether it was chosen and is hovered.
+lamp_item :: proc(u: ^Ui, label, sub: string, pos: Vec2, lit: bool, far: int, size: f32, alpha: f32) -> (clicked, hover: bool) {
 	s := u.scale
 	FAINTER := [?]f32{0.62, 0.44, 0.32, 0.24}
-	st := Style{size = lit ? 46 : 34, color = lit ? BRIGHT : TEXT, face = .Display, glow = lit, shadow = true}
+	st := Style{size = lit ? size * 1.35 : size, color = lit ? BRIGHT : TEXT, face = .Display, glow = lit, shadow = true}
 	m := measure(u, label, st)
 	a := lit ? alpha : alpha * FAINTER[clamp(far - 1, 0, len(FAINTER) - 1)]
 	r := rl.Rectangle{pos.x - 16 * s, pos.y - m.y * 0.5 - 8 * s, m.x + 64 * s, m.y + 16 * s}
