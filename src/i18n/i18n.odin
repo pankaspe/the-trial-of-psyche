@@ -24,6 +24,8 @@ Key :: enum u16 {
 	Title,
 	Play,
 	Levels,
+	Select_Level, // the title menu and the pause: to the level select
+	Profile, // the title menu and the pause: the game's profile (the Book, the Notebook, achievements, games)
 	Book,
 	Settings,
 	Quit,
@@ -734,6 +736,8 @@ IT := [Key]string {
 	.Title          = "La prova di Psiche",
 	.Play           = "Continua",
 	.Levels         = "Livelli",
+	.Select_Level   = "Seleziona livello",
+	.Profile        = "Profilo",
 	.Book           = "Il Libro",
 	.Settings       = "Impostazioni",
 	.Quit           = "Esci",
@@ -1254,6 +1258,8 @@ EN := [Key]string {
 	.Title          = "The Trial of Psyche",
 	.Play           = "Continue",
 	.Levels         = "Levels",
+	.Select_Level   = "Select level",
+	.Profile        = "Profile",
 	.Book           = "The Book",
 	.Settings       = "Settings",
 	.Quit           = "Quit",

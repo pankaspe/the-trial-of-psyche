@@ -22,6 +22,7 @@ Menu_Action :: enum u8 {
 	None,
 	Play,
 	Levels,
+	Profile,
 	Games,
 	Book,
 	Codex,
@@ -205,21 +206,6 @@ level_name :: proc(index: int) -> string {
 	return fmt.tprintf("%s · %s", level_label(index), i18n.tr(content.LEVELS[index].title))
 }
 
-// The title in two lines, broken at the space nearest its middle.
-@(private)
-split_title :: proc(t: string) -> (string, string) {
-	best := -1
-	for c, i in t {
-		if c == ' ' && (best < 0 || abs(i - len(t) / 2) < abs(best - len(t) / 2)) {
-			best = i
-		}
-	}
-	if best < 0 {
-		return t, ""
-	}
-	return t[:best], t[best + 1:]
-}
-
 // --- the splash ------------------------------------------------------------------------
 //
 // The game opens in the dark: it fades in from black to a circle of the
@@ -285,40 +271,83 @@ splash :: proc(u: ^Ui, t: f32, out: f32) -> (pressed: bool) {
 	return u.pressed || take_accept(u) || input.any_pressed() || rl.GetKeyPressed() != .KEY_NULL
 }
 
-// Title screen over the sleeping palace, like the cover of a book: on the
-// lamp's side, the source, the title, an ornament and the menu; the oracle's
-// words in the corner. `alpha` and `lift` animate its exit.
-// `playing`: the game in play has begun (Continue), else a new one starts.
-title_menu :: proc(u: ^Ui, playing: bool, alpha: f32 = 1, lift: f32 = 0) -> (act: Menu_Action) {
+// The title menu in the lamplight: the lamp's side darker, the source and
+// the title at the top, the entries below. The one chosen is lit by the
+// lamp (its flame, a warm halo, the title's face); the others wait in the
+// dark, fainter the further they are from it. `playing`: the game in play
+// has begun (Continue, with `where_` under it: where she was), else a new
+// one starts. `alpha` and `lift` animate its coming in and going out.
+TITLE_ITEMS :: [?]Choice{{.Play, .Play}, {.Select_Level, .Levels}, {.Profile, .Profile}, {.Settings, .Settings}, {.Quit, .Quit}}
+
+title_menu :: proc(u: ^Ui, playing: bool, where_: string, alpha: f32 = 1, lift: f32 = 0) -> (act: Menu_Action) {
 	s := u.scale
-	lamp_side(u, alpha)
+	lamp_side(u, 1.3 * alpha, 0.68)
 	x := 144 * s
-	y := u.height * 0.5 - 340 * s - lift * s
-	text(u, caps(i18n.tr(.Footer)), {x, y}, {size = 22, color = GOLD, face = .Semi, track = 0.14, shadow = true}, .Left, alpha)
-	y += 36 * s
-	tst := Style{size = 132, color = TITLE, face = .Display, glow = true, shadow = true}
-	first, second := split_title(i18n.tr(.Title))
-	text(u, first, {x - 4 * s, y}, tst, .Left, alpha)
-	y += 126 * s
-	text(u, second, {x - 4 * s, y}, tst, .Left, alpha)
-	y += 172 * s
-	ornament(u, {x + 100 * s, y}, 100 * s, alpha)
-	y += 62 * s
-	if menu_item(u, i18n.tr(playing ? .Play : .New_Game), {x, y}, 38, true, alpha) {
-		act = .Play
+	y := 96 * s - lift * s
+	text(u, caps(i18n.tr(.Footer)), {x, y}, {size = 20, color = GOLD, face = .Semi, track = 0.14, shadow = true}, .Left, alpha)
+	y += 30 * s
+	text(u, i18n.tr(.Title), {x - 3 * s, y}, {size = 84, color = TITLE, face = .Display, glow = true, shadow = true}, .Left, alpha)
+	items := TITLE_ITEMS
+	if !playing {
+		items[0].key = .New_Game
 	}
-	y += 62 * s
-	items := [?]Choice{{.Games, .Games}, {.Levels, .Levels}, {.Book, .Book}, {.Codex, .Codex}, {.Settings, .Settings}, {.Quit, .Quit}}
-	for it in items {
-		if menu_item(u, i18n.tr(it.key), {x, y}, 36, false, alpha) {
+	// the keys move the light too
+	step := 0
+	if rl.IsKeyPressed(.DOWN) || rl.IsKeyPressed(.S) {
+		step = 1
+	} else if rl.IsKeyPressed(.UP) || rl.IsKeyPressed(.W) {
+		step = -1
+	}
+	if step != 0 && alpha > 0.5 {
+		u.menu_lit = clamp(u.menu_lit + step, 0, len(items) - 1)
+		audio.play(.Tap, -22)
+	}
+	lit := clamp(u.menu_lit, 0, len(items) - 1)
+	y = u.height * 0.5 - 100 * s - lift * s
+	for it, i in items {
+		sub := i == 0 && playing ? where_ : ""
+		clicked, hover := lamp_item(u, i18n.tr(it.key), sub, {x, y}, i == lit, abs(i - lit), alpha)
+		if hover && (u.pad || u.mouse_moved) {
+			u.menu_lit = i
+		}
+		if clicked || (i == lit && alpha > 0.5 && rl.IsKeyPressed(.ENTER)) {
 			act = it.act
 		}
-		y += 58 * s
+		y += (sub != "" ? (i == lit ? 104 : 92) : 70) * s
 	}
 	qst := Style{size = 28, color = {250, 232, 205, 220}, face = .Italic, shadow = true}
 	quote := i18n.tr(.Quote)
 	qh := block_height(u, quote, qst, 900 * s, 1.35)
 	paragraph(u, quote, {u.width - 84 * s, u.height - 60 * s - qh}, qst, 900 * s, alpha, 1.35, .Right)
+	return
+}
+
+// An entry of the lamplit menu, `pos` its left end on the line's middle:
+// lit (the flame, a halo, a line `sub` under it), or `far` entries away
+// from the lit one, fainter. Returns whether it was chosen and is hovered.
+lamp_item :: proc(u: ^Ui, label, sub: string, pos: Vec2, lit: bool, far: int, alpha: f32) -> (clicked, hover: bool) {
+	s := u.scale
+	FAINTER := [?]f32{0.62, 0.44, 0.32, 0.24}
+	st := Style{size = lit ? 46 : 34, color = lit ? BRIGHT : TEXT, face = .Display, glow = lit, shadow = true}
+	m := measure(u, label, st)
+	a := lit ? alpha : alpha * FAINTER[clamp(far - 1, 0, len(FAINTER) - 1)]
+	r := rl.Rectangle{pos.x - 16 * s, pos.y - m.y * 0.5 - 8 * s, m.x + 64 * s, m.y + 16 * s}
+	if alpha > 0.5 {
+		add_hot(u, r)
+		hover = focusable(u, r)
+	}
+	if lit {
+		rl.DrawCircleGradient({pos.x + 90 * s, pos.y}, 260 * s, fade(FLAME, 0.14 * alpha), fade(FLAME, 0))
+		lamp_flame(u, {pos.x + 4 * s, pos.y + 9 * s}, f32(rl.GetTime()), alpha)
+	}
+	text(u, label, {pos.x + 30 * s, pos.y - m.y * 0.5}, st, .Left, a)
+	if sub != "" {
+		text(u, sub, {pos.x + 32 * s, pos.y + m.y * 0.5 + 2 * s}, {size = 23, color = {222, 186, 140, 255}, face = .Italic, shadow = true}, .Left, a)
+	}
+	clicked = activated(u, hover)
+	if clicked {
+		audio.play(.Tap, -14)
+	}
 	return
 }
 

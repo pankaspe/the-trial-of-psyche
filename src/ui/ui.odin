@@ -102,6 +102,7 @@ Ui :: struct {
 	tip_reveal:    [3]f32, // the names of the diorama's buttons (Q, E, R)
 	place_reveal:  f32, // the action of the place, over Psyche
 	place_key:     i18n.Key, // what it says (kept while it fades out)
+	menu_lit:      int, // the title menu's entry in the lamp's light
 	vignette:      rl.Texture2D, // a disc of clear fading into the dark (the lamp's light on the splash)
 }
 

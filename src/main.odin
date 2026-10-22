@@ -763,7 +763,7 @@ frame :: proc(app: ^App) {
 	update_black(app, dt)
 	update_passage(app, dt)
 	update_levels(app, dt)
-	side := app.screen == .Levels || app.screen == .Games || app.screen == .Difficulty || app.screen == .Settings || app.screen == .Codex
+	side := app.screen == .Title || app.screen == .Levels || app.screen == .Games || app.screen == .Difficulty || app.screen == .Settings || app.screen == .Codex
 	app.stage = clamp(app.stage + (side ? dt : -dt) / STAGE_TIME, 0, 1)
 	app.scene.stage = app.stage
 	update_sound(app)
@@ -1196,6 +1196,17 @@ update_splash :: proc(app: ^App, dt: f32) {
 	}
 }
 
+// Under Continue on the title: the level to go on with, and its diorama.
+title_where :: proc(app: ^App) -> string {
+	cur := progress.current_level(app.prog)
+	where_ := ui.level_name(cur)
+	g := &app.game
+	if d := progress.resume_at(app.prog, cur); d > 0 && g.level_index == cur && g.dioramas > 1 {
+		where_ = fmt.tprintf("%s  ·  %s", where_, fmt.tprintf(i18n.tr(.Pause_Diorama), d + 1, g.dioramas))
+	}
+	return where_
+}
+
 // A key pressed on the splash: the lamp is lit.
 light_splash :: proc(app: ^App) {
 	app.splash_out = 0
@@ -1223,10 +1234,7 @@ draw_screens :: proc(app: ^App) {
 		}
 	case .Title:
 		k := fx.sine_in_out(clamp(app.menu_in / MENU_IN, 0, 1))
-		act := ui.title_menu(u, app.playing, k, 24 * (1 - k))
-		if rl.IsKeyPressed(.ENTER) {
-			act = .Play
-		}
+		act := ui.title_menu(u, app.playing, title_where(app), k, 24 * (1 - k))
 		switch act {
 		case .Play:
 			if app.playing {
@@ -1236,6 +1244,9 @@ draw_screens :: proc(app: ^App) {
 			}
 		case .Levels:
 			app.screen = .Levels
+		case .Profile:
+			ui.book_open(&app.book) // until the profile is built
+			app.screen = .Book
 		case .Games:
 			app.screen = .Games
 		case .Book:
@@ -1308,7 +1319,7 @@ draw_screens :: proc(app: ^App) {
 		if app.menu_fade >= 0 {
 			// the title menu rises and fades away as the game begins
 			k := app.menu_fade / MENU_FADE
-			ui.title_menu(u, app.playing, 1 - k, 40 * k)
+			ui.title_menu(u, app.playing, title_where(app), 1 - k, 40 * k)
 		}
 	case .Fragment:
 		ui.draw_hud(u, g)
@@ -1334,7 +1345,7 @@ draw_screens :: proc(app: ^App) {
 			open_settings(app)
 		case .Main_Menu:
 			to_title(app)
-		case .None, .Play, .Levels, .Games, .Book, .Quit, .Retry, .Next, .Back:
+		case .None, .Play, .Levels, .Profile, .Games, .Book, .Quit, .Retry, .Next, .Back:
 		}
 	case .Settings:
 		m := rl.GetCurrentMonitor()
@@ -1364,7 +1375,7 @@ draw_screens :: proc(app: ^App) {
 			}
 		case .Main_Menu:
 			to_title(app)
-		case .None, .Play, .Levels, .Games, .Book, .Codex, .Settings, .Quit, .Resume, .Restart, .Back:
+		case .None, .Play, .Levels, .Profile, .Games, .Book, .Codex, .Settings, .Quit, .Resume, .Restart, .Back:
 		}
 	}
 	if u.toast_visible {
