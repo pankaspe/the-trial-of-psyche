@@ -230,7 +230,6 @@ diorama
 # in the middle (an illusion from her house), IV.4e (the way back) on a
 # column in the water by the gate.
 intro intro_iv_4b
-outro outro_iv_4
 size 13
 biome taenarus
 lamp
@@ -425,4 +424,154 @@ prop rail 12 0 7 px
 prop rail 12 0 7 my
 prop rail 11 2 6 mx
 prop rail 11 2 6 px
+end
+
+diorama
+# The throne of Proserpina (the third diorama, VI.20): her halls touch only
+# in the eye. The axle y 6, the floor z 4, water at h5; the middle island
+# (her throne room under, the land of the dead above), the east islet (her
+# pomegranate) and the north islet (the start and the seal of the dead).
+#   - Charon from the north islet to the east; over at the east pomegranate;
+#   - her east terrace joins the floor of the throne room across the water
+#     in views 0 and 1; stairs (not in view 2) to the first terrace, joined to
+#     the second in view 2: her seal, which raises the steps to the seal of
+#     the dead on the north islet;
+#   - back by the same way, turned back, Charon to the north islet: the seal
+#     of the dead raises the throne's stairs; Charon again, over again, the
+#     same way to the second terrace, the throne's stairs behind a column in
+#     the water (turn), the throne (the exit).
+intro intro_iv_4c
+outro outro_iv_4
+size 13
+biome taenarus
+lamp
+floor water faint -2 -2 14 14 5
+duality
+# the axle
+block 4 6 4
+block 5 6 4
+block 6 6 4
+block 7 6 4
+block 8 6 4
+block 10 6 4
+block 11 6 4
+block 12 6 4
+pomegranate 11 6 5
+# the middle island
+block 4 4 4 rock
+block 5 4 4 rock
+block 6 4 4 rock
+block 7 4 4 rock
+block 8 4 4 rock
+block 4 5 4 rock
+block 5 5 4 rock
+block 6 5 4 rock
+block 7 5 4 rock
+block 8 5 4 rock
+block 4 7 4 rock
+block 5 7 4 rock
+block 6 7 4 rock
+block 7 7 4 rock
+block 8 7 4 rock
+block 4 8 4 rock
+block 5 8 4 rock
+block 6 8 4 rock
+block 7 8 4 rock
+block 8 8 4 rock
+# the east islet
+block 10 4 4 rock
+block 11 4 4 rock
+block 12 4 4 rock
+block 10 5 4 rock
+block 11 5 4 rock
+block 12 5 4 rock
+block 10 7 4 rock
+block 11 7 4 rock
+block 12 7 4 rock
+block 10 8 4 rock
+block 11 8 4 rock
+block 12 8 4 rock
+# the north islet: the start, and the seal of the dead
+block 4 1 4 rock
+block 5 1 4 rock
+block 6 1 4 rock
+block 7 1 4 rock
+block 6 0 4 rock
+rock 4 0 4 5
+start 4 0 6
+steps 5 0 5 mx
+ferry 6 1 5 py  11 4 5 my
+# the seal of the dead on a crag, its steps raised by hers
+rock 8 1 4 5
+rise 7 1 5 px rock 2
+sigil 8 1 6
+prop lip 8 1 6 px
+prop lip 8 1 6 my
+prop lip 8 1 6 py
+prop lip 6 0 5 px
+prop lip 4 0 6 mx
+prop lip 4 0 6 my
+prop lip 4 0 6 py
+# the middle island above: boulders and a pine
+prop boulder 6 5 5
+prop boulder 4 4 5
+prop pine 7 7 5 px
+prop fire 4 1 5
+prop fire 11 8 5
+prop cairn 5 1 5 my
+prop shrub 4 0 6 px
+prop shrub 4 8 5 py
+prop boulder 8 8 5
+prop boulder 12 8 5
+prop pine 10 4 5 my
+under
+# the stairs to the first terrace, the bridge to the east islet
+stairs 7 5 5 px
+block 8 5 5
+block 10 5 5
+stairs 11 5 5 mx
+prop rail 8 5 6 py
+prop rail 8 5 6 px
+prop rail 10 5 6 my
+prop rail 10 5 6 py
+# the second terrace, joined to the first in one view: her seal
+column 6 4 5 6
+sigil 6 4 7
+prop rail 6 4 7 mx
+prop rail 6 4 7 my
+prop rail 6 4 7 py
+# the throne: its stairs raised by the seal of the dead
+column 5 4 5 6
+rise 5 4 7 mx 1
+column 4 4 5 7
+exit 4 4 8
+column 4 3 5 8
+prop rail 4 3 9 mx
+prop rail 4 3 9 px
+prop rail 4 3 9 my
+prop rail 4 3 9 py
+prop pillar 8 7 5
+prop rail 4 4 8 mx
+prop rail 4 4 8 my
+prop rail 4 4 8 py
+# her throne room: pillars, urns, candelabra
+prop pillar 4 5 5
+prop pillar 4 7 5
+prop pillar 5 8 5
+prop pillar 7 8 5
+prop pillar 12 8 5
+prop urn 10 8 5
+prop urn 5 5 5
+prop cypress 6 8 5
+prop arch 11 6 5 px
+prop arch 5 6 5 px
+candelabrum 4 4 8 px lit
+candelabrum 6 4 7 mx lit
+candelabrum 10 5 6 px lit
+candelabrum 12 6 5 py lit
+prop sconce 4 4 7 mx
+prop sconce 6 4 6 my
+prop sconce 5 4 6 my
+prop sconce 4 3 8 mx
+prop sconce 4 3 8 px
 end

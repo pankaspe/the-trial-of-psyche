@@ -351,6 +351,7 @@ Key :: enum u16 {
 	Intro_IV_3b, // IV.3's second diorama: the courts of Proserpina
 	Intro_IV_4,
 	Intro_IV_4b, // IV.4's second diorama: the halls of Proserpina
+	Intro_IV_4c, // IV.4's third diorama: the throne of Proserpina
 	Intro_IV_5,
 	Intro_IV_6,
 	// beside Cupid in the dark, before the end of the game
@@ -1053,6 +1054,7 @@ IT := [Key]string {
 	.Intro_IV_5     = "Con il vaso tra le mani, Psiche torna indietro: tre barche, e nessuna l'aspetta dove le serve.",
 	.Intro_IV_4     = "Caronte fa la spola sul fiume nero. Al di là, sotto l'acqua, la casa di Proserpina.",
 	.Intro_IV_4b    = "La casa di Proserpina si specchia nella terra dei morti: tre ponti la attraversano, ognuno acceso a modo suo.",
+	.Intro_IV_4c    = "In fondo alla casa, il trono di Proserpina: le sue sale si toccano solo agli occhi di chi guarda.",
 	.V_Doubt        = "Dorme. Ti tornano in mente le parole delle sorelle: e se fosse un mostro? La lampada è nella tua mano.",
 
 	.Tutorial_Label = "Come si gioca",
@@ -1570,6 +1572,7 @@ EN := [Key]string {
 	.Intro_IV_5     = "With the box in her hands, Psyche turns back: three boats, and none waits where she needs it.",
 	.Intro_IV_4     = "Charon plies the black river. Beyond it, under the water, Proserpina's house.",
 	.Intro_IV_4b    = "Proserpina's house mirrors the land of the dead: three bridges cross it, each lit in its own way.",
+	.Intro_IV_4c    = "At the end of the house, Proserpina's throne: her halls touch only in the eye of the one who looks.",
 	.V_Doubt        = "He sleeps. Your sisters' words come back to you: what if he is a monster? The lamp is in your hand.",
 
 	.Tutorial_Label = "How to play",
