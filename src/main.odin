@@ -30,11 +30,13 @@ import "ui"
 
 WINDOW_TITLE :: "The Trial of Psyche"
 MENU_FADE :: 0.8
+MENU_IN :: 0.7 // the title menu coming in after the splash
 CARD_FADE :: 0.6
 MAX_TOASTS :: 8
 Notice :: ui.Notice // a field of App is named ui
 
 Screen :: enum u8 {
+	Splash, // the game opens in the dark: any key lights the lamp
 	Title,
 	Levels,
 	Games, // the games side by side: continue one, start one, erase one
@@ -80,6 +82,9 @@ App :: struct {
 	settings_from:   Screen,
 	codex_from:      Screen,
 	menu_fade:       f32, // < 0 unless the title menu is fading out
+	splash_t:        f32, // time on the splash
+	splash_out:      f32, // < 0, or time since the lamp was lit on the splash
+	menu_in:         f32, // time since the title menu began to come in
 	card_t:          f32, // time on the ending card
 	ending:          Ending_Info,
 	act_card:        Act_Card,
@@ -202,7 +207,9 @@ startup :: proc(app: ^App) -> bool {
 	if !load_current(app) {
 		return false
 	}
-	app.screen = .Title
+	app.screen = .Splash
+	app.splash_out = -1
+	app.menu_in = MENU_IN
 	app.menu_fade = -1
 	app.black_t = -1
 	app.passage_t = -1
@@ -702,6 +709,7 @@ frame :: proc(app: ^App) {
 		app.scene.sense = .Sense in app.prog.aids
 		render.scene_update(&app.scene, g, dt)
 	}
+	update_splash(app, dt)
 	if app.menu_fade >= 0 {
 		app.menu_fade += dt
 		if app.menu_fade >= MENU_FADE {
@@ -1171,6 +1179,30 @@ pad_play :: proc(app: ^App) {
 	}
 }
 
+// The splash's clock; once the lamp is lit and its light has spread, the
+// title menu comes in.
+update_splash :: proc(app: ^App, dt: f32) {
+	app.menu_in += dt
+	if app.screen != .Splash {
+		return
+	}
+	app.splash_t += dt
+	if app.splash_out >= 0 {
+		app.splash_out += dt
+		if app.splash_out >= ui.SPLASH_OUT {
+			app.screen = .Title
+			app.menu_in = 0
+		}
+	}
+}
+
+// A key pressed on the splash: the lamp is lit.
+light_splash :: proc(app: ^App) {
+	app.splash_out = 0
+	audio.play(.Reveal, -14, 1)
+	input.rumble(0.25, 0.15)
+}
+
 draw_screens :: proc(app: ^App) {
 	g := &app.game
 	u := &app.ui
@@ -1185,8 +1217,13 @@ draw_screens :: proc(app: ^App) {
 	g.reduce_motion = app.cfg.reduce_motion
 	u.toast_visible = app.toast_count > 0 && app.screen != .Fragment
 	switch app.screen {
+	case .Splash:
+		if ui.splash(u, app.splash_t, app.splash_out / ui.SPLASH_OUT) {
+			light_splash(app)
+		}
 	case .Title:
-		act := ui.title_menu(u, app.playing)
+		k := fx.sine_in_out(clamp(app.menu_in / MENU_IN, 0, 1))
+		act := ui.title_menu(u, app.playing, k, 24 * (1 - k))
 		if rl.IsKeyPressed(.ENTER) {
 			act = .Play
 		}

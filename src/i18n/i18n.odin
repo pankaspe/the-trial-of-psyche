@@ -48,6 +48,7 @@ Key :: enum u16 {
 	Act_4_Card,
 	Act_Epilogue_Card,
 	Card_Continue,
+	Splash_Press, // the splash: any key lights the lamp and opens the title
 	Card_Unbuilt,
 
 	// the prologue cutscene (I.1)
@@ -441,6 +442,7 @@ Key :: enum u16 {
 	// with a pad in hand: the texts that name keys, in `pad_text` (buttons as
 	// {S} {E} {W} {N} {LB} {RB} {LT} {RT} {START}, named by the pad's layout)
 	Card_Continue_Pad,
+	Splash_Press_Pad,
 	Pro_Start_Pad,
 	Fragment_Continue_Pad,
 	Mech_Handle_Pad,
@@ -647,6 +649,7 @@ VARIANT_TEXT := [Variant][Key]Key {
 @(private)
 PAD_TEXT := #partial [Key]Key {
 	.Card_Continue      = .Card_Continue_Pad,
+	.Splash_Press       = .Splash_Press_Pad,
 	.Pro_Start          = .Pro_Start_Pad,
 	.Fragment_Continue  = .Fragment_Continue_Pad,
 	.Mech_Handle        = .Mech_Handle_Pad,
@@ -754,6 +757,7 @@ IT := [Key]string {
 	.Act_4_Card     = "Venere non è ancora placata: Psiche dovrà scendere da Proserpina e chiederle un po' della sua bellezza, chiusa in un vaso.\nDall'Ade nessuno torna.",
 	.Act_Epilogue_Card = "Psiche dorme il sonno dello Stige, come una morta.\nLontano, una finestra si apre.",
 	.Card_Continue  = "Clic per continuare",
+	.Splash_Press   = "Premi un tasto per accendere la lucerna",
 	.Card_Unbuilt   = "Questo atto è ancora in costruzione.",
 
 	.Pro_Oracle     = "«Sulla rupe di un alto monte, o re, lascia la fanciulla, vestita per nozze di morte. Non sperare un genero di stirpe mortale.»",
@@ -1138,6 +1142,7 @@ IT := [Key]string {
 	.Hint_Rest      = "Un braciere acceso: se ti perdi, R ti riporta qui. Tenuto premuto, ricomincia il livello",
 	.Hint_Rest_Twice = "Un braciere acceso: se ti perdi, R ti riporta qui. Premuto due volte, ricomincia il livello",
 	.Card_Continue_Pad = "Premi {S} per continuare",
+	.Splash_Press_Pad = "Premi un pulsante per accendere la lucerna",
 	.Pro_Start_Pad  = "Premi un pulsante per iniziare",
 	.Fragment_Continue_Pad = "Premi {S} per continuare",
 	.Mech_Handle_Pad = "Una manovella muove la parte segnata dall'intarsio di bronzo.\nStando sulla manovella, premi {RT}: il fuso la gira, e la parte ruota di un quarto.",
@@ -1272,6 +1277,7 @@ EN := [Key]string {
 	.Act_4_Card     = "Venus is not yet appeased: Psyche must go down to Proserpina and ask her for a little of her beauty, shut in a box.\nNo one comes back from Hades.",
 	.Act_Epilogue_Card = "Psyche sleeps the sleep of the Styx, like one dead.\nFar away, a window opens.",
 	.Card_Continue  = "Click to continue",
+	.Splash_Press   = "Press any key to light the lamp",
 	.Card_Unbuilt   = "This act is still being built.",
 
 	.Pro_Oracle     = "“On the crag of a high mountain, king, leave the girl, dressed for a wedding of death. Hope for no son-in-law of mortal birth.”",
@@ -1656,6 +1662,7 @@ EN := [Key]string {
 	.Hint_Rest      = "A lit brazier: if you lose your way, R brings you back here. Held down, it restarts the level",
 	.Hint_Rest_Twice = "A lit brazier: if you lose your way, R brings you back here. Pressed twice, it restarts the level",
 	.Card_Continue_Pad = "Press {S} to continue",
+	.Splash_Press_Pad = "Press any button to light the lamp",
 	.Pro_Start_Pad  = "Press any button to begin",
 	.Fragment_Continue_Pad = "Press {S} to continue",
 	.Mech_Handle_Pad = "A handle moves the part marked by the bronze inlay.\nStanding on the handle, press {RT}: the spindle turns it, and the part turns a quarter.",

@@ -71,6 +71,10 @@ place :: proc(app: ^App, c: iso.Cell) {
 TURN_FRAMES := [?]f32{0.3, 0.8, 1.15, 1.4, 1.75, 2.3}
 
 SHOT_SCRIPT := [?]Shot_Step {
+	{1.0, "00_splash_in", nil},
+	{2.6, "00_splash", nil},
+	{0.1, "", proc(app: ^App) {light_splash(app)}},
+	{0.45, "00b_splash_lit", nil},
 	{1.5, "01_menu", nil},
 	{0.1, "", proc(app: ^App) {new_level(app, TEMPLE_LEVEL)}},
 	{1.5, "01b_menu_temple", nil},

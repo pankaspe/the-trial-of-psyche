@@ -102,6 +102,7 @@ Ui :: struct {
 	tip_reveal:    [3]f32, // the names of the diorama's buttons (Q, E, R)
 	place_reveal:  f32, // the action of the place, over Psyche
 	place_key:     i18n.Key, // what it says (kept while it fades out)
+	vignette:      rl.Texture2D, // a disc of clear fading into the dark (the lamp's light on the splash)
 }
 
 init :: proc(u: ^Ui) {
@@ -139,6 +140,10 @@ init :: proc(u: ^Ui) {
 		st = -1
 	}
 	ensure_fonts(u)
+	img := rl.GenImageGradientRadial(256, 256, 0, {0, 0, 0, 0}, {255, 255, 255, 255})
+	u.vignette = rl.LoadTextureFromImage(img)
+	rl.UnloadImage(img)
+	rl.SetTextureFilter(u.vignette, .BILINEAR)
 }
 
 // (Re)build the font atlases when the UI scale moves to another size step.
@@ -180,6 +185,7 @@ shutdown :: proc(u: ^Ui) {
 		rl.UnloadFont(f)
 	}
 	delete(u.runes)
+	rl.UnloadTexture(u.vignette)
 	u^ = {}
 }
 

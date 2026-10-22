@@ -43,7 +43,7 @@ Choice :: struct {
 
 @(private)
 shade :: proc(u: ^Ui, alpha: f32) {
-	rl.DrawRectangleRec({0, 0, u.width, u.height}, fade({8, 4, 3, 255}, alpha))
+	rl.DrawRectangleRec({0, 0, u.width, u.height}, fade(DARK, alpha))
 }
 
 // The lamp's side of the screen: the left half warmed and darkened, for the
@@ -218,6 +218,71 @@ split_title :: proc(t: string) -> (string, string) {
 		return t, ""
 	}
 	return t[:best], t[best + 1:]
+}
+
+// --- the splash ------------------------------------------------------------------------
+//
+// The game opens in the dark: it fades in from black to a circle of the
+// lamp's light about the title, the sleeping palace faint inside it; any key
+// lights the lamp (`out` 0..1): the light spreads over the screen and the
+// title menu comes. `t`: seconds since the splash began.
+
+SPLASH_IN :: 1.8 // the fade from black
+SPLASH_READY :: 0.6 // a press is heard after this
+SPLASH_OUT :: 1.1 // the light spreading
+
+DARK :: rl.Color{8, 4, 3, 255}
+FLAME :: rl.Color{255, 157, 60, 255}
+
+// Everything dark but a disc about `c` of radius `r`, fading at its rim.
+lamp_light :: proc(u: ^Ui, c: Vec2, r: f32, alpha: f32) {
+	col := fade(DARK, alpha)
+	rect := rl.Rectangle{c.x - r, c.y - r, 2 * r, 2 * r}
+	rl.DrawRectangleRec({0, 0, u.width, u.height}, fade(DARK, 0.42 * alpha)) // the light is a lamp's: the palace stays dim in it
+	rl.DrawTexturePro(u.vignette, {0, 0, f32(u.vignette.width), f32(u.vignette.height)}, rect, {}, 0, col)
+	// the dark beyond the disc's square
+	rl.DrawRectangleRec({0, 0, u.width, max(rect.y, 0)}, col)
+	rl.DrawRectangleRec({0, rect.y + rect.height, u.width, max(u.height - rect.y - rect.height, 0)}, col)
+	rl.DrawRectangleRec({0, rect.y, max(rect.x, 0), rect.height}, col)
+	rl.DrawRectangleRec({rect.x + rect.width, rect.y, max(u.width - rect.x - rect.width, 0), rect.height}, col)
+	rl.DrawCircleGradient(c, r * 0.7, fade(FLAME, 0.1 * alpha), fade(FLAME, 0))
+}
+
+// The lamp's flame at `c`, lit and breathing.
+lamp_flame :: proc(u: ^Ui, c: Vec2, t: f32, alpha: f32) {
+	s := u.scale
+	k := u.reduce_motion ? 1 : 1 + 0.12 * math.sin(t * 7.3) + 0.06 * math.sin(t * 11.1)
+	glow_dot(c, 9 * s * k, FLAME, alpha)
+	h := 15 * s * k
+	tri(c + {0, -h}, c + {-4.5 * s, -2 * s}, c + {4.5 * s, -2 * s}, fade({255, 196, 110, 255}, alpha))
+	rl.DrawCircleV(c + {0, -1.5 * s}, 4.6 * s, fade({255, 214, 140, 255}, alpha))
+	rl.DrawCircleV(c + {0, -0.5 * s}, 2.2 * s, fade({255, 246, 220, 255}, alpha))
+}
+
+// The splash; reports a press once it is ready (and not already leaving).
+splash :: proc(u: ^Ui, t: f32, out: f32) -> (pressed: bool) {
+	s := u.scale
+	k := fx.sine_in_out(clamp(out, 0, 1))
+	c := Vec2{u.width * 0.5, u.height * 0.44}
+	r := fx.lerp(u.height * 0.5, max(u.width, u.height) * 1.6, k * k)
+	lamp_light(u, c, r, 0.97 * (1 - k * 0.3))
+	gone := 1 - clamp(k * 1.8, 0, 1)
+	a := clamp((t - 0.7) / 1.3, 0, 1) * gone
+	y := u.height * 0.44 - 96 * s
+	text(u, i18n.tr(.Title), {c.x, y}, {size = 140, color = TITLE, face = .Display, glow = true, shadow = true}, .Center, a)
+	y += 170 * s
+	text(u, caps(i18n.tr(.Footer)), {c.x, y}, {size = 22, color = GOLD, face = .Semi, track = 0.3, shadow = true}, .Center, a)
+	blink: f32 = u.reduce_motion ? 1 : 0.62 + 0.38 * math.sin(t * 2.2)
+	pa := clamp((t - 2.2) / 1, 0, 1) * gone
+	py := u.height - 132 * s
+	lamp_flame(u, {c.x, py - 30 * s}, t, pa)
+	text(u, i18n.tr(.Splash_Press), {c.x, py}, {size = 30, color = {222, 186, 140, 255}, face = .Italic, shadow = true}, .Center, pa * blink)
+	// the fade from black
+	rl.DrawRectangleRec({0, 0, u.width, u.height}, fade({0, 0, 0, 255}, 1 - fx.sine_in_out(clamp(t / SPLASH_IN, 0, 1))))
+	if out >= 0 || t < SPLASH_READY {
+		return false
+	}
+	return u.pressed || take_accept(u) || input.any_pressed() || rl.GetKeyPressed() != .KEY_NULL
 }
 
 // Title screen over the sleeping palace, like the cover of a book: on the
