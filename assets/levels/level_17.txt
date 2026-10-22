@@ -24,7 +24,6 @@
 # Cerberus) on a crag north of the east island, past a veiled stone of the
 # floor (the lamp lit while she crosses the bridge, or once more).
 intro intro_iv_4
-outro outro_iv_4
 size 13
 biome taenarus
 lamp
@@ -206,4 +205,224 @@ candelabrum 11 7 5 px lit
 prop arch 6 6 5 px
 prop arch 1 5 5 px
 prop arch 10 6 5 px
+end
+
+diorama
+# The halls of Proserpina (the second diorama, VI.19-20): the land of the dead
+# above (rock, fires), her temple under (marble), on one floor (z 4), the axle
+# y 6, the water at h5. Three islands on the axle (west, middle, east: her
+# house) and two islets off it (north, south). Two ferries, three bridges:
+# her veiled planks (west - middle, woken by the lamp in her world), the
+# stones the seal of the dead raises (middle - east), and the guard's bridge
+# of light in her world up to the gate.
+#   - from the crag (its steps behind a spire: turn) over at the west
+#     pomegranate: her seal on a terrace raises the steps to the guard on the
+#     north islet; the lamp lit at her bridge wakes it;
+#   - back, the first ferry to the north islet: the guard, lit, shows her
+#     bridge to the gate; the ferry back;
+#   - over at the west pomegranate, her bridge to the middle (a column cuts it
+#     in her world), back there: the second ferry to the south islet, the seal
+#     of the dead raises the east bridge; the ferry back;
+#   - over the stones to the east pomegranate, over: her house, the guard's
+#     bridge behind a column (turn), the gate (the exit).
+# Fragments: IV.4c (Cerberus fed) on a crag of the north islet (an illusion
+# from the guard's crag), IV.4d (Venus's message) on a column of her courts
+# in the middle (an illusion from her house), IV.4e (the way back) on a
+# column in the water by the gate.
+intro intro_iv_4b
+outro outro_iv_4
+size 13
+biome taenarus
+lamp
+floor water faint -2 -2 14 14 5
+duality
+# the axle
+block 0 6 4
+block 1 6 4
+block 2 6 4
+block 5 6 4
+block 6 6 4
+block 7 6 4
+block 10 6 4
+block 11 6 4
+block 12 6 4
+pomegranate 1 6 5
+pomegranate 6 6 5
+pomegranate 11 6 5
+# west island (rock)
+block 0 4 4 rock
+block 1 4 4 rock
+block 2 4 4 rock
+block 0 5 4 rock
+block 1 5 4 rock
+block 2 5 4 rock
+block 0 7 4 rock
+block 2 7 4 rock
+block 0 8 4 rock
+block 1 8 4 rock
+block 2 8 4 rock
+# middle island (rock)
+block 5 4 4 rock
+block 6 4 4 rock
+block 7 4 4 rock
+block 5 5 4 rock
+block 6 5 4 rock
+block 7 5 4 rock
+block 5 7 4 rock
+block 6 7 4 rock
+block 7 7 4 rock
+block 5 8 4 rock
+block 6 8 4 rock
+block 7 8 4 rock
+# north islet
+block 5 0 4 rock
+block 6 0 4 rock
+block 7 0 4 rock
+block 5 1 4 rock
+block 6 1 4 rock
+block 7 1 4 rock
+# south islet
+block 10 10 4 rock
+block 11 10 4 rock
+block 12 10 4 rock
+block 10 11 4 rock
+block 11 11 4 rock
+block 12 11 4 rock
+# start
+rock 0 8 5 5
+start 0 8 6
+steps 0 7 5 py
+# a spire hides the start's steps
+rock 1 7 4 6
+prop lip 1 7 7 mx
+prop lip 1 7 7 px
+prop lip 1 7 7 my
+prop lip 1 7 7 py
+# a crag cuts the west axle above
+rock 2 6 5 6
+# the seal of the dead's bridge, middle to east
+rise 8 6 4 rock 1
+rise 9 6 4 rock 1
+# the ferries
+ferry 1 4 5 my  5 1 5 mx
+ferry 6 8 5 py  10 11 5 mx
+# the seal of the dead on the south islet
+rock 12 11 5 5
+steps 11 11 5 px
+sigil 12 11 6
+# the guard on the north islet, its steps raised by her seal
+rock 7 1 5 5
+rise 6 1 5 px rock 3
+candelabrum 7 1 6 px guard
+# Cerberus's crag (a fragment), joined to the islet in one view
+rock 5 0 5 6
+fragment 5 0 7
+prop lip 2 6 7 mx
+prop lip 2 6 7 px
+prop lip 2 6 7 my
+prop lip 2 6 7 py
+prop lip 12 11 6 px
+prop lip 12 11 6 my
+prop lip 12 11 6 py
+prop lip 7 1 6 px
+prop lip 7 1 6 my
+prop lip 7 1 6 py
+# the land of the dead: fires, boulders, pines
+prop fire 7 0 5
+prop fire 11 10 5
+prop boulder 2 8 5
+prop boulder 5 4 5
+prop boulder 12 8 5
+prop pine 0 4 5 px
+prop pine 5 8 5 py
+prop shrub 2 4 5 my
+prop shrub 6 0 5 py
+prop shrub 0 8 6 py
+prop cairn 7 4 5 px
+prop cairn 10 10 5 my
+prop lip 5 0 7 mx
+prop lip 5 0 7 my
+prop lip 5 0 7 py
+prop lip 0 8 6 mx
+prop lip 0 8 6 px
+prop lip 0 8 6 py
+under
+# east island: her house (marble)
+block 10 4 4
+block 11 4 4
+block 12 4 4
+block 10 5 4
+block 11 5 4
+block 12 5 4
+block 10 7 4
+block 11 7 4
+block 12 7 4
+block 10 8 4
+block 11 8 4
+block 12 8 4
+# her veiled bridge, west to middle
+veiled 3 6 4
+veiled 4 6 4
+# a column cuts the middle axle in her world
+column 7 6 5 7
+# her seal on the west island
+block 0 4 5
+stairs 0 5 5 my
+sigil 0 4 6
+# the guard's bridge to the exit
+rise 11 3 5 my 2
+rise 11 2 5 2
+block 11 1 5
+exit 11 1 6
+# a column of her house hides the bridge's stairs
+column 10 4 5 7
+prop rail 10 4 8 mx
+prop rail 10 4 8 px
+prop rail 10 4 8 my
+prop rail 10 4 8 py
+prop rail 0 4 6 mx
+prop rail 0 4 6 px
+prop rail 0 4 6 my
+prop rail 7 6 8 mx
+prop rail 7 6 8 px
+prop rail 7 6 8 my
+prop rail 7 6 8 py
+prop rail 11 1 6 mx
+prop rail 11 1 6 px
+prop rail 11 1 6 my
+# a column of her courts (a fragment)
+column 7 5 5 6
+fragment 7 5 7
+# a column in the water by the gate (a fragment)
+column 12 0 5 6
+fragment 12 0 7
+# her temple: pillars, arches, candelabra
+prop pillar 2 4 5
+prop pillar 2 8 5
+prop pillar 5 4 5
+prop pillar 12 4 5
+prop pillar 12 8 5
+prop urn 7 4 5
+prop cypress 2 5 5
+prop arch 1 6 5 px
+prop arch 6 6 5 px
+prop arch 11 6 5 px
+candelabrum 12 6 5 px lit
+candelabrum 10 6 5 my lit
+candelabrum 5 6 5 mx lit
+candelabrum 11 1 6 px lit
+prop sconce 10 4 7 px
+prop sconce 10 4 7 my
+prop sconce 7 6 7 mx
+prop sconce 7 6 7 px
+prop sconce 7 5 6 mx
+prop sconce 12 0 6 mx
+prop rail 7 5 7 mx
+prop rail 7 5 7 my
+prop rail 7 5 7 py
+prop rail 12 0 7 mx
+prop rail 12 0 7 px
+prop rail 12 0 7 my
+prop rail 11 2 6 mx
+prop rail 11 2 6 px
 end

@@ -128,8 +128,12 @@ FRAGMENTS := [?]Fragment_Info {
 	{"IV.3", 15, .Fragment_17, "VI.18"},
 	{"IV.3b", 15, .Fragment_17b, "VI.18"},
 	{"IV.3c", 15, .Fragment_17c, "VI.18"},
+	{"IV.3d", 15, .Fragment_17d, "VI.18"}, // the courts of Proserpina
 	{"IV.4", 16, .Fragment_18, "VI.19"},
 	{"IV.4b", 16, .Fragment_18b, "VI.20"},
+	{"IV.4c", 16, .Fragment_18c, "VI.20"}, // the halls of Proserpina
+	{"IV.4d", 16, .Fragment_18d, "VI.20"},
+	{"IV.4e", 16, .Fragment_18e, "VI.19"},
 	{"IV.5", 17, .Fragment_19, "VI.21"},
 	{"IV.6", 18, .Fragment_19c, "VI.20"},
 	{"IV.6b", 18, .Fragment_19d, "VI.21"},
@@ -142,7 +146,7 @@ FRAGMENT_COUNT :: len(FRAGMENTS)
 
 // The Book shows the fragments in the order of Apuleius' text, not of the
 // levels: fragment indices, in reading order.
-BOOK_ORDER := [FRAGMENT_COUNT]int{0, 1, 4, 8, 2, 3, 5, 7, 6, 9, 11, 10, 12, 14, 13, 15, 16, 17, 19, 18, 20, 21, 23, 25, 28, 26, 22, 27, 24, 30, 29, 32, 31, 33, 38, 37, 39, 35, 40, 34, 36, 41, 43, 45, 44, 46, 42, 47}
+BOOK_ORDER := [FRAGMENT_COUNT]int{0, 1, 4, 8, 2, 3, 5, 7, 6, 9, 11, 10, 12, 14, 13, 15, 16, 17, 19, 18, 20, 21, 23, 25, 28, 26, 22, 27, 24, 30, 29, 32, 31, 33, 40, 38, 37, 39, 35, 41, 45, 34, 36, 43, 42, 44, 47, 49, 48, 50, 46, 51}
 
 // The fragments of a level: FRAGMENTS[first:][:count].
 level_fragments :: proc(level: int) -> (first, count: int) {

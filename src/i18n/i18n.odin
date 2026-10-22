@@ -191,8 +191,12 @@ Key :: enum u16 {
 	Fragment_17,
 	Fragment_17b,
 	Fragment_17c,
+	Fragment_17d, // IV.3's courts of Proserpina: the two cakes
 	Fragment_18,
 	Fragment_18b,
+	Fragment_18c, // IV.4's halls of Proserpina: Cerberus fed
+	Fragment_18d, // IV.4's halls: Venus's message
+	Fragment_18e, // IV.4's halls: the way back, as the tower told
 	Fragment_19,
 	Fragment_19b,
 	Fragment_19c,
@@ -344,7 +348,9 @@ Key :: enum u16 {
 	Intro_IV_1,
 	Intro_IV_2,
 	Intro_IV_3,
+	Intro_IV_3b, // IV.3's second diorama: the courts of Proserpina
 	Intro_IV_4,
+	Intro_IV_4b, // IV.4's second diorama: the halls of Proserpina
 	Intro_IV_5,
 	Intro_IV_6,
 	// beside Cupid in the dark, before the end of the game
@@ -884,8 +890,12 @@ IT := [Key]string {
 	.Fragment_17    = "Caronte non fa nulla gratis. Anche tra i morti vive l'avarizia. Chi muore deve portare la moneta in bocca.",
 	.Fragment_17b   = "«Sulla via incontrerai un asino zoppo carico di legna, e un asinaio zoppo come lui, che ti chiederà di raccogliergli qualche ramo caduto dal carico. Passa oltre senza una parola.»",
 	.Fragment_17c   = "«Mentre attraversi il fiume, un vecchio morto che galleggia alzerà verso di te le mani disfatte e ti pregherà di tirarlo nella barca. Non cedere a una pietà che non ti è concessa.»",
+	.Fragment_17d   = "«Non andare a mani vuote: in ciascuna mano porta una focaccia d'orzo impastata con vino e miele.»",
 	.Fragment_18    = "«Un cane enorme, con tre teste, veglia sempre sulla soglia della casa di Proserpina e latra contro i morti, che ormai non può più ferire. Gettagli una delle focacce e passerai.»",
 	.Fragment_18b   = "Proserpina le offre un seggio morbido e un ricco banchetto. Psiche siede a terra e chiede solo pane scuro.",
+	.Fragment_18c   = "Psiche getta la prima focaccia al cane: le tre bocche si contendono il dono, e lei varca la soglia.",
+	.Fragment_18d   = "Ai piedi della regina, Psiche riferisce il messaggio di Venere: «Mandami un poco della tua bellezza, quanto basta per un giorno.»",
+	.Fragment_18e   = "«Avuto il vaso, torna per la stessa via: la seconda focaccia al cane, la seconda moneta al nocchiero.»",
 	.Fragment_19    = "Amore, guarito, non sopporta più la lontananza. Fugge dall'alta finestra della sua prigione e vola da lei.",
 	.Fragment_19c   = "Sulla via del ritorno getta a Cerbero la seconda focaccia, e il cane, sazio, la lascia passare.",
 	.Fragment_19d   = "Rivede la luce del giorno, e la vince una temeraria curiosità: «Sciocca, portare la bellezza degli dèi e non prenderne una goccia per piacere al mio amato.»",
@@ -1038,9 +1048,11 @@ IT := [Key]string {
 	.Intro_IV_1     = "La torre ti ha detto la via. Scendi: in fondo, sull'acqua scura, aspetta il traghettatore.",
 	.Intro_IV_2     = "Oltre il fiume, il regno di Proserpina pende sotto la terra dei morti, come un riflesso nell'acqua.",
 	.Intro_IV_3     = "Qui la terra dei morti e il regno di Proserpina camminano sulla stessa pietra: uno sopra, l'altro sotto.",
+	.Intro_IV_3b    = "Le corti di Proserpina pendono sotto la terra dei morti: ciò che si accende in un mondo si apre nell'altro.",
 	.Intro_IV_6     = "La luce del giorno è vicina. Il vaso pesa tra le mani: che cosa ci sarà dentro?",
 	.Intro_IV_5     = "Con il vaso tra le mani, Psiche torna indietro: tre barche, e nessuna l'aspetta dove le serve.",
 	.Intro_IV_4     = "Caronte fa la spola sul fiume nero. Al di là, sotto l'acqua, la casa di Proserpina.",
+	.Intro_IV_4b    = "La casa di Proserpina si specchia nella terra dei morti: tre ponti la attraversano, ognuno acceso a modo suo.",
 	.V_Doubt        = "Dorme. Ti tornano in mente le parole delle sorelle: e se fosse un mostro? La lampada è nella tua mano.",
 
 	.Tutorial_Label = "Come si gioca",
@@ -1395,8 +1407,12 @@ EN := [Key]string {
 	.Fragment_17    = "Charon does nothing for free. Even among the dead greed lives on: whoever dies must carry the coin in his mouth.",
 	.Fragment_17b   = "«On the way you will meet a lame ass loaded with wood, and a driver as lame as his beast, who will ask you to pick up a few sticks fallen from the load. Pass by without a word.»",
 	.Fragment_17c   = "«As you cross the river, a dead old man floating by will lift his wasted hands to you and beg you to pull him into the boat. Do not give in to a pity that is not allowed you.»",
+	.Fragment_17d   = "«Do not go empty-handed: in each hand carry a cake of barley kneaded with wine and honey.»",
 	.Fragment_18    = "«A huge dog with three heads keeps watch forever on the threshold of Proserpina's house, barking at the dead, whom it can no longer harm. Throw it one of the cakes and you will pass.»",
 	.Fragment_18b   = "Proserpina offers her a soft seat and a rich feast. Psyche sits on the ground and asks only for coarse bread.",
+	.Fragment_18c   = "Psyche throws the first cake to the dog: its three mouths fight over the gift, and she crosses the threshold.",
+	.Fragment_18d   = "At the queen's feet, Psyche gives Venus's message: «Send me a little of your beauty, enough for a single day.»",
+	.Fragment_18e   = "«Once you have the box, go back the way you came: the second cake to the dog, the second coin to the ferryman.»",
 	.Fragment_19    = "Cupid, healed, can bear the separation no longer. He escapes through the high window of his prison and flies to her.",
 	.Fragment_19c   = "On the way back she throws the second cake to Cerberus, and the dog, sated, lets her pass.",
 	.Fragment_19d   = "She sees the light of day again, and a reckless curiosity overcomes her: «How foolish, to carry the beauty of the gods and not take a drop of it to please my love.»",
@@ -1549,9 +1565,11 @@ EN := [Key]string {
 	.Intro_IV_1     = "The tower has told you the way. Go down: at the bottom, on the dark water, the ferryman waits.",
 	.Intro_IV_2     = "Beyond the river, Proserpina's kingdom hangs under the land of the dead, like a reflection in water.",
 	.Intro_IV_3     = "Here the land of the dead and Proserpina's kingdom walk on the same stone: one above, the other below.",
+	.Intro_IV_3b    = "Proserpina's courts hang under the land of the dead: what is lit in one world opens in the other.",
 	.Intro_IV_6     = "The light of day is near. The box weighs in her hands: what can be inside?",
 	.Intro_IV_5     = "With the box in her hands, Psyche turns back: three boats, and none waits where she needs it.",
 	.Intro_IV_4     = "Charon plies the black river. Beyond it, under the water, Proserpina's house.",
+	.Intro_IV_4b    = "Proserpina's house mirrors the land of the dead: three bridges cross it, each lit in its own way.",
 	.V_Doubt        = "He sleeps. Your sisters' words come back to you: what if he is a monster? The lamp is in your hand.",
 
 	.Tutorial_Label = "How to play",

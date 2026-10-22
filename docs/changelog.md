@@ -6,6 +6,13 @@ Kinds: **feature** (new code or mechanic) · **level** (a level built or rebuilt
 **rework** (something existing redone) · **refactor** (same behaviour, cleaner code) ·
 **fix** · **removal** · **sound** · **ui** · **tooling** · **docs**
 
+## 2026-10-22
+
+| Title | Kind | Description |
+|---|---|---|
+| IV.4: the halls of Proserpina | level | A second diorama for IV.4: the land of the dead above, her temple under; two of Charon's ferries and three bridges (her veiled planks, the stones of the seal of the dead, a bridge of light that a guard of the world above shows in hers); three new fragments (VI.19-20). |
+| IV.3: the courts of Proserpina | level | A second diorama for IV.3: each world's seal raises a piece of the other, the lamp lit in one world opens the way in the other; a new fragment, the two cakes (VI.18). |
+
 ## 2026-10-20
 
 | Title | Kind | Description |
