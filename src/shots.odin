@@ -229,6 +229,33 @@ SHOT_SCRIPT := [?]Shot_Step {
 	{1.5, "17_window_1600", nil},
 }
 
+// --ui-tour: the splash, the title menu, the profile and its doors, the
+// level select, with a game well under way behind them.
+UI_TOUR := [?]Shot_Step {
+	{0.0, "", proc(app: ^App) {
+			app.prog.completed = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
+			app.prog.fragments = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 20, 22, 23, 25, 27, 30}
+			app.prog.achievements = {.Tale_1, .Tale_2, .No_Wasted_Light}
+			app.playing = true
+			new_level(app, TEMPLE_LEVEL)
+		}},
+	{3.4, "", proc(app: ^App) {light_splash(app)}},
+	{2.2, "", proc(app: ^App) {app.ui.menu_lit = 1}},
+	{0.8, "", proc(app: ^App) {app.ui.menu_lit = 2}},
+	{1.0, "", proc(app: ^App) {open_profile(app, .Title)}},
+	{2.2, "", proc(app: ^App) {app.ui.profile_lit = 1}},
+	{0.7, "", proc(app: ^App) {app.ui.profile_lit = 2}},
+	{0.7, "", proc(app: ^App) {app.ui.profile_lit = 0}},
+	{0.8, "", proc(app: ^App) {app.book = {tab = 2, level = 9}; ui.book_open(&app.book); app.screen = .Book}},
+	{2.6, "", proc(app: ^App) {app.screen = .Profile; app.ui.profile_lit = 1}},
+	{0.8, "", proc(app: ^App) {open_codex(app)}},
+	{2.4, "", proc(app: ^App) {app.screen = .Profile}},
+	{0.8, "", proc(app: ^App) {app.screen = .Title; app.ui.menu_lit = 1}},
+	{1.4, "", proc(app: ^App) {app.screen = .Levels}},
+	{3.0, "", proc(app: ^App) {leave_levels(app, true); app.ui.menu_lit = 0}},
+	{1.6, "", nil},
+}
+
 // Start the level toured (--level ID), at its diorama --diorama N.
 @(private = "file")
 start_shot_level :: proc(app: ^App) {
@@ -359,7 +386,7 @@ Shots :: struct {
 	quality: settings.Quality, // --quality NAME: the graphics quality (low, medium, high, ultra)
 	has_quality: bool,
 	plan:  bool, // --plan: play the solver's plan of the level, a shot after every decision
-	record: bool, // --record (with --plan): every frame at RECORD_FPS instead, for a video
+	record: bool, // --record (with --plan or --ui-tour): every frame at RECORD_FPS instead, for a video
 	record_from: int, // --record-from N: frames before N are not written
 	record_to:   int, // --record-to N: the recording stops at frame N (0: at the plan's end)
 	cave_shot: int, // --plan: the last move shot at a cave's mouth or a perch (the action of the place shows)
@@ -368,6 +395,7 @@ Shots :: struct {
 	cine_shot: int, // --plan: shots taken of the opening cutscene (one every CINE_SHOT_EVERY s)
 	no_ui: bool, // --no-ui: the world only (backdrops for mockups and stills)
 	survey: bool, // --survey: the level from the four views, band by band (a tall level), no walking
+	ui_tour: bool, // --ui-tour: a walk through the menus (the splash, the title, the profile...), for a clip with --record
 	pad: Maybe(input.Layout), // --pad xbox|playstation|nintendo: the HUD of a pad in hand
 	frame: int,
 	moves: [dynamic]pl.Plan_Step,
@@ -393,6 +421,9 @@ shots_from_args :: proc(args: []string) -> (s: Shots, ok: bool) {
 		}
 		if a == "--survey" {
 			s.survey = true
+		}
+		if a == "--ui-tour" {
+			s.ui_tour = true
 		}
 	}
 	for a, i in args {
@@ -478,21 +509,30 @@ shots_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool
 	if s.level >= 0 && app.screen == .Mechanic && app.mechanic_t > 1.6 {
 		close_mechanic(app) // the card of the new mechanic would hide the tour
 	}
-	script := s.level >= 0 ? LEVEL_TOUR[:] : SHOT_SCRIPT[:]
+	script := s.level >= 0 ? LEVEL_TOUR[:] : s.ui_tour ? UI_TOUR[:] : SHOT_SCRIPT[:]
 	if s.step >= len(script) {
 		return "", true
+	}
+	if s.record {
+		if s.frame >= s.record_from {
+			name = fmt.tprintf("f%05d", s.frame) // every frame of the walk
+		}
+		s.frame += 1
 	}
 	s.t += dt
 	step := script[s.step]
 	if s.t < step.wait {
-		return "", false
+		return
 	}
 	s.t = 0
 	s.step += 1
 	if step.action != nil {
 		step.action(app)
 	}
-	return step.name, false
+	if !s.record {
+		name = step.name
+	}
+	return
 }
 
 // Save the frame being drawn (call before EndDrawing).

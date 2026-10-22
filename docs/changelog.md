@@ -10,6 +10,9 @@ Kinds: **feature** (new code or mechanic) · **level** (a level built or rebuilt
 
 | Title | Kind | Description |
 |---|---|---|
+| The profile | ui | A profile per game: the levels finished, the fragments, the achievements and the Notebook's entries, each act's fragments, and doors to the Book, the Notebook, the achievements and the games. |
+| A title in the lamplight | ui | The title menu reorganised (Continue with where you were, Select level, Profile, Settings, Quit): the lamp's flame lights the entry chosen, the others wait in the dark; the arrow keys move the light. |
+| The game opens in the dark | ui | A splash screen: the title in a circle of the lamp's light; any key lights the lamp, its light spreads over the screen and the menu comes in. |
 | IV.4: the throne of Proserpina | level | A third diorama for IV.4: her halls touch only in the eye, terraces joined across the water in some views and not in others; one boat, three crossings, a seal in each world calling the other. |
 | IV.4: the halls of Proserpina | level | A second diorama for IV.4: the land of the dead above, her temple under; two of Charon's ferries and three bridges (her veiled planks, the stones of the seal of the dead, a bridge of light that a guard of the world above shows in hers); three new fragments (VI.19-20). |
 | IV.3: the courts of Proserpina | level | A second diorama for IV.3: each world's seal raises a piece of the other, the lamp lit in one world opens the way in the other; a new fragment, the two cakes (VI.18). |

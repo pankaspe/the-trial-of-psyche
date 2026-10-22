@@ -56,6 +56,13 @@ tale to gather in the Book. It will be released once the whole tale is told.
 </tr>
 </table>
 
+The game opens in the dark: press a key and the lamp lights the way in. In the
+menus the lamp's flame follows your choice, and the profile gathers what Psyche
+has found so far (levels, fragments, achievements, the Notebook), with the Book
+and the games a door away.
+
+<img src="docs/screenshots/interface.gif" alt="The interface: the splash in the dark, the lamp lit, the title menu with the lamp's flame on the chosen entry, the profile with its tally and doors, the Book, Psyche's Notebook and the level select" width="100%">
+
 Up to five games side by side, each to continue, restart or erase; the levels of
 each act as pictures or as a constellation, a star per level, lit where the tale
 has gone on.
