@@ -534,6 +534,8 @@ Key :: enum u16 {
 	Pause_Diorama,
 	Resume,
 	Restart,
+	Restart_Diorama, // the pause, in a level of several dioramas
+	Pause_Here, // the pause's corner: what this level holds of the tale
 
 	// settings
 	Set_Title,
@@ -1233,6 +1235,8 @@ IT := [Key]string {
 	.Pause_Diorama = "diorama %d di %d",
 	.Resume         = "Riprendi",
 	.Restart        = "Ricomincia il livello",
+	.Restart_Diorama = "Ricomincia il diorama",
+	.Pause_Here     = "In questo livello",
 
 	.Set_Title      = "Impostazioni",
 	.Set_Hint_Choose = "scegli",
@@ -1763,6 +1767,8 @@ EN := [Key]string {
 	.Pause_Diorama = "diorama %d of %d",
 	.Resume         = "Resume",
 	.Restart        = "Restart the level",
+	.Restart_Diorama = "Restart the diorama",
+	.Pause_Here     = "In this level",
 
 	.Set_Title      = "Settings",
 	.Set_Hint_Choose = "choose",

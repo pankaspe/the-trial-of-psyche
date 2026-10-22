@@ -104,6 +104,7 @@ Ui :: struct {
 	place_key:     i18n.Key, // what it says (kept while it fades out)
 	menu_lit:      int, // the title menu's entry in the lamp's light
 	profile_lit:   int, // and the profile's door
+	pause_lit:     int, // and the pause's entry
 	vignette:      rl.Texture2D, // a disc of clear fading into the dark (the lamp's light on the splash)
 }
 

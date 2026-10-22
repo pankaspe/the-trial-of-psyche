@@ -10,6 +10,7 @@ Kinds: **feature** (new code or mechanic) · **level** (a level built or rebuilt
 
 | Title | Kind | Description |
 |---|---|---|
+| The pause | ui | The pause in the lamplight: Resume, Select level (back from it, the level resumes at its diorama), Restart the diorama, Profile, Settings, Menu; in the corner the level's fragments. |
 | The profile | ui | A profile per game: the levels finished, the fragments, the achievements and the Notebook's entries, each act's fragments, and doors to the Book, the Notebook, the achievements and the games. |
 | A title in the lamplight | ui | The title menu reorganised (Continue with where you were, Select level, Profile, Settings, Quit): the lamp's flame lights the entry chosen, the others wait in the dark; the arrow keys move the light. |
 | The game opens in the dark | ui | A splash screen: the title in a circle of the lamp's light; any key lights the lamp, its light spreads over the screen and the menu comes in. |

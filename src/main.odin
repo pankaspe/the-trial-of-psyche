@@ -685,10 +685,14 @@ frame :: proc(app: ^App) {
 	if app.screen != app.focus_screen {
 		// a new screen: the pad's focus starts on its first choice (the
 		// level to continue from, in the level select)
+		came_from := app.focus_screen
 		app.focus_screen = app.screen
 		ui.reset_focus(u)
 		if app.screen == .Levels {
 			enter_levels(app)
+		}
+		if app.screen == .Pause && came_from == .Play {
+			u.pause_lit = 0 // a new pause starts on Resume
 		}
 		if app.screen == .Games {
 			read_slots(app)
@@ -1263,6 +1267,7 @@ draw_screens :: proc(app: ^App) {
 				ask_difficulty(app, app.cfg.slot, .Title)
 			}
 		case .Levels:
+			app.levels.from_pause = false
 			app.screen = .Levels
 		case .Profile:
 			open_profile(app, .Title)
@@ -1369,18 +1374,21 @@ draw_screens :: proc(app: ^App) {
 		}
 	case .Pause:
 		// the pause stands alone over the game: no HUD under its menu
-		switch ui.pause_menu(u, g.data.has_lamp, g.level_index, g.diorama, g.dioramas) {
+		switch ui.pause_menu(u, app.prog, g.data.has_lamp, g.level_index, g.diorama, g.dioramas) {
 		case .Resume:
 			app.screen = .Play
+		case .Levels:
+			app.levels.from_pause = true
+			app.screen = .Levels
 		case .Restart:
 			play_level(app)
-		case .Codex:
-			open_codex(app)
+		case .Profile:
+			open_profile(app, .Pause)
 		case .Settings:
 			open_settings(app)
 		case .Main_Menu:
 			to_title(app)
-		case .None, .Play, .Levels, .Profile, .Games, .Book, .Quit, .Retry, .Next, .Back:
+		case .None, .Play, .Games, .Book, .Codex, .Quit, .Retry, .Next, .Back:
 		}
 	case .Settings:
 		m := rl.GetCurrentMonitor()

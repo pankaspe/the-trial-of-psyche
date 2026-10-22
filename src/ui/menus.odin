@@ -365,11 +365,13 @@ lamp_item :: proc(u: ^Ui, label, sub: string, pos: Vec2, lit: bool, far: int, si
 }
 
 // The pause names where she is, at the top: the act and the level, its title
-// in the titles' face (and which of its dioramas); "Paused" over the menu.
-pause_menu :: proc(u: ^Ui, lamp: bool, level: int, diorama, dioramas: int) -> (act: Menu_Action) {
+// in the titles' face (and which of its dioramas); "Paused" over the lamplit
+// menu; the controls at the foot, and in the corner what this level holds of
+// the tale (its fragments found).
+pause_menu :: proc(u: ^Ui, prog: progress.Progress, lamp: bool, level: int, diorama, dioramas: int) -> (act: Menu_Action) {
 	s := u.scale
 	shade(u, 0.5)
-	lamp_side(u, 1)
+	lamp_side(u, 1.2, 0.62)
 	x := 144 * s
 	info := content.LEVELS[level]
 	y := 80 * s
@@ -380,21 +382,41 @@ pause_menu :: proc(u: ^Ui, lamp: bool, level: int, diorama, dioramas: int) -> (a
 	text(u, eyebrow, {x, y}, {size = 22, color = GOLD, face = .Semi, track = 0.18, shadow = true}, .Left)
 	y += 40 * s
 	text(u, i18n.tr(info.title), {x - 3 * s, y}, {size = 76, color = TITLE, face = .Display, glow = true, shadow = true}, .Left)
-	y = u.height * 0.5 - 200 * s
-	text(u, i18n.tr(.Pause_Title), {x - 3 * s, y}, {size = 64, color = TEXT, face = .Display, shadow = true}, .Left)
-	y += 104 * s
+	y = u.height * 0.5 - 230 * s
+	text(u, i18n.tr(.Pause_Title), {x - 3 * s, y}, {size = 60, color = TEXT, face = .Display, shadow = true}, .Left)
+	y += 96 * s
 	ornament(u, {x + 100 * s, y}, 100 * s)
-	y += 62 * s
-	items := [?]Choice{{.Resume, .Resume}, {.Restart, .Restart}, {.Codex, .Codex}, {.Settings, .Settings}, {.Menu, .Main_Menu}}
+	y += 66 * s
+	items := [?]Choice{{.Resume, .Resume}, {.Select_Level, .Levels}, {dioramas > 1 ? .Restart_Diorama : .Restart, .Restart}, {.Profile, .Profile}, {.Settings, .Settings}, {.Menu, .Main_Menu}}
+	lamp_keys(u, &u.pause_lit, len(items), true)
 	for it, i in items {
-		if menu_item(u, i18n.tr(it.key), {x, y}, i == 0 ? 38 : 34, i == 0) {
+		if lamp_choice(u, &u.pause_lit, i, i18n.tr(it.key), "", {x, y}, 30, 1) {
 			act = it.act
 		}
-		y += 60 * s
+		y += 58 * s
 	}
 	// the controls live here, out of the way of the story
-	y += 40 * s
-	paragraph(u, i18n.tr(lamp ? .Controls : .Controls_Dark), {x, y}, {size = 26, color = DIM, face = .Italic, shadow = true}, 900 * s, 1, 1.3, .Left)
+	paragraph(u, i18n.tr(lamp ? .Controls : .Controls_Dark), {x, u.height - 120 * s}, {size = 21, color = DIM, face = .Italic, shadow = true}, 1100 * s, 1, 1.3, .Left)
+	// this level's fragments
+	total := 0
+	for f in content.FRAGMENTS {
+		if f.level == level {
+			total += 1
+		}
+	}
+	if total > 0 {
+		found := progress.level_fragments(prog, level)
+		w := 330 * s
+		r := rl.Rectangle{u.width - w - 72 * s, u.height * 0.5 - 60 * s, w, 104 * s}
+		warm_card(u, r, 1)
+		text(u, caps(i18n.tr(.Pause_Here)), {r.x + 22 * s, r.y + 18 * s}, {size = 17, color = GOLD, face = .Semi, track = 0.22, shadow = true}, .Left)
+		dx := r.x + 30 * s
+		for i in 0 ..< total {
+			diamond(u, {dx, r.y + 66 * s}, 8 * s, i < found ? BRIGHT : fade(GOLD, 0.6), i < found)
+			dx += 24 * s
+		}
+		text(u, fmt.tprintf("%d / %d  %s", found, total, i18n.tr(.Profile_Fragments)), {dx + 10 * s, r.y + 52 * s}, {size = 22, color = DIM, face = .Semi, shadow = true}, .Left)
+	}
 	return
 }
 
