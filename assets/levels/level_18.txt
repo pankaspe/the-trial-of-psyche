@@ -1,6 +1,202 @@
 # The Trial of Psyche - level IV.5: "The Way Back" (format: level_04.txt)
 #
-# The way back with the box, across the river of the dead: five islands of one
+# The banks of the dead (the first diorama, VI.20-21): the box in her hands,
+# the land of the dead above (rock, fires), Proserpina's temple under
+# (marble), on one floor (z 4), the axle y 6, the water at h5. Three islands
+# on the axle (west, middle, east), each a pomegranate, and four islets
+# (north, north-east, south, south-west). No lamp: the dark all the way.
+# Three ferries, each waiting where it is no use yet; her raised bridge joins
+# the west and the middle in her world only.
+#   - from the crag on the north islet (its steps), over a crag on the bridge
+#     to the north-east islet by two illusions (views 1 and 2): the ferry back
+#     to the middle island;
+#   - over at the middle pomegranate: her bridge west (its stairs behind a
+#     column in the water: turn), back at the west pomegranate;
+#   - the ferry from the west island's south to the south islet, the next one
+#     to the east island; over at the east pomegranate: her gate, joined to
+#     the stone only in view 1 (the exit).
+# Solution (solver: 23 steps, 5 turns, 3 overturns, 3 crossings, 11
+# decisions; every pomegranate and ferry needed, no dead ends).
+# Fragments: IV.5b (VI.20, the box filled in secret) on her terrace on the
+# south-west islet (from the west island in her world), IV.5c (VI.21, the way
+# back in haste) on her terrace on the west island, joined to her west
+# pomegranate in view 3.
+intro intro_iv_5
+size 13
+biome taenarus
+setting asphodel_night
+floor water faint -2 -2 14 14 5
+duality
+block 0 4 4 rock
+block 1 4 4 rock
+block 2 4 4 rock
+block 1 5 4 rock
+block 0 6 4 rock
+block 1 6 4 rock
+block 2 6 4 rock
+block 1 7 4 rock
+block 0 8 4 rock
+block 1 8 4 rock
+block 2 8 4 rock
+block 5 4 4 rock
+block 6 4 4 rock
+block 7 4 4 rock
+block 6 5 4 rock
+block 5 6 4 rock
+block 6 6 4 rock
+block 7 6 4 rock
+block 5 8 4 rock
+block 6 8 4 rock
+block 7 8 4 rock
+block 10 4 4 rock
+block 11 4 4 rock
+block 12 4 4 rock
+block 11 5 4 rock
+block 10 6 4 rock
+block 11 6 4 rock
+block 12 6 4 rock
+block 11 7 4 rock
+block 10 8 4 rock
+block 11 8 4 rock
+block 12 8 4 rock
+block 5 0 4 rock
+block 5 1 4 rock
+block 6 0 4 rock
+block 6 1 4 rock
+block 7 0 4 rock
+block 7 1 4 rock
+block 10 0 4 rock
+block 10 1 4 rock
+block 11 0 4 rock
+block 11 1 4 rock
+block 12 0 4 rock
+block 12 1 4 rock
+block 5 11 4 rock
+block 5 12 4 rock
+block 6 11 4 rock
+block 6 12 4 rock
+block 7 11 4 rock
+block 7 12 4 rock
+block 0 11 4 rock
+block 0 12 4 rock
+block 1 11 4 rock
+block 1 12 4 rock
+block 2 11 4 rock
+block 2 12 4 rock
+block 3 4 4 rock
+block 4 4 4 rock
+rock 4 4 5 5
+prop lip 4 4 6 mx
+prop lip 4 4 6 px
+prop lip 4 4 6 my
+prop lip 4 4 6 py
+block 8 4 4 rock
+block 9 4 4 rock
+rock 9 4 5 5
+prop lip 9 4 6 mx
+prop lip 9 4 6 px
+prop lip 9 4 6 my
+prop lip 9 4 6 py
+block 11 2 4 rock
+block 11 3 4 rock
+rock 11 3 5 5
+prop lip 11 3 6 mx
+prop lip 11 3 6 px
+prop lip 11 3 6 my
+prop lip 11 3 6 py
+block 1 9 4 rock
+block 1 10 4 rock
+rock 1 10 5 5
+prop lip 1 10 6 mx
+prop lip 1 10 6 px
+prop lip 1 10 6 my
+prop lip 1 10 6 py
+block 6 9 4 rock
+block 6 10 4 rock
+block 8 0 4 rock
+block 9 0 4 rock
+pomegranate 1 6 5
+pomegranate 6 6 5
+pomegranate 11 6 5
+ferry 10 1 5 mx  7 4 5 my
+ferry 7 11 5 px  10 8 5 py
+ferry 2 8 5 py  5 11 5 mx
+rock 5 0 5 5
+start 5 0 6
+steps 6 0 5 mx
+prop lip 5 0 6 mx
+prop lip 5 0 6 py
+prop lip 5 0 6 my
+prop lip 3 6 4 mx
+prop lip 3 6 4 px
+prop lip 3 6 4 my
+prop lip 3 6 4 py
+prop lip 4 6 4 mx
+prop lip 4 6 4 px
+prop lip 4 6 4 my
+prop lip 4 6 4 py
+# a crag on the bridge to the north-east islet: crossed by two illusions
+rock 8 0 5 5
+# the land of the dead: fires, boulders, pines
+prop fire 0 12 5
+prop fire 12 1 5
+prop fire 7 12 5
+prop boulder 12 4 5
+prop boulder 0 4 5
+prop pine 2 11 5 px
+prop pine 12 8 5 py
+prop shrub 7 0 5 my
+prop shrub 10 4 5 my
+prop cairn 5 8 5 py
+prop cairn 2 6 5 px
+under
+prop rail 1 7 5 my
+prop rail 6 7 5 my
+prop rail 11 7 5 my
+block 12 4 5
+stairs 11 4 5 px
+exit 12 4 6
+stairs 2 6 5 px
+block 3 6 5
+block 4 6 5
+stairs 5 6 5 mx
+prop rail 3 6 6 my
+prop rail 3 6 6 py
+prop rail 4 6 6 my
+prop rail 4 6 6 py
+block 1 0 5
+stairs 1 1 5 my
+fragment 1 0 6
+block 0 8 5
+stairs 1 8 5 mx
+fragment 0 8 6
+# a column in the water hides her bridge's west stairs
+column 2 5 5 6
+prop rail 2 5 7 mx
+prop rail 2 5 7 px
+prop rail 2 5 7 my
+prop rail 2 5 7 py
+prop sconce 2 5 6 px
+prop sconce 2 5 6 my
+# her temple: pillars, arches, candelabra
+prop pillar 0 0 5
+prop pillar 2 0 5
+prop pillar 5 4 5
+prop pillar 7 4 5
+prop urn 6 1 5
+prop arch 1 6 5 px
+prop arch 6 6 5 px
+prop arch 11 6 5 px
+candelabrum 12 4 6 px lit
+candelabrum 10 6 5 mx lit
+candelabrum 1 0 6 mx lit
+candelabrum 0 8 6 my lit
+end
+
+diorama
+# The way back (the second diorama, VI.20-21):
+#
+# With the box, across the river of the dead: five islands of one
 # floor (z 4, rock for the dead, marble under Proserpina's house in the east),
 # three on the axle (a pomegranate each) and two islets off it, in the north and
 # the south, which only Charon's ferries reach. Three ferries, each waiting
@@ -23,7 +219,7 @@
 # Fragment: IV.5 (VI.21, Cupid escapes through the window) on a crag of the
 # north-east islet whose steps Proserpina's seal raises: back there with the
 # first ferry once her seal is lit (going round again).
-intro intro_iv_5
+intro intro_iv_5b
 outro outro_iv_5
 size 15
 biome taenarus

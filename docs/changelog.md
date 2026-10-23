@@ -6,6 +6,13 @@ Kinds: **feature** (new code or mechanic) · **level** (a level built or rebuilt
 **rework** (something existing redone) · **refactor** (same behaviour, cleaner code) ·
 **fix** · **removal** · **sound** · **ui** · **tooling** · **docs**
 
+## 2026-10-23
+
+| Title | Kind | Description |
+|---|---|---|
+| IV.5: the banks of the dead | level | A new first diorama for IV.5, by night and without the lamp: three ferries each waiting where it is no use yet, three pomegranates, her raised bridge in the world under, a crag crossed by illusions; two new fragments (VI.20-21). |
+| The pad in the lamplit menus | fix | The pad walks the menus' entries in order (it skipped Profile in the pause); no rumble on Linux, where the pad cannot vibrate. |
+
 ## 2026-10-22
 
 | Title | Kind | Description |

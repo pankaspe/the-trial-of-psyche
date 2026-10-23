@@ -213,6 +213,8 @@ Key :: enum u16 {
 	Fragment_19c,
 	Fragment_19d,
 	Fragment_19e,
+	Fragment_19f, // IV.5's banks of the dead: the box filled in secret
+	Fragment_19g, // IV.5's banks: the way back in haste
 	Fragment_20,
 	Fragment_Found,
 	Fragment_Continue,
@@ -364,6 +366,7 @@ Key :: enum u16 {
 	Intro_IV_4b, // IV.4's second diorama: the halls of Proserpina
 	Intro_IV_4c, // IV.4's third diorama: the throne of Proserpina
 	Intro_IV_5,
+	Intro_IV_5b, // IV.5's second diorama: the three boats
 	Intro_IV_6,
 	// beside Cupid in the dark, before the end of the game
 	V_Doubt,
@@ -927,6 +930,8 @@ IT := [Key]string {
 	.Fragment_19c   = "Sulla via del ritorno getta a Cerbero la seconda focaccia, e il cane, sazio, la lascia passare.",
 	.Fragment_19d   = "Rivede la luce del giorno, e la vince una temeraria curiosità: «Sciocca, portare la bellezza degli dèi e non prenderne una goccia per piacere al mio amato.»",
 	.Fragment_19e   = "A Caronte dà la seconda moneta, e il vecchio la riporta oltre il fiume dei morti.",
+	.Fragment_19f   = "La regina ascolta, e in segreto riempie il vaso; poi lo chiude e lo rende a Psiche.",
+	.Fragment_19g   = "Stretto il vaso, Psiche riprende la via in fretta, più leggera di quando era scesa.",
 	.Fragment_19b   = "Nel vaso non c'è bellezza: c'è solo un sonno dell'inferno, un sonno stigio, che esce e l'avvolge. Psiche cade sul sentiero, come morta.",
 	.Fragment_20    = "Così si compiono le nozze, e nasce una figlia che chiamano Voluttà.\nQuesta favola raccontava una vecchia a una ragazza prigioniera, nella caverna dei briganti.",
 	.Fragment_Found = "Frammento del racconto",
@@ -1077,7 +1082,8 @@ IT := [Key]string {
 	.Intro_IV_3     = "Qui la terra dei morti e il regno di Proserpina camminano sulla stessa pietra: uno sopra, l'altro sotto.",
 	.Intro_IV_3b    = "Le corti di Proserpina pendono sotto la terra dei morti: ciò che si accende in un mondo si apre nell'altro.",
 	.Intro_IV_6     = "La luce del giorno è vicina. Il vaso pesa tra le mani: che cosa ci sarà dentro?",
-	.Intro_IV_5     = "Con il vaso tra le mani, Psiche torna indietro: tre barche, e nessuna l'aspetta dove le serve.",
+	.Intro_IV_5     = "Con il vaso tra le mani, Psiche lascia la casa di Proserpina: tra lei e il fiume, le rive dei morti.",
+	.Intro_IV_5b    = "Di nuovo il fiume nero: tre barche, e nessuna l'aspetta dove le serve.",
 	.Intro_IV_4     = "Caronte fa la spola sul fiume nero. Al di là, sotto l'acqua, la casa di Proserpina.",
 	.Intro_IV_4b    = "La casa di Proserpina si specchia nella terra dei morti: tre ponti la attraversano, ognuno acceso a modo suo.",
 	.Intro_IV_4c    = "In fondo alla casa, il trono di Proserpina: le sue sale si toccano solo agli occhi di chi guarda.",
@@ -1459,6 +1465,8 @@ EN := [Key]string {
 	.Fragment_19c   = "On the way back she throws the second cake to Cerberus, and the dog, sated, lets her pass.",
 	.Fragment_19d   = "She sees the light of day again, and a reckless curiosity overcomes her: «How foolish, to carry the beauty of the gods and not take a drop of it to please my love.»",
 	.Fragment_19e   = "She gives Charon the second coin, and the old man takes her back across the river of the dead.",
+	.Fragment_19f   = "The queen listens and fills the box in secret; then she closes it and gives it back to Psyche.",
+	.Fragment_19g   = "Holding the box tight, Psyche hurries back along the way, lighter than when she came down.",
 	.Fragment_19b   = "There is no beauty in the box: only a sleep of the underworld, a Stygian sleep, that rises and wraps her. Psyche falls on the path, as if dead.",
 	.Fragment_20    = "So the wedding is made, and a daughter is born whom they call Pleasure.\nThis was the tale an old woman told a captive girl, in the robbers' cave.",
 	.Fragment_Found = "Fragment of the Tale",
@@ -1609,7 +1617,8 @@ EN := [Key]string {
 	.Intro_IV_3     = "Here the land of the dead and Proserpina's kingdom walk on the same stone: one above, the other below.",
 	.Intro_IV_3b    = "Proserpina's courts hang under the land of the dead: what is lit in one world opens in the other.",
 	.Intro_IV_6     = "The light of day is near. The box weighs in her hands: what can be inside?",
-	.Intro_IV_5     = "With the box in her hands, Psyche turns back: three boats, and none waits where she needs it.",
+	.Intro_IV_5     = "With the box in her hands, Psyche leaves Proserpina's house: between her and the river, the banks of the dead.",
+	.Intro_IV_5b    = "The black river again: three boats, and none waits where she needs it.",
 	.Intro_IV_4     = "Charon plies the black river. Beyond it, under the water, Proserpina's house.",
 	.Intro_IV_4b    = "Proserpina's house mirrors the land of the dead: three bridges cross it, each lit in its own way.",
 	.Intro_IV_4c    = "At the end of the house, Proserpina's throne: her halls touch only in the eye of the one who looks.",
