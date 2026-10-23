@@ -252,14 +252,20 @@ update_focus :: proc(u: ^Ui) {
 }
 
 // The widget nearest to `from` the way `step` points; past the last one, round
-// to the far side.
-@(private)
+// to the far side. Across the step the gap between the two rectangles counts,
+// not between their centres: entries of a list of different widths (a lamplit
+// menu, its lit entry larger) stay in a line.
 nearest :: proc(rects: []rl.Rectangle, from: int, step: [2]int) -> int {
 	centre :: proc(r: rl.Rectangle) -> Vec2 {
 		return {r.x + r.width * 0.5, r.y + r.height * 0.5}
 	}
+	// the gap between [a0, a0 + aw] and [b0, b0 + bw], 0 where they overlap
+	gap :: proc(a0, aw, b0, bw: f32) -> f32 {
+		return max(0, max(a0, b0) - min(a0 + aw, b0 + bw))
+	}
 	d := Vec2{f32(step.x), f32(step.y)}
-	c := centre(rects[from])
+	a := rects[from]
+	c := centre(a)
 	best, wrap := -1, -1
 	best_score, wrap_score: f32 = 1e30, 1e30
 	for r, i in rects {
@@ -268,7 +274,7 @@ nearest :: proc(rects: []rl.Rectangle, from: int, step: [2]int) -> int {
 		}
 		v := centre(r) - c
 		along := v.x * d.x + v.y * d.y
-		across := abs(v.x * d.y - v.y * d.x)
+		across := step.x != 0 ? gap(a.y, a.height, r.y, r.height) : gap(a.x, a.width, r.x, r.width)
 		score := along + across * 2.5
 		if along > 1 && score < best_score {
 			best, best_score = i, score

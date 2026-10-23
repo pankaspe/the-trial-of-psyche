@@ -304,7 +304,12 @@ take :: proc(b: Button) -> bool {
 }
 
 // Shake the pad in use (both motors, 0..1) for `seconds`; nothing on the keys.
+// Not on Linux: raylib's GLFW platform has no vibration there (it would only
+// warn at every call).
 rumble :: proc(strength: f32, seconds: f32) {
+	when ODIN_OS == .Linux {
+		return
+	}
 	if state.device == .Pad && state.pad >= 0 && !state.forced {
 		rl.SetGamepadVibration(state.pad, strength, strength, seconds)
 	}

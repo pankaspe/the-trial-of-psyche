@@ -9,6 +9,9 @@ import "../src/game"
 import "../src/i18n"
 import "../src/iso"
 import "../src/palace"
+import "../src/ui"
+
+import rl "vendor:raylib"
 
 // Held toward a neighbour, the stick walks her there and on without a stop
 // between cells; let go, she stops at the end of the step.
@@ -153,4 +156,16 @@ stick_waits_after_a_turn :: proc(t: ^testing.T) {
 	}
 	game.steer(&g, dir, true)
 	testing.expect(t, g.psyche.walking, "pushed again, it steers")
+}
+
+// Down a lamplit menu the focus goes to the next entry, however wide each is:
+// the pause's lit "Restart the diorama" over a short "Profile" over a longer
+// "Settings" (the pad once skipped Profile).
+@(test)
+pad_walks_a_list_in_order :: proc(t: ^testing.T) {
+	rects := []rl.Rectangle{{128, 400, 520, 56}, {128, 458, 160, 42}, {128, 516, 280, 42}, {128, 574, 120, 42}}
+	for i in 0 ..< len(rects) - 1 {
+		testing.expectf(t, ui.nearest(rects, i, {0, 1}) == i + 1, "down from %d goes to %d", i, ui.nearest(rects, i, {0, 1}))
+		testing.expectf(t, ui.nearest(rects, i + 1, {0, -1}) == i, "up from %d goes to %d", i + 1, ui.nearest(rects, i + 1, {0, -1}))
+	}
 }
