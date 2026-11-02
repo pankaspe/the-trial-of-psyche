@@ -83,6 +83,10 @@ Key :: enum u16 {
 	Tw_Voice,
 	Tw_Way,
 	Tw_Alone,
+	Aw_Sleep, // the epilogue's cutscene: Cupid wakes her
+	Aw_Cupid,
+	Aw_Wake,
+	Aw_Alone,
 
 	// level titles
 	Level_I_1,
@@ -215,6 +219,11 @@ Key :: enum u16 {
 	Fragment_19e,
 	Fragment_19f, // IV.5's banks of the dead: the box filled in secret
 	Fragment_19g, // IV.5's banks: the way back in haste
+	Fragment_19h, // IV.6's thresholds: Cupid's wound heals
+	Fragment_19i, // IV.6's thresholds: Venus knows nothing
+	Fragment_20b, // the epilogue's way up: Cupid's words
+	Fragment_20c,
+	Fragment_20d,
 	Fragment_20,
 	Fragment_Found,
 	Fragment_Continue,
@@ -368,6 +377,8 @@ Key :: enum u16 {
 	Intro_IV_5,
 	Intro_IV_5b, // IV.5's second diorama: the three boats
 	Intro_IV_6,
+	Intro_IV_6b, // IV.6's second diorama: the way up
+	Intro_E,
 	// beside Cupid in the dark, before the end of the game
 	V_Doubt,
 
@@ -804,6 +815,10 @@ IT := [Key]string {
 	.Tw_Voice       = "Ma all'improvviso la torre parla: «Perché vuoi morire, misera? Chi scende per quella via non torna più alla luce.»",
 	.Tw_Way         = "«Va' al Tenaro. Tieni in mano due focacce d'orzo e miele, e in bocca due monete: il traghettatore vuole la sua.»",
 	.Tw_Alone       = "Psiche si ritrae dall'orlo, e comincia a scendere.",
+	.Aw_Sleep       = "Sulla soglia della luce Psiche dorme il sonno dei morti, il vaso aperto accanto a lei.",
+	.Aw_Cupid       = "Amore, guarito, scende su di lei: raccoglie il sonno dal suo viso e lo richiude nel vaso.",
+	.Aw_Wake        = "Poi la sveglia con la punta innocua di una freccia.",
+	.Aw_Alone       = "Amore vola verso il cielo più alto. Psiche, il vaso tra le mani, riprende la salita.",
 
 	.Level_I_1      = "La rupe di Zefiro",
 	.Level_I_2      = "Il palazzo invisibile",
@@ -932,7 +947,12 @@ IT := [Key]string {
 	.Fragment_19e   = "A Caronte dà la seconda moneta, e il vecchio la riporta oltre il fiume dei morti.",
 	.Fragment_19f   = "La regina ascolta, e in segreto riempie il vaso; poi lo chiude e lo rende a Psiche.",
 	.Fragment_19g   = "Stretto il vaso, Psiche riprende la via in fretta, più leggera di quando era scesa.",
+	.Fragment_19h   = "Intanto, nella stanza dove Venere lo tiene chiuso, la ferita di Amore si rimargina: la bruciatura della lucerna è quasi svanita.",
+	.Fragment_19i   = "Venere non sa nulla: crede il figlio ancora chiuso nella sua stanza, e Psiche perduta per sempre tra i morti.",
 	.Fragment_19b   = "Nel vaso non c'è bellezza: c'è solo un sonno dell'inferno, un sonno stigio, che esce e l'avvolge. Psiche cade sul sentiero, come morta.",
+	.Fragment_20b   = "«Ecco, povera, di nuovo la tua curiosità ti aveva perduta. Porta a mia madre il dono che ti ha chiesto: al resto penserò io.»",
+	.Fragment_20c   = "Amore vola fino al cielo più alto e supplica Giove di prendere le sue parti.",
+	.Fragment_20d   = "Giove gli prende il viso tra le mani e lo bacia: «Tu, figlio, che tante volte mi hai ferito; eppure farò ciò che chiedi.»",
 	.Fragment_20    = "Così si compiono le nozze, e nasce una figlia che chiamano Voluttà.\nQuesta favola raccontava una vecchia a una ragazza prigioniera, nella caverna dei briganti.",
 	.Fragment_Found = "Frammento del racconto",
 	.Fragment_Continue = "Clic o Invio per continuare",
@@ -1081,7 +1101,9 @@ IT := [Key]string {
 	.Intro_IV_2     = "Oltre il fiume, il regno di Proserpina pende sotto la terra dei morti, come un riflesso nell'acqua.",
 	.Intro_IV_3     = "Qui la terra dei morti e il regno di Proserpina camminano sulla stessa pietra: uno sopra, l'altro sotto.",
 	.Intro_IV_3b    = "Le corti di Proserpina pendono sotto la terra dei morti: ciò che si accende in un mondo si apre nell'altro.",
-	.Intro_IV_6     = "La luce del giorno è vicina. Il vaso pesa tra le mani: che cosa ci sarà dentro?",
+	.Intro_IV_6     = "Sopra, le rupi dei morti salgono verso Tenaro; sotto, i cortili di Proserpina. Psiche li attraversa entrambi, il vaso stretto al petto.",
+	.Intro_IV_6b    = "La luce del giorno è vicina. Il vaso pesa tra le mani: che cosa ci sarà dentro?",
+	.Intro_E        = "Desta dalla freccia di Amore, Psiche risale verso la luce, il vaso di nuovo chiuso tra le mani.",
 	.Intro_IV_5     = "Con il vaso tra le mani, Psiche lascia la casa di Proserpina: tra lei e il fiume, le rive dei morti.",
 	.Intro_IV_5b    = "Di nuovo il fiume nero: tre barche, e nessuna l'aspetta dove le serve.",
 	.Intro_IV_4     = "Caronte fa la spola sul fiume nero. Al di là, sotto l'acqua, la casa di Proserpina.",
@@ -1339,6 +1361,10 @@ EN := [Key]string {
 	.Tw_Voice       = "But all at once the tower speaks: «Why do you want to die, poor girl? Whoever goes down that way never comes back to the light.»",
 	.Tw_Way         = "«Go to Taenarus. Hold two cakes of barley and honey in your hands, and two coins in your mouth: the ferryman wants his fare.»",
 	.Tw_Alone       = "Psyche draws back from the edge, and begins to go down.",
+	.Aw_Sleep       = "On the threshold of the light Psyche sleeps the sleep of the dead, the box open beside her.",
+	.Aw_Cupid       = "Cupid, healed, comes down to her: he gathers the sleep from her face and shuts it back in the box.",
+	.Aw_Wake        = "Then he wakes her with the harmless point of an arrow.",
+	.Aw_Alone       = "Cupid flies up to the highest heaven. Psyche, the box in her hands, takes up the climb again.",
 
 	.Level_I_1      = "Zephyr's Crag",
 	.Level_I_2      = "The Invisible Palace",
@@ -1467,7 +1493,12 @@ EN := [Key]string {
 	.Fragment_19e   = "She gives Charon the second coin, and the old man takes her back across the river of the dead.",
 	.Fragment_19f   = "The queen listens and fills the box in secret; then she closes it and gives it back to Psyche.",
 	.Fragment_19g   = "Holding the box tight, Psyche hurries back along the way, lighter than when she came down.",
+	.Fragment_19h   = "Meanwhile, in the room where Venus keeps him shut away, Cupid's wound is healing: the burn of the lamp has almost faded.",
+	.Fragment_19i   = "Venus knows nothing: she believes her son still shut in his room, and Psyche lost for ever among the dead.",
 	.Fragment_19b   = "There is no beauty in the box: only a sleep of the underworld, a Stygian sleep, that rises and wraps her. Psyche falls on the path, as if dead.",
+	.Fragment_20b   = "«See, poor girl, your curiosity had undone you once again. Take my mother the gift she asked of you: I will see to the rest.»",
+	.Fragment_20c   = "Cupid flies to the highest heaven and begs Jupiter to take his side.",
+	.Fragment_20d   = "Jupiter takes his face in his hands and kisses him: «You, my son, who have wounded me so often; and yet I will do as you ask.»",
 	.Fragment_20    = "So the wedding is made, and a daughter is born whom they call Pleasure.\nThis was the tale an old woman told a captive girl, in the robbers' cave.",
 	.Fragment_Found = "Fragment of the Tale",
 	.Fragment_Continue = "Click or Enter to continue",
@@ -1616,7 +1647,9 @@ EN := [Key]string {
 	.Intro_IV_2     = "Beyond the river, Proserpina's kingdom hangs under the land of the dead, like a reflection in water.",
 	.Intro_IV_3     = "Here the land of the dead and Proserpina's kingdom walk on the same stone: one above, the other below.",
 	.Intro_IV_3b    = "Proserpina's courts hang under the land of the dead: what is lit in one world opens in the other.",
-	.Intro_IV_6     = "The light of day is near. The box weighs in her hands: what can be inside?",
+	.Intro_IV_6     = "Above, the crags of the dead climb toward Taenarus; below, Proserpina's courts. Psyche crosses both, the box held to her breast.",
+	.Intro_IV_6b    = "The light of day is near. The box weighs in her hands: what can be inside?",
+	.Intro_E        = "Woken by Cupid's arrow, Psyche climbs back toward the light, the box shut again in her hands.",
 	.Intro_IV_5     = "With the box in her hands, Psyche leaves Proserpina's house: between her and the river, the banks of the dead.",
 	.Intro_IV_5b    = "The black river again: three boats, and none waits where she needs it.",
 	.Intro_IV_4     = "Charon plies the black river. Beyond it, under the water, Proserpina's house.",

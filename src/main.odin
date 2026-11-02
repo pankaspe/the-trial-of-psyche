@@ -807,7 +807,7 @@ frame :: proc(app: ^App) {
 		reset_canvas(w, h)
 		render.post_draw(&app.post, w, h, blur, held)
 	}
-	render.draw_veil(&app.renderer, g, w, h, app.time)
+	render.draw_veil(g, w, h)
 	if !(app.shooting && app.shots.no_ui) {
 		draw_screens(app)
 	}

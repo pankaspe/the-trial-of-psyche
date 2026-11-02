@@ -392,6 +392,8 @@ Shots :: struct {
 	record: bool, // --record (with --plan or --ui-tour): every frame at RECORD_FPS instead, for a video
 	record_from: int, // --record-from N: frames before N are not written
 	record_to:   int, // --record-to N: the recording stops at frame N (0: at the plan's end)
+	go_on: bool, // --go-on (with --plan): past the level's end, on as a player would, into the next level
+	going: int, // --go-on: 0 before the end, then 1 (the ending card), 2 (on into the next level), 3 (in play)
 	cave_shot: int, // --plan: the last move shot at a cave's mouth or a perch (the action of the place shows)
 	cross_shot: int, // --plan: the last move shot halfway across in Charon's boat
 	turn_shot:  int, // --plan: frames taken of the first overturn
@@ -427,6 +429,9 @@ shots_from_args :: proc(args: []string) -> (s: Shots, ok: bool) {
 		}
 		if a == "--ui-tour" {
 			s.ui_tour = true
+		}
+		if a == "--go-on" {
+			s.go_on = true
 		}
 	}
 	for a, i in args {
@@ -564,6 +569,9 @@ shots_capture_texture :: proc(s: ^Shots, name: string, tex: rl.Texture2D) {
 plan_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool) {
 	g := &app.game
 	s.t += dt
+	if s.going > 0 {
+		return go_on(app, s)
+	}
 	if s.step == 0 {
 		start_shot_level(app)
 		s.step = 1
@@ -653,6 +661,10 @@ plan_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool)
 			return "p999b_parting", false
 		}
 		if s.t < game.exit_end(g) + 1.4 {
+			return "", false
+		}
+		if s.go_on {
+			s.going, s.t = 1, 0
 			return "", false
 		}
 		virtual.arena_destroy(&s.arena)
@@ -808,3 +820,44 @@ write_sound_log :: proc(app: ^App, s: ^Shots) {
 
 // --record: frames per second of the captured video.
 RECORD_FPS :: 60
+
+// --go-on: past the plan's end, on as a player would: the ending card read
+// for a while, then on into the next level (the passage, or the black and the
+// next act's card or cutscene), until it has been in play for a moment.
+GO_ON_CARD :: 4.0 // the ending card, read this long
+GO_ON_ACT_CARD :: 5.0 // the next act's card, read this long
+GO_ON_PLAY :: 6.0 // the next level in play this long
+
+@(private)
+go_on :: proc(app: ^App, s: ^Shots) -> (name: string, done: bool) {
+	g := &app.game
+	switch s.going {
+	case 1:
+		if app.screen != .Ending && s.t > 1 {
+			finish_level(app)
+		}
+		if app.screen == .Ending && s.t >= GO_ON_CARD {
+			continue_story(app)
+			s.going, s.t = 2, 0
+		}
+	case 2:
+		switch {
+		case app.screen == .Card:
+			if app.act_card.t >= GO_ON_ACT_CARD {
+				dismiss_act_card(app)
+			}
+		case g.phase == .Prologue:
+			if game.prologue_ready(g) && g.phase_t > 2 {
+				game.prologue_advance(g)
+			}
+		case app.screen == .Play && g.phase == .Play && app.black_t < 0 && app.passage_t < 0:
+			s.going, s.t = 3, 0
+		}
+	case 3:
+		if s.t >= GO_ON_PLAY {
+			virtual.arena_destroy(&s.arena)
+			return "", true
+		}
+	}
+	return "", false
+}

@@ -1,0 +1,172 @@
+# The Trial of Psyche - the epilogue: "The Awakening and the Wedding" (format: level_04.txt)
+#
+# The way up (the first diorama, VI.21-22): woken by Cupid, the box shut
+# again, Psyche climbs out of Taenarus. An easy, long corridor: a road
+# spiralling up round the crag from the mouth of the underworld (the red of
+# Taenarus at its foot) to the dawn at the summit (`below river_dawn`, blended
+# in as she climbs). Three laps, each higher and narrower: the outer one
+# (h1-8), the middle (h8-11), the inner (h12-14), the summit (the exit).
+# The mountain hides the road's stairs as she goes round it behind: turn the
+# view (or light the lamp; near the summit the last flight shows only in its
+# light). Made by a script (a square spiral, a stair every four cells, the
+# walls between the laps two above the road below them).
+# Solution (solver: 52 steps, 5 turns, 1 lighting, 6 decisions; no dead ends).
+# It opens with the Awakening (`awakening`: Cupid comes down over the road
+# beside the start, shuts the sleep back in the box and wakes her).
+# Fragments, three scrolls on short detours: Eb (VI.21, his words) in a niche
+# of the first lap; Ec (VI.22, Cupid flies to Jupiter) on a rock out in the
+# water off the middle lap, over a veiled stone (the lamp); Ed (VI.22,
+# Jupiter's answer) on a needle of rock over the first lap, joined to the
+# inner lap by an illusion (a turn more).
+intro intro_e
+awakening 9 10 1
+size 11
+biome taenarus
+setting taenarus
+below river_dawn
+lamp
+tier 1 6
+tier 7 11
+tier 12 16
+start 10 10 1
+exit 5 5 14
+floor basin rock water -1 -1 11 11
+# the road and the mountain
+rock 0 0 0 5
+rock 0 1 0 4
+steps 0 1 5 my
+rock 0 2 0 4
+rock 0 3 0 4
+rock 0 4 0 4
+rock 0 5 0 3
+steps 0 5 4 my
+rock 0 6 0 3
+rock 0 7 0 3
+rock 0 8 0 3
+rock 0 9 0 2
+steps 0 9 3 my
+rock 0 10 0 2
+rock 1 0 0 5
+rock 1 1 0 14
+rock 1 2 0 14
+rock 1 3 0 6
+rock 1 4 0 6
+rock 1 5 0 6
+rock 1 6 0 5
+rock 1 7 0 5
+rock 1 9 0 5
+rock 1 10 0 2
+rock 2 0 0 5
+rock 2 1 0 14
+rock 2 2 0 13
+rock 2 3 0 8
+rock 2 4 0 11
+rock 2 5 0 11
+rock 2 6 0 11
+rock 2 7 0 10
+steps 2 7 11 my
+rock 2 8 0 10
+rock 2 10 0 2
+rock 3 0 0 5
+steps 3 0 6 px
+rock 3 1 0 14
+rock 3 2 0 13
+rock 3 3 0 13
+rock 3 4 0 11
+steps 3 4 12 px
+rock 3 5 0 13
+rock 3 6 0 13
+rock 3 7 0 13
+rock 3 8 0 10
+rock 3 9 0 4
+rock 3 10 0 1
+steps 3 10 2 mx
+rock 4 0 0 6
+rock 4 1 0 14
+rock 4 2 0 13
+rock 4 3 0 9
+rock 4 4 0 12
+rock 4 5 0 12
+rock 4 6 0 12
+rock 4 7 0 13
+rock 4 8 0 10
+rock 4 9 0 3
+rock 4 10 0 1
+rock 5 0 0 6
+rock 5 1 0 14
+rock 5 2 0 13
+rock 5 3 0 9
+rock 5 4 0 10
+rock 5 5 0 13
+rock 5 6 0 12
+steps 5 6 13 px
+rock 5 7 0 12
+rock 5 8 0 9
+steps 5 8 10 mx
+rock 5 9 0 3
+rock 5 10 0 1
+rock 6 0 0 6
+rock 6 1 0 14
+rock 6 2 0 13
+rock 6 3 0 13
+rock 6 4 0 10
+rock 6 5 0 13
+rock 6 6 0 13
+rock 6 7 0 11
+rock 6 8 0 9
+rock 6 9 0 3
+rock 6 10 0 1
+rock 7 0 0 6
+steps 7 0 7 px
+rock 7 1 0 9
+rock 7 2 0 14
+rock 7 3 0 14
+rock 7 4 0 10
+rock 7 5 0 10
+rock 7 6 0 10
+rock 7 7 0 11
+rock 7 8 0 9
+rock 7 9 0 3
+steps 7 10 1 mx
+rock 8 0 0 7
+rock 8 1 0 7
+rock 8 2 0 7
+rock 8 3 0 7
+steps 8 3 8 py
+rock 8 4 0 8
+rock 8 5 0 8
+rock 8 6 0 8
+rock 8 7 0 8
+steps 8 7 9 py
+rock 8 8 0 9
+rock 8 9 0 2
+rock 8 10 0 0
+rock 9 1 0 9
+rock 9 2 0 4
+rock 9 3 0 5
+rock 9 4 0 5
+rock 9 6 0 5
+rock 9 7 0 6
+rock 9 8 0 6
+rock 9 9 0 2
+rock 9 10 0 0
+rock 10 10 0 0
+# the scrolls
+rock 2 9 0 2
+fragment 2 9 3
+rock 9 5 0 7
+veiled 9 5 8 rock
+rock 10 5 0 8
+fragment 10 5 9
+rock 1 8 0 12
+fragment 1 8 13
+# the crag: a fire on a far ledge, dead pines, boulders, at the top the first green
+prop fire 9 2 5
+prop pine 1 9 6 px
+prop pine 5 9 4 px
+prop boulder 9 8 7
+prop boulder 1 4 7
+prop cairn 3 6 14 my
+prop cairn 6 7 12 my
+prop shrub 1 1 15 px
+prop shrub 7 2 15 px

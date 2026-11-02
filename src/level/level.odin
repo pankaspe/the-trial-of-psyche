@@ -74,6 +74,7 @@ Scene :: enum u8 {
 	Flight, // II.1: Cupid flies away, Psyche clinging to him, and she falls into the forest
 	Venus, // III.1: Venus pours the seeds and leaves on her doves; an ant takes pity on Psyche
 	Tower, // IV.1: on the top of the tower Psyche looks down to throw herself off, and the tower speaks
+	Awakening, // the epilogue: Cupid comes down to Psyche asleep, shuts the sleep back in the box and wakes her
 }
 
 // Where a level takes place: the sky, the backdrop, the light on the stones.
@@ -323,7 +324,7 @@ Level_Data :: struct {
 	rests:        [dynamic]Cell, // braziers: lit by passing, R brings Psyche back to the last one
 	mechanic:     Mechanic, // the new mechanic this level introduces (a card at the start)
 	setting:      Setting, // the sky, the backdrop, the light on the stones (by day, in a level with sundials)
-	below:        Setting, // a level that goes down (`has_below`): the look at its foot, blended in as she descends
+	below:        Setting, // a level that goes down or up (`has_below`): the look at the exit's height, blended in on the way
 	has_below:    bool,
 	boat:         Boat, // Charon's boat at the exit (`has_boat`): Space boards it
 	has_boat:     bool,
@@ -950,7 +951,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			append(&data.props, p)
 			max_z = max(max_z, v.z + 1)
 
-		case "start", "sigil", "amore", "fragment", "exit", "prologue", "flight", "venus", "tower":
+		case "start", "sigil", "amore", "fragment", "exit", "prologue", "flight", "venus", "tower", "awakening":
 			v: [3]i32
 			if !ints(args, v[:]) {
 				return data, fail(line_no, "%s: expected x y h", fields[0])
@@ -976,6 +977,7 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 			case "flight": data.prologue, data.has_prologue, data.scene = v, true, .Flight
 			case "venus": data.prologue, data.has_prologue, data.scene = v, true, .Venus
 			case "tower": data.prologue, data.has_prologue, data.scene = v, true, .Tower
+			case "awakening": data.prologue, data.has_prologue, data.scene = v, true, .Awakening
 			}
 			max_z = max(max_z, v.z)
 

@@ -137,11 +137,15 @@
 #                           it carries Psyche to surface tx ty th, one way
 #   mechanic eagle          (the card that presents the eagle)
 # Act IV (the way down):
+#   awakening x y h         the level opens with the Awakening (the epilogue):
+#                           Psyche asleep on the start, Cupid comes down over
+#                           this cell, shuts the sleep back in the box, wakes
+#                           her with his arrow and flies up and away
 #   tower x y h             the level opens with the Tower (IV.1): Psyche walks
 #                           from the start to this brink, looks down, and the
 #                           tower speaks; she steps back and the level begins
-#   below name              a level that goes down: its look at the foot (the
-#                           exit's height), blended in as she descends from the
+#   below name              a level that goes down (or up): its look at the
+#                           exit's height, blended in as she goes there from the
 #                           start's height (not with sundials)
 #   charon x y h dir        Charon's boat moored on side dir of the exit x y h:
 #                           reaching the landing does not end the level; there

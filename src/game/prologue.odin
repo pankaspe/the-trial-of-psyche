@@ -29,6 +29,13 @@
 // underworld. The tower speaks: a light rises through its stones while it
 // tells her the way (Taenarus, the cakes, the coins); she steps back from the
 // edge and turns to the way down.
+//
+// The Awakening (the epilogue, `awakening x y h` = the cell Cupid comes down
+// over, beside the start): on the threshold of the light Psyche lies asleep,
+// the box open by her, the Stygian sleep still about her. Cupid, healed, comes
+// down out of the sky; the sleep is drawn back into the box and its lid
+// shuts; the point of his arrow wakes her and she rises; he flies up and away
+// toward Jupiter.
 package game
 
 import "core:math"
@@ -125,6 +132,9 @@ prologue_alone :: proc(g: ^Game) -> f32 {
 	if g.data.scene == .Tower {
 		return TW_ALONE
 	}
+	if g.data.scene == .Awakening {
+		return AW_ALONE
+	}
 	return prologue_back(g) + (mourner_stop(g, 0) + PRO_RISE) * PRO_BACK_PACE + 0.6
 }
 
@@ -134,6 +144,7 @@ prologue_fade_in :: proc(g: ^Game) -> f32 {
 	case .Flight: return FL_FADE
 	case .Venus: return VE_FADE
 	case .Tower: return TW_FADE
+	case .Awakening: return AW_FADE
 	case .None, .Oracle:
 	}
 	return PRO_WALK_START
@@ -274,6 +285,12 @@ prologue_caption :: proc(g: ^Game) -> (key: Key, alpha: f32) {
 		{.Ve_Ants, VE_GONE + 0.1, alone - 0.3},
 		{.Ve_Alone, alone, 1e9},
 	}
+	awakening := [?]Caption {
+		{.Aw_Sleep, 1.0, AW_LAND - 0.2},
+		{.Aw_Cupid, AW_LAND, AW_SHUT + 0.3},
+		{.Aw_Wake, AW_PRICK, AW_ALONE - 0.3},
+		{.Aw_Alone, AW_ALONE, 1e9},
+	}
 	tower := [?]Caption {
 		{.Tw_Brink, 1.0, TW_VOICE - 0.2},
 		{.Tw_Voice, TW_VOICE, TW_WAY - 0.2},
@@ -285,6 +302,7 @@ prologue_caption :: proc(g: ^Game) -> (key: Key, alpha: f32) {
 	case .Flight: list = flight[:]
 	case .Venus: list = venus[:]
 	case .Tower: list = tower[:]
+	case .Awakening: list = awakening[:]
 	case .None, .Oracle:
 	}
 	for c in list {
@@ -307,6 +325,10 @@ update_prologue :: proc(g: ^Game, dt: f32) {
 	}
 	if g.data.scene == .Tower {
 		update_tower(g, dt)
+		return
+	}
+	if g.data.scene == .Awakening {
+		update_awakening(g, dt)
 		return
 	}
 	t := g.phase_t
@@ -406,6 +428,17 @@ cine :: proc(g: ^Game) -> (c: Cine) {
 		c.focus = 0.8 * closer
 		return
 	}
+	if g.data.scene == .Awakening {
+		// from the sky down to her asleep; close on her while he wakes her;
+		// the camera lifts after him as he goes, then the usual framing
+		c.bars = 1
+		c.look_up = 0.8 * (1 - fx.sine_in_out(fx.clamp01(t / 5)))
+		closer := fx.sine_in_out(fx.progress(t, 2.5, 3.5)) * (1 - fx.sine_in_out(fx.progress(t, AW_RISE + AW_RISE_TIME, 2.5)))
+		c.zoom = 1 + 0.6 * closer
+		c.focus = 0.9 * closer
+		c.look_up += 0.4 * fx.sine_in_out(fx.progress(t, AW_LEAVE, 2)) * (1 - fx.sine_in_out(fx.progress(t, AW_ALONE - 0.5, 2.5)))
+		return
+	}
 	if g.data.scene == .Flight {
 		// close on her across the sky and down into the forest, then back to
 		// the usual framing, so he is seen over the cypress before he goes
@@ -449,9 +482,16 @@ flight_points :: proc(g: ^Game) -> (a, b, c, d: Vec3) {
 	return
 }
 
-// Cupid in the flight: where he is and how much he is seen (0: gone).
-flight_cupid :: proc(g: ^Game) -> (pos: Vec3, alpha: f32) {
-	if g.phase != .Prologue || g.data.scene != .Flight {
+// Cupid in a cutscene (the Flight, the Awakening): where he is and how much
+// he is seen (0: gone).
+scene_cupid :: proc(g: ^Game) -> (pos: Vec3, alpha: f32) {
+	if g.phase != .Prologue {
+		return
+	}
+	if g.data.scene == .Awakening {
+		return awakening_cupid(g)
+	}
+	if g.data.scene != .Flight {
 		return
 	}
 	t := g.phase_t
@@ -477,7 +517,7 @@ update_flight :: proc(g: ^Game, dt: f32) {
 	t := g.phase_t
 	g.angle = PRO_SPIN * (1 - fx.sine_in_out(fx.clamp01(t / (FL_GONE + 1))))
 	s := pl.stand_world(&g.palace, g.data.start)
-	cupid, _ := flight_cupid(g)
+	cupid, _ := scene_cupid(g)
 	switch {
 	case t < FL_LET_GO:
 		// hanging from his leg
@@ -759,5 +799,110 @@ update_tower :: proc(g: ^Game, dt: f32) {
 	}
 	if crossed(t, dt, TW_BACK + 1) {
 		audio.play(.Good, -16, audio.semitones(-5))
+	}
+}
+
+// --- the Awakening -------------------------------------------------------------------
+
+AW_FADE :: 2.0 // out of black: the sky over the threshold, she lies asleep
+AW_CUPID :: 1.8 // his light comes into the sky...
+AW_LAND :: 6.2 // ...and hovers over her
+AW_GATHER :: 6.6 // the sleep is drawn back into the box...
+AW_GATHER_TIME :: 2.6
+AW_SHUT :: 9.4 // ...and the lid shuts on it
+AW_SHUT_TIME :: 0.6
+AW_PRICK :: 10.6 // the point of his arrow touches her
+AW_RISE :: 11.4 // she rises...
+AW_RISE_TIME :: 1.8
+AW_LEAVE :: 14.0 // he flies up toward Jupiter...
+AW_ALONE :: 18.0 // ...and is gone: the prompt follows
+
+// Where he comes down from, where he hovers, where he goes.
+@(private)
+awakening_points :: proc(g: ^Game) -> (from, over, to: Vec3) {
+	p := g.data.prologue
+	over = {f32(p.x) + 0.5, f32(p.y) + 0.5, f32(p.z) + 0.9}
+	from = over + {-6, 4, 8}
+	to = over + {3, -3, 11}
+	return
+}
+
+@(private)
+awakening_cupid :: proc(g: ^Game) -> (pos: Vec3, alpha: f32) {
+	t := g.phase_t
+	from, over, to := awakening_points(g)
+	hover := Vec3{0, 0, 0.12 * math.sin(t * 1.3)}
+	switch {
+	case t < AW_LAND:
+		pos = fx.lerp(from, over, fx.sine_in_out(fx.progress(t, AW_CUPID, AW_LAND - AW_CUPID)))
+	case t < AW_LEAVE:
+		pos = over
+	case:
+		pos = fx.lerp(over, to, fx.quad_in(fx.progress(t, AW_LEAVE, AW_ALONE - AW_LEAVE)))
+	}
+	pos += hover
+	alpha = fx.progress(t, AW_CUPID - 0.6, 1.2) * (1 - fx.progress(t, AW_ALONE - 1.5, 1.4))
+	return
+}
+
+// Time into the Awakening (ok: it is playing).
+awakening_time :: proc(g: ^Game) -> (t: f32, ok: bool) {
+	if g.phase != .Prologue || g.data.scene != .Awakening {
+		return
+	}
+	return g.phase_t, true
+}
+
+// The Stygian sleep about her: still lingering (0..1), then drawn back into
+// the box (0..1).
+awakening_sleep :: proc(g: ^Game) -> (linger, gather: f32) {
+	t, ok := awakening_time(g)
+	if !ok {
+		return
+	}
+	linger = 1 - fx.progress(t, AW_GATHER - 0.6, 0.8)
+	gather = fx.progress(t, AW_GATHER - 0.4, 0.6) * (1 - fx.progress(t, AW_SHUT - 0.4, 0.6))
+	return
+}
+
+// The touch of his arrow on her: a spark (0..1).
+awakening_prick :: proc(g: ^Game) -> f32 {
+	t, ok := awakening_time(g)
+	if !ok || t < AW_PRICK {
+		return 0
+	}
+	t -= AW_PRICK
+	return fx.clamp01(t / 0.15) * (1 - fx.progress(t, 0.15, 1.2))
+}
+
+@(private)
+update_awakening :: proc(g: ^Game, dt: f32) {
+	t := g.phase_t
+	g.angle = PRO_SPIN * (1 - fx.sine_in_out(fx.clamp01(t / (AW_ALONE + 1))))
+	g.psyche.pos = pl.stand_world(&g.palace, g.data.start)
+	_, over, _ := awakening_points(g)
+	if t > AW_RISE + AW_RISE_TIME * 0.6 {
+		cupid, _ := scene_cupid(g)
+		face_point(g, cupid) // risen, she looks up at him
+	} else {
+		face_point(g, over + {0, 0, -0.9})
+	}
+	if crossed(t, dt, AW_CUPID) {
+		audio.play(.Wind, -12, 0.9)
+	}
+	if crossed(t, dt, AW_GATHER) {
+		audio.play(.Thunder, -22, 0.7) // the dark breath, drawn back in
+	}
+	if crossed(t, dt, AW_SHUT + AW_SHUT_TIME * 0.8) {
+		audio.play(.Thud, -20, 1.4)
+	}
+	if crossed(t, dt, AW_PRICK) {
+		audio.play(.Reveal, -10)
+	}
+	if crossed(t, dt, AW_LEAVE) {
+		audio.play(.Wind, -14, 1.1)
+	}
+	if crossed(t, dt, AW_ALONE - 1) {
+		audio.play(.Seam, -18, audio.semitones(7))
 	}
 }

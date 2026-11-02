@@ -73,7 +73,7 @@ LEVELS := [?]Level_Info {
 	{"IV.4", .IV, .Level_IV_4, .Where_IV_4, "VI.19–20", #load("../../assets/levels/level_17.txt", string)},
 	{"IV.5", .IV, .Level_IV_5, .Where_IV_5, "VI.20", #load("../../assets/levels/level_18.txt", string)},
 	{"IV.6", .IV, .Level_IV_6, .Where_IV_6, "VI.20–21", #load("../../assets/levels/level_19.txt", string)},
-	{"E", .Epilogue, .Level_Epilogue, .Where_Epilogue, "VI.22–24", ""},
+	{"E", .Epilogue, .Level_Epilogue, .Where_Epilogue, "VI.21–24", #load("../../assets/levels/level_20.txt", string)},
 }
 
 LEVEL_COUNT :: len(LEVELS)
@@ -137,10 +137,15 @@ FRAGMENTS := [?]Fragment_Info {
 	{"IV.5b", 17, .Fragment_19f, "VI.20"}, // the banks of the dead
 	{"IV.5c", 17, .Fragment_19g, "VI.21"},
 	{"IV.5", 17, .Fragment_19, "VI.21"},
+	{"IV.6e", 18, .Fragment_19h, "VI.21"}, // the thresholds of Taenarus
+	{"IV.6f", 18, .Fragment_19i, "VI.21"},
 	{"IV.6", 18, .Fragment_19c, "VI.20"},
 	{"IV.6b", 18, .Fragment_19d, "VI.21"},
 	{"IV.6c", 18, .Fragment_19e, "VI.20"},
 	{"IV.6d", 18, .Fragment_19b, "VI.21"},
+	{"Eb", 19, .Fragment_20b, "VI.21"}, // the way up
+	{"Ec", 19, .Fragment_20c, "VI.22"},
+	{"Ed", 19, .Fragment_20d, "VI.22"},
 	{"E", 19, .Fragment_20, "VI.24–25"},
 }
 
@@ -148,7 +153,7 @@ FRAGMENT_COUNT :: len(FRAGMENTS)
 
 // The Book shows the fragments in the order of Apuleius' text, not of the
 // levels: fragment indices, in reading order.
-BOOK_ORDER := [FRAGMENT_COUNT]int{0, 1, 4, 8, 2, 3, 5, 7, 6, 9, 11, 10, 12, 14, 13, 15, 16, 17, 19, 18, 20, 21, 23, 25, 28, 26, 22, 27, 24, 30, 29, 32, 31, 33, 40, 38, 37, 39, 35, 41, 45, 34, 36, 43, 42, 44, 46, 47, 49, 51, 50, 52, 48, 53}
+BOOK_ORDER := [FRAGMENT_COUNT]int{0, 1, 4, 8, 2, 3, 5, 7, 6, 9, 11, 10, 12, 14, 13, 15, 16, 17, 19, 18, 20, 21, 23, 25, 28, 26, 22, 27, 24, 30, 29, 32, 31, 33, 40, 38, 37, 39, 35, 41, 45, 34, 36, 43, 42, 44, 46, 47, 51, 53, 52, 54, 50, 49, 48, 55, 56, 57, 58}
 
 // The fragments of a level: FRAGMENTS[first:][:count].
 level_fragments :: proc(level: int) -> (first, count: int) {
@@ -190,7 +195,6 @@ SHADER_CLOUDS_FS :: #load("../../assets/shaders/clouds.fs", cstring)
 SHADER_RIDGES_FS :: #load("../../assets/shaders/ridges.fs", cstring)
 SHADER_SEAM :: #load("../../assets/shaders/seam.glsl", string) // joined to the sky's, the ridges' and the clouds'
 SHADER_DARK_FS :: #load("../../assets/shaders/dark.fs", cstring)
-SHADER_VEIL_FS :: #load("../../assets/shaders/veil.fs", cstring)
 SHADER_BLUR_FS :: #load("../../assets/shaders/blur.fs", cstring)
 
 // Psyche's two tools, each on its number key (1, 2) and pad trigger (LT, RT):

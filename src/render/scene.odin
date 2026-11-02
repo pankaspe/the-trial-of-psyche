@@ -181,10 +181,8 @@ Renderer :: struct {
 	ridges:     Backdrop,
 	clouds:     Backdrop,
 	dark:       Backdrop, // dark matter along the seam of two skies as the world turns over
-	veil:       Backdrop, // between the levels (uses time, aspect and its own alpha)
 	radial:     rl.Texture2D, // soft round gradient for glows and particles
 	white:      rl.Texture2D, // 1x1, for full-rect shader passes
-	veil_alpha: i32,
 }
 
 init :: proc(r: ^Renderer) {
@@ -212,8 +210,6 @@ init :: proc(r: ^Renderer) {
 	r.ridges = load_backdrop(content.SHADER_RIDGES_FS, true)
 	r.clouds = load_backdrop(content.SHADER_CLOUDS_FS, true)
 	r.dark = load_backdrop(content.SHADER_DARK_FS)
-	r.veil = load_backdrop(content.SHADER_VEIL_FS)
-	r.veil_alpha = rl.GetShaderLocation(r.veil.shader, "alpha")
 	build_meshes(&r.meshes)
 
 	// radial gradient: white centre, 0.45 alpha at 35%, transparent edge
@@ -241,7 +237,6 @@ shutdown :: proc(r: ^Renderer) {
 	rl.UnloadShader(r.ridges.shader)
 	rl.UnloadShader(r.clouds.shader)
 	rl.UnloadShader(r.dark.shader)
-	rl.UnloadShader(r.veil.shader)
 	rl.UnloadTexture(r.radial)
 	rl.UnloadTexture(r.white)
 	r^ = {}
@@ -893,6 +888,34 @@ scene_update :: proc(s: ^Scene, g: ^game.Game, dt: f32) {
 			size  = 32 * fx.rand_range(&s.rng, 0.6, 1.1),
 			color = {0.02, 0.01, 0.04, 0.8},
 		})
+	}
+	// the Awakening: the sleep still about her, then drawn back into the box
+	if linger, gather := game.awakening_sleep(g); linger + gather > 0 {
+		box, _, _ := game.box_pose(g)
+		if fx.randf(&s.rng) < dt * 30 * linger {
+			a := fx.rand_range(&s.rng, 0, math.TAU)
+			r := fx.rand_range(&s.rng, 0.1, 0.5)
+			fx.emit(&s.mist, {
+				pos   = g.psyche.pos + {math.cos(a) * r, math.sin(a) * r, 0.04},
+				vel   = {math.cos(a) * 0.05, math.sin(a) * 0.05, fx.rand_range(&s.rng, 0.02, 0.08)},
+				life  = 3.2,
+				size  = 32 * fx.rand_range(&s.rng, 0.5, 0.9),
+				color = {0.02, 0.01, 0.04, 0.55},
+			})
+		}
+		if fx.randf(&s.rng) < dt * 90 * gather {
+			a := fx.rand_range(&s.rng, 0, math.TAU)
+			r := fx.rand_range(&s.rng, 0.4, 0.8)
+			from := g.psyche.pos + {math.cos(a) * r, math.sin(a) * r, fx.rand_range(&s.rng, 0.1, 0.6)}
+			life := fx.rand_range(&s.rng, 0.9, 1.4)
+			fx.emit(&s.mist, {
+				pos   = from,
+				vel   = (box - from) / life,
+				life  = life,
+				size  = 32 * fx.rand_range(&s.rng, 0.5, 1.0),
+				color = {0.02, 0.01, 0.04, 0.8},
+			})
+		}
 	}
 	fx.update(&s.mist, dt)
 }
@@ -2944,8 +2967,17 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 		fade := 1 - fx.progress(g.phase_t, game.VE_SWARM + 1.5, 1.5)
 		glow(v, p + {0, 0, 0.02}, 12, {1.0, 0.85, 0.5, 0.8 * a * fade})
 	}
-	// Cupid flying away: his light in the night sky
-	if c, alpha := game.flight_cupid(g); alpha > 0.003 {
+	// the point of his arrow touching her: a line of light, a spark
+	if k := game.awakening_prick(g); k > 0.003 {
+		c, _ := game.scene_cupid(g)
+		for n in 0 ..< 8 {
+			glow(v, fx.lerp(c + {0, 0, 0.3}, psy.pos + {0, 0, 0.12}, f32(n) / 7), 5, {1.0, 0.92, 0.7, 0.7 * k})
+		}
+		glow(v, psy.pos + {0, 0, 0.12}, 70, {1.0, 0.85, 0.6, 0.6 * k})
+		glow(v, psy.pos + {0, 0, 0.12}, 14, {1.0, 0.97, 0.9, k})
+	}
+	// Cupid in a cutscene: his light in the sky
+	if c, alpha := game.scene_cupid(g); alpha > 0.003 {
 		glow(v, c + {0, 0, 0.2}, 150, {1.0, 0.72, 0.35, 0.35 * alpha})
 		draw_cupid(g, v, c, alpha, true)
 	}
@@ -3245,20 +3277,14 @@ set_sky_uniforms :: proc(b: Backdrop, s: ^Scene, g: ^game.Game, v: View, lk: ^Lo
 	set_bv3(b, .Haze, lk.haze)
 }
 
-// The veil between the levels, over the world (not over the interface).
-draw_veil :: proc(r: ^Renderer, g: ^game.Game, width, height, time: f32) {
+// The veil over the world (not over the interface): the dark the box's sleep
+// falls into, as an act ends in black.
+draw_veil :: proc(g: ^game.Game, width, height: f32) {
 	a := game.veil(g)
 	if a <= 0.003 {
 		return
 	}
-	b := r.veil
-	set_bf(b, .Time, time)
-	set_bf(b, .Aspect, width / height)
-	v := a
-	rl.SetShaderValue(b.shader, r.veil_alpha, &v, .FLOAT)
-	rl.BeginShaderMode(b.shader)
-	full_rect(r, {0, 0, width, height})
-	rl.EndShaderMode()
+	rl.DrawRectangleRec({0, 0, width, height}, {0, 0, 0, u8(fx.clamp01(a) * 255)})
 }
 
 @(private)

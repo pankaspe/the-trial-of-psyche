@@ -6,6 +6,15 @@ Kinds: **feature** (new code or mechanic) · **level** (a level built or rebuilt
 **rework** (something existing redone) · **refactor** (same behaviour, cleaner code) ·
 **fix** · **removal** · **sound** · **ui** · **tooling** · **docs**
 
+## 2026-11-02
+
+| Title | Kind | Description |
+|---|---|---|
+| The Awakening | feature | The epilogue opens with a cutscene: Psyche asleep on the threshold, the box open by her; Cupid, healed, comes down, the sleep is drawn back into the box, the point of his arrow wakes her, and he flies up toward Jupiter. |
+| The epilogue begins: the way up | level | The epilogue's first diorama: an easy road spiralling up the crag of Taenarus, from the red of the underworld at its foot to the dawn at the summit (the sky follows her height, now also going up); three scrolls on short detours (VI.21-22). |
+| The end of Act IV in black | rework | After the box the sleep falls into black, as every act ends; the old starry veil with its streaks of wind is gone. |
+| IV.6: the thresholds of Taenarus | level | A new first diorama for IV.6, the way up begins: three ferries, three pomegranates, two seals of the dead and hers, her two raised bridges (a veiled stone, a stone raised from the other world), illusions to her column and to the crag of the way up; two new fragments (VI.21). |
+
 ## 2026-10-23
 
 | Title | Kind | Description |

@@ -49,8 +49,8 @@
 // (phase Overturn); the world under the palace stands up, the other hangs
 // below. Her cell is of the frame of the world up now (palace.upside).
 //
-// A level that goes down (`below`): its look at the foot is blended in as she
-// descends from the start's height to the exit's (`descent`).
+// A level that goes down or up (`below`): its look at the exit's height is
+// blended in as she goes from the start's height to the exit's (`descent`).
 //
 // Cutscenes are timelines: a phase plus the time spent in it; every animation
 // is a function of that time, so there are no callbacks to keep alive.
@@ -233,7 +233,7 @@ Game :: struct {
 	part_turning:   int, // the part a handle is turning (phase Mechanism)
 	evening:        f32, // 0 day .. 1 evening, follows palace.day (the sky, the rams' pose)
 	overturn:       f32, // 0 the world as described .. 1 turned over, follows palace.upside (render turns the world by it)
-	descent:        f32, // a level that goes down: 0 at the start's height .. 1 at the exit's (the look at its foot)
+	descent:        f32, // a level that goes down or up: 0 at the start's height .. 1 at the exit's (the look there)
 	ferried:        bool, // the exit was by Charon's boat (phase Ending_Exit: its own timeline)
 	parting:        bool, // at the exit this diorama breaks up (after the boat, if it took her), in the open: no veil
 	arrive_veiled:  bool, // the arrival comes through the veil (not from the level's diorama before)
@@ -517,7 +517,7 @@ dark :: proc(g: ^Game) -> bool {
 }
 
 // The place as it looks now: the evening's setting once the sun is down, the
-// foot's once she is more than half way down.
+// exit's once she is more than half way there (a level that goes down or up).
 setting_now :: proc(g: ^Game) -> level.Setting {
 	switch {
 	case has_time(g) && g.evening > 0.5: return g.data.evening
@@ -527,18 +527,18 @@ setting_now :: proc(g: ^Game) -> level.Setting {
 	return g.data.setting
 }
 
-// How far down she is, from the start's height (0) to the exit's (1), in a
-// level that goes down.
+// How far she has gone from the start's height (0) to the exit's (1), in a
+// level whose look changes on the way (`below`): down, or up.
 @(private)
 descent_target :: proc(g: ^Game) -> f32 {
 	if !g.data.has_below {
 		return 0
 	}
-	top, foot := f32(g.data.start.z), f32(g.data.exit.z)
-	if top <= foot {
+	from, to := f32(g.data.start.z), f32(g.data.exit.z)
+	if from == to {
 		return 0
 	}
-	return fx.clamp01((top - g.psyche.pos.z) / (top - foot))
+	return fx.clamp01((from - g.psyche.pos.z) / (from - to))
 }
 
 // How much the truth shows now (the cracks where the illusions were): the
@@ -2037,8 +2037,8 @@ floors_shown :: proc(g: ^Game) -> f32 {
 	return 1
 }
 
-// The veil between the levels over the world: closing as the box's sleep
-// falls, opening as she arrives after it.
+// The dark over the world: closing as the box's sleep falls (the act ends in
+// black), opening as she arrives after it.
 // 0: no veil, 1: closed.
 veil :: proc(g: ^Game) -> f32 {
 	switch {
@@ -2346,17 +2346,23 @@ box_time :: proc(g: ^Game) -> (t: f32, ok: bool) {
 }
 
 // The box in her hands: where it is, how far its lid is open (0..1), how much
-// of it is seen (it slips from her hands as she falls).
+// of it is seen. It slips from her hands as she falls; in the Awakening it
+// lies open by her, shuts on the sleep, and she takes it up as she rises.
 box_pose :: proc(g: ^Game) -> (pos: Vec3, lid, alpha: f32) {
-	t, ok := box_time(g)
-	if !ok {
+	slip: f32
+	if t, ok := box_time(g); ok {
+		slip = fx.progress(t, BOX_FALL + 0.3, 0.9)
+		lid = fx.sine_in_out(fx.progress(t, BOX_OPEN, BOX_OPEN_TIME))
+		alpha = fx.progress(t, 0, BOX_SHOW)
+	} else if at, woke := awakening_time(g); woke {
+		slip = 1 - fx.sine_in_out(fx.progress(at, AW_RISE, AW_RISE_TIME))
+		lid = 1 - fx.sine_in_out(fx.progress(at, AW_SHUT, AW_SHUT_TIME))
+		alpha = 1 - fx.progress(at, AW_RISE + AW_RISE_TIME, 1)
+	} else {
 		return
 	}
 	fwd := Vec3{math.cos(g.psyche.yaw), math.sin(g.psyche.yaw), 0}
-	slip := fx.progress(t, BOX_FALL + 0.3, 0.9)
 	pos = g.psyche.pos + fwd * (0.17 + 0.1 * slip) + {0, 0, 0.3 * (1 - fx.quad_in(slip)) + 0.05}
-	lid = fx.sine_in_out(fx.progress(t, BOX_OPEN, BOX_OPEN_TIME))
-	alpha = fx.progress(t, 0, BOX_SHOW)
 	return
 }
 
@@ -2369,13 +2375,16 @@ sleep_mist :: proc(g: ^Game) -> f32 {
 	return fx.progress(t, BOX_OPEN + 0.3, 0.6) * (1 - fx.progress(t, BOX_FALL + BOX_FALL_TIME, 1.4))
 }
 
-// How far the sleep has laid her down (0 standing .. 1 lying on the path).
+// How far the sleep has laid her down (0 standing .. 1 lying on the path);
+// in the Awakening she lies there until she rises.
 sleep_fall :: proc(g: ^Game) -> f32 {
-	t, ok := box_time(g)
-	if !ok {
-		return 0
+	if t, ok := box_time(g); ok {
+		return fx.sine_in_out(fx.progress(t, BOX_FALL, BOX_FALL_TIME))
 	}
-	return fx.sine_in_out(fx.progress(t, BOX_FALL, BOX_FALL_TIME))
+	if t, ok := awakening_time(g); ok {
+		return 1 - fx.sine_in_out(fx.progress(t, AW_RISE, AW_RISE_TIME))
+	}
+	return 0
 }
 
 @(private)

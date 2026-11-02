@@ -1,5 +1,236 @@
 # The Trial of Psyche - level IV.6: "The Open Box" (format: level_04.txt)
 #
+# The thresholds of Taenarus (the first diorama, VI.20-21): the way up begins.
+# The land of the dead above (rock, crags, a beacon fire), Proserpina's courts
+# under (marble, arches, candelabra), on one floor (z 4), the axle y 7, the
+# water at h5. Three islands on the axle (west, middle, east), a pomegranate
+# each; four islets: the start (south), north-west, north-east, south-east.
+# Three ferries, three seals (two of the dead, hers), her two raised bridges.
+#   - the first ferry from the start to the west island; over at its
+#     pomegranate: her bridge east (a veiled stone: the lamp) to the middle;
+#   - back at the middle pomegranate, the second ferry to the north-west
+#     islet: the first seal of the dead raises the middle stone of her bridge
+#     to the east island; back with the boat, over again;
+#   - her bridge east (its west stairs behind a column: turn); from the east
+#     island, in view 3, her column on the north-east islet: her seal raises
+#     the steps of the way up;
+#   - back at the east pomegranate, the third ferry to the south-east islet:
+#     the second seal of the dead raises the top of the crag on the north-east
+#     islet; back with the boat, and in view 2 the east island joins the
+#     crag's top: up the steps to the way out (the exit).
+# Solution (solver: 48 steps, 4 turns, 4 lightings, 4 overturns, 5 crossings,
+# 17 decisions; every pomegranate and ferry needed, no dead ends).
+# Fragments: IV.6e (VI.21, Cupid's wound heals) on a lone rock off the crag,
+# joined to its top in view 0 (late: after the second seal of the dead);
+# IV.6f (VI.21, Venus knows nothing) on a lower column of her courts, joined
+# to her seal's column in view 1.
+intro intro_iv_6
+size 15
+biome taenarus
+lamp
+floor water faint -2 -2 16 16 5
+duality
+# one floor for both worlds: the start islet, the three axle islands, the islets
+block 6 12 4 rock
+block 6 13 4 rock
+block 6 14 4 rock
+block 7 12 4 rock
+block 7 13 4 rock
+block 7 14 4 rock
+block 8 12 4 rock
+block 8 13 4 rock
+block 8 14 4 rock
+block 0 6 4 rock
+block 0 7 4 rock
+block 0 8 4 rock
+block 1 6 4 rock
+block 1 7 4 rock
+block 1 8 4 rock
+block 2 6 4 rock
+block 2 7 4 rock
+block 2 8 4 rock
+block 6 6 4 rock
+block 6 7 4 rock
+block 6 8 4 rock
+block 7 6 4 rock
+block 7 7 4 rock
+block 7 8 4 rock
+block 8 6 4 rock
+block 8 7 4 rock
+block 8 8 4 rock
+block 12 6 4 rock
+block 12 7 4 rock
+block 12 8 4 rock
+block 13 6 4 rock
+block 13 7 4 rock
+block 13 8 4 rock
+block 14 6 4 rock
+block 14 7 4 rock
+block 14 8 4 rock
+block 2 0 4 rock
+block 2 1 4 rock
+block 2 2 4 rock
+block 3 0 4 rock
+block 3 1 4 rock
+block 3 2 4 rock
+block 4 0 4 rock
+block 4 1 4 rock
+block 4 2 4 rock
+block 10 0 4 rock
+block 10 1 4 rock
+block 10 2 4 rock
+block 11 0 4 rock
+block 11 1 4 rock
+block 11 2 4 rock
+block 12 0 4 rock
+block 12 1 4 rock
+block 12 2 4 rock
+block 12 12 4 rock
+block 12 13 4 rock
+block 12 14 4 rock
+block 13 12 4 rock
+block 13 13 4 rock
+block 13 14 4 rock
+block 14 12 4 rock
+block 14 13 4 rock
+block 14 14 4 rock
+pomegranate 1 7 5
+pomegranate 7 7 5
+pomegranate 13 7 5
+start 7 13 5
+ferry 6 12 5 my  2 8 5 py
+ferry 6 6 5 my  4 2 5 py
+ferry 13 8 5 py  13 12 5 my
+# the seal of the dead on the north-west islet's crag
+rock 3 0 5 5
+steps 3 1 5 my
+sigil 3 0 6
+prop lip 3 0 6 mx
+prop lip 3 0 6 px
+prop lip 3 0 6 my
+# the second seal of the dead on the south-east islet's crag: it raises the top
+# of the crag on the north-east islet
+rock 14 13 5 5
+steps 13 13 5 px
+sigil 14 13 6
+prop lip 14 13 6 px
+prop lip 14 13 6 my
+prop lip 14 13 6 py
+# the crag of the dead on the north-east islet, joined to the east island in view 2;
+# the steps to the way up rise with her seal
+rock 10 2 5 6
+rise 10 2 7 rock 2
+rise 10 1 8 my rock 3
+rock 10 0 5 8
+exit 10 0 9
+# a lone rock off the crag, joined to it in view 0 (fragment IV.6e)
+rock 7 0 5 5
+fragment 7 0 6
+# her bridges hang under the water: lips over their undersides
+prop lip 3 8 4 mx
+prop lip 3 8 4 px
+prop lip 3 8 4 my
+prop lip 3 8 4 py
+prop lip 4 8 4 mx
+prop lip 4 8 4 px
+prop lip 4 8 4 my
+prop lip 4 8 4 py
+prop lip 5 8 4 mx
+prop lip 5 8 4 px
+prop lip 5 8 4 my
+prop lip 5 8 4 py
+prop lip 9 6 4 mx
+prop lip 9 6 4 px
+prop lip 9 6 4 my
+prop lip 9 6 4 py
+prop lip 10 6 4 mx
+prop lip 10 6 4 px
+prop lip 10 6 4 my
+prop lip 10 6 4 py
+prop lip 11 6 4 mx
+prop lip 11 6 4 px
+prop lip 11 6 4 my
+prop lip 11 6 4 py
+prop lip 7 6 5 my
+# the land of the dead: the crags of the way up, a beacon fire, shrubs, cairns
+rock 12 0 5 6
+prop fire 12 0 7
+prop boulder 12 1 5
+prop fire 12 2 5
+prop cairn 11 0 5 my
+prop shrub 8 12 5 px
+prop shrub 8 6 5 my
+prop shrub 4 0 5 my
+prop shrub 12 6 5 mx
+prop cairn 6 8 5 py
+prop cairn 14 12 5 my
+prop cairn 0 7 5 mx
+under
+# her raised bridge from the west island to the middle one, a veiled stone in it
+stairs 2 6 5 px
+block 3 6 5
+veiled 4 6 5
+block 5 6 5
+stairs 6 6 5 mx
+prop rail 3 6 6 my
+prop rail 3 6 6 py
+prop rail 4 6 6 my
+prop rail 4 6 6 py
+prop rail 5 6 6 my
+prop rail 5 6 6 py
+# her bridge to the east island: its middle stone rises with the seal of the dead;
+# a column in the water hides its west stairs
+stairs 8 8 5 px
+block 9 8 5
+rise 10 8 5 1
+block 11 8 5
+stairs 12 8 5 mx
+prop rail 9 8 6 my
+prop rail 9 8 6 py
+prop rail 10 8 6 my
+prop rail 10 8 6 py
+prop rail 11 8 6 my
+prop rail 11 8 6 py
+column 8 9 5 6
+prop rail 8 9 7 mx
+prop rail 8 9 7 px
+prop rail 8 9 7 my
+prop rail 8 9 7 py
+# her column on the north-east islet, her seal on top: joined to the east island in view 3
+column 11 12 5 7
+sigil 11 12 8
+# a lower column joined to hers in view 1 (fragment IV.6f)
+column 9 13 5 6
+fragment 9 13 7
+# her courts: arches over the pomegranates, pillars, urns, cypresses, candelabra
+prop arch 1 7 5 px
+prop arch 7 7 5 px
+prop arch 13 7 5 px
+prop pillar 8 0 5
+prop pillar 6 0 5
+prop pillar 2 14 5
+prop pillar 4 14 5
+prop pillar 14 0 5
+prop pillar 12 14 5
+prop urn 12 2 5
+prop urn 10 14 5
+prop urn 6 2 5
+prop sconce 11 12 6 mx
+prop sconce 11 12 6 py
+prop sconce 8 9 6 px
+prop sconce 8 9 6 py
+prop cypress 2 12 5
+prop cypress 14 2 5
+candelabrum 0 7 5 mx lit
+candelabrum 14 7 5 px lit
+candelabrum 7 0 5 mx lit
+candelabrum 3 14 5 py lit
+candelabrum 13 1 5 px lit
+end
+
+diorama
+# The way up (the second diorama, VI.20-21):
+#
 # The act's last level: the way up out of the underworld, everything of Act IV
 # at many heights, so that the dark joins stones across the water. One floor
 # (z 4) for both worlds, as in IV.3-IV.5: the land of the dead stands on it,
@@ -43,7 +274,7 @@ floor water faint -2 -2 18 18 5
 duality
 lamp
 box
-intro intro_iv_6
+intro intro_iv_6b
 outro outro_iv_6
 block 4 14 4 rock
 block 4 15 4 rock
