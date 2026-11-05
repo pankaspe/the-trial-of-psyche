@@ -46,7 +46,13 @@ idle :: proc(g: ^Game) -> bool {
 }
 
 // After the plan's last move: a plan ends on the exit, and where Charon's
-// boat waits there, she boards it. False if the game refuses it.
+// boat or Jupiter's eagle waits there, she boards it or calls it. False if
+// the game refuses it.
 board_at_end :: proc(g: ^Game) -> bool {
-	return !g.data.has_boat || is_over(g) || board_boat(g)
+	switch {
+	case is_over(g): return true
+	case g.data.has_boat: return board_boat(g)
+	case g.data.has_ascent: return call_eagle(g)
+	}
+	return true
 }

@@ -170,3 +170,335 @@ prop cairn 3 6 14 my
 prop cairn 6 7 12 my
 prop shrub 1 1 15 px
 prop shrub 7 2 15 px
+
+diorama
+# The threshold of heaven (the second diorama, VI.22-23): on the summit of the
+# world at dawn Jupiter calls Psyche up to Olympus. Above, the last crag of the
+# earth (rock, pines, the summit's ramp); turned over, the threshold of Olympus
+# (marble, colonnades, a temple of the council), on one floor (z 4), the axle
+# y 7, the water at h5. Three islands on the axle (west and east with a
+# pomegranate, the middle one), two piers north and two south of the axle
+# between them (north-west, south-west, north-east, south-east), the shore (the start) to the south, the islet of the ferry to
+# the south-east, the summit to the north.
+#   - two slabs, an L each, turn in the channels on the axle's floor: a bridge
+#     for both worlds, turned only from the world above (handles: the shore's
+#     turns the east slab, the east island's and the south-west pier's the west
+#     one);
+#   - the east slab to the east island: the west slab turned toward the middle;
+#     back, the east slab to the middle, the west slab from the south-west pier
+#     to the west island: the seal of the dead there raises the upper flight of
+#     her tower on the east island, in the other world;
+#   - over at the west pomegranate (a column of Olympus shuts the middle's way
+#     to the west slab): her first seal on the south-west pier raises two stones
+#     from the shore to the ferry's islet;
+#   - back, the slabs turned again (the west one to the middle, the east one
+#     to the north-east pier), the ferry to the east island, over: up her tower,
+#     and in view 3 the column of her second seal: it raises the summit's last
+#     flight; back down, turned back, the lamp lit for the veiled stone of the
+#     north-east pier, up the ramp to the perch: Jupiter's eagle (`ascent`) carries
+#     her up to Olympus.
+# Solution (solver: 123 steps, 2 turns, 4 lightings, 10 handles (6 visits),
+# 4 overturns, 1 crossing, 21 decisions; every handle, pomegranate and the
+# ferry needed, no dead ends). Designed by hand (scratch scripts mirror the
+# world under and scan the seams).
+intro intro_eb
+size 15
+biome crag
+setting river_dawn
+lamp
+ascent
+floor water faint -2 -2 16 16 5
+duality
+# one floor for both worlds: the shore, the piers, the islands, the summit's island, the ferry's islet
+block 4 12 4 rock
+block 5 12 4 rock
+block 6 12 4 rock
+block 7 12 4 rock
+block 8 12 4 rock
+block 9 12 4 rock
+block 10 12 4 rock
+block 4 13 4 rock
+block 5 13 4 rock
+block 6 13 4 rock
+block 7 13 4 rock
+block 8 13 4 rock
+block 9 13 4 rock
+block 10 13 4 rock
+block 4 14 4 rock
+block 5 14 4 rock
+block 6 14 4 rock
+block 7 14 4 rock
+block 8 14 4 rock
+block 9 14 4 rock
+block 10 14 4 rock
+block 4 9 4 rock
+block 4 10 4 rock
+block 4 11 4 rock
+block 10 9 4 rock
+block 10 10 4 rock
+block 10 11 4 rock
+block 0 6 4 rock
+block 1 6 4 rock
+block 2 6 4 rock
+block 0 7 4 rock
+block 1 7 4 rock
+block 2 7 4 rock
+block 0 8 4 rock
+block 1 8 4 rock
+block 2 8 4 rock
+block 6 6 4 rock
+block 7 6 4 rock
+block 8 6 4 rock
+block 6 7 4 rock
+block 7 7 4 rock
+block 8 7 4 rock
+block 6 8 4 rock
+block 7 8 4 rock
+block 8 8 4 rock
+block 12 6 4 rock
+block 13 6 4 rock
+block 14 6 4 rock
+block 12 7 4 rock
+block 13 7 4 rock
+block 14 7 4 rock
+block 12 8 4 rock
+block 13 8 4 rock
+block 14 8 4 rock
+block 4 3 4 rock
+block 4 4 4 rock
+block 4 5 4 rock
+block 10 3 4 rock
+block 10 5 4 rock
+block 4 0 4 rock
+block 5 0 4 rock
+block 6 0 4 rock
+block 7 0 4 rock
+block 8 0 4 rock
+block 9 0 4 rock
+block 10 0 4 rock
+block 4 1 4 rock
+block 5 1 4 rock
+block 6 1 4 rock
+block 7 1 4 rock
+block 8 1 4 rock
+block 9 1 4 rock
+block 10 1 4 rock
+block 4 2 4 rock
+block 5 2 4 rock
+block 6 2 4 rock
+block 7 2 4 rock
+block 8 2 4 rock
+block 9 2 4 rock
+block 10 2 4 rock
+block 13 12 4 rock
+block 14 12 4 rock
+block 13 13 4 rock
+block 14 13 4 rock
+block 13 14 4 rock
+block 14 14 4 rock
+# the north-east pier's veiled stone (the lamp)
+veiled 10 4 4 rock
+# the slabs: 0 the west one, 1 the east one
+part 4 7
+block 4 7 4 rock
+block 3 7 4 plank
+block 4 6 4 plank_y
+end
+part 10 7
+block 10 7 4 rock
+block 10 6 4 plank_y
+block 11 7 4 plank
+end
+# the handles: the shore's turns the east slab, the east island's and the south-west pier's the west one
+handle 9 13 5 1
+handle 14 6 5 0
+handle 4 10 5 0
+pomegranate 1 7 5
+pomegranate 13 7 5
+start 7 13 5
+# the crag that splits the shore in the world above
+rock 5 12 5 6
+rock 5 13 5 6
+rock 5 14 5 6
+# the summit: a ramp from the north-east pier to the perch; its last flight rises with her second seal
+steps 9 1 5 mx
+rock 8 1 5 5
+rock 7 1 5 5
+steps 7 1 6 mx
+rock 6 1 5 6
+rock 5 1 5 6
+rise 5 1 7 mx rock 3
+rock 4 1 5 7
+exit 4 1 8
+# the ferry from the islet to the east island
+ferry 14 12 5 my  14 8 5 py
+# the seal of the dead on the west island
+sigil 1 6 5
+# her first seal raises the stones from the shore to the ferry's islet
+rise 11 13 4 rock 2
+rise 12 13 4 rock 2
+# lips: the summit's tops, the shore's crag, the north-west pier
+prop lip 4 1 8 mx
+prop lip 4 1 8 py
+prop lip 4 1 8 my
+prop lip 6 1 7 py
+prop lip 6 1 7 my
+prop lip 8 1 6 py
+prop lip 8 1 6 my
+prop lip 5 12 7 px
+prop lip 5 12 7 mx
+prop lip 5 12 7 py
+prop lip 5 12 7 my
+prop lip 5 13 7 px
+prop lip 5 13 7 mx
+prop lip 5 13 7 py
+prop lip 5 13 7 my
+prop lip 5 14 7 px
+prop lip 5 14 7 mx
+prop lip 5 14 7 py
+prop lip 5 14 7 my
+prop lip 4 3 5 px
+prop lip 4 3 5 mx
+prop lip 4 4 5 px
+prop lip 4 4 5 mx
+prop lip 4 5 5 px
+prop lip 4 5 5 mx
+# the summit at dawn: a pine on the north-west pier (it closes it), shrubs, cairns
+prop pine 4 3 5
+prop shrub 4 14 5 px
+prop cairn 0 8 5 my
+prop shrub 14 14 5 px
+prop shrub 12 6 5 my
+prop cairn 6 0 5 my
+prop shrub 10 0 5 px
+prop cairn 13 12 5 mx
+under
+# her first seal on a column on the south-west pier
+column 4 3 5 5
+stairs 4 4 5 my
+sigil 4 3 6
+# her tower on the east island: its upper flight rises with the seal of the dead
+block 14 8 5
+stairs 14 7 5 py
+block 13 8 5
+rise 13 8 6 mx 1
+column 12 8 5 6
+# the column of her second seal, joined to the tower's top in view 3
+column 10 9 5 7
+sigil 10 9 8
+prop rail 4 3 6 px
+prop rail 4 3 6 mx
+prop rail 4 3 6 my
+prop rail 14 8 6 px
+prop rail 14 8 6 py
+prop rail 12 8 7 my
+prop rail 12 8 7 py
+prop rail 10 9 8 mx
+prop rail 10 9 8 my
+prop rail 10 9 8 py
+# columns that close the south-east pier and the middle's way to the west slab (Olympus only)
+prop pillar 10 4 5
+prop pillar 6 7 5
+# the threshold of Olympus: the temple of the council on the middle island, arches over the
+# pomegranates, cypresses, urns, a statue, candelabra
+prop pillar 6 6 5
+prop pillar 8 6 5
+prop pillar 6 8 5
+prop pillar 8 8 5
+prop statue 7 7 5 py
+prop arch 1 7 5 px
+prop arch 13 7 5 px
+prop cypress 4 0 5
+prop cypress 14 0 5
+prop urn 6 13 5
+prop urn 8 13 5
+prop statue 7 12 5 my
+candelabrum 0 6 5 mx lit
+candelabrum 14 8 6 px lit
+candelabrum 4 5 5 my lit
+candelabrum 13 2 5 px lit
+end
+
+diorama
+# The wedding (the third diorama, VI.23-24): the palace found again. The
+# invisible palace of I.2, where the story began, stands on Olympus in the
+# gods' morning: the lawn where Zephyr laid her, the fountain court, the baths,
+# the bedchamber, joined as they were then, in views 1, 2 and 0; she knows how
+# to read them now. A farewell to her tools, each used once: from the
+# bedchamber the spindle swings the bridge to the dais, the lamp lit by the
+# bedchamber's door lights the nuptial torch (a guard candelabrum), and its
+# light shows the last stone before Cupid, who waits on the dais (`amore`). At
+# the exit, beside him, the wedding (`wedding`): the cup of ambrosia, her
+# wings turned gold, the roses of the Hours; the game ends and the credits run.
+# Solution (solver: 12 steps, 4 turns, 1 lighting, 1 handle, 6 decisions; no
+# dead ends; the handle needed).
+# Fragment E (the frame: the old woman's tale to Charite) on the lone column
+# by the lawn, joined to the court in view 3: where I.2 hid its first one.
+intro intro_ec
+size 11
+biome olympus
+setting olympus
+lamp
+wedding
+floor basin 3 -1 11 10
+# the lawn (h1)
+column 5 8 0 0
+column 5 7 0 0
+column 6 8 0 0
+column 6 7 0 0
+lawn 5 8 0
+lawn 5 7 0
+lawn 6 8 0
+lawn 6 7 0
+# the fountain court (h2): joined to the lawn in view 1
+column 6 6 0 1
+column 6 5 0 1
+column 7 6 0 1
+column 7 5 0 1
+# the baths (h3): joined to the court in view 2
+column 4 3 0 2
+column 4 2 0 2
+column 5 3 0 2
+column 5 2 0 2
+# the bedchamber (h4): joined to the baths in view 0
+column 6 3 0 3
+column 7 3 0 3
+column 7 2 0 3
+candelabrum 6 3 4 mx guard
+# the bridge that turns
+part 9 2
+block 9 1 3
+block 9 2 3
+block 9 3 3
+prop rail 9 1 4 px
+end
+handle 7 3 4
+# the stair the torch shows, and the throne
+rise 10 1 3 1
+column 10 0 0 4
+amore 10 0 5
+prop rail 10 0 5 mx
+prop rail 10 0 5 my
+prop rail 10 0 5 px
+prop rail 10 0 5 py
+exit 10 1 4
+# the lone column (fragment E)
+column 4 9 0 3
+start 5 8 1
+fragment 4 9 4
+# the wedding's palace: myrtle and roses on the lawn, arches, vases, candles and torches
+prop arch 6 6 2 my
+prop vase 6 5 2 mx
+prop vase 5 2 3 px
+prop sconce 4 9 2 my
+prop sconce 4 9 2 py
+prop sconce 5 2 1 my
+prop sconce 7 2 2 px
+prop sconce 7 6 1 px
+prop myrtle 5 7 1 mx
+prop rose 6 7 1 px
+prop arch 10 1 4 my
+candelabrum 7 5 2 py lit
+candelabrum 5 3 3 py lit
+prop rail 6 3 4 my
+prop rail 7 3 4 py

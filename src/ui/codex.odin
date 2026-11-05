@@ -129,7 +129,7 @@ holds :: proc(d: ^level.Level_Data, id: Codex_Id) -> bool {
 	case .Rams: return len(d.rams) > 0
 	case .Flip: return len(d.pomegranates) > 0
 	case .Cave: return len(d.caves) > 0
-	case .Eagle: return len(d.eagles) > 0
+	case .Eagle: return len(d.eagles) > 0 || d.has_ascent
 	case .Boat: return d.has_boat || len(d.ferries) > 0
 	case .Ferry: return len(d.ferries) > 0
 	}

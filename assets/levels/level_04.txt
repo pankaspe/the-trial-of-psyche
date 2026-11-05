@@ -141,6 +141,10 @@
 #                           Psyche asleep on the start, Cupid comes down over
 #                           this cell, shuts the sleep back in the box, wakes
 #                           her with his arrow and flies up and away
+#   ascent                  (the epilogue) Jupiter's eagle waits on a perch at
+#                           the exit (world above): reaching it does not end the
+#                           diorama; there Space (pad South) calls it and it
+#                           carries her up and away
 #   tower x y h             the level opens with the Tower (IV.1): Psyche walks
 #                           from the start to this brink, looks down, and the
 #                           tower speaks; she steps back and the level begins

@@ -241,6 +241,8 @@ psyche_alpha :: proc(g: ^Game) -> f32 {
 		return fx.progress(g.arrive_t, 0.8, 0.8)
 	case g.ferried:
 		return 1 - boat_fade(g) // into the mist with the boat
+	case g.lifted:
+		return 1 - ascent_fade(g) // into the light with the eagle
 	case g.parting:
 		return passage_alpha(g) * fx.clamp01(1 + exit_lift(g) / 3)
 	case g.phase != .Prologue:
@@ -390,6 +392,16 @@ Cine :: struct {
 
 cine :: proc(g: ^Game) -> (c: Cine) {
 	c.zoom = 1
+	if t, ok := wedding_time(g); ok {
+		// the wedding: close on the two of them, the bars come in; a little
+		// up toward the sky as the roses fall
+		closer := fx.sine_in_out(fx.progress(t, 0, 2.2))
+		c.bars = closer
+		c.zoom = 1 + 1.1 * closer
+		c.focus = closer
+		c.look_up = 0.25 * fx.sine_in_out(fx.progress(t, WED_PETALS, 6))
+		return
+	}
 	if t, ok := box_time(g); ok {
 		// Proserpina's box opened: close on her, the bars come in
 		closer := fx.sine_in_out(fx.progress(t, 0, 1.8))

@@ -297,7 +297,7 @@ PAN_TIME :: 1.8 // the camera moving from one band of a tall level to the next
 
 scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 	s^ = {}
-	s.pieces = make([dynamic]Piece, 0, len(g.data.blocks) + 2 * len(g.data.props) + 2 * len(g.data.candelabra) + 2 * len(g.data.caves) + len(g.data.rise) + len(g.data.handles) + 2 * len(g.data.sigils) + len(g.data.sundials) + len(g.data.eagles), allocator)
+	s.pieces = make([dynamic]Piece, 0, len(g.data.blocks) + 2 * len(g.data.props) + 2 * len(g.data.candelabra) + 2 * len(g.data.caves) + len(g.data.rise) + len(g.data.handles) + 2 * len(g.data.sigils) + len(g.data.sundials) + game.eagle_count(g), allocator)
 	s.rng = fx.rng_init(1234)
 	s.mote = look_of(g).mote
 	for e, i in g.data.blocks {
@@ -345,8 +345,8 @@ scene_build :: proc(s: ^Scene, g: ^game.Game, allocator := context.allocator) {
 	for c in g.data.sundials {
 		append(&s.pieces, sundial_piece(c))
 	}
-	for e in g.data.eagles {
-		append(&s.pieces, piece(e.from, .Perch, .Bronze))
+	for i in 0 ..< game.eagle_count(g) {
+		append(&s.pieces, piece(game.eagle_home(g, i), .Perch, .Bronze))
 	}
 	for c in g.data.rests {
 		append(&s.pieces, piece(c, .Altar, .Bronze))
@@ -653,9 +653,13 @@ scene_view :: proc(s: ^Scene, g: ^game.Game, width, height: f32) -> View {
 	if len(g.data.tiers) > 0 {
 		v.center.y = fx.lerp(s.pan_from, tier_center(s, s.tier), fx.sine_in_out(fx.clamp01(s.pan_t / PAN_TIME)))
 	}
-	if g.phase == .Prologue || g.boxed {
+	if g.phase == .Prologue || g.boxed || g.wedded {
 		cam := game.cine(g)
 		her := world_to_proto(v, g.psyche.pos + {0, 0, 0.3})
+		if g.wedded {
+			// the two of them, between her and Cupid
+			her = fx.lerp(her, world_to_proto(v, game.amore_world(g) + {0, 0, 0.3}), 0.5)
+		}
 		if cam.venus > 0 {
 			// the goddess, where she stands
 			there := world_to_proto(v, pl.stand_world(&g.palace, g.data.prologue) + {0, 0, 0.4})
@@ -1790,11 +1794,24 @@ draw_rams :: proc(r: ^Renderer, g: ^game.Game) {
 	}
 }
 
+// How eagle i follows its perch as the diorama comes together or breaks up
+// (lift, alpha); the one that carried her up from the exit is gone with her.
+// An eagle is of the world above: it fades as the world turns over (its perch
+// hangs below, upside down).
+@(private)
+eagle_placed :: proc(g: ^game.Game, i: int) -> (rise, alpha: f32) {
+	if i == len(g.data.eagles) && g.lifted {
+		return 0, 1 - game.ascent_fade(g)
+	}
+	rise, alpha = placed(g, game.eagle_home(g, i))
+	return rise, alpha * fx.clamp01(1 - 3 * g.overturn)
+}
+
 // Jupiter's eagles, in gold: folded on their perches, spread while they
 // carry her and fly home (game.eagle_pose).
 @(private)
 draw_eagles :: proc(r: ^Renderer, g: ^game.Game) {
-	if len(g.data.eagles) == 0 {
+	if game.eagle_count(g) == 0 {
 		return
 	}
 	Eagle_Pose :: struct {
@@ -1803,11 +1820,11 @@ draw_eagles :: proc(r: ^Renderer, g: ^game.Game) {
 		spread:     f32,
 		alpha:      f32, // with its perch, as the diorama rises or breaks up
 	}
-	poses := make([]Eagle_Pose, len(g.data.eagles), context.temp_allocator)
+	poses := make([]Eagle_Pose, game.eagle_count(g), context.temp_allocator)
 	for &pose, i in poses {
 		pos, yaw, spread := game.eagle_pose(g, i)
 		rise: f32
-		rise, pose.alpha = placed(g, g.data.eagles[i].from)
+		rise, pose.alpha = eagle_placed(g, i)
 		pos.z += rise
 		breath := math.sin(g.time * 1.3 + f32(i) * 2.1)
 		// perched it sits upright, its breast out; flying it lies level
@@ -2575,8 +2592,8 @@ device_stones :: proc(g: ^game.Game) -> [dynamic]Device_Stone {
 	for c in g.data.sundials {
 		add(&stones, g, c)
 	}
-	for e in g.data.eagles {
-		add(&stones, g, e.from)
+	for i in 0 ..< game.eagle_count(g) {
+		add(&stones, g, game.eagle_home(g, i))
 	}
 	for c in g.data.caves {
 		add(&stones, g, c.cell)
@@ -2697,7 +2714,7 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 		fwd := Vec3{math.cos(psy.yaw), math.sin(psy.yaw), 0}
 		// quicker as she walks, flaring as she turns head over heels
 		pace: f32 = game.somersault(g) != 0 ? 6 : psy.walking ? 3.5 : 1
-		light_wings(v, tumbled(g, psy.pos + {0, 0, 0.4} - fwd * 0.035), t, PSYCHE_WINGS, pace, pa)
+		light_wings(v, tumbled(g, psy.pos + {0, 0, 0.4} - fwd * 0.035), t, wings_mix(PSYCHE_WINGS, CUPID_WINGS, game.wedding_gold(g)), pace, pa)
 	}
 	// where she is (game.point_at_psyche): a shaft of soft light coming down
 	// on her, as over a fragment but orange-red (never taken for the diorama's
@@ -2921,9 +2938,9 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 		}
 	}
 	// Jupiter's eagles: a golden light about them, brighter in flight
-	for _, i in g.data.eagles {
+	for i in 0 ..< game.eagle_count(g) {
 		p, _, spread := game.eagle_pose(g, i)
-		rise, clear := placed(g, g.data.eagles[i].from)
+		rise, clear := eagle_placed(g, i)
 		p.z += rise
 		breath := (0.85 + 0.15 * math.sin(t * 1.3 + f32(i) * 2.1)) * clear
 		glow(v, p + {0, 0, 0.15}, 70 + 50 * spread, {1.0, 0.78, 0.4, (0.16 + 0.12 * spread) * breath})
@@ -2976,6 +2993,12 @@ draw_glows :: proc(r: ^Renderer, s: ^Scene, g: ^game.Game, v: View) {
 		glow(v, psy.pos + {0, 0, 0.12}, 70, {1.0, 0.85, 0.6, 0.6 * k})
 		glow(v, psy.pos + {0, 0, 0.12}, 14, {1.0, 0.97, 0.9, k})
 	}
+	// the wedding: the cup of ambrosia coming down to her, the roses of the Hours
+	if c, alpha := game.wedding_cup(g); alpha > 0.003 {
+		glow(v, c, 60, {1.0, 0.82, 0.45, 0.45 * alpha})
+		glow(v, c, 10, {1.0, 0.96, 0.84, 0.95 * alpha})
+	}
+	draw_petals(g, v)
 	// Cupid in a cutscene: his light in the sky
 	if c, alpha := game.scene_cupid(g); alpha > 0.003 {
 		glow(v, c + {0, 0, 0.2}, 150, {1.0, 0.72, 0.35, 0.35 * alpha})
@@ -3196,6 +3219,50 @@ Wing_Look :: struct {
 
 CUPID_WINGS :: Wing_Look{filaments = 5, reach = 0.95, lift = 0.36, fan = 0.12, size = 8, root = {1.0, 0.86, 0.58}, tip = {1.0, 0.68, 0.36}, alpha = 0.5}
 PSYCHE_WINGS :: Wing_Look{filaments = 3, reach = 0.26, lift = 0.12, fan = 0.07, size = 3.5, root = {0.66, 0.52, 1.0}, tip = {0.45, 0.62, 1.0}, alpha = 0.45}
+
+// The roses the Hours scatter at the wedding: petals drifting down over the
+// palace, swaying as they fall, rose and gold.
+@(private)
+draw_petals :: proc(g: ^game.Game, v: View) {
+	amount, since := game.wedding_petals(g)
+	if amount <= 0 {
+		return
+	}
+	PETALS :: 90
+	FALL :: 7.0 // seconds for a petal to fall through the frame
+	size := f32(g.data.size)
+	mid := game.amore_world(g)
+	for i in 0 ..< PETALS {
+		h1 := fx.hash01(u32(i) * 3 + 1)
+		h2 := fx.hash01(u32(i) * 3 + 2)
+		h3 := fx.hash01(u32(i) * 3 + 3)
+		u := math.mod(since / FALL + h3, 1)
+		x := mid.x + (h1 - 0.5) * size * 0.9 + 0.4 * math.sin(since * 1.3 + h2 * 6)
+		y := mid.y + (h2 - 0.5) * size * 0.9 + 0.4 * math.cos(since * 1.1 + h1 * 6)
+		z := mid.z + 7 - 10 * u
+		fade := math.sin(math.PI * u) * amount
+		col := i % 3 == 0 ? Color4{1.0, 0.74, 0.28, 0.9 * fade} : Color4{0.96, 0.38, 0.55, 0.95 * fade}
+		glow(v, {x, y, z}, 8 + 4 * h1, col, 0.6)
+	}
+}
+
+// Wings between two looks (k = 0 .. 1): at her wedding Psyche's turn gold as his.
+@(private)
+wings_mix :: proc(a, b: Wing_Look, k: f32) -> Wing_Look {
+	if k <= 0 {
+		return a
+	}
+	return {
+		filaments = int(math.round(fx.lerp(f32(a.filaments), f32(b.filaments), k))),
+		reach = fx.lerp(a.reach, b.reach, k),
+		lift = fx.lerp(a.lift, b.lift, k),
+		fan = fx.lerp(a.fan, b.fan, k),
+		size = fx.lerp(a.size, b.size, k),
+		root = fx.lerp(a.root, b.root, k),
+		tip = fx.lerp(a.tip, b.tip, k),
+		alpha = fx.lerp(a.alpha, b.alpha, k),
+	}
+}
 
 // `pace`: how quick the ripple runs; `stretch`: longer (in flight).
 @(private)

@@ -312,7 +312,7 @@ LEVEL_TOUR := [?]Shot_Step {
 	{0.1, "", proc(app: ^App) {
 			g := &app.game
 			tour_walk(app, g.data.exit)
-			if g.phase == .Play && g.data.has_exit && !g.data.has_boat && g.psyche.cell != g.data.exit {
+			if g.phase == .Play && g.data.has_exit && !g.data.has_boat && !g.data.has_ascent && g.psyche.cell != g.data.exit {
 				// out of a walk's reach (a puzzle): set her there, to see the passage
 				place(app, g.data.exit)
 				game.start_ending(g, .Ending_Exit)
@@ -706,8 +706,8 @@ plan_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool)
 		s.t = 0
 		return "", false
 	}
-	if s.move >= len(s.moves) && g.data.has_boat && !game.is_over(g) {
-		// on Charon's landing: a shot with the action of the place, then aboard
+	if s.move >= len(s.moves) && (g.data.has_boat || g.data.has_ascent) && !game.is_over(g) {
+		// on Charon's landing or the eagle's perch: a shot with the action of the place, then away
 		if s.cave_shot <= s.move {
 			if s.t < 0.6 {
 				return "", false
@@ -716,7 +716,7 @@ plan_update :: proc(app: ^App, s: ^Shots, dt: f32) -> (name: string, done: bool)
 			s.t = 0
 			return fmt.tprintf("p%03d_place", s.move), false
 		}
-		game.board_boat(g)
+		game.board_at_end(g)
 		s.t = 0
 		return "", false
 	}
@@ -823,7 +823,8 @@ RECORD_FPS :: 60
 
 // --go-on: past the plan's end, on as a player would: the ending card read
 // for a while, then on into the next level (the passage, or the black and the
-// next act's card or cutscene), until it has been in play for a moment.
+// next act's card or cutscene), until it has been in play for a moment; after
+// the wedding, the credits to their end.
 GO_ON_CARD :: 4.0 // the ending card, read this long
 GO_ON_ACT_CARD :: 5.0 // the next act's card, read this long
 GO_ON_PLAY :: 6.0 // the next level in play this long
@@ -833,6 +834,11 @@ go_on :: proc(app: ^App, s: ^Shots) -> (name: string, done: bool) {
 	g := &app.game
 	switch s.going {
 	case 1:
+		if app.screen == .Credits {
+			// the end of the game: the credits run out, then the title
+			s.going, s.t = 4, 0
+			return "", false
+		}
 		if app.screen != .Ending && s.t > 1 {
 			finish_level(app)
 		}
@@ -855,6 +861,11 @@ go_on :: proc(app: ^App, s: ^Shots) -> (name: string, done: bool) {
 		}
 	case 3:
 		if s.t >= GO_ON_PLAY {
+			virtual.arena_destroy(&s.arena)
+			return "", true
+		}
+	case 4:
+		if app.screen != .Credits && s.t >= 2 {
 			virtual.arena_destroy(&s.arena)
 			return "", true
 		}

@@ -87,6 +87,19 @@ Key :: enum u16 {
 	Aw_Cupid,
 	Aw_Wake,
 	Aw_Alone,
+	Wd_Cup, // the wedding (the epilogue's end): the captions
+	Wd_Feast,
+	Wd_Child,
+	Cr_End, // the credits
+	Cr_After,
+	Cr_Made,
+	Cr_Copilot,
+	Cr_Built,
+	Cr_Engine,
+	Cr_Generated,
+	Cr_Fonts,
+	Cr_Ofl,
+	Cr_Thanks,
 
 	// level titles
 	Level_I_1,
@@ -379,6 +392,8 @@ Key :: enum u16 {
 	Intro_IV_6,
 	Intro_IV_6b, // IV.6's second diorama: the way up
 	Intro_E,
+	Intro_Eb,
+	Intro_Ec,
 	// beside Cupid in the dark, before the end of the game
 	V_Doubt,
 
@@ -457,6 +472,7 @@ Key :: enum u16 {
 	Hint_Eagle,
 	Hint_Eagle_No_Floor, // the eagle would set her down where there is nothing
 	Hint_Boat, // at the landing: Space boards Charon's boat
+	Hint_Ascent, // the epilogue: at the exit, Space calls Jupiter's eagle and it carries her up
 	Hint_Ferry_Away, // at a ferry's landing the boat has left
 	Hint_Guard, // a dark way: the lamp beside a guard candelabrum lights it, its light shows the way
 	Hint_Fragment,
@@ -500,6 +516,7 @@ Key :: enum u16 {
 	Hint_Pomegranate_Pad,
 	Hint_Eagle_Pad,
 	Hint_Boat_Pad,
+	Hint_Ascent_Pad,
 	Hint_Rest_Pad,
 	Pad_Cross, // a PlayStation pad's face buttons, by name
 	Pad_Circle,
@@ -709,6 +726,7 @@ PAD_TEXT := #partial [Key]Key {
 	.Hint_Pomegranate   = .Hint_Pomegranate_Pad,
 	.Hint_Eagle         = .Hint_Eagle_Pad,
 	.Hint_Boat          = .Hint_Boat_Pad,
+	.Hint_Ascent        = .Hint_Ascent_Pad,
 	.Hint_Rest          = .Hint_Rest_Pad,
 }
 
@@ -819,6 +837,19 @@ IT := [Key]string {
 	.Aw_Cupid       = "Amore, guarito, scende su di lei: raccoglie il sonno dal suo viso e lo richiude nel vaso.",
 	.Aw_Wake        = "Poi la sveglia con la punta innocua di una freccia.",
 	.Aw_Alone       = "Amore vola verso il cielo più alto. Psiche, il vaso tra le mani, riprende la salita.",
+	.Wd_Cup         = "Giove le porge la coppa d'ambrosia: «Bevi, Psiche, e sii immortale.»",
+	.Wd_Feast       = "Si celebrano le nozze: le Ore spargono rose, le Grazie profumi, le Muse cantano, Apollo suona la cetra.",
+	.Wd_Child       = "Al tempo giusto nasce loro una figlia, che chiamano Voluttà.",
+	.Cr_End         = "Fine",
+	.Cr_After       = "dalla favola di Amore e Psiche, Apuleio, Metamorfosi IV–VI",
+	.Cr_Made        = "Ideato e realizzato da",
+	.Cr_Copilot     = "con Claude Code come copilota",
+	.Cr_Built       = "Costruito",
+	.Cr_Engine      = "in Odin, con raylib",
+	.Cr_Generated   = "ogni immagine e ogni suono generati dal codice",
+	.Cr_Fonts       = "Caratteri",
+	.Cr_Ofl         = "SIL Open Font License",
+	.Cr_Thanks      = "Grazie per aver giocato",
 
 	.Level_I_1      = "La rupe di Zefiro",
 	.Level_I_2      = "Il palazzo invisibile",
@@ -1104,6 +1135,8 @@ IT := [Key]string {
 	.Intro_IV_6     = "Sopra, le rupi dei morti salgono verso Tenaro; sotto, i cortili di Proserpina. Psiche li attraversa entrambi, il vaso stretto al petto.",
 	.Intro_IV_6b    = "La luce del giorno è vicina. Il vaso pesa tra le mani: che cosa ci sarà dentro?",
 	.Intro_E        = "Desta dalla freccia di Amore, Psiche risale verso la luce, il vaso di nuovo chiuso tra le mani.",
+	.Intro_Ec       = "Sull'Olimpo Psiche ritrova il palazzo dove tutto era cominciato, e questa volta ogni cosa è in piena luce.",
+	.Intro_Eb       = "Sulla vetta del mondo la terra e il cielo si scambiano di posto: Giove manda la sua aquila a prendere Psiche.",
 	.Intro_IV_5     = "Con il vaso tra le mani, Psiche lascia la casa di Proserpina: tra lei e il fiume, le rive dei morti.",
 	.Intro_IV_5b    = "Di nuovo il fiume nero: tre barche, e nessuna l'aspetta dove le serve.",
 	.Intro_IV_4     = "Caronte fa la spola sul fiume nero. Al di là, sotto l'acqua, la casa di Proserpina.",
@@ -1186,6 +1219,7 @@ IT := [Key]string {
 	.Hint_Eagle     = "Sei sul trespolo: premi Spazio e l'aquila ti porterà dove brilla la luce d'oro",
 	.Hint_Eagle_No_Floor = "L'aquila non si muove: dove ti poserebbe non c'è ancora terra",
 	.Hint_Boat      = "Caronte aspetta: premi Spazio per salire sulla barca",
+	.Hint_Ascent    = "L'aquila di Giove ti aspetta: premi Spazio e ti porterà in cielo",
 	.Hint_Ferry_Away = "La barca è sull'altra riva: Caronte non torna a prenderti",
 	.Hint_Guard     = "Qui è buio: accendi la lucerna accanto al candelabro, e la sua luce ti mostrerà la via",
 	.Hint_Lamp_Day  = "Il sole mostra già la verità: la fiamma aspetta la sera",
@@ -1217,6 +1251,7 @@ IT := [Key]string {
 	.Hint_Pomegranate_Pad = "Sei su una melagrana: premi {RT} e il mondo si capovolgerà",
 	.Hint_Eagle_Pad = "Sei sul trespolo: premi {S} e l'aquila ti porterà dove brilla la luce d'oro",
 	.Hint_Boat_Pad  = "Caronte aspetta: premi {S} per salire sulla barca",
+	.Hint_Ascent_Pad = "L'aquila di Giove ti aspetta: premi {S} e ti porterà in cielo",
 	.Hint_Rest_Pad  = "Un braciere acceso: se ti perdi, {E} ti riporta qui. Tenuto premuto, ricomincia il livello",
 	.Hint_Rest_Twice_Pad = "Un braciere acceso: se ti perdi, {E} ti riporta qui. Premuto due volte, ricomincia il livello",
 	.Pad_Cross      = "Croce",
@@ -1365,6 +1400,19 @@ EN := [Key]string {
 	.Aw_Cupid       = "Cupid, healed, comes down to her: he gathers the sleep from her face and shuts it back in the box.",
 	.Aw_Wake        = "Then he wakes her with the harmless point of an arrow.",
 	.Aw_Alone       = "Cupid flies up to the highest heaven. Psyche, the box in her hands, takes up the climb again.",
+	.Wd_Cup         = "Jupiter hands her the cup of ambrosia: \"Drink, Psyche, and be immortal.\"",
+	.Wd_Feast       = "The wedding is held: the Hours scatter roses, the Graces perfume, the Muses sing, Apollo plays the lyre.",
+	.Wd_Child       = "In due time a daughter is born to them, and they call her Pleasure.",
+	.Cr_End         = "The End",
+	.Cr_After       = "after the tale of Cupid and Psyche, Apuleius, Metamorphoses IV–VI",
+	.Cr_Made        = "Designed and made by",
+	.Cr_Copilot     = "with Claude Code as copilot",
+	.Cr_Built       = "Built",
+	.Cr_Engine      = "in Odin, with raylib",
+	.Cr_Generated   = "every image and every sound generated in code",
+	.Cr_Fonts       = "Fonts",
+	.Cr_Ofl         = "SIL Open Font License",
+	.Cr_Thanks      = "Thank you for playing",
 
 	.Level_I_1      = "Zephyr's Crag",
 	.Level_I_2      = "The Invisible Palace",
@@ -1650,6 +1698,8 @@ EN := [Key]string {
 	.Intro_IV_6     = "Above, the crags of the dead climb toward Taenarus; below, Proserpina's courts. Psyche crosses both, the box held to her breast.",
 	.Intro_IV_6b    = "The light of day is near. The box weighs in her hands: what can be inside?",
 	.Intro_E        = "Woken by Cupid's arrow, Psyche climbs back toward the light, the box shut again in her hands.",
+	.Intro_Ec       = "On Olympus Psyche finds again the palace where it all began, and this time everything is in full light.",
+	.Intro_Eb       = "On the summit of the world, earth and sky turn one into the other: Jupiter sends his eagle for Psyche.",
 	.Intro_IV_5     = "With the box in her hands, Psyche leaves Proserpina's house: between her and the river, the banks of the dead.",
 	.Intro_IV_5b    = "The black river again: three boats, and none waits where she needs it.",
 	.Intro_IV_4     = "Charon plies the black river. Beyond it, under the water, Proserpina's house.",
@@ -1732,6 +1782,7 @@ EN := [Key]string {
 	.Hint_Eagle     = "You stand on the perch: press Space and the eagle will carry you where the golden light shines",
 	.Hint_Eagle_No_Floor = "The eagle does not stir: where it would set you down there is no ground yet",
 	.Hint_Boat      = "Charon is waiting: press Space to board the boat",
+	.Hint_Ascent    = "Jupiter's eagle is waiting for you: press Space and it will carry you up to the sky",
 	.Hint_Ferry_Away = "The boat is on the other bank: Charon does not come back for you",
 	.Hint_Guard     = "It is dark here: light the lamp beside the candelabrum, and its light will show you the way",
 	.Hint_Lamp_Day  = "The sun already shows the truth: the flame waits for the evening",
@@ -1763,6 +1814,7 @@ EN := [Key]string {
 	.Hint_Pomegranate_Pad = "You stand on a pomegranate: press {RT} and the world will turn over",
 	.Hint_Eagle_Pad = "You stand on the perch: press {S} and the eagle will carry you where the golden light shines",
 	.Hint_Boat_Pad  = "Charon is waiting: press {S} to board the boat",
+	.Hint_Ascent_Pad = "Jupiter's eagle is waiting for you: press {S} and it will carry you up to the sky",
 	.Hint_Rest_Pad  = "A lit brazier: if you lose your way, {E} brings you back here. Held down, it restarts the level",
 	.Hint_Rest_Twice_Pad = "A lit brazier: if you lose your way, {E} brings you back here. Pressed twice, it restarts the level",
 	.Pad_Cross      = "Cross",

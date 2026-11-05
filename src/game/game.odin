@@ -235,6 +235,8 @@ Game :: struct {
 	overturn:       f32, // 0 the world as described .. 1 turned over, follows palace.upside (render turns the world by it)
 	descent:        f32, // a level that goes down or up: 0 at the start's height .. 1 at the exit's (the look there)
 	ferried:        bool, // the exit was by Charon's boat (phase Ending_Exit: its own timeline)
+	wedded:         bool, // the exit was the wedding (`wedding`; phase Ending_Exit: its own timeline): the game ends
+	lifted:         bool, // the exit was in the talons of Jupiter's eagle (`ascent`; phase Ending_Exit: its own timeline)
 	parting:        bool, // at the exit this diorama breaks up (after the boat, if it took her), in the open: no veil
 	arrive_veiled:  bool, // the arrival comes through the veil (not from the level's diorama before)
 	arrive_traced:  bool, // set by the app: between levels, gold traces the blocks as they rise
@@ -707,9 +709,15 @@ update :: proc(g: ^Game, dt: f32) {
 	case .Ending_Exit:
 		if g.ferried {
 			update_ferry(g, dt)
-			if g.phase_t - dt < BOAT_PART && g.phase_t >= BOAT_PART {
-				audio.play(.Rumble, -14, 0.8) // the boat is gone: the diorama breaks up
-			}
+		}
+		if g.lifted {
+			update_ascent(g, dt)
+		}
+		if g.wedded {
+			update_wedding(g, dt)
+		}
+		if away := carried_away(g); away > 0 && crossed(g.phase_t, dt, away) {
+			audio.play(.Rumble, -14, 0.8) // the boat or the eagle is gone: the diorama breaks up
 		}
 		if g.boxed {
 			update_box(g, dt)
@@ -962,8 +970,15 @@ at_eagle :: proc(g: ^Game) -> bool {
 }
 
 // The eagle on the perch at her feet carries her to its landing; with no
-// floor there, it does not stir (and she is told why).
+// floor there, it does not stir (and she is told why). At the exit of an
+// `ascent` it carries her up and away: the diorama ends.
 call_eagle :: proc(g: ^Game) -> bool {
+	if at_ascent(g) {
+		g.lifted = true
+		start_ending(g, .Ending_Exit)
+		audio.play(.Wings, -8)
+		return true
+	}
 	if !on_perch(g) {
 		return false
 	}
@@ -1331,6 +1346,9 @@ flight_point :: proc(g: ^Game, a, b: Vec3, u: f32) -> Vec3 {
 // Where eagle i is, which way it faces (world yaw) and how far its wings are
 // spread (0 folded on its perch .. 1 open).
 eagle_pose :: proc(g: ^Game, i: int) -> (pos: Vec3, yaw: f32, spread: f32) {
+	if i == len(g.data.eagles) {
+		return ascent_eagle(g)
+	}
 	e := g.data.eagles[i]
 	perch := Vec3{f32(e.from.x), f32(e.from.y), f32(e.from.z)} + EAGLE_PERCH
 	land := pl.node_world(&g.palace, e.to)
@@ -1359,6 +1377,76 @@ eagle_pose :: proc(g: ^Game, i: int) -> (pos: Vec3, yaw: f32, spread: f32) {
 
 // Where the eagle sits on its post, in cell space (the post: render's Perch).
 EAGLE_PERCH :: Vec3{0.78, 0.22, 0.86}
+
+// Every eagle of the level: those on their perches (data.eagles, in order),
+// then the one waiting at the exit of an `ascent`.
+eagle_count :: proc(g: ^Game) -> int {
+	return len(g.data.eagles) + (g.data.has_ascent ? 1 : 0)
+}
+
+// The perch of eagle i (as eagle_count counts them).
+eagle_home :: proc(g: ^Game, i: int) -> Cell {
+	return i < len(g.data.eagles) ? g.data.eagles[i].from : g.data.exit
+}
+
+// --- Jupiter's eagle at the exit (the epilogue) -----------------------------------------
+
+// Timeline of the ascent: the eagle comes down from its perch onto her
+// shoulders, lifts her and carries her up into the sky; once they are lost
+// in it the diorama breaks up.
+ASCENT_TAKE :: 0.9 // the eagle from its perch onto her
+ASCENT_PART :: 3.4 // high in the sky: the diorama starts to break up
+ASCENT_GONE :: 4.6 // lost in the light
+ASCENT_HIGH :: 16 // how high it carries her (cells)
+
+// Psyche stands still at the exit where the eagle waits (the action of the place shows).
+at_ascent :: proc(g: ^Game) -> bool {
+	return standing(g) && g.data.has_ascent && g.psyche.cell == g.data.exit && upright(g, false)
+}
+
+// Time into the ascent (held at its end once the level is over).
+@(private)
+ascent_t :: proc(g: ^Game) -> f32 {
+	return g.phase == .Finished ? ASCENT_GONE : g.phase_t
+}
+
+@(private)
+update_ascent :: proc(g: ^Game, dt: f32) {
+	t := ascent_t(g)
+	k := fx.quad_in(fx.clamp01((t - ASCENT_TAKE) / (ASCENT_GONE - ASCENT_TAKE)))
+	g.psyche.pos = pl.stand_world(&g.palace, g.data.exit) + {0, 0, ASCENT_HIGH * k}
+	if crossed(t, dt, ASCENT_TAKE) {
+		audio.play(.Good, -12, audio.semitones(12))
+	}
+}
+
+// How much the light has taken her and the eagle (0 .. 1 gone).
+ascent_fade :: proc(g: ^Game) -> f32 {
+	if !g.lifted {
+		return 0
+	}
+	return fx.progress(ascent_t(g), ASCENT_PART, ASCENT_GONE - ASCENT_PART)
+}
+
+// The eagle at the exit: folded on its perch, facing the middle of the
+// diorama; called, it comes down onto her shoulders and carries her up.
+@(private)
+ascent_eagle :: proc(g: ^Game) -> (pos: Vec3, yaw: f32, spread: f32) {
+	c := g.data.exit
+	perch := Vec3{f32(c.x), f32(c.y), f32(c.z)} + EAGLE_PERCH
+	mid := f32(g.data.size) * 0.5
+	yaw = math.atan2(mid - perch.y, mid - perch.x)
+	if !g.lifted {
+		return perch, yaw, 0
+	}
+	t := ascent_t(g)
+	held := g.psyche.pos + {0, 0, EAGLE_HOLD}
+	if t < ASCENT_TAKE {
+		k := fx.sine_in_out(t / ASCENT_TAKE)
+		return fx.lerp(perch, held, k) + {0, 0, 0.5 * math.sin(math.PI * k)}, yaw, k
+	}
+	return held, yaw, 1
+}
 
 // A point on the way from cell a to the next cell b (u = 0..1), on the
 // ground: stairs are climbed tread by tread.
@@ -1484,8 +1572,10 @@ arrive :: proc(g: ^Game, n: Cell) {
 	if g.phase != .Play {
 		return
 	}
-	if g.data.has_exit && n == g.data.exit && upright(g, g.data.exit_under) && !g.data.has_boat {
+	if g.data.has_exit && n == g.data.exit && upright(g, g.data.exit_under) && !g.data.has_boat && !g.data.has_ascent {
 		start_ending(g, .Ending_Exit)
+	} else if g.data.has_ascent && n == g.data.exit && upright(g, false) {
+		hint(g, .Hint_Ascent, 0)
 	} else if g.data.has_boat && n == g.data.boat.cell {
 		hint(g, .Hint_Boat, 0)
 	} else if f, k := pl.ferry_at(&g.palace, n); f >= 0 && pl.boat_moored(g.palace.boats, f, k) {
@@ -1931,9 +2021,12 @@ start_ending :: proc(g: ^Game, p: Phase) {
 		audio.play(.Good, -2)
 	case .Ending_Exit:
 		g.boxed = g.data.has_box && !g.ferried
-		g.parting = !g.boxed
+		g.wedded = g.data.has_wedding
+		g.parting = !g.boxed && !g.wedded
 		switch {
 		case g.ferried: audio.play(.Oar, -10)
+		case g.lifted: audio.play(.Wind, -16, 0.7)
+		case g.wedded: audio.play(.Reveal, -10, audio.semitones(5))
 		case g.boxed: audio.play(.Wind, -16, 0.5)
 		case: audio.play(.Rumble, -14, 0.8) // it breaks up
 		}
@@ -1980,21 +2073,31 @@ arrival_rise :: proc(g: ^Game, d: f32, jitter: f32) -> f32 {
 	return fx.cubic_out(fx.progress(g.arrive_t, 0.45 + d * 0.08 + jitter * 0.15, 1.0))
 }
 
-// How long the exit lasts: the crossing in Charon's boat, the box opened, or
-// the diorama breaking up.
+// How long the exit lasts: the crossing in Charon's boat or the flight in the
+// eagle's talons, then the diorama breaking up; the box opened.
 exit_end :: proc(g: ^Game) -> f32 {
 	switch {
-	case g.ferried: return BOAT_PART + PART_END
 	case g.boxed: return BOX_END
+	case g.wedded: return WED_END
 	}
-	return PART_END
+	return carried_away(g) + PART_END
+}
+
+// When the boat or the eagle that took her at the exit is gone (and the
+// diorama starts to break up): 0 if she left on foot.
+carried_away :: proc(g: ^Game) -> f32 {
+	switch {
+	case g.ferried: return BOAT_PART
+	case g.lifted: return ASCENT_PART
+	}
+	return 0
 }
 
 // Time into the break-up of the diorama at its exit (0 before it begins: it
 // begins at once, or once the boat is lost in the mist).
 part_t :: proc(g: ^Game) -> f32 {
 	t := g.phase == .Finished ? exit_end(g) : g.phase_t
-	return max(t - (g.ferried ? BOAT_PART : 0), 0)
+	return max(t - carried_away(g), 0)
 }
 
 // Timeline of a diorama breaking up at an exit (but the box's):
@@ -2044,6 +2147,8 @@ veil :: proc(g: ^Game) -> f32 {
 	switch {
 	case g.parting && (g.phase == .Ending_Exit || g.phase == .Finished), g.phase == .Arrival && !g.arrive_veiled:
 		return 0 // the diorama breaks up and the next rises, in the open
+	case g.phase == .Ending_Exit && g.wedded:
+		return fx.sine_in_out(fx.progress(g.phase_t, WED_VEIL, WED_END - WED_VEIL))
 	case g.phase == .Ending_Exit:
 		return fx.sine_in_out(fx.progress(g.phase_t, BOX_VEIL, BOX_VEIL_TIME))
 	case g.phase == .Finished && g.ending == .Exit:
@@ -2057,7 +2162,7 @@ veil :: proc(g: ^Game) -> f32 {
 // How far Psyche has gone down with her stone (cells, below zero) as the
 // diorama breaks up at the exit.
 exit_lift :: proc(g: ^Game) -> f32 {
-	if !g.parting || g.ferried || g.phase != .Ending_Exit && g.phase != .Finished {
+	if !g.parting || g.ferried || g.lifted || g.phase != .Ending_Exit && g.phase != .Finished {
 		return 0
 	}
 	return -9 * (1 - assembly(g, g.psyche.cell - {0, 0, 1}, 1))
@@ -2510,6 +2615,11 @@ update_effects :: proc(g: ^Game, dt: f32) {
 	}
 	if g.amore.fly_t >= 0 {
 		g.amore.fly_t += dt
+	}
+	if g.data.has_wedding && !g.wedded {
+		// on Olympus he waits for her in the open: his figure shown, breathing
+		g.amore.reveal = 1
+		g.amore.breath = 1.6
 	}
 	for &t in g.eagle_back {
 		if t >= 0 {
@@ -2972,7 +3082,7 @@ candelabrum_flame :: proc(g: ^Game, i: int) -> f32 {
 is_tutorial :: proc(key: Key) -> bool {
 	#partial switch key {
 	case .Hint_Move, .Hint_Turn, .Hint_Lamp, .Hint_Illusion, .Hint_Sigil, .Hint_Oil, .Hint_Rest,
-	     .Hint_Veiled, .Hint_Trap, .Hint_Handle, .Hint_Sundial, .Hint_Pomegranate, .Hint_Eagle, .Hint_Boat, .Hint_Guard, .Hint_Fragment:
+	     .Hint_Veiled, .Hint_Trap, .Hint_Handle, .Hint_Sundial, .Hint_Pomegranate, .Hint_Eagle, .Hint_Ascent, .Hint_Boat, .Hint_Guard, .Hint_Fragment:
 		return true
 	}
 	return false
@@ -2988,4 +3098,107 @@ hint :: proc(g: ^Game, key: Key, seconds: f32, again := false) {
 	}
 	g.hinted[key] = true
 	show(&g.hud.hint, key, 0.5, seconds > 0 ? seconds : -1, 1.0)
+}
+
+// --- the wedding (the epilogue's end) ------------------------------------------------
+
+// Timeline of the wedding at the exit beside Cupid (`wedding`): Jupiter's
+// light comes down to her with the cup of ambrosia; she drinks and her wings
+// turn gold as his; he takes her in his light, the Hours scatter roses over
+// the palace; the light closes over them and the game ends.
+WED_CUP :: 1.2 // the cup comes down out of the sky...
+WED_DRINK :: 4.4 // ...to her lips
+WED_GOLD :: 4.6 // her wings turn gold...
+WED_GOLD_TIME :: 2.4
+WED_EMBRACE :: 6.0 // ...he takes her in his light
+WED_PETALS :: 7.0 // the Hours scatter roses
+WED_CHILD :: 12.5 // the last caption: their daughter
+WED_VEIL :: 17.0 // the light closes over them
+WED_END :: 20.0
+
+// Time into the wedding (ok: it is playing or has played).
+wedding_time :: proc(g: ^Game) -> (t: f32, ok: bool) {
+	if !g.wedded || !(g.phase == .Ending_Exit || g.phase == .Finished && g.ending == .Exit) {
+		return
+	}
+	return g.phase == .Finished ? WED_END : g.phase_t, true
+}
+
+@(private)
+update_wedding :: proc(g: ^Game, dt: f32) {
+	t := g.phase_t
+	face_point(g, amore_world(g))
+	g.amore.reveal = 1
+	g.amore.embrace = fx.sine_in_out(fx.progress(t, WED_EMBRACE, 3))
+	g.amore.breath = fx.lerp(f32(1.6), 2.6, g.amore.embrace)
+	if crossed(t, dt, WED_CUP) {
+		audio.play(.Wind, -16, 1.2)
+	}
+	if crossed(t, dt, WED_DRINK) {
+		audio.play(.Reveal, -8)
+	}
+	if crossed(t, dt, WED_EMBRACE) {
+		audio.play(.Good, -10)
+	}
+	if crossed(t, dt, WED_PETALS) {
+		audio.play(.Seam, -16, audio.semitones(12))
+	}
+	if crossed(t, dt, WED_VEIL) {
+		audio.play(.Good, -14, audio.semitones(7))
+	}
+}
+
+// The cup of ambrosia coming down from the sky to her lips (ok while it shows).
+wedding_cup :: proc(g: ^Game) -> (pos: Vec3, alpha: f32) {
+	t, ok := wedding_time(g)
+	if !ok || t < WED_CUP - 0.5 {
+		return
+	}
+	lips := g.psyche.pos + {0, 0, 0.62}
+	from := lips + {-3, 3, 9}
+	u := fx.sine_in_out(fx.progress(t, WED_CUP, WED_DRINK - WED_CUP))
+	pos = fx.lerp(from, lips, u)
+	alpha = fx.progress(t, WED_CUP - 0.5, 0.8) * (1 - fx.progress(t, WED_DRINK, 0.6))
+	return
+}
+
+// How far her wings have turned gold (0 .. 1).
+wedding_gold :: proc(g: ^Game) -> f32 {
+	t, ok := wedding_time(g)
+	if !ok {
+		return 0
+	}
+	return fx.sine_in_out(fx.progress(t, WED_GOLD, WED_GOLD_TIME))
+}
+
+// How thick the roses fall (0 .. 1) and how long they have been falling.
+wedding_petals :: proc(g: ^Game) -> (amount, since: f32) {
+	t, ok := wedding_time(g)
+	if !ok || t < WED_PETALS {
+		return
+	}
+	return fx.progress(t, WED_PETALS, 2), t - WED_PETALS
+}
+
+// The wedding's caption of the moment and its opacity.
+wedding_caption :: proc(g: ^Game) -> (key: Key, alpha: f32) {
+	t, ok := wedding_time(g)
+	if !ok || g.phase != .Ending_Exit {
+		return
+	}
+	Caption :: struct {
+		key:      Key,
+		from, to: f32,
+	}
+	captions := [?]Caption {
+		{.Wd_Cup, 0.8, WED_GOLD + 1.6},
+		{.Wd_Feast, WED_GOLD + 2.0, WED_CHILD - 0.3},
+		{.Wd_Child, WED_CHILD, WED_VEIL + 1.2},
+	}
+	for c in captions {
+		if t >= c.from && t < c.to {
+			return c.key, fx.clamp01((t - c.from) / 0.7) * fx.clamp01((c.to - t) / 0.7)
+		}
+	}
+	return
 }

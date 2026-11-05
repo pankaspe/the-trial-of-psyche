@@ -50,7 +50,14 @@ draw_hud :: proc(u: ^Ui, g: ^game.Game, input: Hud_Input = {}) -> (act: Hud_Acti
 		draw_prologue(u, g, input)
 		return
 	}
-	cinema_bars(u, game.cine(g).bars)
+	bar := cinema_bars(u, game.cine(g).bars)
+	if key, a := game.wedding_caption(g); a > 0 {
+		// the wedding's captions, in the lower band as a cutscene's
+		st := Style{size = 34, color = TITLE, face = .Italic}
+		msg := i18n.tr(key)
+		bh := block_height(u, msg, st, 1500 * s)
+		paragraph(u, msg, {w * 0.5, h - bar * 0.5 - bh * 0.5}, st, 1500 * s, a)
+	}
 
 	// title and voice stay visible even when the rest of the HUD is hidden
 	if a := game.fade_alpha(hud.title); a > 0 {
@@ -552,7 +559,7 @@ flame :: proc(u: ^Ui, c: Vec2, k: f32, col: rl.Color) {
 @(private)
 draw_place :: proc(u: ^Ui, g: ^game.Game, hud: Hud_Input, act: ^Hud_Action) {
 	k := hud_k(u)
-	cave, eagle, boat := game.at_cave(g), game.on_perch(g), game.at_boat(g) || game.at_ferry(g)
+	cave, eagle, boat := game.at_cave(g), game.on_perch(g) || game.at_ascent(g), game.at_boat(g) || game.at_ferry(g)
 	here := cave || eagle || boat
 	switch {
 	case cave: u.place_key = .Place_Cave

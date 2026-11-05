@@ -6,6 +6,16 @@ Kinds: **feature** (new code or mechanic) · **level** (a level built or rebuilt
 **rework** (something existing redone) · **refactor** (same behaviour, cleaner code) ·
 **fix** · **removal** · **sound** · **ui** · **tooling** · **docs**
 
+## 2026-11-05
+
+| Title | Kind | Description |
+|---|---|---|
+| The end of the game: the wedding and the credits | feature | Beside Cupid the wedding plays: the cup of ambrosia comes down to her, her wings turn gold as his, the Hours scatter roses over the palace; then the credits, and the title. |
+| The epilogue's wedding: the palace found again | level | The epilogue's last diorama: the invisible palace of I.2 on Olympus, its seams as they were; a farewell to the tools (the spindle swings the bridge, the lamp lights the nuptial torch) up to Cupid; the last fragment, the frame of the tale (VI.23-24). |
+| The threshold of heaven | level | The epilogue's second diorama, the hardest of the game: two slabs turning on the floor of both worlds, crossed handles, the flip, the ferry, the seals of the dead and hers, an illusion to her second seal, a veiled stone; the summit at dawn above, Olympus under (VI.22-23). |
+| Olympus | feature | A new place for the world turned over: a gold morning high over a sea of clouds, doves, marble in the morning light. |
+| Jupiter's eagle at the exit | feature | A diorama can end on a perch where Jupiter's eagle waits: called, it takes her up into the light, and the next diorama rises. |
+
 ## 2026-11-02
 
 | Title | Kind | Description |

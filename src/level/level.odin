@@ -100,6 +100,7 @@ Setting :: enum u8 {
 	Asphodel, // the land of the dead over Proserpina's kingdom: a cold violet dusk, clouds of ash drifting
 	Asphodel_Night, // the same by night: a violet dark, a cold pale moon, the ash over it
 	Dis, // Proserpina's kingdom, the world turned over: a sky of fire over a sea of lava
+	Olympus, // the threshold of Olympus, the world turned over (the epilogue): a gold morning over a sea of light
 }
 
 SETTING_NAME := [Setting]string {
@@ -124,6 +125,7 @@ SETTING_NAME := [Setting]string {
 	.Asphodel      = "asphodel",
 	.Asphodel_Night = "asphodel_night",
 	.Dis           = "dis",
+	.Olympus       = "olympus",
 }
 
 // How a block behaves (Act II): fixed stone, or one that changes for good.
@@ -329,6 +331,8 @@ Level_Data :: struct {
 	boat:         Boat, // Charon's boat at the exit (`has_boat`): Space boards it
 	has_boat:     bool,
 	has_box:      bool, // the act's last level (`box`): at the exit she opens Proserpina's box and the sleep takes her
+	has_wedding:  bool, // the epilogue's end (`wedding`): at the exit, beside Cupid, the wedding on Olympus; the game ends
+	has_ascent:   bool, // the epilogue (`ascent`): Jupiter's eagle waits on a perch at the exit; Space, and it carries her up and away
 	evening:      Setting, // a level with sundials: the look at evening
 	sundials:     [dynamic]Cell, // Act III: standing on one, the spindle turns the time (day <-> evening); the level starts by day
 	rams:         [dynamic]Ram, // the Sun's rams: standing by day, lying (a step) at evening
@@ -987,6 +991,12 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 		case "box":
 			data.has_box = true
 
+		case "ascent":
+			data.has_ascent = true
+
+		case "wedding":
+			data.has_wedding = true
+
 		case "lamp":
 			data.has_lamp = true
 			if len(args) > 0 {
@@ -1225,6 +1235,12 @@ parse :: proc(text: string, allocator := context.allocator) -> (data: Level_Data
 	}
 	if data.has_boat && (!data.has_exit || data.boat.cell != data.exit) {
 		return data, fail(0, "charon: the boat is moored at the exit (its landing is the exit cell)")
+	}
+	if data.has_wedding && (!data.has_exit || !data.has_amore || data.has_boat || data.has_box || data.has_ascent) {
+		return data, fail(0, "wedding: the exit is beside Cupid (amore), with no boat, box or eagle there")
+	}
+	if data.has_ascent && (!data.has_exit || data.exit_under || data.has_boat || data.has_box) {
+		return data, fail(0, "ascent: the eagle waits at the exit, in the world above (no boat, no box there)")
 	}
 	if data.has_below && len(data.sundials) > 0 {
 		return data, fail(0, "below: a level that goes down does not turn between day and evening")

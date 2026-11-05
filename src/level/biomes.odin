@@ -18,6 +18,7 @@ Biome :: enum u8 {
 	Tower, // the high tower over the mouth of the underworld
 	Taenarus, // the land of the dead: ash, black rock, the dark water
 	Dis, // Proserpina's kingdom, under the land of the dead
+	Olympus, // the threshold of Olympus, under the last summit (the epilogue)
 }
 
 Biome_Info :: struct {
@@ -44,6 +45,7 @@ BIOMES := [Biome]Biome_Info {
 		fish = 1,
 		light = .Crag_Day,
 		rim = .Rock,
+		upside = .Olympus,
 		props = #partial {.Shrub = 3, .Cairn = 2, .Pine = 2, .Lip = 2, .Boulder = 2, .Brazier = 1},
 	},
 	.Forest = {
@@ -106,5 +108,10 @@ BIOMES := [Biome]Biome_Info {
 		name = "dis",
 		light = .Dis,
 		props = #partial {.Rail = 3, .Pillar = 3, .Sconce = 2, .Arch = 1, .Urn = 1, .Cypress = 1},
+	},
+	.Olympus = {
+		name = "olympus",
+		light = .Olympus,
+		props = #partial {.Rail = 3, .Pillar = 3, .Arch = 2, .Statue = 1, .Urn = 1, .Cypress = 1, .Sconce = 1, .Myrtle = 1, .Rose = 1, .Vase = 1, .Brazier = 1},
 	},
 }

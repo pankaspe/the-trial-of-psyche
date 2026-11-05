@@ -51,6 +51,7 @@ Screen :: enum u8 {
 	Pause,
 	Settings,
 	Ending,
+	Credits, // after the wedding: the end, who made the game
 }
 
 Ending_Info :: ui.Ending_Info
@@ -110,6 +111,7 @@ App :: struct {
 	target:          rl.RenderTexture2D, // offscreen canvas (--shots DIR --size WxH)
 	has_target:      bool,
 	post:            render.Post,
+	credits_t:       f32, // time into the credits
 	black_t:         f32, // < 0, or time since the screen began to fade to black (end of an act)
 	black_next:      int, // the level that follows the black
 	passage_t:       f32, // < 0, or time since Continue (or Retry) left the card over a level that broke up
@@ -318,6 +320,7 @@ SETTING_BED := [level.Setting]audio.Bed {
 	.Asphodel      = .Deep_Night,
 	.Asphodel_Night = .Deep_Night,
 	.Dis           = .Fire,
+	.Olympus       = .Garden,
 }
 
 // What the mixer plays: the act's music (silent while the screen goes
@@ -612,6 +615,13 @@ finish_level :: proc(app: ^App) {
 	}
 	unlocked := progress.complete_level(&app.prog, r)
 	save_progress(app)
+	if g.wedded {
+		// the tale is over: the credits, then the title
+		announce(app, unlocked)
+		app.screen = .Credits
+		app.credits_t = 0
+		return
+	}
 	app.ending = {
 		ending       = g.ending,
 		level        = g.level_index,
@@ -761,6 +771,9 @@ frame :: proc(app: ^App) {
 	}
 	if app.screen == .Ending {
 		app.card_t += dt
+	}
+	if app.screen == .Credits {
+		app.credits_t += dt
 	}
 	if app.screen == .Card {
 		update_act_card(app, dt)
@@ -943,6 +956,10 @@ back :: proc(app: ^App) -> bool {
 		app.screen = app.codex_from
 	case .Card:
 		dismiss_act_card(app)
+	case .Credits:
+		if app.credits_t > 2 {
+			to_title(app)
+		}
 	case .Fragment:
 		close_fragment(app)
 	case .Mechanic:
@@ -1336,6 +1353,10 @@ draw_screens :: proc(app: ^App) {
 		}
 		if ui.codex(u, g, reach, over_level) {
 			back(app)
+		}
+	case .Credits:
+		if ui.credits(u, app.credits_t) {
+			to_title(app)
 		}
 	case .Card:
 		c := app.act_card

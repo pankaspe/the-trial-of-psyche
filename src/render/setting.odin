@@ -579,6 +579,37 @@ LOOKS := [level.Setting]Look {
 		under_glow = {0.75, 0.2, 0.03},
 		mote = {1.0, 0.5, 0.14, 0.75},
 	},
+	// the threshold of Olympus, the world turned over (the epilogue): the gods'
+	// morning, high above the ranges: a deep clear blue going to gold, the sun
+	// high in a wide halo, a sea of clouds lit gold
+	.Olympus = {
+		sky_top = {0.10, 0.22, 0.52},
+		sky_mid = {0.46, 0.56, 0.80},
+		sky_horizon = {1.0, 0.88, 0.62},
+		orb_pos = {0.66, 0.24},
+		orb_radius = 0.028,
+		orb_color = {1.0, 0.96, 0.84},
+		halo_color = {0.95, 0.78, 0.46},
+		halo_width = 3,
+		stars = 0,
+		haze = {0.98, 0.86, 0.66},
+		islands = false,
+		ridges = 0,
+		ridge_color = {{0.80, 0.74, 0.70}, {0.70, 0.62, 0.62}, {0.60, 0.52, 0.54}},
+		ridge_rim = {1.0, 0.90, 0.70},
+		cloud_back = {0.96, 0.86, 0.70},
+		cloud_front = {1.0, 0.95, 0.86},
+		cloud_crest = {0.22, 0.15, 0.10},
+		mist = {0.96, 0.88, 0.74},
+		water = {0.50, 0.62, 0.86, 0.80},
+		glint = {1.0, 0.92, 0.70, 0.7},
+		daylight = 1,
+		candles = true,
+		morning = 1,
+		day_clouds = 0.5,
+		birds = .Doves,
+		mote = {1.0, 0.88, 0.56, 0.55},
+	},
 	// the palace of voices at twilight: the sun is gone, its last light low on
 	// the clouds, the first stars, the moon rising; the candles are lit
 	.Dusk = {
