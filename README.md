@@ -15,7 +15,7 @@ from Apuleius' tale of Cupid and Psyche.*
 
 <br><br>
 
-<a href="https://github.com/pankaspe/the-trial-of-psyche/releases/latest"><img src="https://img.shields.io/badge/download-beta%20for%20Linux-c9a24a?style=for-the-badge&labelColor=1d1530&logo=linux&logoColor=f3e3c3" alt="Download the beta for Linux"></a>
+<a href="https://github.com/pankaspe/the-trial-of-psyche/releases/tag/v0.9.0-beta"><img src="https://img.shields.io/badge/download-beta%20for%20Linux-c9a24a?style=for-the-badge&labelColor=1d1530&logo=linux&logoColor=f3e3c3" alt="Download the beta for Linux"></a>
 <a href="https://trialofpsyche.com/changelog"><img src="https://img.shields.io/badge/read%20the-changelog-c9a24a?style=for-the-badge&labelColor=1d1530" alt="Read the changelog"></a>
 
 </div>
@@ -49,7 +49,7 @@ wedding on Olympus.
 
 ## Play the beta
 
-The [public beta](https://github.com/pankaspe/the-trial-of-psyche/releases/latest)
+The [public beta](https://github.com/pankaspe/the-trial-of-psyche/releases/tag/v0.9.0-beta)
 holds the whole game. Download the archive, unpack it and run `./trial-of-psyche`:
 Linux x86_64 (glibc 2.29 or newer, Ubuntu 20.04+, Debian 11+, Fedora, Arch,
 SteamOS...), OpenGL 3.3, nothing to install. Nothing is final yet: texts, balance
