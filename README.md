@@ -136,6 +136,35 @@ every level's solution to the end.
 | erase a game | Del | X |
 | pause | Esc | Start |
 
+## Build from source
+
+The beta's download is for Linux x86_64 only, but the game is plain
+[Odin](https://odin-lang.org) and [raylib](https://www.raylib.com), so it should also
+build on Windows, macOS and Linux on ARM. Those builds are **not tested yet**: if you
+try one, a [playtest note](https://github.com/pankaspe/the-trial-of-psyche/issues/new/choose)
+on how it went (even "it doesn't build") helps a lot.
+
+1. Install Odin **dev-2026-10** or newer ([how](https://odin-lang.org/docs/install/)).
+   It already includes raylib 6, the only library the game needs; nothing else to
+   download.
+2. Get the source and build it, from the repository's folder:
+
+   ```sh
+   git clone https://github.com/pankaspe/the-trial-of-psyche.git
+   cd the-trial-of-psyche
+   odin build src -out:trial-of-psyche -o:speed        # Linux, macOS
+   odin build src -out:trial-of-psyche.exe -o:speed    # Windows
+   ```
+
+3. Run `./trial-of-psyche` (`trial-of-psyche.exe` on Windows). The levels, shaders
+   and fonts are inside the binary: it can be moved anywhere on its own.
+
+On Linux the X11 development files are needed for linking (`libx11-dev` on
+Debian/Ubuntu, `libX11-devel` on Fedora). You need a GPU with OpenGL 3.3. Saves
+and settings go to the system's usual folder for settings (`~/.config/` on
+Linux, `%APPDATA%` on Windows, `~/Library/Application Support/` on macOS), under
+`the-trial-of-psyche`.
+
 ## License
 
 Free software under the [GNU GPL v3.0](LICENSE). Fonts under the SIL Open Font
