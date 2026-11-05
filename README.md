@@ -170,11 +170,3 @@ Linux, `%APPDATA%` on Windows, `~/Library/Application Support/` on macOS), under
 Free software under the [GNU GPL v3.0](LICENSE). Fonts under the SIL Open Font
 License. Made in [Odin](https://odin-lang.org) and [raylib](https://www.raylib.com), with
 [Claude Code](https://claude.com/claude-code) as a coding copilot.
-
-<div align="center">
-
-<br>
-
-<a href="https://buymeacoffee.com/pankaspe"><img src="https://img.shields.io/badge/buy%20me%20a%20coffee-pankaspe-c9a24a?style=for-the-badge&labelColor=1d1530&logo=buymeacoffee&logoColor=f3e3c3" alt="Buy me a coffee"></a>
-
-</div>
