@@ -2,8 +2,9 @@ The Trial of Psyche
 ===================
 
 An isometric puzzle about seeing and trusting, from Apuleius' tale of Cupid
-and Psyche (Metamorphoses IV-VI). Early build: Acts I, II and III (thirteen
-levels).
+and Psyche (Metamorphoses IV-VI). Public beta: the whole tale, four acts and
+the epilogue, in Italian and English. Nothing is final yet: texts, balance and
+some levels may still change, and your notes help.
 
 Run
 ---
@@ -16,13 +17,15 @@ Everything the game needs is inside the binary.
 Controls
 --------
     Click             walk
-    Q / E  (<- / ->)  turn the diorama
+    Q / E             turn the diorama
     1 / L / right     the lamp (once Psyche has it): it burns while held
-    2 / F             the spindle (standing on a handle or a sundial)
-    Space             the action of the place (caves, the eagle)
+    2 / F             the spindle (on a handle, a sundial, a pomegranate)
+    Space             the action of the place (a cave, the eagle, the boat);
+                      held: skip a cutscene
     Tab               a light over Psyche: where is she?
-    R                 back to the last brazier; hold to restart the level
-    Esc               pause and controls
+    C                 Psyche's Notebook: the mechanics met so far
+    R                 back to the last brazier; hold to restart the diorama
+    Esc               pause
     F11               fullscreen
 
 Gamepad (Xbox names; PlayStation and Nintendo pads work too)
@@ -33,7 +36,14 @@ Gamepad (Xbox names; PlayStation and Nintendo pads work too)
     A                 the action of the place; in menus, choose
     B                 the brazier (hold: restart); in menus, back
     Y                 a light over Psyche
-    Start             pause and controls
+    X                 Psyche's Notebook
+    Start             pause
+
+Feedback
+--------
+Where did you get stuck? What was unclear? How does it run on your machine?
+Tell us here (a short form):
+    https://github.com/pankaspe/the-trial-of-psyche/issues/new/choose
 
 Saves and settings: ~/.config/the-trial-of-psyche/
 Source and news:    https://github.com/pankaspe/the-trial-of-psyche

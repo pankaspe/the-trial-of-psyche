@@ -5,7 +5,7 @@
 *An isometric puzzle about seeing and trusting,<br>
 from Apuleius' tale of Cupid and Psyche.*
 
-<img src="https://img.shields.io/badge/status-the%20tale%20is%20complete-c9a24a?style=for-the-badge&labelColor=1d1530" alt="Status: the tale is complete">
+<img src="https://img.shields.io/badge/status-public%20beta-c9a24a?style=for-the-badge&labelColor=1d1530" alt="Status: public beta">
 <img src="https://img.shields.io/badge/platform-Linux-c9a24a?style=for-the-badge&labelColor=1d1530&logo=linux&logoColor=f3e3c3" alt="Platform: Linux">
 <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-c9a24a?style=for-the-badge&labelColor=1d1530" alt="License: GPL-3.0"></a>
 
@@ -15,6 +15,7 @@ from Apuleius' tale of Cupid and Psyche.*
 
 <br><br>
 
+<a href="https://github.com/pankaspe/the-trial-of-psyche/releases/latest"><img src="https://img.shields.io/badge/download-beta%20for%20Linux-c9a24a?style=for-the-badge&labelColor=1d1530&logo=linux&logoColor=f3e3c3" alt="Download the beta for Linux"></a>
 <a href="https://trialofpsyche.com/changelog"><img src="https://img.shields.io/badge/read%20the-changelog-c9a24a?style=for-the-badge&labelColor=1d1530" alt="Read the changelog"></a>
 
 </div>
@@ -44,7 +45,16 @@ game.
 
 Four acts and an epilogue, in Italian and English, with hidden fragments of the
 tale to gather in the Book. The whole tale is now told, from the oracle to the
-wedding on Olympus; the first release is on its way.
+wedding on Olympus.
+
+## Play the beta
+
+The [public beta](https://github.com/pankaspe/the-trial-of-psyche/releases/latest)
+holds the whole game. Download the archive, unpack it and run `./trial-of-psyche`:
+Linux x86_64 (glibc 2.29 or newer, Ubuntu 20.04+, Debian 11+, Fedora, Arch,
+SteamOS...), OpenGL 3.3, nothing to install. Nothing is final yet: texts, balance
+and some levels may still change. Where you got stuck, what was unclear, how it
+runs on your machine: [leave a playtest note](https://github.com/pankaspe/the-trial-of-psyche/issues/new/choose).
 
 <table>
 <tr>

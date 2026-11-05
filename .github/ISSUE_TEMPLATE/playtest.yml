@@ -1,0 +1,50 @@
+name: Playtest notes
+description: Where you got stuck, what was unclear, what you liked, how it runs.
+title: "[playtest] "
+labels: ["playtest"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for playing the beta! Notes in English or Italian are both welcome.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The archive's name, e.g. 0.9.0-beta.
+      placeholder: 0.9.0-beta
+    validations:
+      required: true
+  - type: input
+    id: level
+    attributes:
+      label: Level
+      description: The level's id and title, as the pause shows them (e.g. III.4 The Water of the Styx, diorama 2).
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of note?
+      multiple: true
+      options:
+        - I got stuck / too hard
+        - Too easy
+        - Something was unclear (rules, a hint, a text)
+        - A bug or a crash
+        - Looks or sound
+        - Performance
+        - Something I liked
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Your notes
+      description: What happened, what you expected. A screenshot helps.
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: Your system
+      description: Distro, GPU, screen resolution, graphics quality in the settings, and the FPS if you know it.
+      placeholder: Fedora 41, Radeon RX 6600, 2560x1440, High, ~120 fps

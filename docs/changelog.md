@@ -10,6 +10,7 @@ Kinds: **feature** (new code or mechanic) · **level** (a level built or rebuilt
 
 | Title | Kind | Description |
 |---|---|---|
+| The public beta, 0.9.0 | docs | The whole game for Linux as a public beta to play and comment on: a download on GitHub, a playtest form for notes; the archive's README brought up to date. |
 | The end of the game: the wedding and the credits | feature | Beside Cupid the wedding plays: the cup of ambrosia comes down to her, her wings turn gold as his, the Hours scatter roses over the palace; then the credits, and the title. |
 | The epilogue's wedding: the palace found again | level | The epilogue's last diorama: the invisible palace of I.2 on Olympus, its seams as they were; a farewell to the tools (the spindle swings the bridge, the lamp lights the nuptial torch) up to Cupid; the last fragment, the frame of the tale (VI.23-24). |
 | The threshold of heaven | level | The epilogue's second diorama, the hardest of the game: two slabs turning on the floor of both worlds, crossed handles, the flip, the ferry, the seals of the dead and hers, an illusion to her second seal, a veiled stone; the summit at dawn above, Olympus under (VI.22-23). |
