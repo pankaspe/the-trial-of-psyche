@@ -5,7 +5,7 @@
 *An isometric puzzle about seeing and trusting,<br>
 from Apuleius' tale of Cupid and Psyche.*
 
-<img src="https://img.shields.io/badge/status-in%20development-c9a24a?style=for-the-badge&labelColor=1d1530" alt="Status: in development">
+<img src="https://img.shields.io/badge/status-the%20tale%20is%20complete-c9a24a?style=for-the-badge&labelColor=1d1530" alt="Status: the tale is complete">
 <img src="https://img.shields.io/badge/platform-Linux-c9a24a?style=for-the-badge&labelColor=1d1530&logo=linux&logoColor=f3e3c3" alt="Platform: Linux">
 <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-c9a24a?style=for-the-badge&labelColor=1d1530" alt="License: GPL-3.0"></a>
 
@@ -33,7 +33,7 @@ the lamp and the truth shows — until the oil runs out. Later the spindle turns
 parts of the palace, and even the time of day, and Jupiter's eagle carries her
 where no road goes. In the underworld it turns the whole world over, onto
 Proserpina's kingdom hanging beneath it, and Charon ferries her across the dark
-water.
+water. At the end of the road, Olympus.
 
 Every place is a small world of its own, standing in its basin over the clouds:
 marble for the palaces, living rock for the crags, earth for the woods.
@@ -43,7 +43,8 @@ every sound, footsteps included. There is not a single image or audio file in th
 game.
 
 Four acts and an epilogue, in Italian and English, with hidden fragments of the
-tale to gather in the Book. It will be released once the whole tale is told.
+tale to gather in the Book. The whole tale is now told, from the oracle to the
+wedding on Olympus; the first release is on its way.
 
 <table>
 <tr>
@@ -75,6 +76,38 @@ has gone on.
 </table>
 
 What changed, step by step: the [changelog](https://trialofpsyche.com/changelog).
+
+## Made only of code
+
+The game is also an experiment: how far can a game go with **no assets at all**?
+Not a texture, not a sprite, not a sound file. Everything is described in code and
+made when the game starts:
+
+- **the world**: every stone, stair, column and tree is a list of boxes turned into
+  a mesh; the figures too (Psyche a turned profile, Cupid pure light, the rams, the
+  eagle, Charon and his boat);
+- **the light and the sky**: about a thousand lines of shaders paint the stones'
+  marble and masonry, the skies, the mountain ranges, the clouds, the water, the
+  lava, the seam between the two worlds;
+- **the sound**: the music is generative (a plucked lyre, a flute, pads, glass
+  bells, a long hall reverb) and every effect is synthesised, footsteps included;
+- **the levels**: twenty small text files, one line per piece.
+
+The only things the game did not make itself are its two fonts (under the SIL Open
+Font License).
+
+| | |
+|---|---|
+| the whole game | one 4.5 MB file, nothing to install (a 1.7 MB archive) |
+| embedded in it | 20 levels (208 KB of text), shaders (68 KB), two fonts (920 KB) |
+| code | about 26,000 lines of [Odin](https://odin-lang.org), plus 3,300 of tools and tests |
+| graphics | true 3D with a depth buffer, built once per level; four quality levels, from a smaller canvas to 2x supersampling |
+| memory | about 290 MB while playing at 1080p, the graphics driver included |
+
+A level checker solves every diorama, move by move, before it ships: it finds the
+plan with the fewest decisions, marks the dead ends, proves every fragment
+reachable and optional, tells which pieces are really needed, and the tests play
+every level's solution to the end.
 
 ## Controls
 
