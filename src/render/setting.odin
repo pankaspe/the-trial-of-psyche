@@ -634,8 +634,8 @@ LOOKS := [level.Setting]Look {
 	},
 }
 
-// The clouds of sky.fs (by night or by day), as they cover the orb's centre at `time`
-// (`angle`: the view turn, which pans the sky).
+// The clouds of sky.fs (by night or by day), as the shader moves them: their
+// speeds, phases, heights and sizes.
 MOON_CLOUDS :: 3
 @(private = "file")
 C_SPEED := [MOON_CLOUDS]f32{0.009, 0.007, 0.011}
@@ -652,6 +652,8 @@ LOBE := [3][2]f32{{-0.55, 0.15}, {0.0, -0.3}, {0.5, 0.1}}
 @(private = "file")
 LOBE_S := [3]f32{0.7, 1.0, 0.75}
 
+// How much those clouds cover the orb's centre at `time` (0 .. 1; `angle`:
+// the view turn, which pans the sky).
 orb_cover :: proc(lk: ^Look, time, angle, aspect: f32) -> f32 {
 	if lk.moon_clouds <= 0 && lk.day_clouds <= 0 {
 		return 0

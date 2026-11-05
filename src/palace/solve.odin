@@ -660,7 +660,7 @@ is_dynamic :: proc(d: ^level.Level_Data) -> bool {
 // How long things take in the game, for `oil_left` (the game's constants).
 Oil_Rules :: struct {
 	oil:        f32, // the lamp full (seconds)
-	light_cost: f32, // lighting it
+	light_cost: f32, // the oil a lighting burns at once
 	step:       f32, // a step
 	passage:    f32, // a step through a cave
 	flight:     f32, // carried by an eagle

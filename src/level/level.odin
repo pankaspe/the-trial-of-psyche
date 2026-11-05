@@ -89,7 +89,7 @@ Setting :: enum u8 {
 	Crag_Day, // a crag of bare rock by day, the wind, the plain far below
 	Temple_Dusk, // a temple at dusk among the ranges: the afterglow, the first stars, its candles lit
 	Venus_Evening, // the house of Venus above the clouds at evening: rose light, her star bright
-	Pasture_Day, // the Sun's pastures by a river at noon: a hot clear sky, the sun high
+	Pasture_Day, // the Sun's pastures by a river in the morning: a deep blue sky, the sun still low
 	Pasture_Evening, // the same at evening: the sun gone down, amber and violet, the first star
 	Venus_Day, // the house of Venus above the clouds by day: a pale gold morning, the sun in a rose haze
 	Styx_Night, // the gorge under the Styx's crag: no moon, faint stars, the black water falling
@@ -128,7 +128,7 @@ SETTING_NAME := [Setting]string {
 	.Olympus       = "olympus",
 }
 
-// How a block behaves (Act II): fixed stone, or one that changes for good.
+// How a block behaves (Acts II and III): fixed stone, or one that changes for good.
 Trait :: enum u8 {
 	Stone,
 	Veiled, // hidden in the dark: the lamp's light makes it real
@@ -303,7 +303,7 @@ Level_Data :: struct {
 	has_sigil:    bool,
 	has_amore:    bool,
 	has_exit:     bool,
-	prologue:     Cell, // the scene's place: where the procession comes up (Oracle), the cypress Cupid flies over (Flight), the edge she looks down from (Tower)
+	prologue:     Cell, // the scene's place: where the procession comes up (Oracle), the cypress Cupid flies over (Flight), where Venus stands (Venus), the edge she looks down from (Tower), the cell Cupid comes down over (Awakening)
 	has_prologue: bool, // the level opens with a cutscene (`scene` says which)
 	scene:        Scene,
 	intro:        i18n.Key, // the line shown when the level begins

@@ -1,4 +1,4 @@
-// Procedural sound: the effects that are not recordings, and the ambience
+// Procedural sound: every effect (the footsteps too) and the ambience
 // beds, synthesised at startup. Pure functions over f32 buffers; the reverb
 // is baked into the samples (stereo), so playback needs no effect chain.
 // The effects are meant to sound like a dream: soft, rounded, far.
@@ -21,7 +21,7 @@ Sound_Id :: enum u8 {
 	Seam, // a way opens where two stones meet in the view: a glass chime
 	Lamp_On, // the wick catches: a breath of flame, crackle, a warm bloom
 	Lamp_Off, // a puff, a thread of smoke
-	Blocked, // no way: two soft knocks of wood
+	Blocked, // no way: two soft knocks of felt
 	Tap, // a button: a small pluck
 	Rumble, // stone grinding against stone (the seal)
 	Thud, // a stone settling into place

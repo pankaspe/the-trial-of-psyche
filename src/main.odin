@@ -346,7 +346,7 @@ update_sound :: proc(app: ^App) {
 	audio.set_duck(duck)
 }
 
-// BLACK_OUT: the screen goes black at the end of an act; BLACK_IN: it comes back.
+// Seconds of the fade to black at the end of an act, and of the way back.
 BLACK_OUT :: 1.0
 BLACK_IN :: 0.8
 
@@ -458,7 +458,6 @@ draw_black :: proc(app: ^App, w, h: f32) {
 	rl.DrawRectangleRec({0, 0, w, h}, {0, 0, 0, u8(clamp(a, 0, 1) * 255)})
 }
 
-// Restart the current level at once (no act card, no prologue).
 // What the HUD needs from the app: where Psyche is on screen, how far R is held.
 hud_input :: proc(app: ^App) -> ui.Hud_Input {
 	g := &app.game

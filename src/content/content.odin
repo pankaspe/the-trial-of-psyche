@@ -200,7 +200,7 @@ SHADER_BLUR_FS :: #load("../../assets/shaders/blur.fs", cstring)
 // Psyche's two tools, each on its number key (1, 2) and pad trigger (LT, RT):
 // the HUD's slots. Each is known from a level on; what it does depends on the
 // place (the lamp: the truth, a seal, veiled blocks; the spindle: a handle,
-// a sundial).
+// a sundial, a pomegranate).
 Skill :: enum u8 {
 	Lamp, // 1
 	Spindle, // 2

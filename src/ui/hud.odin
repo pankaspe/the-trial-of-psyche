@@ -3,15 +3,18 @@
 //   left       the two tools, one slot per number key (1 the lamp, 2 the
 //              spindle; one still to learn shows locked); a tool's name
 //              slides out on hover (or always, by the settings);
+//   top right  the level's fragments, found and in all;
+//   right      a level of several dioramas: their column;
 //   bottom     right: the diorama's own buttons (Q, E turn it; R the brazier,
 //              held: the level again, a ring filling);
 //   over Psyche the action of the place (Space), when there is one: into a
-//              cave; above it a golden arrow when the level begins or Tab
-//              asks where she is, until she walks.
+//              cave, the eagle called, Charon's boat boarded; above it a
+//              chevron of light when the level begins or Tab asks where she
+//              is, until she walks.
 // With a pad in hand the keys give way to its buttons (`control`): LT the
 // lamp, RT the spindle, LB / RB turn, East the brazier, South the action of
-// the place, North the arrow over Psyche, Start the pause.
-// Titles, Cupid's voice, hints and tutorials as before. Everything but the
+// the place, North the light over Psyche, Start the pause.
+// Also the titles, Cupid's voice, hints and tutorials. Everything but the
 // titles follows the HUD size of the accessibility settings.
 package ui
 

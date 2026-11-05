@@ -266,7 +266,7 @@ is_unlocked :: proc(p: Progress, index: int) -> bool {
 	return true
 }
 
-// Where "Enter the palace" leads: the first level still to finish, else the
+// Where Continue on the title leads: the first level still to finish, else the
 // last built one.
 current_level :: proc(p: Progress) -> int {
 	last := 0

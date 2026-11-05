@@ -17,7 +17,7 @@
 //   blocks near her (Act II: they become real for good);
 //   the spindle (2, F, or a click on her own cell): on a handle it turns a
 //   part of the palace a quarter (Act II); on a sundial it turns the time
-//   (Act III).
+//   (Act III); on a pomegranate it turns the world over (Act IV).
 //
 // Day and evening (Act III, a level with sundials): the sky goes down (or up)
 // while the game waits. By day the sun shows the truth as the lamp does
@@ -3007,7 +3007,6 @@ start_cues_time :: proc(g: ^Game) -> f32 {
 	return INTRO_AT + 0.9 + 2.8 + length * 0.045 + 0.6
 }
 
-// Tutorial hints stay on screen until Psyche does what they teach.
 CANDELABRUM_REACH :: 1.5 // cells from Psyche: the lamp's flame lights a candelabrum
 
 FIRE_HEARD :: 4.5 // cells: how far off a fire is still heard

@@ -39,6 +39,7 @@ Prop_Kind :: enum u8 {
 	// the house of Venus: decoration only, in one corner of the cell (as the vase)
 	Rose, // a rose bush in flower
 	Myrtle, // a small myrtle, Venus's tree, in a pot
+	// anywhere: blocking
 	Fire, // a fire in a ring of stones: it burns in any setting and lights the stones around it
 }
 

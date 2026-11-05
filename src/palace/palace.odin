@@ -974,7 +974,7 @@ all_seals :: proc(d: ^level.Level_Data) -> (out: level.Seals) {
 
 // --- geometry ------------------------------------------------------------------
 
-// Where feet stand on node n, in world space.
+// Where feet stand on cell c, in world space.
 node_world :: proc(p: ^Palace, c: Cell) -> iso.Vec3 {
 	lift: f32 = is_stair(p, c) ? 0.5 : 0
 	return {f32(c.x) + 0.5, f32(c.y) + 0.5, f32(c.z) + lift}
