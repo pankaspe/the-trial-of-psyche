@@ -6,6 +6,12 @@ Kinds: **feature** (new code or mechanic) · **level** (a level built or rebuilt
 **rework** (something existing redone) · **refactor** (same behaviour, cleaner code) ·
 **fix** · **removal** · **sound** · **ui** · **tooling** · **docs**
 
+## 2026-11-06
+
+| Title | Kind | Description |
+|---|---|---|
+| A guide to building from source | docs | `docs/building.md`: what to install on Linux, Windows and macOS, the build script, the tests, the level analysis tool, the scripted screenshots and the release archive; the README's build section points to it. |
+
 ## 2026-11-05
 
 | Title | Kind | Description |

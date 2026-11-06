@@ -145,25 +145,31 @@ try one, a [playtest note](https://github.com/pankaspe/the-trial-of-psyche/issue
 on how it went (even "it doesn't build") helps a lot.
 
 1. Install Odin **dev-2026-10** or newer ([how](https://odin-lang.org/docs/install/)).
-   It already includes raylib 6, the only library the game needs; nothing else to
-   download.
+   It already includes raylib 6, the only library the game needs. On Windows you also
+   need the Visual Studio Build Tools (C++ workload), on macOS the Xcode Command Line
+   Tools, on Linux clang and the X11 development files (`libx11-dev` on
+   Debian/Ubuntu, `libX11-devel` on Fedora and Void).
 2. Get the source and build it, from the repository's folder:
 
    ```sh
    git clone https://github.com/pankaspe/the-trial-of-psyche.git
    cd the-trial-of-psyche
-   odin build src -out:trial-of-psyche -o:speed        # Linux, macOS
-   odin build src -out:trial-of-psyche.exe -o:speed    # Windows
+   odin build src -out:trial-of-psyche -o:speed                           # Linux, macOS
+   odin build src -out:trial-of-psyche.exe -o:speed -subsystem:windows    # Windows
    ```
 
+   On Windows, run it from the **x64 Native Tools Command Prompt**.
 3. Run `./trial-of-psyche` (`trial-of-psyche.exe` on Windows). The levels, shaders
    and fonts are inside the binary: it can be moved anywhere on its own.
 
-On Linux the X11 development files are needed for linking (`libx11-dev` on
-Debian/Ubuntu, `libX11-devel` on Fedora). You need a GPU with OpenGL 3.3. Saves
-and settings go to the system's usual folder for settings (`~/.config/` on
-Linux, `%APPDATA%` on Windows, `~/Library/Application Support/` on macOS), under
-`the-trial-of-psyche`.
+You need a GPU with OpenGL 3.3. Saves and settings go to the system's usual folder
+for settings (`~/.config/` on Linux, `%APPDATA%` on Windows,
+`~/Library/Application Support/` on macOS), under `the-trial-of-psyche`.
+
+**[docs/building.md](docs/building.md)** has the details: requirements per system,
+the build script, the tests (they play every level to its end), the level analysis
+tool (illusions per view, the solver's plan, dead ends, pieces a level could do
+without), the scripted screenshots and recordings, and the release archive.
 
 ## License
 
